@@ -1,0 +1,8 @@
+# Cursor / local editor
+.cursor/
+
+# Godot editor binaries (large; keep out of git)
+/Godot_v*.exe
+
+# Logs
+*.log

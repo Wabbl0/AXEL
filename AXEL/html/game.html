@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAME</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles_game.css">
+</head>
+<body>
+
+    <div class="scanlines"></div>
+
+    <div id="game-container" class="game-container">
+        <div class="status-bar">
+            <div>LOCATION: <span id="location-name" class="text-red-400">LOADING...</span></div>
+            <div class="flex gap-4">
+                <div><span id="memory-count">0</span>/5</div>
+                <div>INV: <span id="inventory-list" class="text-gray-400 text-sm">Empty</span></div>
+            </div>
+        </div>
+        <button class="home-btn" onclick="window.location.href='index.html'" aria-label="Back to home">X</button>
+
+        <div class="scene-area" id="scene-area">
+            <img id="scene-bg" class="scene-bg-image hidden" src="" alt="Scene Background">
+
+            <div id="story-box" class="story-box">
+                <p id="story-text" class="story-text">
+                    Initializing system...
+                </p>
+            </div>
+        </div>
+
+        <div class="controls-area" id="controls-area">
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            loadScene('start');
+        };
+
+        const gameState = {
+            inventory: [],
+            memories: 0,
+            memoryScenes: {},
+            flags: {
+                hasFlashlight: false,
+                hasName: false,
+                hasKey: false,
+                hasShovel: false,
+                deskSequencePlayed: false,
+                knowsName: false,
+                isDead: false
+            }
+        };
+
+        let currentSceneId = null;
+        let sceneFxTimers = [];
+
+        function resolveImagePath(imageName) {
+            if (!imageName) return "";
+            const isExternalImage = /^https?:\/\//i.test(imageName);
+            return isExternalImage || imageName.startsWith('pictures/')
+                ? imageName
+                : `pictures/${imageName}`;
+        }
+
+        function clearSceneFx() {
+            sceneFxTimers.forEach(clearTimeout);
+            sceneFxTimers = [];
+
+            const bgImg = document.getElementById('scene-bg');
+            if (!bgImg) return;
+            bgImg.classList.remove('scene-shake', 'scene-image-switch');
+        }
+
+        function queueSceneFx(callback, delay) {
+            const timer = setTimeout(callback, delay);
+            sceneFxTimers.push(timer);
+        }
+
+        function addToInventory(item, displayName) {
+            if (!gameState.inventory.includes(displayName)) {
+                gameState.inventory.push(displayName);
+                updateUI();
+            }
+        }
+
+        function hasItem(itemFlag) {
+            return gameState.flags[itemFlag] === true;
+        }
+
+        function addMemory() {
+            gameState.memories++;
+            updateUI();
+            const textBox = document.getElementById('story-text');
+            textBox.classList.add('glitch-text');
+            setTimeout(() => textBox.classList.remove('glitch-text'), 1000);
+        }
+
+        function addMemoryOnce(sceneKey) {
+            if (gameState.memoryScenes[sceneKey]) return;
+            gameState.memoryScenes[sceneKey] = true;
+            addMemory();
+        }
+
+        function getSmokingHintText() {
+            const pendingHints = [];
+
+            if (!gameState.flags.hasFlashlight) {
+                pendingHints.push("The basement is bound to be dark. I need something to light the way");
+            }
+            if (!gameState.flags.hasName) {
+                pendingHints.push("I remember their face. But their name escapes me");
+            }
+            if (!gameState.flags.hasKey) {
+                pendingHints.push("The basement is bound to be locked. I better look around for the key.");
+            }
+            if (gameState.memories < 5) {
+                pendingHints.push("I should look around more. There's something I'm forgetting.");
+            }
+
+            if (pendingHints.length === 0) {
+                return "I'm ready.";
+            }
+
+            const randomIndex = Math.floor(Math.random() * pendingHints.length);
+            return pendingHints[randomIndex];
+        }
+
+        function updateUI() {
+            document.getElementById('memory-count').innerText = gameState.memories;
+            const invList = gameState.inventory.length > 0 ? gameState.inventory.join(", ") : "";
+            document.getElementById('inventory-list').innerText = invList;
+        }
+
+        function isSceneInteractionLocked(sceneId) {
+            return (
+                (sceneId === 'loc_kitchen' && !gameState.flags.hasFlashlight) ||
+                (sceneId === 'loc_yard' && !gameState.memoryScenes.loc_yard_memory) ||
+                (sceneId === 'loc_teachers' && !gameState.flags.hasKey)
+            );
+        }
+
+        const story = {
+            "start": {
+                name: "",
+                text: "You stand before the rotting wooden school building. The sky is grey. You feel a jolt in your chest, your GUILT lies here. You've come to finish what was left undone years ago.",
+                image: "school.png",
+                choices: [
+                    { text: "Walk inside", target: "scene_2" },
+                    { text: "Turn away", target: "ending_1" }
+                ],
+                onEnter: () => {
+                    gameState.inventory = [];
+                    gameState.memories = 0;
+                    gameState.memoryScenes = {};
+                    Object.keys(gameState.flags).forEach(k => gameState.flags[k] = false);
+                    updateUI();
+                }
+            },
+            "scene_2": {
+                name: "CORRIDOR",
+                text: "You step inside. The smell hits you—a mix of mold and old floor cleaner. The past is leaking into the present. You remember that your locker is at the end of the hallway.",
+                image: "corridor.png",
+                choices: [
+                    { text: "Go to your locker", target: "scene_3" },
+                    { text: "Turn away", target: "ending_1" }
+                ]
+            },
+            "scene_3": {
+                name: "YOUR LOCKER",
+                text: "You are in your sanctuary. There's a picture of the two of you on the locker door. The map shows four circled locations. The basement entrance has been blacked out.",
+                image: "hub.png",
+                onEnter: () => {
+                     addMemoryOnce("scene_3");
+                },
+                choices: [
+                    { text: "Go to the cafeteria", target: "loc_cafeteria" },
+                    { text: "Go to the classroom", target: "loc_classroom" },
+                    { text: "Go to the backyard", target: "loc_yard" },
+                    { text: "Go to the teacher's lounge", target: "loc_teachers" },
+                    { text: "ENTER THE BASEMENT", target: "basement_blocked_temp", specialClass: "text-red-600 border-red-600" }
+                ]
+            },
+            "basement_blocked_temp": {
+                name: "BASEMENT",
+                text: "The basement is sealed off for now. Come back later.",
+                choices: [
+                    { text: "Go back", target: "scene_3" }
+                ]
+            },
+            "loc_cafeteria": {
+                name: "CAFETERIA",
+                text: "Tables are overturned. The air reeks of rancid grease. In the middle of the hall you see a ghostly figure sitting alone at an intact table. The kitchen area is dark.",
+                image: "cafeteria.png",
+                choices: [
+                    { text: "Approach Your table", target: "loc_cafeteria_memory" },
+                    { text: "Search the kitchen", target: "loc_kitchen" },
+                    { text: "Return to locker", target: "scene_3" }
+                ]
+            },
+            "loc_cafeteria_memory": {
+                name: "CAFETERIA",
+                text: "You are sitting at the same table. The popular kids invite you over. Your friend whispers, 'Don't go.' You stand up, laugh and shout loud: 'Sorry, I can't deal with your whining.' You leave them alone.",
+                image: "cafeteria_table.png",
+                onEnter: () => addMemoryOnce("loc_cafeteria_memory"),
+                choices: [
+                    { text: "Go back", target: "loc_cafeteria" }
+                ]
+            },
+            "loc_kitchen": {
+                name: "KITCHEN",
+                text: "The kitchen is rotting at the seams. You see the rot pile up in the air. The smell is horrendus.",
+                image: "kitchen.png",
+                choices: [
+                    { text: "Turn back", target: "loc_cafeteria" }
+                ]
+            },
+            "action_get_flashlight": {
+                name: "KITCHEN",
+                text: "Your hand hits cold metal. You found an industrial flashlight!",
+                image: "kitchen_no_flash.png",
+                onEnter: () => { 
+                    gameState.flags.hasFlashlight = true;
+                    addToInventory("hasFlashlight", "Flashlight");
+                },
+                choices: [{ text: "Nice", target: "loc_cafeteria" }]
+            },
+            "loc_yard": {
+                name: "BACKYARD",
+                text: "The corner at the back of the school. The wall has a weird graffiti on it. You still smell the teen rebelry around.",
+                image: "backyard.png",
+                choices: [
+                    { text: "Smoke a cigarette", target: "loc_yard_hint" },
+                    { text: "Return to locker", target: "scene_3" }
+                ]
+            },
+            "loc_yard_hint": {
+                name: "INTERMISSION",
+                text: "",
+                image: "cigarette.png",
+                onEnter: () => {
+                    document.getElementById('story-text').innerText = getSmokingHintText();
+                },
+                choices: [{ text: "Continue", target: "loc_yard" }]
+            },
+            "loc_yard_memory": {
+                name: "BACKYARD",
+                text: "Your friend looks gaunt. 'Just to make sure you don't steal my lighter again I'm going to write my name on it.'",
+                image: "backyard.png",
+                onEnter: () => { 
+                    gameState.flags.knowsName = true;
+                    gameState.flags.hasName = true;
+                    addToInventory("hasName", "Name");
+                    addMemoryOnce("loc_yard_memory");
+                },
+                choices: [{ text: "Remember the name", target: "scene_3" }]
+            },
+            "loc_teachers": {
+                name: "TEACHERS' LOUNGE",
+                image: "teacher_key.png",
+                text: "The air is stale. You always wondered what the teachers were doing behind closed doors.",
+                choices: [
+                    { text: "Return to locker", target: "scene_3" }
+                ]
+            },
+            "loc_teachers_memory": {
+                name: "TEACHERS' LOUNGE",
+                text: "The cop asked, 'When did you last see him?' You answered: 'That day at lunch. I thought they went home.' You lied. You knew exactly where THEY were.",
+                onEnter: () => addMemoryOnce("loc_teachers_memory"),
+                choices: [{ text: "...", target: "loc_teachers" }]
+            },
+            "loc_key_wall": {
+                name: "TEACHERS' LOUNGE",
+                text: "Most hooks are empty. One rusty key still hangs.",
+                image: "teacher_key.png",
+                choices: [
+                    { text: "Take the key", target: "action_get_key", condition: () => !gameState.flags.hasKey },
+                    { text: "Turn back", target: "loc_teachers" }
+                ]
+            },
+            "action_get_key": {
+                name: "TEACHERS' LOUNGE",
+                text: "You take the key. A bit of tape reads: 'BASEMENT'.",
+                image: "teacher_no_key.png",
+                onEnter: () => {
+                    gameState.flags.hasKey = true;
+                    addToInventory("hasKey", "Key");
+                },
+                choices: [{ text: "Nice", target: "loc_teachers" }]
+            },
+            "loc_classroom": {
+                name: "CLASSROOM",
+                text: "Dust dances in the beams of light. In the back row one desk sits apart from the others. A chalkboard stands at the front.",
+                image: "classroom.png",
+                choices: [
+                    { text: "Inspect the desk", target: "loc_desk" },
+                    { text: "Look at the board", target: "loc_board" },
+                    { text: "Return to locker", target: "scene_3" }
+                ]
+            },
+            "loc_desk": {
+                name: "CLASSROOM",
+                text: "This is THEIR desk. You remember. It was a dare.",
+                image: "desk_empty.jpg",
+                choices: [{ text: "Close the lid", target: "loc_classroom" }]
+            },
+            "loc_board": {
+                name: "CLASSROOM",
+                text: "On the board is code: 'if (name == ____) { remember(); }'. Do you know the name?",
+                image: "board.png",
+                type: "input",
+                correctAnswer: "AXEL",
+                successTarget: "loc_board_success",
+                failTarget: "loc_board",
+                failText: "The board doesn't respond.",
+                choices: [
+                    { text: "Turn back", target: "loc_classroom" }
+                ]
+            },
+            "loc_board_success": {
+                name: "CLASSROOM",
+                text: "At least YOU remember that much.",
+                image: "board.png",
+                onEnter: () => {
+                    gameState.flags.hasName = true;
+                    addToInventory("hasName", "Name");
+                },
+                choices: [{ text: "Take the name", target: "scene_3" }]
+            },
+            "basement_entry": {
+                name: "BASEMENT DOOR",
+                text: "A heavy metal door. The sign reads 'ENTRY FORBIDDEN'.",
+                image: "",
+                choices: [
+                    { 
+                        text: "Unlock with key", 
+                        target: "basement_stairs", 
+                        condition: () => gameState.flags.hasKey 
+                    },
+                    { text: "Try the handle (Locked)", target: "basement_locked", condition: () => !gameState.flags.hasKey },
+                    { text: "Go back", target: "scene_3" }
+                ]
+            },
+            "basement_locked": {
+                name: "LOCKED",
+                text: "The door won't budge. You need a key.",
+                choices: [{ text: "Go back", target: "scene_3" }]
+            },
+            "basement_stairs": {
+                name: "STAIRCASE",
+                text: "The door opens. Before you lie pitch-black stairs. The smell is nauseating. Are you ready to step into the darkness?",
+                choices: [
+                    { text: "Go down", target: "check_flashlight_logic" },
+                    { text: "I'm not ready", target: "scene_3" }
+                ]
+            },
+            "check_flashlight_logic": {
+                name: "...",
+                text: "...",
+                onEnter: () => {
+                    if (gameState.flags.hasFlashlight) {
+                        loadScene("basement_main");
+                    } else {
+                        loadScene("ending_2");
+                    }
+                }
+            },
+
+            "basement_main": {
+                name: "MAIN CHAMBER",
+                text: "The beam hits soft soil. In the corner something metallic glints. There is no going back.",
+                image: "",
+                choices: [
+                    { text: "Pick up the shovel", target: "action_get_shovel", condition: () => !gameState.flags.hasShovel },
+                    { text: "Dig (Requires shovel)", target: "basement_digging", condition: () => gameState.flags.hasShovel },
+                    { text: "Turn back", target: "basement_stuck" }
+                ]
+            },
+            "action_get_shovel": {
+                name: "FOUND",
+                text: "You found a rusty shovel.",
+                onEnter: () => { gameState.flags.hasShovel = true; },
+                choices: [{ text: "Continue", target: "basement_main" }]
+            },
+            "basement_stuck": {
+                name: "NO RETURN",
+                text: "The door is locked behind you. You must face this.",
+                choices: [{ text: "Back", target: "basement_main" }]
+            },
+            "basement_digging": {
+                name: "DIGGING",
+                text: "You strike the shovel into the ground. Thud. Fabric... bone. The final memory surfaces.",
+                onEnter: () => addMemoryOnce("basement_digging"),
+                choices: [{ text: "FACE THE TRUTH", target: "basement_question" }]
+            },
+            "basement_question": {
+                name: "CORPSE",
+                text: "Before you is a mummified body. Its jaw drops open. A voice echoes in your head: 'WHO AM I?'",
+                image: "",
+                type: "input",
+                correctAnswer: "AXEL",
+                successTarget: "check_true_ending_logic",
+                failTarget: "ending_3",
+                choices: []
+            },
+            
+            "check_true_ending_logic": {
+                name: "...",
+                text: "...",
+                onEnter: () => {
+                    if (gameState.flags.hasName) {
+                        loadScene("ending_true");
+                    } else {
+                        loadScene("ending_4");
+                    }
+                }
+            },
+            "ending_1": {
+                name: "ENDING #1",
+                text: "Fear wins over curiosity. You walk away. In the nights that follow you have nightmares, but you never learn the truth.",
+                image: "",
+                choices: [{ text: "Start again", target: "start" }]
+            },
+            "ending_2": {
+                name: "ENDING #2",
+                text: "You step into darkness without light. Your foot slips. You tumble down the stairs and your neck breaks. The shadows consume you.",
+                image: "",
+                choices: [{ text: "Start again", target: "start" }]
+            },
+            "ending_3": {
+                name: "ENDING #3",
+                text: "You answer wrong. 'You still don't care!' the voice screams. The basement walls glow red. Fire engulfs you. You are in hell.",
+                choices: [{ text: "Start again", target: "start" }]
+            },
+            "ending_4": {
+                name: "ENDING #4",
+                text: "You whisper 'Axel'. The body goes silent. But then the police burst in. You have no evidence (Name missing) that it was suicide. You are convicted of murder.",
+                choices: [{ text: "Start again", target: "start" }]
+            },
+            "ending_true": {
+                name: "TRUE ENDING",
+                text: "You whisper 'Axel' and give the name. A spirit leaves the body. He looks at peace. 'This can't hurt me anymore,' he laughs. You are forgiven.",
+                choices: [{ text: "Go to the backyard", target: "epilogue" }]
+            },
+            "epilogue": {
+                name: "EPILOGUE",
+                text: "You sit together in the backyard. You and a ghost. You smoke in silence. Smoke rises toward the sky. You are free.",
+                choices: [{ text: "Exit", target: "start" }]
+            }
+        };
+
+        // W3Schools reference: JavaScript objects and nested data https://www.w3schools.com/js/js_objects.asp
+        function loadScene(sceneId) {
+            const scene = story[sceneId];
+            if (!scene) return;
+            currentSceneId = sceneId;
+            clearSceneFx();
+            let yardAdvanceHandler = null;
+            let teachersAdvanceHandler = null;
+
+            document.getElementById('location-name').innerText = scene.name;
+            const storyText = document.getElementById('story-text');
+            const shouldHideDeskText = sceneId === 'loc_desk' && !gameState.flags.deskSequencePlayed;
+            storyText.innerText = shouldHideDeskText ? '' : scene.text;
+
+            const bgImg = document.getElementById('scene-bg');
+            const sceneArea = document.getElementById('scene-area');
+            const sceneImage =
+                (sceneId === 'loc_kitchen' && gameState.flags.hasFlashlight)
+                    ? 'kitchen_no_flash.png'
+                    : ((sceneId === 'loc_teachers' || sceneId === 'loc_key_wall') && gameState.flags.hasKey)
+                        ? 'teacher_no_key.png'
+                    : (sceneId === 'loc_desk' && gameState.flags.deskSequencePlayed)
+                        ? 'desk.png'
+                        : scene.image;
+
+            sceneArea.onclick = null;
+            sceneArea.style.cursor = 'default';
+
+            if (sceneImage) {
+                const imagePath = resolveImagePath(sceneImage);
+                bgImg.src = imagePath;
+                bgImg.classList.remove('hidden');
+
+                if (sceneId === 'loc_kitchen' && !gameState.flags.hasFlashlight) {
+                    sceneArea.style.cursor = 'pointer';
+                    sceneArea.onclick = () => loadScene('action_get_flashlight');
+                }
+
+                if (sceneId === 'scene_3') {
+                    sceneArea.style.cursor = 'pointer';
+                    sceneArea.onclick = () => {
+                        if (currentSceneId !== 'scene_3') return;
+                        bgImg.src = resolveImagePath('map.png');
+                    };
+                }
+
+                if (sceneId === 'loc_yard' && !gameState.memoryScenes.loc_yard_memory) {
+                    const yardMemoryText = story.loc_yard_memory?.text || "";
+                    const yardRevealText = "YOU look down. There it is. A lighter with the name \"AXEL\" written on it.";
+                    let yardSequenceStep = 0;
+
+                    yardAdvanceHandler = () => {
+                        if (currentSceneId !== 'loc_yard') return;
+
+                        if (yardSequenceStep === 0) {
+                            yardSequenceStep = 1;
+                            storyText.classList.add('glitch-text');
+                            setTimeout(() => storyText.classList.remove('glitch-text'), 250);
+                            storyText.innerText = yardMemoryText;
+                            addMemoryOnce("loc_yard_memory");
+                            return;
+                        }
+
+                        if (yardSequenceStep === 1) {
+                            yardSequenceStep = 2;
+                            storyText.innerText = yardRevealText;
+                            gameState.flags.knowsName = true;
+                            gameState.flags.hasName = true;
+                            addToInventory("hasName", "Name");
+                            return;
+                        }
+
+                        if (yardSequenceStep === 2) {
+                            yardSequenceStep = 3;
+                            sceneArea.onclick = null;
+                            sceneArea.style.cursor = 'default';
+                            yardAdvanceHandler = null;
+                            loadScene('loc_yard');
+                        }
+                    };
+
+                    sceneArea.style.cursor = 'pointer';
+                    sceneArea.onclick = yardAdvanceHandler;
+                }
+
+                if (sceneId === 'loc_teachers' && !gameState.flags.hasKey) {
+                    const teachersMemoryText = story.loc_teachers_memory?.text || "";
+                    let teachersSequenceStep = 0;
+
+                    teachersAdvanceHandler = () => {
+                        if (currentSceneId !== 'loc_teachers') return;
+
+                        if (teachersSequenceStep === 0) {
+                            teachersSequenceStep = 1;
+                            storyText.classList.add('glitch-text');
+                            setTimeout(() => storyText.classList.remove('glitch-text'), 250);
+                            storyText.innerText = teachersMemoryText;
+                            addMemoryOnce("loc_teachers_memory");
+                            return;
+                        }
+
+                        if (teachersSequenceStep === 1) {
+                            teachersSequenceStep = 2;
+                            sceneArea.onclick = null;
+                            sceneArea.style.cursor = 'default';
+                            teachersAdvanceHandler = null;
+                            loadScene('action_get_key');
+                        }
+                    };
+
+                    sceneArea.style.cursor = 'pointer';
+                    sceneArea.onclick = teachersAdvanceHandler;
+                }
+
+                if (sceneId === 'loc_desk' && !gameState.flags.deskSequencePlayed) {
+                    gameState.flags.deskSequencePlayed = true;
+
+                    queueSceneFx(() => {
+                        if (currentSceneId !== 'loc_desk') return;
+                        bgImg.classList.add('scene-image-switch', 'scene-shake');
+                        bgImg.src = resolveImagePath('desk_hand.png');
+                    }, 650);
+
+                    queueSceneFx(() => {
+                        if (currentSceneId !== 'loc_desk') return;
+                        bgImg.classList.remove('scene-shake');
+                        bgImg.src = resolveImagePath('desk.png');
+                    }, 1000);
+
+                    queueSceneFx(() => {
+                        if (currentSceneId !== 'loc_desk') return;
+                        bgImg.classList.remove('scene-image-switch');
+                        storyText.innerText = scene.text;
+                        addMemoryOnce("loc_desk");
+                    }, 1300);
+                }
+            } else {
+                bgImg.classList.add('hidden');
+            }
+
+            const controlsArea = document.getElementById('controls-area');
+            controlsArea.innerHTML = '';
+
+            if (scene.type === 'input') {
+                const container = document.createElement('div');
+                container.className = 'input-container';
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'puzzle-input';
+                input.placeholder = "TYPE ANSWER...";
+                
+                const submit = document.createElement('button');
+                submit.className = 'puzzle-submit';
+                submit.innerText = "ENTER";
+                submit.onclick = () => {
+                    if (input.value.toUpperCase().trim() === scene.correctAnswer) {
+                        submit.blur();
+                        loadScene(scene.successTarget);
+                    } else {
+                        document.getElementById('story-text').innerText = scene.failText || "Väärä vastaus... mitään ei tapahdu.";
+                        if (scene.failTarget && scene.failTarget !== sceneId) {
+                            setTimeout(() => loadScene(scene.failTarget), 2000);
+                        }
+                    }
+                };
+
+                container.appendChild(input);
+                container.appendChild(submit);
+                controlsArea.appendChild(container);
+                
+                if (scene.choices) {
+                    const grid = document.createElement('div');
+                    grid.className = 'choices-grid mt-4';
+                    scene.choices.forEach(choice => {
+                        const btn = document.createElement('button');
+                        btn.innerText = choice.text;
+                        btn.className = 'choice-btn';
+                        btn.onclick = () => {
+                            btn.blur();
+                            loadScene(choice.target);
+                        };
+                        grid.appendChild(btn);
+                    });
+
+                    const inputChoiceCount = grid.childElementCount;
+                    if (inputChoiceCount === 1) {
+                        grid.classList.add('single-choice');
+                    } else if (inputChoiceCount >= 4) {
+                        grid.classList.add('dense-choices');
+                    } else if (inputChoiceCount >= 3) {
+                        grid.classList.add('medium-choices');
+                    }
+
+                    controlsArea.appendChild(grid);
+                }
+
+            } else {
+                const grid = document.createElement('div');
+                grid.className = 'choices-grid';
+                const isInteractionLocked = isSceneInteractionLocked(sceneId);
+
+                if (scene.choices) {
+                    scene.choices.forEach(choice => {
+                        if (choice.condition && !choice.condition()) {
+                            return;
+                        }
+
+                        const btn = document.createElement('button');
+                        btn.innerText = choice.text;
+                        btn.className = `choice-btn ${choice.specialClass || ''} ${isInteractionLocked ? 'choice-btn-locked' : ''}`;
+                        if (isInteractionLocked) {
+                            btn.onclick = () => {};
+                        } else if (
+                            sceneId === 'loc_yard' &&
+                            choice.target === 'loc_yard_hint' &&
+                            yardAdvanceHandler &&
+                            !gameState.memoryScenes.loc_yard_memory
+                        ) {
+                            btn.onclick = () => {
+                                btn.blur();
+                                if (yardAdvanceHandler && !gameState.memoryScenes.loc_yard_memory) {
+                                    yardAdvanceHandler();
+                                } else {
+                                    loadScene(choice.target);
+                                }
+                            };
+                        } else {
+                            btn.onclick = () => {
+                                btn.blur();
+                                loadScene(choice.target);
+                            };
+                        }
+                        grid.appendChild(btn);
+                    });
+                }
+
+                const normalChoiceCount = grid.childElementCount;
+                if (normalChoiceCount === 1) {
+                    grid.classList.add('single-choice');
+                } else if (normalChoiceCount >= 4) {
+                    grid.classList.add('dense-choices');
+                } else if (normalChoiceCount >= 3) {
+                    grid.classList.add('medium-choices');
+                }
+
+                controlsArea.appendChild(grid);
+            }
+
+            if (scene.onEnter) {
+                scene.onEnter();
+            }
+        }
+
+    </script>
+</body>
+</html>

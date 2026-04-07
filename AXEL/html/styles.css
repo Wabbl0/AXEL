@@ -1,0 +1,580 @@
+:root {
+    --blood-red: #ff0000;
+    --dark-blood: #4a0000;
+    --black: #050505;
+}
+
+body {
+    background-color: #000;
+    color: var(--blood-red);
+    font-family: 'Space Mono', monospace;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none; 
+    overflow: hidden;
+    font-size: 1.3rem;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'VT323', monospace;
+}
+
+.scanlines {
+    position: fixed;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 100;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+.title-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.title-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: 50%;
+    background-position: calc(50% - 30px) center;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+
+.title-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+.title-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+}
+
+.title-text {
+    font-size: 8rem;
+    font-weight: bold;
+    color: var(--blood-red);
+    text-shadow: 0 0 20px var(--blood-red), 2px 2px 4px #000;
+    margin: 0;
+    line-height: 1;
+    letter-spacing: 0.3em;
+    text-indent: 0.3em;
+    margin-bottom: 60px;
+}
+
+.start-btn {
+    background: var(--dark-blood);
+    border: 2px solid var(--blood-red);
+    color: var(--blood-red);
+    padding: 20px 40px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-family: 'VT323', monospace;
+    font-size: 2rem;
+    transition: all 0.3s;
+    letter-spacing: 2px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.start-btn:hover {
+    background: var(--blood-red);
+    color: #000;
+    box-shadow: 0 0 30px var(--blood-red);
+}
+
+.start-btn:active,
+.start-btn:focus {
+    background: var(--blood-red);
+    color: #000;
+    box-shadow: 0 0 30px var(--blood-red);
+    outline: none;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.title-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #000;
+    padding: 40px 40px 16px;
+    font-family: 'VT323', monospace;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 60px;
+}
+
+.title-nav a {
+    color: var(--blood-red);
+    text-decoration: none;
+    font-size: 2.4rem;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    transition: all 0.3s;
+    text-shadow: 2px 2px 4px #000;
+}
+
+.title-nav a:hover {
+    color: var(--dark-blood);
+    text-shadow: 0 0 10px var(--dark-blood), 2px 2px 4px #000;
+}
+
+.nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(20, 0, 0, 0.92);
+    border: 1px solid rgba(255, 0, 0, 0.65);
+    color: rgba(255, 180, 180, 0.95);
+    font-family: 'VT323', monospace;
+    font-size: 2rem;
+    line-height: 1;
+    min-width: 52px;
+    min-height: 52px;
+    padding: 8px 14px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+}
+
+@media (max-width: 900px) {
+    .title-bg {
+        background-size: 450px;
+        background-position: calc(50% - 20px) center;
+    }
+}
+
+@media (max-width: 700px) {
+    .title-bg {
+        background-size: 450px;
+    }
+
+    .title-nav {
+        justify-content: space-between;
+        padding: 12px 12px;
+    }
+
+    .nav-toggle {
+        display: inline-flex;
+        font-size: 2.2rem;
+        min-width: 58px;
+        min-height: 58px;
+    }
+
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 0;
+        background: #000;
+        border-top: 1px solid var(--dark-blood);
+    }
+
+    .title-nav.nav-open .nav-links {
+        display: flex;
+    }
+
+    .title-nav a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        text-align: center;
+        font-size: 2.34rem;
+        letter-spacing: 1.2px;
+        padding: 15px 14px;
+        min-height: 54px;
+        border-top: 1px solid rgba(74, 0, 0, 0.45);
+    }
+
+    .title-nav a:first-child {
+        border-top: none;
+    }
+
+    main {
+        padding-top: 78px;
+    }
+}
+
+@media (max-width: 600px) {
+    .title-bg {
+        background-position: calc(50% - 20px) center;
+    }
+}
+
+@media (max-width: 480px) {
+    .title-nav a {
+        font-size: 2.08rem;
+        letter-spacing: 1px;
+    }
+}
+
+main {
+    width: 100%;
+    max-width: 1200px;
+    padding: 80px 20px 20px;
+    overflow-y: auto;
+    height: 100vh;
+    box-sizing: border-box;
+}
+
+main {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+main::-webkit-scrollbar {
+    display: none;
+}
+
+main h1 {
+    text-align: center;
+    font-size: 4rem;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px var(--blood-red);
+}
+
+main h2 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 30px;
+    color: #fff;
+}
+
+.content-flex-container {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 40px;
+}
+
+.content-box {
+    background: rgba(74, 0, 0, 0.3);
+    border: 1px solid var(--dark-blood);
+    padding: 20px;
+    flex: 1;
+    min-width: 300px;
+    max-width: 500px;
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.2);
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.content-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 0;
+}
+
+.content-box * {
+    position: relative;
+    z-index: 1;
+}
+
+#story-box {
+    background-image: url('pictures/school.png');
+}
+
+#gameplay-box {
+    background-image: url('pictures/hub.png');
+}
+
+#themes-box {
+    background-image: url('pictures/corridor.png');
+}
+
+#location-box {
+    background-image: url('pictures/google_map.png');
+}
+
+#development-box {
+    background-image: url('pictures/cigarette.png');
+}
+
+#thanks-box {
+    background-image: url('pictures/classroom.png');
+}
+
+#contact-box {
+    background-image: url('pictures/teacher_key.png');
+}
+
+#comment-box {
+    background-image: url('pictures/desk_empty.jpg');
+}
+
+.development-flex {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.development-flex p {
+    margin: 0;
+    min-width: 180px;
+    flex: 1 1 220px;
+}
+
+.creator-figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 0 1 320px;
+}
+
+.creator-image {
+    width: 100%;
+    min-height: 180px;
+    border: 1px solid var(--blood-red);
+    background-image: url('pictures/creator.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    object-fit: cover;
+}
+
+.creator-figure figcaption {
+    font-style: italic;
+}
+
+.content-box h3 {
+    font-size: 1.8rem;
+    color: var(--blood-red);
+    margin-top: 0;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--dark-blood);
+    padding-bottom: 10px;
+}
+
+.content-box p {
+    line-height: 1.6;
+    margin-bottom: 15px;
+    color: #ccc;
+}
+
+.map-link-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.map-image-link {
+    display: inline-flex;
+}
+
+.map-link-image {
+    width: 110px;
+    height: auto;
+    border: 1px solid var(--dark-blood);
+}
+
+.content-box ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.content-box li {
+    padding: 5px 0;
+    color: #ccc;
+}
+
+.content-box li:before {
+    content: "▸ ";
+    color: var(--blood-red);
+}
+
+.comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.comment-form label {
+    color: #fff;
+    font-size: 1rem;
+}
+
+.comment-form input,
+.comment-form textarea {
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--dark-blood);
+    color: #fff;
+    padding: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.95rem;
+}
+
+.comment-form textarea {
+    resize: vertical;
+}
+
+.comment-submit {
+    background: var(--dark-blood);
+    border: 1px solid var(--blood-red);
+    color: #fff;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-family: 'VT323', monospace;
+    font-size: 1.4rem;
+    letter-spacing: 1px;
+}
+
+.comment-submit:hover {
+    background: var(--blood-red);
+    color: #000;
+}
+
+.filmstrip-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 120px;
+    background: rgba(0, 0, 0, 0.8);
+    border-top: 1px solid var(--dark-blood);
+    overflow: hidden;
+    z-index: 50;
+}
+
+.filmstrip-track {
+    display: flex;
+    gap: 8px;
+    padding: 12px 0;
+    height: 100%;
+    --filmstrip-loop-width: 50%;
+    animation: filmstripScroll 60s linear infinite;
+    width: max-content;
+    will-change: transform;
+}
+
+.filmstrip-image {
+    height: 96px;
+    width: auto;
+    aspect-ratio: auto;
+    border: 1px solid var(--blood-red);
+    flex-shrink: 0;
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+
+.filmstrip-image:hover {
+    transform: scale(1.1);
+    border-color: var(--blood-red);
+}
+
+@keyframes filmstripScroll {
+    /* W3Schools reference: CSS animations and @keyframes https://www.w3schools.com/css/css3_animations.asp */
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(calc(-1 * var(--filmstrip-loop-width)));
+    }
+}
+
+.image-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    font-size: 3rem;
+    color: var(--blood-red);
+    cursor: pointer;
+    transition: text-shadow 0.2s;
+    z-index: 1001;
+}
+
+.modal-close:hover {
+    text-shadow: 0 0 15px var(--blood-red);
+}
+
+.modal-image {
+    max-width: 85vw;
+    max-height: 75vh;
+    border: 2px solid var(--blood-red);
+    object-fit: contain;
+}
+
+.modal-caption {
+    color: var(--blood-red);
+    font-size: 1.3rem;
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 40px;
+}
+
+main {
+    padding-bottom: 100px;
+}
