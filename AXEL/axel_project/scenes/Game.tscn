@@ -16,6 +16,9 @@ radius = 16.0
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_interact"]
 size = Vector2(28, 28)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_memory_pickup"]
+size = Vector2(30, 30)
+
 [node name="Game" type="Node2D" unique_id=521734377]
 script = ExtResource("1_game_controller")
 
@@ -51,6 +54,7 @@ shape = SubResource("RectangleShape2D_wall_vertical")
 unique_name_in_owner = true
 position = Vector2(120, 360)
 script = ExtResource("2_player")
+speed = 180.0
 sprite_sheet = ExtResource("3_cpr0p")
 animation_fps = 5.0
 
@@ -85,6 +89,17 @@ polygon = PackedVector2Array(-18, -24, 18, -24, 18, 24, -18, 24)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ExitArea" unique_id=1637044733]
 shape = SubResource("RectangleShape2D_interact")
 
+[node name="MemoryPickupArea" type="Area2D" parent="." unique_id=1605060640]
+unique_name_in_owner = true
+position = Vector2(760, 250)
+
+[node name="Token" type="Polygon2D" parent="MemoryPickupArea" unique_id=674573916]
+color = Color(0.56, 0.82, 1, 1)
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MemoryPickupArea" unique_id=880707678]
+shape = SubResource("RectangleShape2D_memory_pickup")
+
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1730323409]
 
 [node name="Root" type="Control" parent="HUD" unique_id=221697165]
@@ -113,13 +128,22 @@ offset_right = 580.0
 offset_bottom = 82.0
 text = "Objective: Find the key."
 
+[node name="MemoryLabel" type="Label" parent="HUD/Root" unique_id=690642757]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 20.0
+offset_top = 88.0
+offset_right = 280.0
+offset_bottom = 118.0
+text = "MEMORY: 0"
+
 [node name="HelpLabel" type="Label" parent="HUD/Root" unique_id=608235649]
 layout_mode = 0
 offset_left = 20.0
-offset_top = 90.0
-offset_right = 560.0
-offset_bottom = 120.0
-text = "Move: Arrows/WASD | Interact: Enter/Space | Restart: R"
+offset_top = 124.0
+offset_right = 660.0
+offset_bottom = 154.0
+text = "Move: Arrows/WASD | Interact: Enter/Space | Inventory: I | Restart: R"
 
 [node name="MessagePanel" type="PanelContainer" parent="HUD/Root" unique_id=1407907279]
 unique_name_in_owner = true
@@ -136,3 +160,69 @@ layout_mode = 2
 text = "Status message"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="DialoguePanel" type="PanelContainer" parent="HUD/Root" unique_id=2013024347]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 160.0
+offset_top = 520.0
+offset_right = 1120.0
+offset_bottom = 680.0
+
+[node name="DialogueMargin" type="MarginContainer" parent="HUD/Root/DialoguePanel" unique_id=201058677]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="DialogueVBox" type="VBoxContainer" parent="HUD/Root/DialoguePanel/DialogueMargin" unique_id=42601580]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DialogueTextLabel" type="Label" parent="HUD/Root/DialoguePanel/DialogueMargin/DialogueVBox" unique_id=313969766]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+text = "Narration goes here."
+
+[node name="DialogueHintLabel" type="Label" parent="HUD/Root/DialoguePanel/DialogueMargin/DialogueVBox" unique_id=547920551]
+layout_mode = 2
+text = "Enter/Space: Next | Tab: Skip typing"
+horizontal_alignment = 2
+
+[node name="InventoryPanel" type="PanelContainer" parent="HUD/Root" unique_id=127666297]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 840.0
+offset_top = 180.0
+offset_right = 1240.0
+offset_bottom = 620.0
+
+[node name="InventoryMargin" type="MarginContainer" parent="HUD/Root/InventoryPanel" unique_id=112585625]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="InventoryVBox" type="VBoxContainer" parent="HUD/Root/InventoryPanel/InventoryMargin" unique_id=1644433897]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="InventoryTitleLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=1060097569]
+layout_mode = 2
+text = "Inventory"
+horizontal_alignment = 1
+
+[node name="InventoryItemsLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=844138061]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+text = "No items collected yet."
+
+[node name="InventoryHintLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=1908787916]
+layout_mode = 2
+text = "Press I to close."
