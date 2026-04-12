@@ -184,8 +184,8 @@ theme_override_constants/separation = 10
 [node name="DialogueTextLabel" type="Label" parent="HUD/Root/DialoguePanel/DialogueMargin/DialogueVBox" unique_id=313969766]
 unique_name_in_owner = true
 layout_mode = 2
-autowrap_mode = 3
 text = "Narration goes here."
+autowrap_mode = 3
 
 [node name="DialogueHintLabel" type="Label" parent="HUD/Root/DialoguePanel/DialogueMargin/DialogueVBox" unique_id=547920551]
 layout_mode = 2
@@ -220,8 +220,8 @@ horizontal_alignment = 1
 [node name="InventoryItemsLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=844138061]
 unique_name_in_owner = true
 layout_mode = 2
-autowrap_mode = 3
 text = "No items collected yet."
+autowrap_mode = 3
 
 [node name="InventoryHintLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=1908787916]
 layout_mode = 2
