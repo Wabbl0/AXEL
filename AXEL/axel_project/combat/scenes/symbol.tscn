@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://combat_symbol_slot"]
+
+[ext_resource type="Script" path="res://combat/scripts/symbol_slot.gd" id="1_symbol_slot"]
+
+[node name="SymbolSlot" type="TextureRect"]
+custom_minimum_size = Vector2(32, 32)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+stretch_mode = 5
+script = ExtResource("1_symbol_slot")

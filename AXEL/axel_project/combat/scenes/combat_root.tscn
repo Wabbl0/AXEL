@@ -1,0 +1,33 @@
+[gd_scene load_steps=8 format=3 uid="uid://combat_root_scene"]
+
+[ext_resource type="Script" path="res://combat/scripts/combat_root.gd" id="1_combat_root"]
+[ext_resource type="Script" path="res://combat/scripts/grid_manager.gd" id="2_grid_manager"]
+[ext_resource type="Resource" path="res://combat/data/symbols/sym_green_circle.tres" id="3_sym_green"]
+[ext_resource type="Resource" path="res://combat/data/symbols/sym_yellow_triangle.tres" id="4_sym_yellow"]
+[ext_resource type="Resource" path="res://combat/data/symbols/sym_blue_star.tres" id="5_sym_blue"]
+[ext_resource type="Resource" path="res://combat/data/symbols/sym_red_heart.tres" id="6_sym_red"]
+[ext_resource type="Resource" path="res://combat/data/symbols/sym_satanic.tres" id="7_sym_wild"]
+
+[node name="CombatRoot" type="Node2D"]
+script = ExtResource("1_combat_root")
+symbol_resources = [ExtResource("3_sym_green"), ExtResource("4_sym_yellow"), ExtResource("5_sym_blue"), ExtResource("6_sym_red"), ExtResource("7_sym_wild")]
+
+[node name="GridManager" type="Node" parent="."]
+script = ExtResource("2_grid_manager")
+
+[node name="MultiplierLabel" type="Label" parent="."]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 400.0
+offset_bottom = 40.0
+theme_override_font_sizes/font_size = 18
+text = "Multiplier: 1×"
+
+[node name="GridUI" type="GridContainer" parent="."]
+offset_left = 8.0
+offset_top = 48.0
+offset_right = 200.0
+offset_bottom = 248.0
+columns = 5
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 2

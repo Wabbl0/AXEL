@@ -4,6 +4,7 @@ extends Node2D
 @onready var key_area: Area2D = %KeyArea
 @onready var exit_area: Area2D = %ExitArea
 @onready var memory_pickup_area: Area2D = %MemoryPickupArea
+@onready var hud: CanvasLayer = $HUD
 @onready var timer_label: Label = %TimerLabel
 @onready var objective_label: Label = %ObjectiveLabel
 @onready var memory_label: Label = %MemoryLabel
@@ -37,6 +38,7 @@ var dialogue_current_full_text: String = ""
 var _open_panel_key: String = "none"
 
 func _ready() -> void:
+	hud.visible = true
 	key_area.body_entered.connect(_on_key_area_body_entered)
 	key_area.body_exited.connect(_on_key_area_body_exited)
 	exit_area.body_entered.connect(_on_exit_area_body_entered)

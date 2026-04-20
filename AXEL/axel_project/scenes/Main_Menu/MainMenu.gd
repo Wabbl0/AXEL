@@ -11,7 +11,7 @@ func _ready() -> void:
 	quit_button.pressed.connect(_on_quit_pressed)
 
 func _on_start_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/Game.tscn")
+	get_tree().change_scene_to_file("res://scenes/Arc_1/1.1_SchoolExterior.tscn")
 
 func _on_continue_pressed() -> void:
 	var dialog := AcceptDialog.new()

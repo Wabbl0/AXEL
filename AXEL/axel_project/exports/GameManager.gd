@@ -35,7 +35,7 @@ var game_data: Dictionary = {}
 var game_state: Dictionary = {}
 var current_scene_id: String = ""
 
-# References to UI elements in Game.tscn
+# References to UI elements in Arc_1/1.1_SchoolExterior.tscn
 @onready var location_label: Label = get_node_or_null("%LocationName") as Label
 @onready var story_text: Label = get_node_or_null("%StoryContent") as Label
 @onready var background_image: TextureRect = get_node_or_null("%SceneBG") as TextureRect
@@ -67,7 +67,7 @@ func _ready():
 			"inventory_label_null": inventory_label == null
 		})
 		#endregion
-		push_warning("GameManager initialized without required UI nodes. Attach this script to scenes/Game.tscn root (or provide matching unique node names).")
+		push_warning("GameManager initialized without required UI nodes. Attach this script to scenes/Arc_1/1.1_SchoolExterior.tscn root (or provide matching unique node names).")
 		return
 
 	home_button.pressed.connect(_on_home_pressed)
@@ -421,7 +421,7 @@ func display_smoking_hint():
 	update_story_text(hint_text)
 
 func _on_home_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	get_tree().change_scene_to_file("res://scenes/Main_Menu/0.1_MainMenu.tscn")
 
 # ============================================================
 # UTILITY FUNCTIONS
