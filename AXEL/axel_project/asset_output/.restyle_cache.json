@@ -1,0 +1,42 @@
+{
+  "ME_Singles_City_Terrains_48x48_Sidewalk_1_6.png": {
+    "enforce_two_colors": true,
+    "input_sha256": "1fac9d58aa6de5cb8debbb4dab2b311d64d0ef01599a455c267e5d96e1915a3f",
+    "prompt_sha256": "781930a98cc91745c28f930fa821aa468fc10ab003055e1445605acea390110c"
+  },
+  "ME_Singles_City_Terrains_48x48_Sidewalk_4_2.png": {
+    "enforce_two_colors": true,
+    "input_sha256": "8ad9bdd3791f4b78ef9aadfeb9a38f96deeccd97ff58a7e7a284013f4bf0d5f7",
+    "prompt_sha256": "781930a98cc91745c28f930fa821aa468fc10ab003055e1445605acea390110c"
+  },
+  "ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_1.png": {
+    "enforce_two_colors": true,
+    "input_sha256": "d0055a9701a02e45c98c24c2a1b730d713759c6e3b47b5a7669aaba4fdba3ce4",
+    "prompt_sha256": "781930a98cc91745c28f930fa821aa468fc10ab003055e1445605acea390110c"
+  },
+  "ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_11.png": {
+    "enforce_two_colors": true,
+    "input_sha256": "c0566af6450fc1e846c313b2a7710b420d84b990ac768c7d72419e69ecaf4545",
+    "prompt_sha256": "781930a98cc91745c28f930fa821aa468fc10ab003055e1445605acea390110c"
+  },
+  "ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_15.png": {
+    "enforce_two_colors": true,
+    "input_sha256": "b4382fb31d64e2e60d533b6a2053d826a22366146d7eb8731d6d83113937dbec",
+    "prompt_sha256": "781930a98cc91745c28f930fa821aa468fc10ab003055e1445605acea390110c"
+  },
+  "ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_23.png": {
+    "enforce_two_colors": true,
+    "input_sha256": "cc0b50cb21d8060cf3b3ad6c9c5c151a07b3770b2a2c3adb75dfab0f24309513",
+    "prompt_sha256": "781930a98cc91745c28f930fa821aa468fc10ab003055e1445605acea390110c"
+  },
+  "ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_26.png": {
+    "enforce_two_colors": true,
+    "input_sha256": "82fe0fccb34357c8d0f4a18b81a2d5e662f461854119fa4af2fed421e3d5a68d",
+    "prompt_sha256": "781930a98cc91745c28f930fa821aa468fc10ab003055e1445605acea390110c"
+  },
+  "ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_8.png": {
+    "enforce_two_colors": true,
+    "input_sha256": "494c0dcc5c8a14ff67fe2b5ff336d55e72290df08154d41cb288e79a1b57537e",
+    "prompt_sha256": "781930a98cc91745c28f930fa821aa468fc10ab003055e1445605acea390110c"
+  }
+}

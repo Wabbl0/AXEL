@@ -30,6 +30,7 @@ const _MIKE_FRAME_COUNT := 13
 @export var animation_fps: float = 10.0
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite
+@onready var shadow_outline: AnimatedSprite2D = $ShadowOutline
 @onready var fallback_body: Polygon2D = $FallbackBody
 
 ## Right-side walks (walk_right / walk_up_right) vs left-side; W-only and S-only use this. Idle does not clear it.
@@ -44,11 +45,13 @@ func _ready() -> void:
 	if sprite_sheet:
 		_resolve_layout_and_cell()
 		_build_sprite_frames()
+		_setup_shadow_outline()
 		fallback_body.visible = false
 		animated_sprite.visible = true
 	else:
 		fallback_body.visible = true
 		animated_sprite.visible = false
+		shadow_outline.visible = false
 
 func _try_load_default_sprite_sheet() -> Texture2D:
 	var candidates: Array[String] = [
@@ -128,6 +131,13 @@ func _build_sprite_frames() -> void:
 	animated_sprite.sprite_frames = sf
 	animated_sprite.play(&"idle")
 
+func _setup_shadow_outline() -> void:
+	shadow_outline.sprite_frames = animated_sprite.sprite_frames
+	shadow_outline.animation = animated_sprite.animation
+	shadow_outline.frame = animated_sprite.frame
+	shadow_outline.frame_progress = animated_sprite.frame_progress
+	shadow_outline.play(animated_sprite.animation)
+
 func _physics_process(_delta: float) -> void:
 	var direction := Vector2.ZERO
 
@@ -149,8 +159,10 @@ func _update_animation(direction: Vector2) -> void:
 		return
 
 	if direction == Vector2.ZERO:
+		_sync_shadow_animation()
 		if animated_sprite.animation != &"idle":
 			animated_sprite.play(&"idle")
+			shadow_outline.play(&"idle")
 		return
 
 	var up := direction.y < 0.0
@@ -186,5 +198,15 @@ func _update_animation(direction: Vector2) -> void:
 
 	if animated_sprite.animation != anim:
 		animated_sprite.play(anim)
+		shadow_outline.play(anim)
 	elif not animated_sprite.is_playing():
 		animated_sprite.play()
+		shadow_outline.play()
+
+	_sync_shadow_animation()
+
+func _sync_shadow_animation() -> void:
+	if shadow_outline.animation != animated_sprite.animation:
+		shadow_outline.play(animated_sprite.animation)
+	shadow_outline.frame = animated_sprite.frame
+	shadow_outline.frame_progress = animated_sprite.frame_progress
