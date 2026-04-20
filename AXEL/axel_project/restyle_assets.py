@@ -16,6 +16,7 @@ import hashlib
 import io
 import json
 import os
+import random
 import sys
 import threading
 import time
@@ -295,6 +296,7 @@ def submit_edit(
     width: int,
     height: int,
     description: str,
+    seed: int | None = None,
 ) -> str:
     payload = {
         "method": "edit_with_text",
@@ -313,6 +315,8 @@ def submit_edit(
         ],
         "no_background": False,
     }
+    if seed is not None:
+        payload["seed"] = seed
     r = session.post(
         EDIT_ENDPOINT,
         headers={
@@ -369,6 +373,7 @@ def process_one_file(
     poll_seconds: float,
     dry_run: bool,
     enforce_two_colors: bool,
+    seed: int | None = None,
 ) -> tuple[int, int]:
     img = Image.open(src)
     img.load()
@@ -380,7 +385,7 @@ def process_one_file(
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     with requests.Session() as session:
-        job_id = submit_edit(session, token, png_b64, w, h, description)
+        job_id = submit_edit(session, token, png_b64, w, h, description, seed)
         job = poll_job(session, token, job_id, poll_seconds)
     last = job.get("last_response")
     if isinstance(last, str):
@@ -410,6 +415,25 @@ def collect_pngs(root: Path) -> list[Path]:
             continue
         out.append(p)
     return out
+
+
+def resolve_output_path(base_dst: Path) -> tuple[Path, bool]:
+    """
+    Return (destination_path, is_duplicate_name).
+    If base destination already exists, create next free `*_vN` filename.
+    """
+    if not base_dst.exists():
+        return base_dst, False
+
+    stem = base_dst.stem
+    suffix = base_dst.suffix
+    parent = base_dst.parent
+    version = 2
+    while True:
+        candidate = parent / f"{stem}_v{version}{suffix}"
+        if not candidate.exists():
+            return candidate, True
+        version += 1
 
 
 def main() -> int:
@@ -477,19 +501,22 @@ def main() -> int:
     cache = {} if args.no_cache else _load_cache(cache_path)
     updated_cache: dict[str, Any] = dict(cache)
 
-    candidates: list[tuple[Path, Path, str]] = []
+    candidates: list[tuple[Path, Path, str, int | None, bool]] = []
     skipped = 0
     for src in files:
         rel = src.relative_to(inp)
-        rel_key = rel.as_posix()
-        dst = out_root / rel
-        if not args.no_cache and _is_cache_hit(
+        base_dst = out_root / rel
+        dst, is_duplicate_name = resolve_output_path(base_dst)
+        rel_key = dst.relative_to(out_root).as_posix()
+        seed = random.randint(0, 2_147_483_647) if is_duplicate_name else None
+
+        if (not is_duplicate_name) and (not args.no_cache) and _is_cache_hit(
             cache, rel_key, src, dst, prompt_hash, enforce_two_colors
         ):
             _ui_print(f"SKIP {rel} (cache hit)")
             skipped += 1
             continue
-        candidates.append((src, dst, rel_key))
+        candidates.append((src, dst, rel_key, seed, is_duplicate_name))
 
     if not candidates:
         _ui_print(f"Done. Succeeded: 0, failed: 0, skipped: {skipped}")
@@ -507,8 +534,10 @@ def main() -> int:
     total = len(candidates) + skipped
     _ui_progress(done=skipped, total=total, ok=ok, failed=failed, skipped=skipped)
     if workers == 1:
-        for src, dst, rel_key in candidates:
+        for src, dst, rel_key, seed, is_duplicate_name in candidates:
             rel = src.relative_to(inp)
+            if is_duplicate_name and seed is not None:
+                _ui_print(f"DUPLICATE {rel} -> {dst.name} (seed={seed})")
             _ui_print(f"START {rel}")
             try:
                 w, h = process_one_file(
@@ -519,6 +548,7 @@ def main() -> int:
                     args.poll_interval,
                     args.dry_run,
                     enforce_two_colors,
+                    seed,
                 )
                 ok += 1
                 done += 1
@@ -529,6 +559,7 @@ def main() -> int:
                         "input_sha256": _sha256_file(src),
                         "prompt_sha256": prompt_hash,
                         "enforce_two_colors": enforce_two_colors,
+                        "seed": seed,
                     }
                     if delete_input_on_success:
                         src.unlink(missing_ok=True)
@@ -540,8 +571,10 @@ def main() -> int:
     else:
         with ThreadPoolExecutor(max_workers=workers) as ex:
             futures = {}
-            for src, dst, rel_key in candidates:
+            for src, dst, rel_key, seed, is_duplicate_name in candidates:
                 rel = src.relative_to(inp)
+                if is_duplicate_name and seed is not None:
+                    _ui_print(f"DUPLICATE {rel} -> {dst.name} (seed={seed})")
                 _ui_print(f"QUEUE {rel}")
                 fut = ex.submit(
                     process_one_file,
@@ -552,10 +585,11 @@ def main() -> int:
                     args.poll_interval,
                     args.dry_run,
                     enforce_two_colors,
+                    seed,
                 )
-                futures[fut] = (src, dst, rel_key)
+                futures[fut] = (src, dst, rel_key, seed)
             for fut in as_completed(futures):
-                src, dst, rel_key = futures[fut]
+                src, dst, rel_key, seed = futures[fut]
                 rel = src.relative_to(inp)
                 try:
                     w, h = fut.result()
@@ -568,6 +602,7 @@ def main() -> int:
                             "input_sha256": _sha256_file(src),
                             "prompt_sha256": prompt_hash,
                             "enforce_two_colors": enforce_two_colors,
+                            "seed": seed,
                         }
                         if delete_input_on_success:
                             src.unlink(missing_ok=True)
