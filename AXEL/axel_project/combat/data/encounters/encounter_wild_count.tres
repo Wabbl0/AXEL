@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/encounter.gd" id="1_script"]
+[ext_resource type="Resource" path="res://combat/data/goals/goal_wild_count.tres" id="2_goal"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"encounter_wild_count"
+goal = ExtResource("2_goal")
+spin_budget = 10

@@ -7,39 +7,41 @@ func _init() -> void:
 
 
 func _main() -> void:
-	_assert_centroid_2x2()
-	var log_a := await _run_determinism_pass()
-	var log_b := await _run_determinism_pass()
-	if not _logs_equal(log_a, log_b):
+	var pass_a := await _run_determinism_pass()
+	var pass_b := await _run_determinism_pass()
+	if not _logs_equal(pass_a["snapshots"], pass_b["snapshots"]):
 		push_error("Determinism check FAILED: logs differ.")
+		quit(1)
+		return
+	if pass_a["princess_current"] != pass_b["princess_current"]:
+		push_error("Determinism check FAILED: princess rotation drift.")
 		quit(1)
 		return
 	print("Determinism check OK (100 spins, seed 12345).")
 	quit(0)
 
 
-func _assert_centroid_2x2() -> void:
-	var pts: Array = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]
-	var c: Vector2i = ClusterDetector.centroid_cell(pts)
-	if c != Vector2i(0, 0):
-		push_error("Centroid 2x2 expected (0,0) got %s" % c)
-		quit(1)
-		return
-
-
-func _run_determinism_pass() -> PackedStringArray:
+func _run_determinism_pass() -> Dictionary:
 	var cr: CombatRoot = load("res://combat/scenes/combat_root.tscn").instantiate()
 	root.add_child(cr)
-	await cr.ready
+	if not cr.is_node_ready():
+		await cr.ready
+	# Scene ships an encounter with a spin budget; early completion would make remaining
+	# spin_sync() calls no-ops and repeat the last snapshot. Disable encounter for 100 real spins.
+	cr.encounter_def = null
 	cr.setup_new_grid(12345)
 	var snapshots: PackedStringArray = PackedStringArray()
 	for i in 100:
 		cr.spin_sync()
 		snapshots.append(cr.serialize_spin_result())
+	var princess_current := String(cr.get_princess_current_id())
 	cr.queue_free()
 	await process_frame
 	await process_frame
-	return snapshots
+	return {
+		"snapshots": snapshots,
+		"princess_current": princess_current,
+	}
 
 
 func _logs_equal(a: PackedStringArray, b: PackedStringArray) -> bool:

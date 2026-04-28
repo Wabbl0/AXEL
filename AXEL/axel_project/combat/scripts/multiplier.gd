@@ -1,9 +1,9 @@
 class_name CombatMultiplier
 extends RefCounted
 
-const MAX_VALUE := 100
-
 var value: int = 1
+var cap_enabled: bool = false
+var cap_value: int = 100
 
 
 func reset() -> void:
@@ -11,4 +11,6 @@ func reset() -> void:
 
 
 func add(amount: int) -> void:
-	value = mini(value + amount, MAX_VALUE)
+	value += amount
+	if cap_enabled:
+		value = mini(value, cap_value)

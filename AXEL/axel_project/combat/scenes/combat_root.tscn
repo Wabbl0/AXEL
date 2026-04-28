@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://combat_root_scene"]
+[gd_scene load_steps=12 format=3 uid="uid://combat_root_scene"]
 
 [ext_resource type="Script" path="res://combat/scripts/combat_root.gd" id="1_combat_root"]
 [ext_resource type="Script" path="res://combat/scripts/grid_manager.gd" id="2_grid_manager"]
@@ -7,10 +7,15 @@
 [ext_resource type="Resource" path="res://combat/data/symbols/sym_blue_star.tres" id="5_sym_blue"]
 [ext_resource type="Resource" path="res://combat/data/symbols/sym_red_heart.tres" id="6_sym_red"]
 [ext_resource type="Resource" path="res://combat/data/symbols/sym_satanic.tres" id="7_sym_wild"]
+[ext_resource type="Resource" path="res://combat/data/symbols/sym_cigarette.tres" id="8_sym_cigarette"]
+[ext_resource type="Resource" path="res://combat/data/symbols/sym_booze.tres" id="9_sym_booze"]
+[ext_resource type="Resource" path="res://combat/data/symbols/sym_bloody_hand.tres" id="10_sym_bloody_hand"]
+[ext_resource type="Resource" path="res://combat/data/encounters/encounter_payout.tres" id="11_encounter"]
 
 [node name="CombatRoot" type="Node2D"]
 script = ExtResource("1_combat_root")
-symbol_resources = [ExtResource("3_sym_green"), ExtResource("4_sym_yellow"), ExtResource("5_sym_blue"), ExtResource("6_sym_red"), ExtResource("7_sym_wild")]
+symbol_resources = [ExtResource("3_sym_green"), ExtResource("4_sym_yellow"), ExtResource("5_sym_blue"), ExtResource("6_sym_red"), ExtResource("8_sym_cigarette"), ExtResource("9_sym_booze"), ExtResource("10_sym_bloody_hand"), ExtResource("7_sym_wild")]
+encounter_def = ExtResource("11_encounter")
 
 [node name="GridManager" type="Node" parent="."]
 script = ExtResource("2_grid_manager")

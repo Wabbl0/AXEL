@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[node name="GoalHUD" type="VBoxContainer"]
+offset_right = 280.0
+offset_bottom = 80.0
+
+[node name="GoalLabel" type="Label" parent="."]
+layout_mode = 2
+text = "Goal: -"
+
+[node name="BudgetLabel" type="Label" parent="."]
+layout_mode = 2
+text = "Spins: 0 / 0"

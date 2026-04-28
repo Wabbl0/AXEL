@@ -116,3 +116,93 @@ static func centroid_cell(cluster_cells: Array) -> Vector2i:
 	if n == 0:
 		return Vector2i.ZERO
 	return Vector2i(int(floor(float(sx) / n)), int(floor(float(sy) / n)))
+
+
+## Scores a hypothetical placement by returning the largest connected component
+## size this cell would participate in if treated as wild. Pure helper: does not
+## mutate cells.
+static func hypothetical_component_size(cells: Array, at: Vector2i, as_wild: bool) -> int:
+	if at.x < 0 or at.x >= COLS or at.y < 0 or at.y >= ROWS:
+		return 0
+	var anchor_id: StringName = _pick_anchor_id(cells, at)
+	if anchor_id == &"":
+		return 1 if as_wild else 0
+	var visited: Dictionary = {}
+	var out := _flood_hypothetical(cells, visited, at, anchor_id, at, as_wild)
+	return out.size()
+
+
+static func _pick_anchor_id(cells: Array, at: Vector2i) -> StringName:
+	var center: SymbolDefScript = cells[at.y][at.x]
+	if center != null and center.tier != SymbolDefScript.Tier.WILD and center.tier != SymbolDefScript.Tier.HAZARD:
+		return center.id
+	var counts: Dictionary = {}
+	for dir in _DIRS:
+		var np := at + dir
+		if np.x < 0 or np.x >= COLS or np.y < 0 or np.y >= ROWS:
+			continue
+		var ns: SymbolDefScript = cells[np.y][np.x]
+		if ns == null or ns.tier == SymbolDefScript.Tier.WILD or ns.tier == SymbolDefScript.Tier.HAZARD:
+			continue
+		var key: StringName = ns.id
+		counts[key] = int(counts.get(key, 0)) + 1
+	if counts.is_empty():
+		return &""
+	var ids: Array = counts.keys()
+	ids.sort_custom(func(a: Variant, b: Variant) -> bool:
+		var ca: int = int(counts.get(a, 0))
+		var cb: int = int(counts.get(b, 0))
+		if ca != cb:
+			return ca > cb
+		return String(a) < String(b)
+	)
+	return ids[0] as StringName
+
+
+static func _flood_hypothetical(
+	cells: Array,
+	visited: Dictionary,
+	start: Vector2i,
+	anchor_id: StringName,
+	hypothetical_at: Vector2i,
+	hypothetical_wild: bool
+) -> Array:
+	var stack: Array[Vector2i] = [start]
+	var queued: Dictionary = {start: true}
+	var out: Array = []
+	while not stack.is_empty():
+		var p: Vector2i = stack.pop_back()
+		if visited.has(p):
+			continue
+		if p.x < 0 or p.x >= COLS or p.y < 0 or p.y >= ROWS:
+			continue
+		var is_hypothetical := (p == hypothetical_at and hypothetical_wild)
+		var sym: SymbolDefScript = cells[p.y][p.x]
+		if sym == null and not is_hypothetical:
+			continue
+		if not is_hypothetical and sym != null and sym.tier == SymbolDefScript.Tier.HAZARD:
+			continue
+		var is_wild := is_hypothetical or (sym != null and sym.tier == SymbolDefScript.Tier.WILD)
+		var is_anchor := sym != null and sym.id == anchor_id
+		if not is_wild and not is_anchor:
+			continue
+		visited[p] = true
+		out.append(p)
+		for dir in _DIRS:
+			var np := p + dir
+			if visited.has(np) or queued.has(np):
+				continue
+			if np.x < 0 or np.x >= COLS or np.y < 0 or np.y >= ROWS:
+				continue
+			var np_hypothetical := (np == hypothetical_at and hypothetical_wild)
+			var ns: SymbolDefScript = cells[np.y][np.x]
+			if ns == null and not np_hypothetical:
+				continue
+			if not np_hypothetical and ns != null and ns.tier == SymbolDefScript.Tier.HAZARD:
+				continue
+			var np_is_wild := np_hypothetical or (ns != null and ns.tier == SymbolDefScript.Tier.WILD)
+			var np_is_anchor := ns != null and ns.id == anchor_id
+			if np_is_wild or np_is_anchor:
+				queued[np] = true
+				stack.append(np)
+	return out

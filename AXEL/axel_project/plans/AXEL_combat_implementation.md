@@ -27,9 +27,11 @@ res://combat/
 ├── scripts/
 │   ├── combat_root.gd          # orchestrates spin → resolve → cascade → powers
 │   ├── grid_manager.gd         # grid state, spawning, cascading
-│   ├── cluster_detector.gd     # flood-fill cluster detection
+│   ├── line_detector.gd        # row/column line win detection
 │   ├── princess_controller.gd  # rotation + power dispatch
 │   ├── multiplier.gd           # per-spin multiplier tracking
+│   ├── meter.gd                # Trinity meter state and logic
+│   ├── free_spins.gd           # Free Spins state machine
 │   ├── goal_tracker.gd         # goal evaluation per encounter
 │   ├── item_inventory.gd       # held items + hook dispatch
 │   ├── encounter.gd            # one encounter: goal + budget + modifiers
@@ -121,6 +123,40 @@ class_name RunState extends Resource
 
 Store one active `RunState` on an autoload (singleton) — everything else reads from it.
 
+### 2.4 Meter and Free Spins state
+
+Add explicit resource state for Trinity and Free Spins so the spin machine remains deterministic and debuggable.
+
+```gdscript
+class_name MeterState extends Resource
+@export var sections_filled: int = 0            # 0..3
+@export var saved_active_princess: StringName = &""
+```
+
+```gdscript
+class_name FreeSpinsState extends Resource
+@export var active: bool = false
+@export var chosen_princess: StringName = &""
+@export var spins_remaining: int = 0
+@export var spins_awarded_total: int = 0
+@export var multiplier_cap: int = 100
+@export var total_spin_cap: int = 100
+```
+
+```gdscript
+class_name PaytableDef extends Resource
+@export var pay_x3: Dictionary = {}
+@export var pay_x4: Dictionary = {}
+@export var pay_x5: Dictionary = {}
+```
+
+Seed `PaytableDef` with the screenshot values as source-of-truth tuning inputs:
+- Princess symbols: x3 0.48, x4 1.60, x5 16.00
+- Any princess: x3 0.32, x4 0.80, x5 8.00
+- Bell / Heart: x3 0.24, x4 0.48, x5 4.80
+- Star / Green coin: x3 0.16, x4 0.32, x5 3.20
+- Wild: x3 1.60, x4 3.20, x5 80.00
+
 ---
 
 ## 3. The spin lifecycle
@@ -128,12 +164,14 @@ Store one active `RunState` on an autoload (singleton) — everything else reads
 This is the beating heart. Implement it as an explicit state machine in `combat_root.gd`:
 
 ```
-IDLE → SPINNING → RESOLVING_CLUSTERS → CASCADING → (loop back to RESOLVING_CLUSTERS)
-     → PRINCESS_POWER (only if no clusters found this spin)
-     → GOAL_CHECK → IDLE (or END_ENCOUNTER)
+IDLE → SPINNING → RESOLVING_LINES → CASCADING → (loop back to RESOLVING_LINES)
+     → TRINITY_CHECK
+     → GIRL_POWER_ROLL (only if entire spin had no wins, and not in Trinity/FreeSpins-forced mode)
+     → CLEAR_GRID_PRIZE_CHECK
+     → GOAL_CHECK → IDLE (or END_ENCOUNTER / ENTER_FREE_SPINS)
 ```
 
-Key detail: the **loop between RESOLVING_CLUSTERS ↔ CASCADING** continues until a resolve pass finds no clusters. The princess power only fires once per *player-initiated* spin, and only if the *entire* cascade chain produced zero clusters.
+Key detail: the **loop between RESOLVING_LINES ↔ CASCADING** continues until a resolve pass finds no wins. Also, the multiplier increments **once per cascade drop**, not once per winning line.
 
 Pseudocode skeleton:
 
@@ -143,19 +181,33 @@ func spin() -> void:
     _drop_fresh_grid_if_needed()
     _emit_spin_started()
 
-    var produced_any_cluster := false
+    var produced_any_win := false
+    var cascade_drops := 0
     while true:
-        var clusters = ClusterDetector.find_clusters(grid.cells)
-        if clusters.is_empty():
+        var lines = LineDetector.find_lines(grid.cells)
+        if lines.is_empty():
             break
-        produced_any_cluster = true
-        await _resolve_clusters(clusters)   # removes cells, drops wild at center, +1 mult per cluster
+        produced_any_win = true
+        await _resolve_lines(lines)         # removes winning cells, drops wilds only from 3-lines
         await _apply_gravity_and_refill()   # cascade + spawn new symbols
+        cascade_drops += 1
+        multiplier.add(1)                   # +1 per drop event
         await _item_hooks_post_cascade()
+        meter.apply_line_contributions(lines) # princess-only contribution: x3=+1, x4=+2, x5=+3
 
-    if not produced_any_cluster:
-        await princesses.trigger_current_power()
-        princesses.advance_rotation()
+    if _should_enter_trinity(meter, produced_any_win):
+        await _run_trinity_round()          # fixed Love→Star→Storm sequence, non-winning drops only
+    elif free_spins.active:
+        await _run_forced_princess_on_non_win(free_spins.chosen_princess, produced_any_win)
+    elif not produced_any_win and _roll_girl_power():
+        await princesses.trigger_active_power()
+        princesses.advance_rotation_after_activation()
+
+    if _is_grid_empty():
+        if _in_trinity_round:
+            _enter_free_spins_choose_state()
+        else:
+            _award_clear_grid_prize()       # 50x total bet x active multiplier
 
     goal_tracker.on_spin_completed(_last_spin_summary())
     if goal_tracker.is_complete():
@@ -169,61 +221,36 @@ The `await` calls let you drive animations without blocking logic; make each pha
 
 ---
 
-## 4. Cluster detection
+## 4. Line detection
 
-Flood fill, 4-connected, same-symbol-id. Wild substitutes for *any* low or premium symbol but **does not** form its own cluster with other wilds unless an adjacent non-wild anchor exists.
+Do not use flood fill. MP100 wins are line-based: contiguous runs of 3+ in one row or one column, no gaps.
 
 ```gdscript
-class_name ClusterDetector
+class_name LineDetector
 
-static func find_clusters(cells: Array) -> Array:
-    var rows = cells.size()
-    var cols = cells[0].size()
-    var visited := {}
-    var clusters: Array = []
-
-    for r in rows:
-        for c in cols:
-            if visited.has(Vector2i(c, r)):
-                continue
-            var sym = cells[r][c]
-            if sym == null or sym.tier == SymbolDef.Tier.HAZARD:
-                continue
-            var component = _flood(cells, visited, Vector2i(c, r), sym.id)
-            if component.size() >= 3:
-                clusters.append({"symbol_id": sym.id, "cells": component})
-    return clusters
-
-static func _flood(cells, visited, start, symbol_id) -> Array:
-    var stack := [start]
-    var out := []
-    while not stack.is_empty():
-        var p = stack.pop_back()
-        if visited.has(p): continue
-        visited[p] = true
-        var sym = cells[p.y][p.x]
-        if sym == null: continue
-        # Wild rule: matches if sym.id == symbol_id OR sym is wild
-        if sym.id != symbol_id and sym.tier != SymbolDef.Tier.WILD:
-            continue
-        out.append(p)
-        for dir in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
-            var np = p + dir
-            if np.x >= 0 and np.x < cells[0].size() and np.y >= 0 and np.y < cells.size():
-                if not visited.has(np):
-                    stack.append(np)
-    return out
+static func find_lines(cells: Array) -> Array:
+    var lines: Array = []
+    for r in ROWS:
+        _scan_run(cells, lines, Vector2i(0, r), Vector2i(1, 0), COLS)
+    for c in COLS:
+        _scan_run(cells, lines, Vector2i(c, 0), Vector2i(0, 1), ROWS)
+    return lines
 ```
 
-Two subtleties to watch:
-- A wild used as a bridge for symbol A's cluster can **also** be claimed by symbol B's overlapping cluster — design decision: MP100 treats the wild as consumed once. Pick one, document it.
-- When multiple clusters resolve in the same pass, decide the **wild-drop center** deterministically — round toward top-left so replays match.
+`_scan_run` tracks one line at a time with run-length logic:
+- Choose an anchor symbol id for a run.
+- A wild matches the active anchor id.
+- A run of length `>= 3` emits `{symbol_id, cells, length, axis}`.
+- The same cell can participate in one horizontal and one vertical line.
+- Payout is summed over all emitted lines, but clear/destroy is deduplicated by cell.
+
+Pure-wild runs are valid and pay as wild (wild has explicit x3/x4/x5 pay values).
 
 ---
 
 ## 5. Cascade + refill
 
-1. Mark cluster cells as `null`.
+1. Mark winning-line cells as `null`.
 2. For each column, pull non-null entries downward (gravity).
 3. Fill empties from the top using a weighted draw from the encounter's symbol weights.
 
@@ -249,39 +276,96 @@ Item hooks like `Rotted notebook` peek at the *next N* draws by pre-computing an
 
 ## 6. Wild placement on resolve
 
-Per MP100: each resolved cluster drops **one wild** roughly at its centroid. Compute centroid, round to nearest cell that's currently empty (post-clear) within the cluster's footprint, place wild there, and add `+1` to the spin's multiplier.
+Per MP100: a wild is created only from winning lines of **exactly 3** symbols, and only at that line's middle cell.
 
 ```gdscript
-func _resolve_clusters(clusters: Array) -> void:
-    for cluster in clusters:
-        for p in cluster.cells:
-            grid.set_cell(p, null)
-        var center = _centroid_cell(cluster.cells)
-        grid.set_cell(center, WILD_SYMBOL)
-        multiplier.add(1)
+func _resolve_lines(lines: Array) -> void:
+    var to_clear := {}
+    var wild_spawns := {}
+    for line in lines:
+        for p in line.cells:
+            to_clear[p] = true
+        if line.length == 3:
+            var mid: Vector2i = line.cells[1] # sorted contiguous line
+            wild_spawns[mid] = true
+    for p in to_clear.keys():
+        grid.set_cell(p, null)
+    for p in wild_spawns.keys():
+        if grid.get_cell(p) == null:
+            grid.set_cell(p, WILD_SYMBOL)
     await _renderer_flush()
 ```
+
+Do not spawn wilds for 4- or 5-symbol wins. If two 3-lines overlap and point to same middle cell, spawn once.
 
 ---
 
 ## 7. Princess rotation + powers
 
-`PrincessController` holds an ordered queue (default: `[Love, Star, Storm]`), exposes `current()`, `trigger_current_power(grid)`, `advance_rotation()`.
+`PrincessController` holds ordered princess ids `[Love, Star, Storm]` and one active index. On encounter start, randomize the active index once (`rng.randi_range(0, 2)`).
+
+Trigger rules:
+- In the base game, Girl Power may trigger only on a spin that produced zero wins after full cascade resolution.
+- Trigger chance is probabilistic (`p_girl_power` data value), not guaranteed.
+- Rotation advances only after an actual Girl Power activation.
+- Free Spins overrides this (chosen princess forced every non-winning spin).
+- Trinity round overrides this (fixed Love → Star → Storm sequence, then restore previously active princess).
 
 ```gdscript
-func trigger_current_power(grid: GridManager) -> void:
-    match current():
+func trigger_active_power(grid: GridManager) -> void:
+    match active_princess_id():
         &"love":    _love_transform(grid)
-        &"star":    _star_add_wilds(grid, randi_range(1, 2))
-        &"storm":   _storm_remove_lowpays(grid, 2)
+        &"star":    _star_add_wilds(grid, rng.randi_range(1, 2))
+        &"storm":   _storm_remove_two_symbol_sets(grid)
 ```
 
 Implementation notes per power:
-- **Love:** pick a non-wild, non-hazard cell; pick a target symbol different from the source; rewrite.
-- **Star:** pick 1–2 empty-ish cells "intelligently" — simplest heuristic is "cell that would create the largest new cluster if it were a wild"; score each candidate, pick top.
-- **Storm:** identify the two lowest-pay tier symbols currently on the grid by count, null them out, cascade.
+- **Love:** select one source symbol type currently on grid and convert that full set into one target symbol type.
+- **Star:** pick 1–2 empty-ish cells "intelligently" — simplest heuristic is "cell that would create the strongest immediate line-win potential if it were a wild"; score each candidate, pick top.
+- **Storm:** remove two symbol sets from the grid, then cascade.
 
 Items can swap, amplify, or suppress these via hooks (see §9).
+
+---
+
+## 7a. Trinity meter
+
+`MeterState` tracks the 3-section Trinity meter.
+
+- On each resolved line, meter contribution is counted only from princess-symbol lines:
+  - x3 line -> +1 section
+  - x4 line -> +2 sections
+  - x5 line -> +3 sections
+- Wilds can contribute when they are part of a princess-symbol line.
+- Meter caps at 3 sections.
+- When meter is full and the current cascade chain reaches a non-winning drop, enter one Trinity round:
+  1. Save current active princess id.
+  2. Reset multiplier to x1.
+  3. On each non-winning drop, trigger Girl Power in fixed order Love -> Star -> Storm.
+  4. Exit after all three powers have triggered, restore saved active princess.
+- If grid clears during Trinity, transition to Free Spins (no instant clear-grid payout).
+
+---
+
+## 7b. Free Spins
+
+Create a dedicated `free_spins.gd` controller.
+
+- Entry: only by clearing the grid during Trinity.
+- Pre-entry choice: player selects princess:
+  - Love: 4 starting spins
+  - Star: 5 starting spins
+  - Storm: 8 starting spins
+- During Free Spins:
+  - chosen Girl Power triggers on every non-winning spin
+  - Trinity cannot trigger
+  - meter fills grant extra spins:
+    - Love +4
+    - Star +3
+    - Storm +2
+  - cap total awarded/remaining spins at 100
+  - carry multiplier from Trinity into Free Spins and cap it at x100
+- On exit: reset/free-spin-specific state and return to base spin flow.
 
 ---
 
@@ -306,10 +390,15 @@ Create concrete subclasses per goal type from design doc §5:
 - `GoalMultiplierCeiling`
 - `GoalSymbolPurge`
 - `GoalTrinity`
+- `GoalFreeSpins`
 - `GoalAbstinence`
 - `GoalBurnMemory`
 
-`GoalTracker` owns the `progress` dict and forwards `on_spin_completed` to the active goal with a spin summary (payout, wilds placed, clusters formed, princess triggered, etc).
+`GoalTracker` owns the `progress` dict and forwards `on_spin_completed` to the active goal with a spin summary (payout, wilds placed, lines formed, princess triggered, etc).
+
+Important clarifications:
+- `GoalTrinity` succeeds when the player triggers the real Trinity round.
+- `GoalMultiplierCeiling` in base game is measured against single-chain peak multiplier; in Free Spins it may use carried multiplier peak.
 
 ---
 
@@ -320,7 +409,7 @@ Items should be data + a small script that subscribes to lifecycle signals. Defi
 ```
 on_encounter_start(ctx)
 on_spin_start(ctx)
-on_cluster_resolve(ctx, cluster)
+on_line_resolve(ctx, line)
 on_princess_power(ctx, princess_id)   # can mutate/cancel
 on_cascade_end(ctx)
 on_encounter_end(ctx, result)
@@ -350,7 +439,8 @@ Ship those before filling out the full table from design doc §6.
 ## 10. UI / renderer
 
 - Grid: a `GridContainer` with 25 `TextureRect` children, each bound to a cell. Listen to `grid_populated`, `cells_cleared`, `symbols_fell`, `symbols_spawned` — animate from signal payloads. Keep animations short (≤200ms per step) so cascade chains don't drag.
-- HUD: current goal text + progress, spin budget remaining, current multiplier, stake, active princess portrait + next princess preview.
+- HUD: current goal text + progress, spin budget remaining, current multiplier, stake, active princess portrait, Trinity meter (3 sections).
+- Free Spins HUD: chosen princess, spins remaining, carry multiplier, total-spin-cap progress.
 - **Feel FX to ship early:** CRT scanline shader overlay (carry from prototype), glitch flash on big multipliers, screen shake scaled to multiplier value. Audio: muffled stab on princess trigger, a quiet tone on grid clear. Big wins should feel *wrong* — see design doc §7.
 
 ---
@@ -366,12 +456,14 @@ Ship those before filling out the full table from design doc §6.
 ## 12. Testing plan
 
 Write headless tests (no scene tree) for:
-1. **Cluster detector** — canned grids with known clusters, edge cases (wild bridges, all-wild grid, single-row line).
+1. **Line detector** — canned grids with known row/column runs (x3/x4/x5), gap rejection, wild substitution, pure-wild runs, and cells participating in both horizontal and vertical wins.
 2. **Cascade** — column pull correctness and refill ordering.
-3. **Wild centroid** — given a cluster footprint, returns expected cell.
-4. **Princess powers** — mocked grid before/after for Love, Star, Storm.
-5. **Goal evaluation** — every goal type with synthetic spin summaries.
-6. **Determinism** — seed the RNG, run 100 spins on a fixed encounter, verify identical final grid on replay.
+3. **Wild placement** — 3-line spawns in middle cell only; no spawns for 4/5 lines; overlap-spawn dedupe.
+4. **Princess powers** — mocked grid before/after for Love, Star, Storm and rotation changes only on activation.
+5. **Trinity meter** — princess-line meter increments (x3/x4/x5), cap at 3, save/restore active princess behavior.
+6. **Free Spins** — initial spin awards by chosen princess, extra-spin awards, Trinity disabled in feature, x100 multiplier cap.
+7. **Goal evaluation** — every goal type with synthetic spin summaries.
+8. **Determinism** — seed the RNG, run 100 spins on a fixed encounter, verify identical final grid on replay.
 
 Use [GUT](https://github.com/bitwes/Gut) or `gdunit4` for the runner — both work fine in Cursor.
 
@@ -382,10 +474,16 @@ For visual iteration, keep `combat_test.tscn` bound to F5 with a dropdown to pic
 ## 13. Phased build order
 
 **Phase 1 — Silent grid (no theme, no polish).**
-Goal: spin, see clusters resolve, see cascades, place wilds, read multiplier. No princesses, no goals, no items. Must be deterministic under a fixed seed.
+Goal: spin, resolve line wins, cascade/refill, place wilds from 3-lines only, read multiplier-per-drop. No princesses, no goals, no items. Must be deterministic under a fixed seed.
 
-**Phase 2 — Princess rotation.**
-Add the three powers. Hook them to "spin produced no clusters." Verify rotation advances only on a no-win spin.
+**Phase 2a — Princess rotation (base game).**
+Add the three powers. Hook them to random Girl Power on non-winning spins. Verify rotation advances only after activation.
+
+**Phase 2b — Trinity meter + Trinity round.**
+Implement meter fill from princess wins, fixed Love->Star->Storm Trinity sequence, and active-princess restore.
+
+**Phase 2c — Free Spins.**
+Implement feature entry via Trinity grid clear, princess choice, extra-spin grants, and x100 cap.
 
 **Phase 3 — Goals and encounters.**
 Implement `GoalDef` base + three goal types (payout threshold, wild count, grid clear). Build one `EncounterDef` per goal. Combat is now win/losable.
@@ -412,8 +510,11 @@ Ship Phase 1 before you touch Phase 2. Do not skip phases.
 ## 14. Watchpoints / common pitfalls
 
 - **Await hell:** if `spin()` awaits a renderer that never finishes, the whole machine hangs. Always add a hard timeout fallback on animation awaits in debug builds.
-- **Floating-point cluster bugs:** centroid math on even-sized clusters is ambiguous. Use integer math + documented tie-break (top-left).
-- **Princess-power feedback loop:** Storm removes symbols → cascade → new symbols → maybe new clusters — that's expected; just make sure a princess power does *not* re-queue another princess power on the same spin.
+- **Line-vs-cluster confusion:** if any flood-fill logic remains, you'll get invalid wins. Keep win detection strictly row/column run-length.
+- **Wild spawn conflicts:** only 3-lines spawn wilds at middle cell. Overlapping 3-lines can target same spawn cell; dedupe deterministically and document resolution order.
+- **Princess-power feedback loop:** Storm removes symbols -> cascade -> new symbols -> maybe new lines — that's expected; just make sure a princess power does not re-queue another princess power on the same spin.
+- **Trinity restore bug:** save and restore active princess around Trinity; do not permanently alter base rotation.
+- **Multiplier accounting bug:** multiplier increments once per cascade drop, not once per line.
 - **Item ordering:** when two items modify the same hook, a later addition can break earlier behavior. Add an item-stack snapshot in the debug HUD from Phase 4 onward.
 - **Save-safety:** `RunState` schema changes break saves. Add a `schema_version` field from day 1 and handle migrations.
 

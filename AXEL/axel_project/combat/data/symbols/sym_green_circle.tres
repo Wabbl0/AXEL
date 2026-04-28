@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"sym_green_circle"
-display_name = "Green circle"
+display_name = "Red square"
 tier = 0
 texture = ExtResource("2_tex")
 base_weight = 1.0

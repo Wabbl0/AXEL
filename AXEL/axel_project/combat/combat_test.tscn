@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://combat_test_harness"]
+[gd_scene format=3 uid="uid://c7wake2sd6m4d"]
 
-[ext_resource type="Script" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
+[ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
 
-[node name="CombatTest" type="Control"]
+[node name="CombatTest" type="Control" unique_id=161757197]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,7 +12,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_combat_test")
 
-[node name="VBox" type="VBoxContainer" parent="."]
+[node name="VBox" type="VBoxContainer" parent="." unique_id=105691656]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -22,37 +22,50 @@ offset_right = -16.0
 offset_bottom = 120.0
 grow_horizontal = 2
 
-[node name="SeedRow" type="HBoxContainer" parent="VBox"]
+[node name="SeedRow" type="HBoxContainer" parent="VBox" unique_id=1003723328]
 layout_mode = 2
 
-[node name="SeedLabel" type="Label" parent="VBox/SeedRow"]
+[node name="SeedLabel" type="Label" parent="VBox/SeedRow" unique_id=493484402]
 layout_mode = 2
 text = "Seed"
 
-[node name="SeedSpinBox" type="SpinBox" parent="VBox/SeedRow"]
+[node name="SeedSpinBox" type="SpinBox" parent="VBox/SeedRow" unique_id=306691761]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = 0.0
 max_value = 4294967295.0
 value = 12345.0
 
-[node name="NewGridButton" type="Button" parent="VBox"]
+[node name="NewGridButton" type="Button" parent="VBox" unique_id=1077044202]
 unique_name_in_owner = true
 layout_mode = 2
 text = "New Grid"
 
-[node name="SpinButton" type="Button" parent="VBox"]
+[node name="SpinButton" type="Button" parent="VBox" unique_id=1986715139]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Spin"
 
-[node name="MultiplierReadout" type="Label" parent="VBox"]
+[node name="CurrentPrincessLabel" type="Label" parent="VBox" unique_id=1542006165]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Current princess: love"
+
+[node name="GoalLabel" type="Label" parent="VBox" unique_id=1451810871]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Goal: none"
+
+[node name="MultiplierReadout" type="Label" parent="VBox" unique_id=1800082020]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Multiplier: 1×"
 
-[node name="CombatRoot" parent="." instance=ExtResource("2_combat_root")]
+[node name="BudgetLabel" type="Label" parent="VBox"]
 unique_name_in_owner = true
-layout_mode = 0
-position = Vector2(0, 140)
+layout_mode = 2
+text = "Spins: 0 / 0"
+
+[node name="CombatRoot" parent="." unique_id=952603979 instance=ExtResource("2_combat_root")]
+unique_name_in_owner = true
+position = Vector2(482, 171)

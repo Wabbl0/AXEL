@@ -1,6 +1,9 @@
 class_name GridManager
 extends Node
 
+const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
+const CombatRNGScript := preload("res://combat/scripts/rng.gd")
+
 const COLS := 5
 const ROWS := 5
 
@@ -32,13 +35,13 @@ func _ensure_arrays() -> void:
 		flags.append(frow)
 
 
-func get_cell(p: Vector2i) -> SymbolDef:
+func get_cell(p: Vector2i) -> SymbolDefScript:
 	if not _in_bounds(p):
 		return null
 	return cells[p.y][p.x]
 
 
-func set_cell(p: Vector2i, sym: SymbolDef) -> void:
+func set_cell(p: Vector2i, sym: SymbolDefScript) -> void:
 	if not _in_bounds(p):
 		return
 	cells[p.y][p.x] = sym
@@ -48,7 +51,7 @@ func _in_bounds(p: Vector2i) -> bool:
 	return p.x >= 0 and p.x < COLS and p.y >= 0 and p.y < ROWS
 
 
-func populate(rng: CombatRNG, pool: Array, weights: Dictionary) -> void:
+func populate(rng: CombatRNGScript, pool: Array, weights: Dictionary) -> void:
 	_ensure_arrays()
 	for r in ROWS:
 		for c in COLS:
@@ -56,30 +59,30 @@ func populate(rng: CombatRNG, pool: Array, weights: Dictionary) -> void:
 	grid_populated.emit()
 
 
-func _draw_symbol(rng: CombatRNG, pool: Array, weights: Dictionary) -> SymbolDef:
+func _draw_symbol(rng: CombatRNGScript, pool: Array, weights: Dictionary) -> SymbolDefScript:
 	if pool.is_empty():
 		return null
 	var total := 0.0
 	for s in pool:
-		var sym := s as SymbolDef
+		var sym := s as SymbolDefScript
 		if sym == null:
 			continue
 		total += _weight_for(sym, weights)
 	if total <= 0.0:
-		return pool[0] as SymbolDef
+		return pool[0] as SymbolDefScript
 	var pick := rng.randf() * total
 	var acc := 0.0
 	for s in pool:
-		var sym := s as SymbolDef
+		var sym := s as SymbolDefScript
 		if sym == null:
 			continue
 		acc += _weight_for(sym, weights)
 		if pick <= acc:
 			return sym
-	return pool.back() as SymbolDef
+	return pool.back() as SymbolDefScript
 
 
-func _weight_for(sym: SymbolDef, weights: Dictionary) -> float:
+func _weight_for(sym: SymbolDefScript, weights: Dictionary) -> float:
 	if weights.has(sym.id):
 		return float(weights[sym.id])
 	return sym.base_weight
@@ -103,7 +106,7 @@ func apply_gravity() -> Array:
 	for c in COLS:
 		var write_row := ROWS - 1
 		for read_row in range(ROWS - 1, -1, -1):
-			var sym: SymbolDef = cells[read_row][c]
+			var sym: SymbolDefScript = cells[read_row][c]
 			if sym == null:
 				continue
 			if read_row != write_row:
@@ -117,7 +120,7 @@ func apply_gravity() -> Array:
 
 
 ## Fills null cells from top with weighted random from pool.
-func refill(rng: CombatRNG, pool: Array, weights: Dictionary) -> void:
+func refill(rng: CombatRNGScript, pool: Array, weights: Dictionary) -> void:
 	var spawns: Array = []
 	for c in COLS:
 		for r in ROWS:
@@ -134,7 +137,7 @@ func snapshot_ids() -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	for r in ROWS:
 		for c in COLS:
-			var s: SymbolDef = cells[r][c]
+			var s: SymbolDefScript = cells[r][c]
 			if s == null:
 				parts.append(".")
 			else:

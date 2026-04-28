@@ -1,0 +1,9 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/goal_wild_count.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"goal_wild_count"
+display_text = "Place wilds"
+target_wilds = 6

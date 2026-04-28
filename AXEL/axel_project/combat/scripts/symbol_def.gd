@@ -8,3 +8,4 @@ enum Tier { LOW, PREMIUM, WILD, HAZARD }
 @export var tier: Tier = Tier.LOW
 @export var texture: Texture2D
 @export var base_weight: float = 1.0
+@export var princess_id: StringName = &""

@@ -37,16 +37,18 @@ Related ideas from the earlier brainstorm that this absorbs pieces of:
 Kept verbatim as the mechanical spine so we know what we're reskinning.
 
 - **Grid:** 5 columns × 5 rows.
-- **Win rule:** cluster pays — 3+ matching symbols adjacent horizontally/vertically.
-- **Cascade:** winning clusters are removed, remaining symbols fall, new symbols drop in from the top.
-- **Wild drop:** when a cluster resolves, a **wild** is placed at the (approximate) center of where it was cleared, and **+1** is added to the spin's multiplier. Cap at **100×**.
-- **Three princesses (rotating):** exactly one is active per spin. If a spin ends with no win, her power triggers automatically, then the active princess rotates.
-  - **Love:** transforms a random symbol into another symbol type.
+- **Win rule:** line pays — 3+ matching symbols connected horizontally or vertically in a single row/column, with no gaps. A symbol may contribute to one horizontal and one vertical win at the same time.
+- **Cascade:** winning symbols are removed, remaining symbols fall, and new symbols drop in from the top.
+- **Wild drop:** when a winning line of exactly 3 symbols resolves, a **wild** appears in the middle cell of that line. 4-symbol and 5-symbol wins do not create a wild.
+- **Multiplier:** starts at x1 and increases by +1 for each new drop (each cascade step). During Free Spins, the multiplier can grow up to **100×**.
+- **Three princesses (rotating):** exactly one princess is active on-screen. Girl Power triggers at random on non-winning spins. The active princess changes only after a Girl Power activation, in fixed order **Love → Star → Storm**. The opening active princess is random.
+  - **Love:** converts one set of symbols into another symbol type.
   - **Star:** adds 1–2 wilds with intelligent placement.
-  - **Storm:** removes two low-paying symbol types from the grid.
-- **Clear the Grid:** fully emptying the grid pays 50× the bet.
-- **Trinity / Free Spins:** clearing the grid during the princess-cycle feature unlocks free spins (up to 100 in the 100 version).
-- **RTP:** 96.20%, high volatility. **Max win:** 15,000× stake.
+  - **Storm:** removes two sets of symbols from the grid.
+- **Trinity meter:** princess-symbol wins fill a 3-section meter (x3 fills 1 section, x4 fills 2 sections, x5 fills 3 sections). Wilds can contribute to princess wins. When the meter is full and no further wins are achieved, a Trinity round starts: multiplier resets, then Love/Star/Storm Girl Powers are performed in fixed order on non-winning drops.
+- **Clear the Grid:** fully emptying the grid pays `50 × total bet × active multiplier` (except during Trinity, where grid clear triggers Free Spins instead of paying the instant prize).
+- **Free Spins:** triggered by clearing the grid during Trinity. Player chooses Love (4 spins), Star (5), or Storm (8). Chosen Girl Power triggers on every non-winning spin. Trinity cannot retrigger. Meter fills grant extra spins (Love +4, Star +3, Storm +2), up to 100 total.
+- **RTP:** 94.20%, high volatility. **Max win:** 15,000× stake.
 
 Source references are listed at the bottom of this doc.
 
@@ -79,7 +81,19 @@ All symbols are placeholder art for now (red-on-black, respects the existing pal
 |---|---|
 | Moon | **Satanic symbol (red)** — placeholder |
 
-Reading the theme: the three premium symbols are escalating self-harm vectors (smoke → drink → self-injury). The wild is the ritualized moment of surrender to them. The multiplier rising with each wild placed reads as "the deeper you let it go, the more it rewards you, right up until it doesn't."
+Princess-symbol wins (AXEL: cigarette/booze/bloody hand) are the only wins that feed the Trinity meter; low-pay suit symbols do not charge it.
+
+### MP100 paytable snapshot (from provided info screens)
+
+| Symbol group | X5 | X4 | X3 |
+|---|---:|---:|---:|
+| Princess (Love / Star / Storm) | 16.00 | 1.60 | 0.48 |
+| Any princess (mixed princess line) | 8.00 | 0.80 | 0.32 |
+| Bell / Heart | 4.80 | 0.48 | 0.24 |
+| Star / Green coin | 3.20 | 0.32 | 0.16 |
+| Wild | 80.00 | 3.20 | 1.60 |
+
+Reading the theme: the three premium symbols are escalating self-harm vectors (smoke → drink → self-injury). The wild is the ritualized moment of surrender to them. The multiplier rising with each drop reads as "the deeper you let it go, the more it rewards you, right up until it doesn't."
 
 ---
 
@@ -91,13 +105,14 @@ A run is a sequence of encounters. Each encounter has **one goal**, a **spin bud
 
 1. **Payout threshold** — reach `X ×` total payout within N spins. (Straight MP100 scoring.)
 2. **Wild count** — place `X` wilds on the grid during the encounter.
-3. **Row/column pay** — form at least one cluster that spans a full 5-row or 5-column line.
+3. **Row/column pay** — form at least one winning line that spans a full 5-row or 5-column line.
 4. **Grid clear** — fully clear the grid at least once within N spins.
 5. **Multiplier ceiling** — reach a spin multiplier of at least `X`.
 6. **Symbol purge** — clear every instance of a specific low-pay symbol from the grid.
-7. **Trinity** — trigger all three princess powers in a single encounter.
-8. **Abstinence** — reach payout `X ×` *without* any princess power triggering. (Thematically: remember without crutches.)
-9. **Burn a memory** — force-destroy a specific pre-placed "memory symbol" on the grid (these are intro-ed later in the run).
+7. **Trinity** — trigger a real Trinity round (meter fills, then Love/Star/Storm sequence) at least once in a single encounter.
+8. **Free Spins trigger** — clear the grid during Trinity to enter Free Spins at least once.
+9. **Abstinence** — reach payout `X ×` *without* any princess power triggering. (Thematically: remember without crutches.)
+10. **Burn a memory** — force-destroy a specific pre-placed "memory symbol" on the grid (these are intro-ed later in the run).
 
 ### Difficulty scaling axes
 
@@ -175,7 +190,7 @@ Items should be **theme-coded**, not just mechanically driven: each one tied to 
 - Does combat share the overworld camera or cut to a full-screen slot layer? (Recommendation: full-screen layer, but framed by the locker door opening — diegetic transition.)
 - Do the 5 endings from the prototype map to numeric thresholds (Rot vs. Lucid vs. Memory Fragments), or to specific encounter choices? (Recommendation: thresholds, with one hard gate: must have the Name item.)
 - Is "betting the stake" opt-in each encounter, or is every encounter a required ante? (Recommendation: required ante, but the default ante is 0 — the seduction is spending above 0.)
-- Does the player see the princess rotation queue, or only the current princess? (Recommendation: current + next, hidden third. Adds a planning layer.)
+- Does the player see only the active princess, or reveal upcoming order too? (Recommendation: show only the active princess to match MP100. If needed, add an item later that reveals next princess as a modifier.)
 - Do items persist between runs? (Recommendation: a small subset as "carry-in" unlocks tied to memory fragments; most reset each run.)
 
 ---
