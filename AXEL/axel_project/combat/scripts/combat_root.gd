@@ -2,6 +2,8 @@ class_name CombatRoot
 extends Node2D
 
 enum State { IDLE, SPINNING, POWER, FREE_SPINS_CHOOSE, ENDED }
+signal spin_started(seed_value: int)
+signal readouts_progressed()
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -14,13 +16,20 @@ enum State { IDLE, SPINNING, POWER, FREE_SPINS_CHOOSE, ENDED }
 @export var pause_after_gravity_refill_sec: float = 1.5
 ## Pause after princess power modifies the grid.
 @export var pause_after_power_sec: float = 1.2
+@export_group("Symbol FX")
+@export var enable_symbol_fx: bool = true
+@export var drop_duration_sec: float = 0.2
+@export var spawn_drop_duration_sec: float = 0.24
+@export var count_flash_duration_sec: float = 0.1
+@export var fx_stagger_sec: float = 0.01
 @export var girl_power_chance: float = 0.6
 @export var encounter_def: Resource
-@export var total_bet: int = 1
+@export var total_bet: float = 1.0
 
 @onready var grid: GridManager = $GridManager
 @onready var grid_ui: GridContainer = $GridUI
 @onready var multiplier_label: Label = $MultiplierLabel
+@onready var round_winnings_label: Label = $RoundWinningsLabel
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
 const PrincessControllerScript := preload("res://combat/scripts/princess_controller.gd")
@@ -32,6 +41,17 @@ const EncounterScript := preload("res://combat/scripts/encounter.gd")
 
 ## Safety cap so pathological grids / RNG cannot infinite-loop cascade resolution.
 const MAX_CASCADE_ITERATIONS := 512
+const STARTING_BANKROLL_CENTS := 1000000
+const GRID_VISUAL_SCALE := 1.5
+const GRID_TOP_MARGIN := 140.0
+const CELL_SIZE_MIN := 48.0
+const CELL_SIZE_MAX := 80.0
+const BET_LADDER: Array[float] = [
+	0.2, 0.4, 0.6, 0.8, 1.0,
+	1.2, 1.4, 1.6, 1.8, 2.0,
+	3.0, 4.0, 5.0, 6.0, 7.0,
+	8.0, 9.0, 10.0,
+]
 
 var rng := CombatRNG.new()
 var multiplier := CombatMultiplier.new()
@@ -42,14 +62,23 @@ var goal_tracker := GoalTrackerScript.new()
 var wild_symbol: SymbolDef
 var low_symbol_pool: Array[SymbolDef] = []
 var premium_symbol_pool: Array[SymbolDef] = []
+var _premium_symbol_ids: Dictionary = {}
+var _symbols_by_id: Dictionary = {}
+var _current_bet_index: int = 4
 
 var _state: State = State.IDLE
 var _weights: Dictionary = {}
 var _spins_used: int = 0
+var _current_seed: int = 0
 var _encounter_complete: bool = false
 var _encounter_won: bool = false
 var _in_trinity_round: bool = false
 var _pending_free_spins: bool = false
+var _pending_fall_moves: Array = []
+var _pending_spawns: Array = []
+var _slot_positions_ready: bool = false
+var _round_winnings_cents: int = 0
+var _bankroll_cents: int = STARTING_BANKROLL_CENTS
 
 
 func _ready() -> void:
@@ -60,17 +89,21 @@ func _ready() -> void:
 	grid.symbols_fell.connect(_on_symbols_fell)
 	grid.symbols_spawned.connect(_on_symbols_spawned)
 	_refresh_multiplier_label()
+	_refresh_round_winnings_label()
 
 
 func _load_symbols_from_export() -> void:
 	_weights.clear()
 	low_symbol_pool.clear()
 	premium_symbol_pool.clear()
+	_premium_symbol_ids.clear()
+	_symbols_by_id.clear()
 	wild_symbol = null
 	for res in symbol_resources:
 		var sd := res as SymbolDef
 		if sd == null:
 			continue
+		_symbols_by_id[sd.id] = sd
 		if sd.tier == SymbolDef.Tier.WILD:
 			wild_symbol = sd
 		elif sd.tier == SymbolDef.Tier.LOW:
@@ -79,10 +112,37 @@ func _load_symbols_from_export() -> void:
 		elif sd.tier == SymbolDef.Tier.PREMIUM:
 			premium_symbol_pool.append(sd)
 			_weights[sd.id] = sd.base_weight
+			_premium_symbol_ids[sd.id] = true
 	if wild_symbol == null:
 		push_error("CombatRoot: assign wild SymbolDef in symbol_resources.")
 	if low_symbol_pool.is_empty():
 		push_error("CombatRoot: assign at least one LOW symbol in symbol_resources.")
+	for sd in _symbols_by_id.values():
+		var symbol := sd as SymbolDef
+		if symbol == null:
+			continue
+		if symbol.payout_x3 <= 0.0 or symbol.payout_x4 <= 0.0 or symbol.payout_x5 <= 0.0:
+			push_warning("CombatRoot: symbol %s is missing payout_x3/x4/x5 values." % String(symbol.id))
+
+
+func get_bet_ladder() -> Array[float]:
+	return BET_LADDER.duplicate()
+
+
+func get_current_bet() -> float:
+	return total_bet
+
+
+func set_bet_index(index: int) -> void:
+	if BET_LADDER.is_empty():
+		return
+	_current_bet_index = clampi(index, 0, BET_LADDER.size() - 1)
+	total_bet = BET_LADDER[_current_bet_index]
+	emit_signal("readouts_progressed")
+
+
+func step_bet(delta: int) -> void:
+	set_bet_index(_current_bet_index + delta)
 
 
 func get_state() -> int:
@@ -105,6 +165,10 @@ func get_goal_label() -> String:
 	return goal_tracker.label()
 
 
+func get_meter_sections_filled() -> int:
+	return meter.sections_filled
+
+
 func get_spins_used() -> int:
 	return _spins_used
 
@@ -116,6 +180,18 @@ func get_spin_budget() -> int:
 	return encounter.spin_budget
 
 
+func get_current_seed() -> int:
+	return _current_seed
+
+
+func get_round_winnings() -> float:
+	return float(_round_winnings_cents) / 100.0
+
+
+func get_bankroll() -> float:
+	return float(_bankroll_cents) / 100.0
+
+
 func is_encounter_complete() -> bool:
 	return _encounter_complete
 
@@ -125,6 +201,7 @@ func did_win_encounter() -> bool:
 
 
 func setup_new_grid(seed_value: int) -> void:
+	_current_seed = seed_value
 	rng.seed(seed_value)
 	princesses.randomize_start(rng)
 	multiplier.reset()
@@ -137,21 +214,34 @@ func setup_new_grid(seed_value: int) -> void:
 	_state = State.IDLE
 	_in_trinity_round = false
 	_pending_free_spins = false
+	_round_winnings_cents = 0
+	_bankroll_cents = STARTING_BANKROLL_CENTS
 	var encounter := encounter_def as EncounterScript
 	var goal = encounter.get("goal") if encounter != null else null
 	goal_tracker.call("set_goal", goal)
 	_refresh_multiplier_label()
+	_refresh_round_winnings_label()
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
-	_refresh_cells_visual()
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+	emit_signal("spin_started", _current_seed)
+	emit_signal("readouts_progressed")
 
 
 func spin() -> void:
 	if _state != State.IDLE or _encounter_complete:
 		return
+	if not _can_afford_spin():
+		emit_signal("readouts_progressed")
+		return
 	_state = State.SPINNING
+	_round_winnings_cents = 0
+	_refresh_round_winnings_label()
+	_start_spin_with_new_grid()
 	if not free_spins.active:
 		multiplier.reset()
 	_refresh_multiplier_label()
+	emit_signal("readouts_progressed")
 	await _pause_visual(pause_at_spin_start_sec)
 	var spin_summary := await _play_one_spin_async()
 	var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
@@ -167,7 +257,9 @@ func spin() -> void:
 		princesses.advance_rotation()
 	spin_summary["grid_cleared"] = _is_grid_empty()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
-		spin_summary["payout"] += 50 * total_bet * multiplier.value
+		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
+		spin_summary["payout"] += clear_bonus
+		_add_round_winnings(clear_bonus)
 	if _pending_free_spins:
 		_state = State.FREE_SPINS_CHOOSE
 		choose_free_spins_princess(princesses.current_id())
@@ -176,21 +268,29 @@ func spin() -> void:
 		free_spins.consume_spin()
 		multiplier.cap_enabled = true
 		multiplier.cap_value = free_spins.multiplier_cap
-	_spins_used += 1
 	goal_tracker.on_spin_completed(spin_summary)
+	_bankroll_cents += int(spin_summary["payout"])
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED:
 		_state = State.IDLE
 	_refresh_multiplier_label()
+	emit_signal("readouts_progressed")
 
 
 ## Headless / determinism: same logic as spin() without awaiting the renderer.
 func spin_sync() -> void:
 	if _state != State.IDLE or _encounter_complete:
 		return
+	if not _can_afford_spin():
+		emit_signal("readouts_progressed")
+		return
 	_state = State.SPINNING
+	_round_winnings_cents = 0
+	_refresh_round_winnings_label()
+	_start_spin_with_new_grid()
 	if not free_spins.active:
 		multiplier.reset()
+	emit_signal("readouts_progressed")
 	var spin_summary := _play_one_spin_sync()
 	var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
 	if should_trigger_power and _should_trigger_girl_power():
@@ -204,7 +304,9 @@ func spin_sync() -> void:
 		princesses.advance_rotation()
 	spin_summary["grid_cleared"] = _is_grid_empty()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
-		spin_summary["payout"] += 50 * total_bet * multiplier.value
+		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
+		spin_summary["payout"] += clear_bonus
+		_add_round_winnings(clear_bonus)
 	if _pending_free_spins:
 		_state = State.FREE_SPINS_CHOOSE
 		choose_free_spins_princess(princesses.current_id())
@@ -213,11 +315,12 @@ func spin_sync() -> void:
 		free_spins.consume_spin()
 		multiplier.cap_enabled = true
 		multiplier.cap_value = free_spins.multiplier_cap
-	_spins_used += 1
 	goal_tracker.on_spin_completed(spin_summary)
+	_bankroll_cents += int(spin_summary["payout"])
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED:
 		_state = State.IDLE
+	emit_signal("readouts_progressed")
 
 
 func debug_trigger_power() -> void:
@@ -244,7 +347,7 @@ func end_encounter(success: bool) -> void:
 
 func _play_one_spin_async() -> Dictionary:
 	var summary := await _resolve_cascade_loop_async()
-	if not free_spins.active and meter.is_full() and not summary["produced_any_win"]:
+	if not free_spins.active and meter.is_full():
 		var trinity_summary := await _run_trinity_round_async()
 		_merge_spin_summary(summary, trinity_summary)
 	if free_spins.active and meter.is_full():
@@ -255,7 +358,7 @@ func _play_one_spin_async() -> Dictionary:
 
 func _play_one_spin_sync() -> Dictionary:
 	var summary := _resolve_cascade_loop_sync()
-	if not free_spins.active and meter.is_full() and not summary["produced_any_win"]:
+	if not free_spins.active and meter.is_full():
 		var trinity_summary := _run_trinity_round_sync()
 		_merge_spin_summary(summary, trinity_summary)
 	if free_spins.active and meter.is_full():
@@ -281,7 +384,9 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		multiplier.add(1)
 		_refresh_multiplier_label()
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
-		out["payout"] = int(out["payout"]) + _estimate_payout(lines)
+		var line_win := _estimate_payout(lines)
+		out["payout"] = int(out["payout"]) + line_win
+		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		_apply_meter_from_lines(lines)
 	return out
@@ -303,7 +408,9 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 		_apply_gravity_and_refill_sync()
 		multiplier.add(1)
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
-		out["payout"] = int(out["payout"]) + _estimate_payout(lines)
+		var line_win := _estimate_payout(lines)
+		out["payout"] = int(out["payout"]) + line_win
+		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		_apply_meter_from_lines(lines)
 	return out
@@ -321,6 +428,7 @@ func _make_princess_ctx() -> Dictionary:
 
 
 func _resolve_lines(lines: Array) -> void:
+	await _play_count_flash_for_lines(lines)
 	_resolve_lines_impl(lines)
 	await _pause_visual(pause_after_cluster_resolve_sec)
 
@@ -348,13 +456,17 @@ func _resolve_lines_impl(lines: Array) -> void:
 
 
 func _apply_gravity_and_refill() -> void:
+	_pending_fall_moves.clear()
+	_pending_spawns.clear()
 	grid.apply_gravity()
 	grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
-	_refresh_cells_visual()
+	await _play_pending_gravity_refill_fx()
 	await _pause_visual(pause_after_gravity_refill_sec)
 
 
 func _apply_gravity_and_refill_sync() -> void:
+	_pending_fall_moves.clear()
+	_pending_spawns.clear()
 	grid.apply_gravity()
 	grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	_refresh_cells_visual()
@@ -371,7 +483,10 @@ func _pause_visual(seconds: float) -> void:
 
 
 func _on_grid_populated() -> void:
-	_refresh_cells_visual()
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+		return
+	_play_initial_grid_drop_fx()
 
 
 func _on_cells_cleared(_coords: Array) -> void:
@@ -379,11 +494,11 @@ func _on_cells_cleared(_coords: Array) -> void:
 
 
 func _on_symbols_fell(_moves: Array) -> void:
-	pass
+	_pending_fall_moves = _moves.duplicate(true)
 
 
 func _on_symbols_spawned(_spawns: Array) -> void:
-	pass
+	_pending_spawns = _spawns.duplicate(true)
 
 
 func _refresh_multiplier_label() -> void:
@@ -394,9 +509,213 @@ func _refresh_multiplier_label() -> void:
 		multiplier_label.text = "Multiplier: %d×%s" % [multiplier.value, suffix]
 
 
+func _refresh_round_winnings_label() -> void:
+	if round_winnings_label:
+		round_winnings_label.text = "Round Winnings: %s" % _format_currency_from_cents(_round_winnings_cents)
+
+
 func _ensure_symbol_slots() -> void:
-	while grid_ui.get_child_count() < 25:
+	var total_slots := GridManager.COLS * GridManager.ROWS
+	while grid_ui.get_child_count() < total_slots:
 		grid_ui.add_child(SYMBOL_SLOT_SCENE.instantiate())
+
+
+func _coord_to_index(coord: Vector2i) -> int:
+	return coord.y * GridManager.COLS + coord.x
+
+
+func _get_slot(coord: Vector2i) -> Node:
+	var idx := _coord_to_index(coord)
+	if idx < 0 or idx >= grid_ui.get_child_count():
+		return null
+	return grid_ui.get_child(idx)
+
+
+func _ensure_slot_positions() -> void:
+	if _slot_positions_ready:
+		return
+	await get_tree().process_frame
+	_slot_positions_ready = true
+
+
+func _slot_target_position(coord: Vector2i) -> Vector2:
+	var slot := _get_slot(coord)
+	if slot == null:
+		return Vector2.ZERO
+	return (slot as Control).position
+
+
+func fit_to_viewport(viewport_size: Vector2) -> void:
+	var min_dim: float = min(viewport_size.x, viewport_size.y)
+	var cell_size: float = clamp(min_dim * 0.08 * GRID_VISUAL_SCALE, CELL_SIZE_MIN, CELL_SIZE_MAX)
+	var sep_h := float(grid_ui.get_theme_constant("h_separation"))
+	var sep_v := float(grid_ui.get_theme_constant("v_separation"))
+	var grid_width: float = float(GridManager.COLS) * cell_size + float(GridManager.COLS - 1) * sep_h
+	var grid_height: float = float(GridManager.ROWS) * cell_size + float(GridManager.ROWS - 1) * sep_v
+	position = Vector2(max((viewport_size.x - grid_width) * 0.5, 8.0), GRID_TOP_MARGIN)
+	multiplier_label.position = Vector2(0.0, 8.0)
+	multiplier_label.size = Vector2(grid_width, 30.0)
+	grid_ui.position = Vector2(0.0, 48.0)
+	grid_ui.size = Vector2(grid_width, grid_height)
+	_apply_slot_min_size(cell_size)
+	round_winnings_label.position = Vector2(0.0, grid_ui.position.y + grid_height + 8.0)
+	round_winnings_label.size = Vector2(grid_width, 28.0)
+	_slot_positions_ready = false
+
+
+func _apply_slot_min_size(cell_size: float) -> void:
+	for child in grid_ui.get_children():
+		var slot := child as Control
+		if slot != null:
+			slot.custom_minimum_size = Vector2(cell_size, cell_size)
+
+
+func _cell_size_px() -> float:
+	if grid_ui.get_child_count() == 0:
+		return 32.0
+	var slot := grid_ui.get_child(0) as Control
+	if slot == null:
+		return 32.0
+	if slot.size.y > 0.0:
+		return slot.size.y
+	if slot.custom_minimum_size.y > 0.0:
+		return slot.custom_minimum_size.y
+	return 32.0
+
+
+func _play_initial_grid_drop_fx() -> void:
+	await _ensure_slot_positions()
+	var max_delay := 0.0
+	for r in GridManager.ROWS:
+		for c in GridManager.COLS:
+			var coord := Vector2i(c, r)
+			var slot := _get_slot(coord)
+			if slot == null:
+				continue
+			var sym: SymbolDef = grid.cells[r][c]
+			if slot.has_method("cancel_active_fx"):
+				slot.call("cancel_active_fx")
+			if slot.has_method("set_symbol"):
+				slot.call("set_symbol", sym)
+			var to_pos := _slot_target_position(coord)
+			var lift_cells := 0.5 + rng.randf() * 0.5
+			var from_pos := to_pos - Vector2(0.0, _cell_size_px() * lift_cells)
+			var delay := (float(r) + float(c) * 0.25) * fx_stagger_sec
+			max_delay = max(max_delay, delay)
+			if slot.has_method("play_drop"):
+				slot.call("play_drop", from_pos, to_pos, drop_duration_sec, delay)
+	await get_tree().create_timer(max_delay + drop_duration_sec).timeout
+	_refresh_cells_visual()
+
+
+func _play_count_flash_for_lines(lines: Array) -> void:
+	if not enable_symbol_fx:
+		emit_signal("readouts_progressed")
+		return
+	var seen: Dictionary = {}
+	for line in lines:
+		var cells: Array = line["cells"]
+		for p in cells:
+			seen[p as Vector2i] = true
+	if seen.is_empty():
+		return
+	var i := 0
+	for coord in seen.keys():
+		var slot := _get_slot(coord)
+		if slot == null:
+			continue
+		if slot.has_method("play_count_flash"):
+			slot.call("play_count_flash", count_flash_duration_sec, 0.55, fx_stagger_sec * i)
+		emit_signal("readouts_progressed")
+		i += 1
+	for line in lines:
+		var line_cells: Array = line.get("cells", [])
+		if line_cells.is_empty():
+			continue
+		var anchor_idx := int(floor(float(line_cells.size()) / 2.0))
+		var anchor := line_cells[anchor_idx] as Vector2i
+		var anchor_slot := _get_slot(anchor)
+		if anchor_slot == null:
+			anchor_slot = _get_slot(line_cells[0] as Vector2i)
+		if anchor_slot == null:
+			continue
+		var line_amount_cents := _line_payout_cents(line)
+		if anchor_slot.has_method("play_win_popup"):
+			anchor_slot.call("play_win_popup", _format_currency_from_cents(line_amount_cents), count_flash_duration_sec + 0.25, 0.0)
+	await get_tree().create_timer(count_flash_duration_sec + fx_stagger_sec * max(i - 1, 0)).timeout
+
+
+func _start_spin_with_new_grid() -> void:
+	_bankroll_cents -= _to_cents(total_bet)
+	var seed_value := rng.randi_range(0, 12345)
+	_current_seed = seed_value
+	rng.seed(seed_value)
+	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+	_spins_used += 1
+	emit_signal("spin_started", _current_seed)
+	emit_signal("readouts_progressed")
+
+
+func _can_afford_spin() -> bool:
+	return _bankroll_cents >= _to_cents(total_bet)
+
+
+func _add_round_winnings(amount_cents: int) -> void:
+	if amount_cents <= 0:
+		return
+	_round_winnings_cents += amount_cents
+	_refresh_round_winnings_label()
+	emit_signal("readouts_progressed")
+
+
+func _play_pending_gravity_refill_fx() -> void:
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+		return
+	await _ensure_slot_positions()
+	var max_total := 0.0
+	for move in _pending_fall_moves:
+		var from: Vector2i = move.get("from", Vector2i(-1, -1))
+		var to: Vector2i = move.get("to", Vector2i(-1, -1))
+		var from_slot := _get_slot(from)
+		var to_slot := _get_slot(to)
+		if from_slot == null or to_slot == null:
+			continue
+		var moved_sym := grid.get_cell(to)
+		if from_slot.has_method("set_symbol"):
+			from_slot.call("set_symbol", null)
+		if to_slot.has_method("set_symbol"):
+			to_slot.call("set_symbol", moved_sym)
+		var from_pos := _slot_target_position(from)
+		var to_pos := _slot_target_position(to)
+		var distance_rows: int = abs(to.y - from.y)
+		var duration := drop_duration_sec + float(distance_rows) * 0.03
+		max_total = max(max_total, duration)
+		if to_slot.has_method("play_drop"):
+			to_slot.call("play_drop", from_pos, to_pos, duration, 0.0)
+	var spawn_index := 0
+	for spawn in _pending_spawns:
+		var coord: Vector2i = spawn.get("coord", Vector2i(-1, -1))
+		var slot := _get_slot(coord)
+		if slot == null:
+			continue
+		var sym: SymbolDef = spawn.get("sym", null)
+		if slot.has_method("set_symbol"):
+			slot.call("set_symbol", sym)
+		var to_pos := _slot_target_position(coord)
+		var rows_from_top := coord.y + 1
+		var from_pos := to_pos - Vector2(0.0, float(rows_from_top) * _cell_size_px())
+		var delay := fx_stagger_sec * spawn_index
+		var duration := spawn_drop_duration_sec + float(rows_from_top) * 0.02
+		max_total = max(max_total, delay + duration)
+		if slot.has_method("play_drop"):
+			slot.call("play_drop", from_pos, to_pos, duration, delay)
+		spawn_index += 1
+	if max_total > 0.0:
+		await get_tree().create_timer(max_total).timeout
+	_refresh_cells_visual()
 
 
 func _refresh_cells_visual() -> void:
@@ -446,9 +765,30 @@ func _count_wild_spawns(lines: Array) -> int:
 func _estimate_payout(lines: Array) -> int:
 	var total := 0
 	for line in lines:
-		var line_length: int = int(line["length"])
-		total += line_length * multiplier.value
+		total += _line_payout_cents(line)
 	return total
+
+
+func _line_payout_cents(line: Dictionary) -> int:
+	var symbol_id: StringName = line.get("symbol_id", &"")
+	if symbol_id == &"wild" and wild_symbol != null:
+		symbol_id = wild_symbol.id
+	var sd := _symbols_by_id.get(symbol_id, null) as SymbolDef
+	if sd == null:
+		return 0
+	var line_length: int = int(line.get("length", 0))
+	var payout_multiplier: float = sd.payout_multiplier_for_length(line_length)
+	if payout_multiplier <= 0.0:
+		return 0
+	return _to_cents(total_bet * payout_multiplier * float(multiplier.value))
+
+
+func _to_cents(amount: float) -> int:
+	return int(round(amount * 100.0))
+
+
+func _format_currency_from_cents(amount_cents: int) -> String:
+	return "%.2f" % (float(amount_cents) / 100.0)
 
 
 func _should_trigger_girl_power() -> bool:
@@ -460,17 +800,13 @@ func _should_trigger_girl_power() -> bool:
 
 func _apply_meter_from_lines(lines: Array) -> void:
 	for line in lines:
-		if _line_is_princess(line):
+		if _line_is_premium(line):
 			meter.add_from_line_length(int(line["length"]))
 
 
-func _line_is_princess(line: Dictionary) -> bool:
-	var cells: Array = line["cells"]
-	for p in cells:
-		var sym: SymbolDef = grid.get_cell(p)
-		if sym != null and sym.princess_id != &"":
-			return true
-	return false
+func _line_is_premium(line: Dictionary) -> bool:
+	var symbol_id: StringName = line.get("symbol_id", &"")
+	return _premium_symbol_ids.has(symbol_id)
 
 
 func _is_grid_empty() -> bool:
@@ -497,7 +833,9 @@ func _run_trinity_round_async() -> Dictionary:
 			_refresh_multiplier_label()
 			out["produced_any_win"] = true
 			out["cascade_drops"] = int(out["cascade_drops"]) + 1
-			out["payout"] = int(out["payout"]) + _estimate_payout(lines)
+			var line_win := _estimate_payout(lines)
+			out["payout"] = int(out["payout"]) + line_win
+			_add_round_winnings(line_win)
 			out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		else:
 			princesses.set_current_id(id)
@@ -505,6 +843,8 @@ func _run_trinity_round_async() -> Dictionary:
 			out["princess_triggered"] = true
 			await _pause_visual(pause_after_power_sec)
 			await _apply_gravity_and_refill()
+			var post_power := await _resolve_cascade_loop_async()
+			_merge_spin_summary(out, post_power)
 		if _is_grid_empty():
 			_pending_free_spins = true
 			break
@@ -528,13 +868,17 @@ func _run_trinity_round_sync() -> Dictionary:
 			multiplier.add(1)
 			out["produced_any_win"] = true
 			out["cascade_drops"] = int(out["cascade_drops"]) + 1
-			out["payout"] = int(out["payout"]) + _estimate_payout(lines)
+			var line_win := _estimate_payout(lines)
+			out["payout"] = int(out["payout"]) + line_win
+			_add_round_winnings(line_win)
 			out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		else:
 			princesses.set_current_id(id)
 			princesses.trigger_current_power(_make_princess_ctx())
 			out["princess_triggered"] = true
 			_apply_gravity_and_refill_sync()
+			var post_power := _resolve_cascade_loop_sync()
+			_merge_spin_summary(out, post_power)
 		if _is_grid_empty():
 			_pending_free_spins = true
 			break

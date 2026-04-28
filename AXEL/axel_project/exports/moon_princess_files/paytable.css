@@ -1,0 +1,780 @@
+/*
+ Do not remove and copy only with caution!
+ Optimization to prevent unnecessary AutoResizeText.
+*/
+#btnVideBingoCaption
+{
+	height: 0;
+}
+#apStopBtn #btnVideBingoCaption
+{
+	height: auto;
+}
+
+#paytable
+{
+    color: black;
+    display: block;
+    font-family: ROBOTO_CONDENSED_REGULAR;
+    font-size: 5vw;
+    padding: 5% 5%;
+    background-color: rgba(255, 255, 255, 0);
+}
+
+/* #menu_view_area > div > div:nth-of-type(3) */
+.background
+{
+    background-image: url(paytable_bg.jpg);
+    background-position: 0px 0px;
+    background-size: 100% 100%;
+}
+
+#paytable p
+{
+    margin: 0;
+}
+
+#paytable .caption
+{
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 4vw;
+    color: rgb(255, 174, 29);
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 0.9);
+}
+
+#paytable .headline
+{
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: 4vw;
+    font-weight: bold;
+    margin-bottom: 3vw;
+    margin-top: 3vw;
+    color: rgb(255, 174, 29);
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 0.9);
+}
+
+#paytable .wildTXT
+{
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: 4vw;
+    font-weight: bold;
+    margin-top: 3vw;
+    color: rgb(255, 174, 29);
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 0.9);
+}
+
+#paytable .girl_power,
+#paytable .page1,
+#paytable .page1 .page1Row,
+#paytable .powersRow
+{
+    display: block;
+    width: 100%;
+}
+
+#paytable .namesRow
+{
+    display: block;
+    width: 100%;
+	padding-left: 8vw;
+}
+
+#paytable .win_patterns .namesRow .col
+{
+    width:20%;
+    float:left;
+    padding:0.5vw;
+}
+
+#paytable .win_patterns .namesRow .headline
+{
+	font-size: 4vw;
+    margin-bottom: 0vw;
+    margin-top: 0vw;
+}
+
+#paytable .girl_power .girlRow .col,
+#paytable .pageDefault .powersRow .col
+{
+    width:30%;
+    float:left;
+    padding:1vw;
+}
+#paytable .page1 .page1Row .firstCol,
+#paytable .page1 .page1Row .secondCol,
+#paytable .page1 .page1Row .thirdCol
+{
+    width:33%;
+}
+
+#paytable .page1 .headline
+{
+    margin-bottom: -1vw;
+}
+
+#paytable .page1 .retrigger_txt
+{
+    display: block;
+    margin-top: 2vw;
+    margin-bottom: -1vw;
+}
+
+#paytable .max_win_txt
+{
+    width: 100%;
+    text-align: center;
+    font-family: ROBOTO_CONDENSED_REGULAR;
+    font-size: 4vw;
+    margin-bottom: 2vw;
+    color: rgb(255, 174, 29);
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 0.9);
+}
+
+#paytable .win_patterns
+{
+    position: relative;
+    top: 0%;
+    left: 0%;
+    width: 100%;
+}
+
+#paytable .loveIMGRow
+{
+    position: relative;
+    width: 30vw;
+    height: 20vw;
+    left: 20%;
+    transform: translateX(-50%);
+    -webkit-transform: translateX(-50%);
+}
+
+#paytable .chargeMeterRow
+#paytable .Page3Row
+{
+    position: relative;
+    width: 80%;
+    left: 50%;
+    transform: translateX(-50%);
+    -webkit-transform: translateX(-50%);
+    line-height: 4vw;
+    margin-bottom: 3vw;
+}
+
+#paytable .girlRow
+{
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    -webkit-transform: translateX(-50%);
+}
+
+#paytable .chargeMeterRow .firstCol
+{
+    width:60%;
+    float:left;
+}
+
+#paytable .Page3Row .firstCol
+{
+    width: 45%;
+    float: left;
+    padding: 2vw;
+}
+
+#paytable .girlRow .firstCol
+{
+    width:50%;
+    float:left;
+}
+
+#paytable .chargeMeterRow .secondCol
+{
+    position:relative;
+    height:100%;
+    width:40%;
+}
+
+#paytable .Page3Row .secondCol
+{
+    float: right;
+    width: 45%;
+    padding: 2vw;
+}
+
+#paytable .girlRow .secondCol
+{
+    position:relative;
+    height:100%;
+    width:50%;
+}
+
+#paytable .girlRow .secondCol .normal_txt
+{
+    position:absolute;
+    top:50%;
+}
+
+#paytable .chargeMeterRow .secondCol .normal_txt
+{
+    position:relative;
+    top:50%;
+    margin-bottom: 0px;
+    bottom: auto;
+    top: auto;
+    text-align: left;
+}
+
+#paytable .p1_girl1
+{
+    margin-left: 5vw;
+	margin-top: 2vw;
+    width: 20vw;
+    height: 20vw;
+}
+
+#paytable .p1_girl2
+{
+    margin-left: 3vw;
+	margin-top: 2vw;
+    width: 20vw;
+    height: 20vw;
+}
+
+#paytable .p1_girl3
+{
+    margin-left: 5vw;
+    width: 20vw;
+    height: 22vw;
+}
+
+#paytable .p2_girl1
+{
+    display:block;
+    width: 22vw;
+    height: 39vw;
+    margin-left: 8%;
+}
+
+#paytable .p2_girl2
+{
+    display:block;
+    width: 23vw;
+    height: 39vw;
+}
+
+#paytable .p2_girl3
+{
+    display:block;
+    width: 20vw;
+    height: 41vw;
+    margin-left: 4vw;
+    margin-top: -2.5vw;
+}
+
+#paytable .p2_meter
+{
+    margin-left: 30%;
+    width: 23vw;
+    height: 23vw;
+}
+
+#paytable .p3_meter
+{
+    margin-left: 30%;
+    width: 15vw;
+    height: 15vw;
+}
+
+#paytable .p3_multiplier
+{
+    margin-left: 25%;
+    width: 20vw;
+    height: 15vw;
+}
+
+#paytable .p2_power1
+{
+	margin-left: 8.5vw;
+    width: 10vw;
+    height: 11vw;
+}
+
+#paytable .p2_power2
+{
+	margin-left: 8.5vw;
+    width: 10vw;
+    height: 11vw;
+}
+
+#paytable .p2_power3
+{
+	margin-left: 8.5vw;
+    width: 10vw;
+    height: 11vw;
+}
+
+#paytable .p4_cleargrid
+{
+	width: 30vw;
+    height: 30vw;
+    margin-left: 29vw;
+    margin-bottom: 2vw;
+}
+
+#paytable .p5_wildremove
+{
+	width: 30vw;
+    height: 30vw;
+    margin-left: 29vw;
+    margin-bottom: 2vw;
+}
+
+#paytable .wild
+{
+    position: absolute;
+    width: 21vw;
+    height: 20vw;
+}
+
+#paytable .wildTextCNT
+{
+    position: absolute;
+    width: 20vw;
+    left: 30vw;
+}
+
+#paytable .fiveTXT,
+#paytable .fourTXT,
+#paytable .threeTXT
+{
+    position: absolute;
+    left: 0vw;
+    text-align: left;
+    color: #4e4e4e;
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 0);
+}
+
+#paytable .fourTXT
+{
+    top: 5.5vw;
+}
+
+#paytable .threeTXT
+{
+    top: 11vw;
+}
+
+#paytable .fiveValue,
+#paytable .fourValue,
+#paytable .threeValue
+{
+    position: absolute;
+    left: 0;
+    text-align: left;
+    min-width: 14vw;
+    white-space: nowrap;
+}
+
+#paytable .fourValue
+{
+    top: 5.5vw;
+}
+
+#paytable .threeValue
+{
+    top: 11vw;
+}
+
+#paytable .wildContainer,
+#paytable .wildContainer2
+{
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    -webkit-transform: translateX(-50%);
+}
+
+#paytable .wildContainer2 .p5_wild
+{
+    transform: translate(0, 1.5vw);
+    -webkit-transform: translate(0, 1.5vw);
+    margin-right: 4vw;
+    margin-top: 2vw;
+    margin-bottom: 1vw;
+}
+
+#paytable .wildContainer .symbolTextContainer
+{
+     transform: translate(0, -9vw);
+    -webkit-transform: translate(0, -9vw);
+}
+
+
+#paytable .split_container
+{
+    width: 100%;
+    position: relative;
+    top: 0;
+    left: 0;
+}
+
+#paytable .left_side
+{
+    width: 49%;
+    float: left;
+}
+
+#paytable .right_side
+{
+    width: 49%;
+    float: right;
+    position: absolute;
+    top: 50%;
+    transform: translate(0%, -50%);
+    -webkit-transform: translate(0%, -50%);
+}
+
+.winPatternContainer
+{
+    width: 14vw;
+    height: 6vw;
+    position: relative;
+    font-size: 3vw;
+    margin-left: 3vw;
+}
+
+#paytable .winPattern
+{
+    position: absolute;
+    width: 25%;
+    text-align: center;
+    transform: translate(0%, -50%);
+    -webkit-transform: translate(0%, -50%);
+    top: 50%;
+    left: 0%;
+}
+
+#paytable table
+{
+    margin: auto;
+    text-align: center;
+    width: 75%;
+    height: 100%;
+    float: right;
+    border-spacing: 0px;
+    border-left: solid 1px;
+}
+
+#paytable td
+{
+    border-right: solid 1px;
+    border-bottom: solid 1px;
+}
+
+#paytable td.topBorder
+{
+    border-top: solid 1px;
+}
+
+#paytable .winPatterns
+{
+    margin: auto;
+    text-align: left;
+    width: 88vw;
+    transform: translateX(-50%);
+    -webkit-transform: translateX(-50%);
+    position: relative;
+    left: 50%;
+    margin-bottom: 10vw;
+}
+
+#paytable .hpSymbols
+{
+    position: relative;
+    left: 50%;
+    text-align: center;
+    width: 90%;
+    height: 28vw;
+    transform: translateX(-50%);
+    -webkit-transform: translateX(-50%);
+    margin-bottom: 5vw;
+}
+
+#paytable .lpSymbols
+{
+    position: relative;
+    left: 50%;
+    text-align: center;
+    width: 90%;
+    height: 25vw;
+    transform: translateX(-50%);
+    -webkit-transform: translateX(-50%);
+    margin-bottom: 7vw;
+}
+
+#paytable .symbolContainer
+{
+    width: 15vw;
+    height: 30vw;
+    position: absolute;
+}
+
+#paytable .symbolContainer.hpAny
+{
+    top: 4vw;
+    left: 60vw;
+    background: transparent;
+}
+
+#paytable .symbolContainer.p6_hp1
+{
+    top: 0.8vw;
+    left: 42.5vw;
+    background: transparent;
+}
+
+#paytable .symbolContainer.p6_hp2
+{
+    top: 0.8vw;
+    left: 25vw;
+    background: transparent;
+}
+
+#paytable .symbolContainer.p6_hp3
+{
+    top: 0.8vw;
+    left: 8vw;
+    background: transparent;
+}
+
+
+#paytable .symbolContainer.hpAny .symbolTextContainer
+{
+    top: 3.9vw;
+    left: 0.5vw;
+}
+
+
+#paytable .symbolContainer.p5_wild
+{
+    left: -1.5vw;
+    background: transparent;
+}
+
+#paytable .symbolContainer.p7_lp1
+{
+    top:1vw;
+    left: 60vw;
+    background: transparent;
+}
+
+#paytable .symbolContainer.p7_lp2
+{
+    left: 42.5vw;
+    background: transparent;
+}
+
+#paytable .symbolContainer.p7_lp3
+{
+    left: 25vw;
+    background: transparent;
+}
+
+#paytable .symbolContainer.p7_lp4
+{
+
+    left: 8vw;
+    background: transparent;
+}
+
+#paytable .symbolContainer.hpAny .p6_hp1,
+#paytable .symbolContainer.hpAny .p6_hp3
+{
+    width:7vw;
+    height:7vw;
+}
+
+
+#paytable .symbolContainer.hpAny .p6_hp2
+{
+    position:absolute;
+    width:7vw;
+    height:7vw;
+    left:4vw;
+}
+
+#paytable .symbolTextContainer
+{
+    position: relative;
+    width: 15vw;
+    height: 15vw;
+    font-size: 3vw;
+    color: rgb(255, 174, 29);
+    font-weight: bold;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.9);
+}
+
+#paytable .symbolNumberContainer
+{
+    position: relative;
+    width: 30%;
+    height: 100%;
+    float:left;
+}
+
+#paytable .symbolValueContainer
+{
+    position: absolute;
+    width: 70%;
+    height: 100%;
+    left: 20%;
+}
+
+#paytable .symbol
+{
+    position: relative;
+    top: 0vw;
+    left: 0vw;
+    width: 15vw;
+    height: 13.5vw;
+}
+
+#paytable .p6_hp1
+{
+    width: 14vw;
+    height: 14vw;
+}
+
+#paytable .p6_hp2
+{
+    width: 14vw;
+    height: 14vw;
+    /*margin-bottom: 3.1vw;*/
+}
+
+#paytable .p6_hp3
+{
+    width: 14vw;
+    height: 14vw;
+}
+
+
+#paytable .p5_wild
+{
+    width: 15vw;
+    height: 15vw;
+}
+
+
+#paytable .p7_lp1
+{
+    width: 13vw;
+    height: 13vw;
+    left:-0.5vw;
+/*    margin-bottom: 2.3vw;
+
+    */
+}
+
+#paytable .p7_lp2
+{
+    width: 13.5vw;
+    height: 13vw;
+    left: -0.5vw;
+    margin-bottom: 1vw;
+}
+
+#paytable .p7_lp3
+{
+    width: 14vw;
+    height: 14vw;
+}
+
+#paytable .p7_lp4
+{
+    width: 14vw;
+    height: 14vw;
+}
+
+#paytable .normal_txt
+{
+    width: 100%;
+    text-align: center;
+    font-size: 3vw;
+    margin-bottom: 2vw;
+}
+
+@media all and (orientation: landscape)
+{
+
+}
+
+@media all and (orientation: portrait)
+{
+    #paytable .normal_txt
+    {
+        font-size: 4vw;
+        margin-bottom: 4vw
+    }
+
+    #paytable .headline
+    {
+        font-size: 6vw;
+    }
+
+    #paytable .wildTXT
+    {
+        font-size: 6vw;
+        margin-bottom: 2vw;
+    }
+
+    #paytable .fishTankIMG
+    {
+        margin-bottom: 4vw;
+    }
+
+    #paytable .maskIMGRow
+    {
+        margin-bottom: 2vw;
+    }
+}
+
+#buttonsContainer.pt
+{
+    transform: translate(-50%, -45%);
+    -webkit-transform: translate(-50%, -45%);
+}
+
+#infoField.pt
+{
+    bottom: 27.5vh;
+    font-size: 3.5vw;
+}
+
+#infoField
+{
+    position: absolute;
+    left: 50vw;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.98);
+    font-size: 2.5vw;
+    text-align: center;
+    padding: 0.8vw 2vw;
+	font-family: 'MERIENDA_ONE';
+	background: -moz-radial-gradient(center, ellipse cover,  rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 15%, rgba(0,0,0,0) 70%);
+	background: -webkit-radial-gradient(center, ellipse cover,  rgba(0,0,0,0.5) 0%,rgba(0,0,0,0.3) 15%,rgba(0,0,0,0) 70%);
+	background: radial-gradient(ellipse at center,  rgba(0,0,0,0.5) 0%,rgba(0,0,0,0.3) 15%,rgba(0,0,0,0) 70%);
+}
+
+#paytable .chargeMeterRow
+{
+    height: 26vw;
+}

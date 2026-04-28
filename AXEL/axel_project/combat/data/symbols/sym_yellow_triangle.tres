@@ -10,3 +10,6 @@ display_name = "Yellow triangle"
 tier = 0
 texture = ExtResource("2_tex")
 base_weight = 1.0
+payout_x3 = 0.1
+payout_x4 = 0.2
+payout_x5 = 2.0

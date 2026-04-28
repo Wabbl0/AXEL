@@ -27,5 +27,8 @@ func _line_to_sections(length: int) -> int:
 			return 1
 		4:
 			return 2
+		5:
+			return 3
 		_:
+			# Any larger line (defensive) still fills the meter immediately.
 			return 3

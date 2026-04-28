@@ -10,3 +10,6 @@ display_name = "Wild"
 tier = 2
 texture = ExtResource("2_tex")
 base_weight = 1.0
+payout_x3 = 1.0
+payout_x4 = 2.0
+payout_x5 = 50.0

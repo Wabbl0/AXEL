@@ -36,3 +36,11 @@ offset_bottom = 248.0
 columns = 5
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
+
+[node name="RoundWinningsLabel" type="Label" parent="."]
+offset_left = 8.0
+offset_top = 256.0
+offset_right = 400.0
+offset_bottom = 288.0
+theme_override_font_sizes/font_size = 16
+text = "Round Winnings: 0.00"

@@ -11,3 +11,6 @@ tier = 1
 texture = ExtResource("2_tex")
 base_weight = 0.35
 princess_id = &"storm"
+payout_x3 = 0.3
+payout_x4 = 1.0
+payout_x5 = 10.0

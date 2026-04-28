@@ -36,20 +36,35 @@ size_flags_horizontal = 3
 max_value = 4294967295.0
 value = 12345.0
 
-[node name="NewGridButton" type="Button" parent="VBox" unique_id=1077044202]
-unique_name_in_owner = true
-layout_mode = 2
-text = "New Grid"
-
 [node name="SpinButton" type="Button" parent="VBox" unique_id=1986715139]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Spin"
 
+[node name="BetRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="BetMinusButton" type="Button" parent="VBox/BetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "-"
+
+[node name="BetLabel" type="Label" parent="VBox/BetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Bet: 1.00"
+horizontal_alignment = 1
+
+[node name="BetPlusButton" type="Button" parent="VBox/BetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+"
+
 [node name="CurrentPrincessLabel" type="Label" parent="VBox" unique_id=1542006165]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Current princess: love"
+text = "Premium meter: 0 / 3"
 
 [node name="GoalLabel" type="Label" parent="VBox" unique_id=1451810871]
 unique_name_in_owner = true
@@ -65,6 +80,11 @@ text = "Multiplier: 1×"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Spins: 0 / 0"
+
+[node name="BankrollLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Bankroll: 10000.00"
 
 [node name="CombatRoot" parent="." unique_id=952603979 instance=ExtResource("2_combat_root")]
 unique_name_in_owner = true
