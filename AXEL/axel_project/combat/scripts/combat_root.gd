@@ -30,6 +30,8 @@ signal readouts_progressed()
 @onready var grid_ui: GridContainer = $GridUI
 @onready var multiplier_label: Label = $MultiplierLabel
 @onready var round_winnings_label: Label = $RoundWinningsLabel
+@onready var winnings_overlay_bar: ColorRect = $WinningsOverlayBar
+@onready var winnings_overlay_label: Label = $WinningsOverlayLabel
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
 const PrincessControllerScript := preload("res://combat/scripts/princess_controller.gd")
@@ -43,9 +45,13 @@ const EncounterScript := preload("res://combat/scripts/encounter.gd")
 const MAX_CASCADE_ITERATIONS := 512
 const STARTING_BANKROLL_CENTS := 1000000
 const GRID_VISUAL_SCALE := 1.5
-const GRID_TOP_MARGIN := 140.0
+const GRID_EDGE_MARGIN := 8.0
+const VIEWPORT_TOP_SAFE := 84.0
+const VIEWPORT_BOTTOM_SAFE := 292.0
 const CELL_SIZE_MIN := 48.0
 const CELL_SIZE_MAX := 80.0
+const ROUND_WINNINGS_GAP := 12.0
+const ROUND_WINNINGS_HEIGHT := 36.0
 const BET_LADDER: Array[float] = [
 	0.2, 0.4, 0.6, 0.8, 1.0,
 	1.2, 1.4, 1.6, 1.8, 2.0,
@@ -79,6 +85,11 @@ var _pending_spawns: Array = []
 var _slot_positions_ready: bool = false
 var _round_winnings_cents: int = 0
 var _bankroll_cents: int = STARTING_BANKROLL_CENTS
+var _round_winnings_default_modulate: Color = Color.WHITE
+var _winnings_overlay_tween: Tween
+var _winnings_overlay_showing: bool = false
+var _grid_width_cached: float = 0.0
+var _grid_height_cached: float = 0.0
 
 
 func _ready() -> void:
@@ -88,6 +99,21 @@ func _ready() -> void:
 	grid.cells_cleared.connect(_on_cells_cleared)
 	grid.symbols_fell.connect(_on_symbols_fell)
 	grid.symbols_spawned.connect(_on_symbols_spawned)
+	if multiplier_label != null:
+		multiplier_label.visible = false
+	if round_winnings_label != null:
+		_round_winnings_default_modulate = round_winnings_label.self_modulate
+		round_winnings_label.add_theme_color_override("font_outline_color", Color(1.0, 0.36, 0.36, 0.22))
+		round_winnings_label.add_theme_constant_override("outline_size", 1)
+		round_winnings_label.visible = false
+	if winnings_overlay_bar != null:
+		winnings_overlay_bar.visible = false
+		winnings_overlay_bar.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	if winnings_overlay_label != null:
+		winnings_overlay_label.visible = false
+		winnings_overlay_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		winnings_overlay_label.add_theme_color_override("font_outline_color", Color(1.0, 0.33, 0.33, 0.45))
+	set_process_unhandled_input(true)
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
 
@@ -236,6 +262,7 @@ func spin() -> void:
 		return
 	_state = State.SPINNING
 	_round_winnings_cents = 0
+	_hide_round_winnings_overlay(false)
 	_refresh_round_winnings_label()
 	_start_spin_with_new_grid()
 	if not free_spins.active:
@@ -247,14 +274,18 @@ func spin() -> void:
 	var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
 	if should_trigger_power and _should_trigger_girl_power():
 		_state = State.POWER
-		princesses.trigger_current_power(_make_princess_ctx())
+		var power_id := _pick_power_for_current_spin()
+		if free_spins.active:
+			free_spins.mark_power_used_once(power_id)
+		princesses.trigger_power_by_id(power_id, _make_princess_ctx())
 		spin_summary["princess_triggered"] = true
 		_refresh_cells_visual()
 		await _pause_visual(pause_after_power_sec)
-		await _apply_gravity_and_refill()
+		await _apply_gravity_and_refill(not free_spins.active)
 		var after_power: Dictionary = await _resolve_cascade_loop_async()
 		_merge_spin_summary(spin_summary, after_power)
-		princesses.advance_rotation()
+		if not free_spins.active:
+			princesses.advance_rotation()
 	spin_summary["grid_cleared"] = _is_grid_empty()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
@@ -265,14 +296,18 @@ func spin() -> void:
 		choose_free_spins_princess(princesses.current_id())
 		_pending_free_spins = false
 	if free_spins.active:
+		free_spins.ensure_end_guard_spin()
 		free_spins.consume_spin()
 		multiplier.cap_enabled = true
 		multiplier.cap_value = free_spins.multiplier_cap
 	goal_tracker.on_spin_completed(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
+	_reset_premium_meter_after_paid_spin()
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED:
 		_state = State.IDLE
+	if _round_winnings_cents > 0:
+		_play_round_winnings_win_glow()
 	_refresh_multiplier_label()
 	emit_signal("readouts_progressed")
 
@@ -286,6 +321,7 @@ func spin_sync() -> void:
 		return
 	_state = State.SPINNING
 	_round_winnings_cents = 0
+	_hide_round_winnings_overlay(false)
 	_refresh_round_winnings_label()
 	_start_spin_with_new_grid()
 	if not free_spins.active:
@@ -295,13 +331,17 @@ func spin_sync() -> void:
 	var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
 	if should_trigger_power and _should_trigger_girl_power():
 		_state = State.POWER
-		princesses.trigger_current_power(_make_princess_ctx())
+		var power_id := _pick_power_for_current_spin()
+		if free_spins.active:
+			free_spins.mark_power_used_once(power_id)
+		princesses.trigger_power_by_id(power_id, _make_princess_ctx())
 		spin_summary["princess_triggered"] = true
 		_refresh_cells_visual()
-		_apply_gravity_and_refill_sync()
+		_apply_gravity_and_refill_sync(not free_spins.active)
 		var after_power: Dictionary = _resolve_cascade_loop_sync()
 		_merge_spin_summary(spin_summary, after_power)
-		princesses.advance_rotation()
+		if not free_spins.active:
+			princesses.advance_rotation()
 	spin_summary["grid_cleared"] = _is_grid_empty()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
@@ -312,14 +352,18 @@ func spin_sync() -> void:
 		choose_free_spins_princess(princesses.current_id())
 		_pending_free_spins = false
 	if free_spins.active:
+		free_spins.ensure_end_guard_spin()
 		free_spins.consume_spin()
 		multiplier.cap_enabled = true
 		multiplier.cap_value = free_spins.multiplier_cap
 	goal_tracker.on_spin_completed(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
+	_reset_premium_meter_after_paid_spin()
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED:
 		_state = State.IDLE
+	if _round_winnings_cents > 0:
+		_play_round_winnings_win_glow()
 	emit_signal("readouts_progressed")
 
 
@@ -380,7 +424,8 @@ func _resolve_cascade_loop_async() -> Dictionary:
 			break
 		out["produced_any_win"] = true
 		await _resolve_lines(lines)
-		await _apply_gravity_and_refill()
+		_apply_meter_from_lines(lines)
+		await _apply_gravity_and_refill(not free_spins.active)
 		multiplier.add(1)
 		_refresh_multiplier_label()
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
@@ -388,7 +433,6 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		out["payout"] = int(out["payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
-		_apply_meter_from_lines(lines)
 	return out
 
 
@@ -405,14 +449,14 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 			break
 		out["produced_any_win"] = true
 		_resolve_lines_sync(lines)
-		_apply_gravity_and_refill_sync()
+		_apply_meter_from_lines(lines)
+		_apply_gravity_and_refill_sync(not free_spins.active)
 		multiplier.add(1)
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
-		_apply_meter_from_lines(lines)
 	return out
 
 
@@ -455,20 +499,22 @@ func _resolve_lines_impl(lines: Array) -> void:
 	_refresh_cells_visual()
 
 
-func _apply_gravity_and_refill() -> void:
+func _apply_gravity_and_refill(allow_refill: bool = true) -> void:
 	_pending_fall_moves.clear()
 	_pending_spawns.clear()
 	grid.apply_gravity()
-	grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	if allow_refill:
+		grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	await _play_pending_gravity_refill_fx()
 	await _pause_visual(pause_after_gravity_refill_sec)
 
 
-func _apply_gravity_and_refill_sync() -> void:
+func _apply_gravity_and_refill_sync(allow_refill: bool = true) -> void:
 	_pending_fall_moves.clear()
 	_pending_spawns.clear()
 	grid.apply_gravity()
-	grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	if allow_refill:
+		grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	_refresh_cells_visual()
 
 
@@ -511,7 +557,9 @@ func _refresh_multiplier_label() -> void:
 
 func _refresh_round_winnings_label() -> void:
 	if round_winnings_label:
-		round_winnings_label.text = "Round Winnings: %s" % _format_currency_from_cents(_round_winnings_cents)
+		round_winnings_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents)
+	if winnings_overlay_label:
+		winnings_overlay_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents)
 
 
 func _ensure_symbol_slots() -> void:
@@ -552,15 +600,118 @@ func fit_to_viewport(viewport_size: Vector2) -> void:
 	var sep_v := float(grid_ui.get_theme_constant("v_separation"))
 	var grid_width: float = float(GridManager.COLS) * cell_size + float(GridManager.COLS - 1) * sep_h
 	var grid_height: float = float(GridManager.ROWS) * cell_size + float(GridManager.ROWS - 1) * sep_v
-	position = Vector2(max((viewport_size.x - grid_width) * 0.5, 8.0), GRID_TOP_MARGIN)
+	_grid_width_cached = grid_width
+	_grid_height_cached = grid_height
+	var grid_x: float = max((viewport_size.x - grid_width) * 0.5, GRID_EDGE_MARGIN)
+	var total_height := 48.0 + grid_height + ROUND_WINNINGS_GAP + ROUND_WINNINGS_HEIGHT
+	var usable_top: float = VIEWPORT_TOP_SAFE
+	var usable_bottom: float = max(viewport_size.y - VIEWPORT_BOTTOM_SAFE, usable_top + total_height + GRID_EDGE_MARGIN)
+	var usable_height: float = usable_bottom - usable_top
+	var grid_y: float = usable_top + max((usable_height - total_height) * 0.5, 0.0)
+	position = Vector2(grid_x, grid_y)
 	multiplier_label.position = Vector2(0.0, 8.0)
 	multiplier_label.size = Vector2(grid_width, 30.0)
 	grid_ui.position = Vector2(0.0, 48.0)
 	grid_ui.size = Vector2(grid_width, grid_height)
 	_apply_slot_min_size(cell_size)
-	round_winnings_label.position = Vector2(0.0, grid_ui.position.y + grid_height + 8.0)
-	round_winnings_label.size = Vector2(grid_width, 28.0)
+	round_winnings_label.position = Vector2(0.0, grid_ui.position.y + grid_height + ROUND_WINNINGS_GAP)
+	round_winnings_label.size = Vector2(grid_width, ROUND_WINNINGS_HEIGHT)
+	_layout_winnings_overlay()
 	_slot_positions_ready = false
+
+
+func _play_round_winnings_win_glow() -> void:
+	if winnings_overlay_bar == null or winnings_overlay_label == null:
+		return
+	_kill_winnings_overlay_tween()
+	_layout_winnings_overlay()
+	_winnings_overlay_showing = true
+	winnings_overlay_bar.visible = true
+	winnings_overlay_label.visible = true
+	winnings_overlay_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents)
+	winnings_overlay_bar.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	winnings_overlay_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	_set_round_winnings_outline_color(Color(1.0, 0.33, 0.33, 0.45))
+	_set_winnings_overlay_width(0.0)
+	_winnings_overlay_tween = create_tween()
+	_winnings_overlay_tween.tween_method(_set_winnings_overlay_width, 0.0, _grid_width_cached, 0.16)
+	_winnings_overlay_tween.parallel().tween_property(winnings_overlay_bar, "modulate:a", 1.0, 0.16)
+	_winnings_overlay_tween.tween_property(winnings_overlay_label, "modulate:a", 1.0, 0.12)
+	_winnings_overlay_tween.parallel().tween_method(_set_round_winnings_outline_color, Color(1.0, 0.33, 0.33, 0.45), Color(1.0, 0.5, 0.5, 0.92), 0.12)
+	_winnings_overlay_tween.tween_method(_set_round_winnings_outline_color, Color(1.0, 0.5, 0.5, 0.92), Color(1.0, 0.33, 0.33, 0.45), 0.2)
+
+
+func _set_round_winnings_outline_color(color: Color) -> void:
+	if winnings_overlay_label == null:
+		return
+	winnings_overlay_label.add_theme_color_override("font_outline_color", color)
+
+
+func _layout_winnings_overlay() -> void:
+	if winnings_overlay_bar == null or winnings_overlay_label == null:
+		return
+	var bar_height := clampf(_grid_height_cached * 0.22, 34.0, 56.0)
+	var bar_y := grid_ui.position.y + (_grid_height_cached - bar_height) * 0.5
+	winnings_overlay_bar.position = Vector2((max(_grid_width_cached, 1.0) - winnings_overlay_bar.size.x) * 0.5, bar_y)
+	winnings_overlay_bar.size = Vector2(winnings_overlay_bar.size.x, bar_height)
+	winnings_overlay_label.position = Vector2(0.0, bar_y - 6.0)
+	winnings_overlay_label.size = Vector2(_grid_width_cached, bar_height + 12.0)
+
+
+func _set_winnings_overlay_width(width: float) -> void:
+	if winnings_overlay_bar == null:
+		return
+	var clamped_width := clampf(width, 0.0, max(_grid_width_cached, 1.0))
+	var bar_height := winnings_overlay_bar.size.y
+	var bar_y := grid_ui.position.y + (_grid_height_cached - bar_height) * 0.5
+	winnings_overlay_bar.position = Vector2((_grid_width_cached - clamped_width) * 0.5, bar_y)
+	winnings_overlay_bar.size = Vector2(clamped_width, bar_height)
+
+
+func _hide_round_winnings_overlay(immediate: bool = false) -> void:
+	if winnings_overlay_bar == null or winnings_overlay_label == null:
+		return
+	if not _winnings_overlay_showing and not winnings_overlay_bar.visible and not winnings_overlay_label.visible:
+		return
+	_winnings_overlay_showing = false
+	_kill_winnings_overlay_tween()
+	if immediate:
+		winnings_overlay_bar.visible = false
+		winnings_overlay_label.visible = false
+		winnings_overlay_bar.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		winnings_overlay_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_set_winnings_overlay_width(0.0)
+		return
+	_winnings_overlay_tween = create_tween()
+	_winnings_overlay_tween.tween_property(winnings_overlay_label, "modulate:a", 0.0, 0.12)
+	_winnings_overlay_tween.parallel().tween_property(winnings_overlay_bar, "modulate:a", 0.0, 0.14)
+	_winnings_overlay_tween.finished.connect(func() -> void:
+		winnings_overlay_bar.visible = false
+		winnings_overlay_label.visible = false
+		_set_winnings_overlay_width(0.0)
+	)
+
+
+func _kill_winnings_overlay_tween() -> void:
+	if _winnings_overlay_tween != null and is_instance_valid(_winnings_overlay_tween):
+		_winnings_overlay_tween.kill()
+	_winnings_overlay_tween = null
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not _winnings_overlay_showing:
+		return
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		if key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE:
+			_hide_round_winnings_overlay(false)
+			get_viewport().set_input_as_handled()
+			return
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.pressed:
+			_hide_round_winnings_overlay(false)
+			get_viewport().set_input_as_handled()
 
 
 func _apply_slot_min_size(cell_size: float) -> void:
@@ -793,9 +944,14 @@ func _format_currency_from_cents(amount_cents: int) -> String:
 
 func _should_trigger_girl_power() -> bool:
 	if free_spins.active:
-		princesses.set_current_id(free_spins.chosen_princess)
-		return true
+		return not free_spins.all_powers_used_once()
 	return rng.randf() <= girl_power_chance
+
+
+func _reset_premium_meter_after_paid_spin() -> void:
+	if free_spins.active:
+		return
+	meter.reset()
 
 
 func _apply_meter_from_lines(lines: Array) -> void:
@@ -817,6 +973,41 @@ func _is_grid_empty() -> bool:
 	return true
 
 
+func _count_non_wild_symbols() -> int:
+	var count := 0
+	for r in GridManager.ROWS:
+		for c in GridManager.COLS:
+			var sym: SymbolDef = grid.cells[r][c]
+			if sym == null:
+				continue
+			if sym.tier == SymbolDef.Tier.WILD:
+				continue
+			count += 1
+	return count
+
+
+func _pick_power_for_current_spin() -> StringName:
+	if not free_spins.active:
+		return princesses.current_id()
+	var order: Array[StringName] = [&"love", &"star", &"storm"]
+	for power_id in order:
+		if not free_spins.has_used_power(power_id):
+			princesses.set_current_id(power_id)
+			return power_id
+	var fallback := princesses.current_id()
+	princesses.set_current_id(fallback)
+	return fallback
+
+
+func _play_meter_full_transition_async() -> void:
+	emit_signal("readouts_progressed")
+	await _pause_visual(pause_after_power_sec * 0.6)
+
+
+func _play_meter_full_transition_sync() -> void:
+	emit_signal("readouts_progressed")
+
+
 func _run_trinity_round_async() -> Dictionary:
 	var out := _empty_spin_summary()
 	meter.saved_active_princess = princesses.current_id()
@@ -824,28 +1015,22 @@ func _run_trinity_round_async() -> Dictionary:
 	_refresh_multiplier_label()
 	_in_trinity_round = true
 	var order: Array[StringName] = [&"love", &"star", &"storm"]
+	await _play_meter_full_transition_async()
+	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+	var rebuilt_summary := await _resolve_cascade_loop_async()
+	_merge_spin_summary(out, rebuilt_summary)
 	for id in order:
-		var lines: Array = LineDetectorScript.find_lines(grid.cells)
-		if not lines.is_empty():
-			await _resolve_lines(lines)
-			await _apply_gravity_and_refill()
-			multiplier.add(1)
-			_refresh_multiplier_label()
-			out["produced_any_win"] = true
-			out["cascade_drops"] = int(out["cascade_drops"]) + 1
-			var line_win := _estimate_payout(lines)
-			out["payout"] = int(out["payout"]) + line_win
-			_add_round_winnings(line_win)
-			out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
-		else:
-			princesses.set_current_id(id)
-			princesses.trigger_current_power(_make_princess_ctx())
-			out["princess_triggered"] = true
-			await _pause_visual(pause_after_power_sec)
-			await _apply_gravity_and_refill()
-			var post_power := await _resolve_cascade_loop_async()
-			_merge_spin_summary(out, post_power)
-		if _is_grid_empty():
+		princesses.set_current_id(id)
+		princesses.trigger_power_by_id(id, _make_princess_ctx())
+		out["princess_triggered"] = true
+		_refresh_cells_visual()
+		await _pause_visual(pause_after_power_sec)
+		await _apply_gravity_and_refill(true)
+		var post_power := await _resolve_cascade_loop_async()
+		_merge_spin_summary(out, post_power)
+		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
 			break
 	_in_trinity_round = false
@@ -860,26 +1045,21 @@ func _run_trinity_round_sync() -> Dictionary:
 	multiplier.reset()
 	_in_trinity_round = true
 	var order: Array[StringName] = [&"love", &"star", &"storm"]
+	_play_meter_full_transition_sync()
+	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+	var rebuilt_summary := _resolve_cascade_loop_sync()
+	_merge_spin_summary(out, rebuilt_summary)
 	for id in order:
-		var lines: Array = LineDetectorScript.find_lines(grid.cells)
-		if not lines.is_empty():
-			_resolve_lines_sync(lines)
-			_apply_gravity_and_refill_sync()
-			multiplier.add(1)
-			out["produced_any_win"] = true
-			out["cascade_drops"] = int(out["cascade_drops"]) + 1
-			var line_win := _estimate_payout(lines)
-			out["payout"] = int(out["payout"]) + line_win
-			_add_round_winnings(line_win)
-			out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
-		else:
-			princesses.set_current_id(id)
-			princesses.trigger_current_power(_make_princess_ctx())
-			out["princess_triggered"] = true
-			_apply_gravity_and_refill_sync()
-			var post_power := _resolve_cascade_loop_sync()
-			_merge_spin_summary(out, post_power)
-		if _is_grid_empty():
+		princesses.set_current_id(id)
+		princesses.trigger_power_by_id(id, _make_princess_ctx())
+		out["princess_triggered"] = true
+		_refresh_cells_visual()
+		_apply_gravity_and_refill_sync(true)
+		var post_power := _resolve_cascade_loop_sync()
+		_merge_spin_summary(out, post_power)
+		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
 			break
 	_in_trinity_round = false

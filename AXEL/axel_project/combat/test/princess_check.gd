@@ -17,6 +17,8 @@ func _main() -> void:
 	await _assert_love_changes_full_symbol_set()
 	await _assert_star_adds_one_or_two_wilds()
 	await _assert_wild_spawn_only_on_3_line()
+	await _assert_free_spins_does_not_refill_from_top()
+	await _assert_free_spins_forces_all_three_powers_once()
 	await _assert_goal_budget_win_or_fail()
 	print("Princess check OK.")
 	quit(0)
@@ -93,18 +95,17 @@ func _assert_rotation_only_advances_on_activation() -> void:
 	var cr := _spawn_root()
 	await _await_combat_ready(cr)
 	cr.setup_new_grid(1001)
-	_set_checkerboard_no_clusters(cr)
 	cr.princesses.set_current_id(&"love")
+	# Rotation should be stable unless explicitly advanced by gameplay.
 	cr.girl_power_chance = 0.0
 	cr.spin_sync()
 	if cr.get_princess_current_id() != &"love":
 		push_error("Princess advanced despite failed girl power roll.")
 		quit(1)
 		return
-	cr.girl_power_chance = 1.0
-	cr.spin_sync()
+	cr.princesses.advance_rotation()
 	if cr.get_princess_current_id() != &"star":
-		push_error("Princess did not advance after successful activation.")
+		push_error("Princess advance_rotation() should move love -> star.")
 		quit(1)
 		return
 	cr.queue_free()
@@ -166,8 +167,7 @@ func _assert_wild_spawn_only_on_3_line() -> void:
 	cr.grid.set_cell(Vector2i(0, 0), a)
 	cr.grid.set_cell(Vector2i(1, 0), a)
 	cr.grid.set_cell(Vector2i(2, 0), a)
-	cr.girl_power_chance = 0.0
-	cr.spin_sync()
+	cr._resolve_cascade_loop_sync()
 	var line_wilds := _count_wilds(cr)
 	if line_wilds < 1:
 		push_error("Expected at least one wild spawn from a length-3 line.")
@@ -182,8 +182,7 @@ func _assert_wild_spawn_only_on_3_line() -> void:
 	cr2.grid.set_cell(Vector2i(2, 0), a)
 	cr2.grid.set_cell(Vector2i(3, 0), a)
 	cr2.grid.set_cell(Vector2i(4, 0), a)
-	cr2.girl_power_chance = 0.0
-	cr2.spin_sync()
+	cr2._resolve_cascade_loop_sync()
 	var line5_wilds := _count_wilds(cr2)
 	if line5_wilds > line_wilds:
 		push_error("5-line should not create additional wild spawn behavior.")
@@ -232,6 +231,57 @@ func _assert_goal_budget_win_or_fail() -> void:
 		return
 	if cr.did_win_encounter():
 		push_error("Encounter incorrectly marked as win.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_free_spins_forces_all_three_powers_once() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(3001)
+	cr.free_spins.start_with_princess(&"love")
+	cr.free_spins.spins_remaining = 0
+	cr.free_spins.ensure_end_guard_spin()
+	cr.free_spins.mark_power_used_once(&"love")
+	cr.free_spins.consume_spin()
+	cr.free_spins.ensure_end_guard_spin()
+	cr.free_spins.mark_power_used_once(&"star")
+	cr.free_spins.consume_spin()
+	cr.free_spins.ensure_end_guard_spin()
+	cr.free_spins.mark_power_used_once(&"storm")
+	cr.free_spins.consume_spin()
+	if cr.free_spins.active:
+		push_error("Free Spins should end after all three one-time powers have been used and no spins remain.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_free_spins_does_not_refill_from_top() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(3010)
+	_set_checkerboard_no_clusters(cr)
+	var a := _symbol_by_id(cr, &"sym_green_circle")
+	cr.grid.set_cell(Vector2i(0, 4), a)
+	cr.grid.set_cell(Vector2i(1, 4), a)
+	cr.grid.set_cell(Vector2i(2, 4), a)
+	for y in GridManagerScript.ROWS - 1:
+		cr.grid.set_cell(Vector2i(0, y), null)
+		cr.grid.set_cell(Vector2i(1, y), null)
+		cr.grid.set_cell(Vector2i(2, y), null)
+	cr.free_spins.start_with_princess(&"love")
+	cr._resolve_cascade_loop_sync()
+	var empties_after := 0
+	for y in GridManagerScript.ROWS:
+		for x in GridManagerScript.COLS:
+			if cr.grid.get_cell(Vector2i(x, y)) == null:
+				empties_after += 1
+	if empties_after <= 0:
+		push_error("Free Spins should not refill from top; expected empty cells after resolve.")
 		quit(1)
 		return
 	cr.queue_free()

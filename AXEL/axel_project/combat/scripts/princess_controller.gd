@@ -52,7 +52,11 @@ func randomize_start(rng: CombatRNGScript) -> void:
 
 
 func trigger_current_power(ctx: Dictionary) -> void:
-	match current_id():
+	trigger_power_by_id(current_id(), ctx)
+
+
+func trigger_power_by_id(princess_id: StringName, ctx: Dictionary) -> void:
+	match princess_id:
 		&"love":
 			_love_transform(ctx)
 		&"star":

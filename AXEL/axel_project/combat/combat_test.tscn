@@ -1,18 +1,10 @@
-[gd_scene load_steps=13 format=3 uid="uid://c7wake2sd6m4d"]
+[gd_scene load_steps=10 format=3 uid="uid://c7wake2sd6m4d"]
 
 [ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
 [ext_resource type="Theme" path="res://combat/ui/terminal_theme.tres" id="3_theme"]
-[ext_resource type="Script" path="res://combat/scripts/premium_meter_circle.gd" id="4_meter"]
-[ext_resource type="Shader" path="res://combat/shaders/scanline_overlay.gdshader" id="5_scanline"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.03, 0, 0, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.3, 0.02, 0.02, 0.95)
+[ext_resource type="Script" uid="uid://c0ok3xo41wror" path="res://combat/scripts/premium_meter_circle.gd" id="4_meter"]
+[ext_resource type="Shader" uid="uid://c0q3vq1cvevaa" path="res://combat/shaders/scanline_overlay.gdshader" id="5_scanline"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_normal"]
 bg_color = Color(0.14, 0, 0, 0.95)
@@ -21,26 +13,12 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.78, 0.03, 0.03, 0.95)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 shadow_color = Color(1, 0, 0, 0.25)
 shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_hover"]
-bg_color = Color(0.98, 0.06, 0.06, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(1, 0.65, 0.65, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-shadow_color = Color(1, 0, 0, 0.45)
-shadow_size = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_pressed"]
 bg_color = Color(0.55, 0.02, 0.02, 1)
@@ -49,10 +27,24 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(1, 0.35, 0.35, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_hover"]
+bg_color = Color(0.98, 0.06, 0.06, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.65, 0.65, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(1, 0, 0, 0.45)
+shadow_size = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_disabled"]
 bg_color = Color(0.08, 0.01, 0.01, 0.95)
@@ -61,13 +53,16 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.22, 0.05, 0.05, 0.85)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_scanline"]
 shader = ExtResource("5_scanline")
+shader_parameter/line_color = Color(1, 0, 0, 0.08)
+shader_parameter/line_density = 420.0
+shader_parameter/chroma_strength = 0.025
 
 [node name="CombatTest" type="Control" unique_id=161757197]
 layout_mode = 3
@@ -79,148 +74,164 @@ grow_vertical = 2
 theme = ExtResource("3_theme")
 script = ExtResource("1_combat_test")
 
-[node name="VBox" type="VBoxContainer" parent="." unique_id=105691656]
+[node name="BlackBackground" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="CombatRoot" parent="." unique_id=952603979 instance=ExtResource("2_combat_root")]
+unique_name_in_owner = true
+position = Vector2(482, 260)
+
+[node name="TopCenterInfo" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 10
-anchor_right = 1.0
-offset_left = 16.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = 220.0
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -220.0
+offset_top = 12.0
+offset_right = 220.0
+offset_bottom = 150.0
 grow_horizontal = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 2
+alignment = 1
 
-[node name="HeaderPanel" type="PanelContainer" parent="VBox"]
+[node name="BankrollLabel" type="Label" parent="TopCenterInfo"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+horizontal_alignment = 1
+text = "BANKROLL  10000.00"
 
-[node name="HeaderMargin" type="MarginContainer" parent="VBox/HeaderPanel"]
+[node name="BetRow" type="HBoxContainer" parent="TopCenterInfo" unique_id=458772786]
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
+theme_override_constants/separation = 2
+alignment = 1
 
-[node name="SeedRow" type="HBoxContainer" parent="VBox/HeaderPanel/HeaderMargin" unique_id=1003723328]
+[node name="BetMinusButton" type="Button" parent="TopCenterInfo/BetRow" unique_id=733162889]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
-theme_override_constants/separation = 8
+text = "-"
 
-[node name="SeedLabel" type="Label" parent="VBox/HeaderPanel/HeaderMargin/SeedRow" unique_id=493484402]
+[node name="BetLabel" type="Label" parent="TopCenterInfo/BetRow" unique_id=1366203816]
+unique_name_in_owner = true
+layout_mode = 2
+text = "STAKE  1.00"
+
+[node name="BetPlusButton" type="Button" parent="TopCenterInfo/BetRow" unique_id=1571091976]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+text = "+"
+
+[node name="GoalLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -262.0
+offset_top = 16.0
+offset_right = -14.0
+offset_bottom = 54.0
+grow_horizontal = 0
+horizontal_alignment = 2
+text = "0 / 0"
+
+[node name="TopLeftSeed" type="HBoxContainer" parent="."]
+layout_mode = 1
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 362.0
+offset_bottom = 54.0
+theme_override_constants/separation = 6
+
+[node name="SeedLabel" type="Label" parent="TopLeftSeed" unique_id=493484402]
 layout_mode = 2
 text = "SEED"
 
-[node name="SeedSpinBox" type="SpinBox" parent="VBox/HeaderPanel/HeaderMargin/SeedRow" unique_id=306691761]
+[node name="SeedSpinBox" type="SpinBox" parent="TopLeftSeed" unique_id=306691761]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 4294967295.0
 value = 12345.0
 
-[node name="SpinButton" type="Button" parent="VBox/HeaderPanel/HeaderMargin/SeedRow" unique_id=1986715139]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(240, 56)
-theme_override_colors/font_color = Color(1, 0.73, 0.73, 1)
-theme_override_colors/font_hover_color = Color(0.02, 0, 0, 1)
-theme_override_colors/font_pressed_color = Color(0.02, 0, 0, 1)
-theme_override_colors/font_disabled_color = Color(0.35, 0.1, 0.1, 1)
-theme_override_styles/normal = SubResource("StyleBoxFlat_spin_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_spin_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_spin_pressed")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_spin_disabled")
-theme_override_font_sizes/font_size = 42
-text = "EXECUTE SPIN"
-
-[node name="StatsPanel" type="PanelContainer" parent="VBox"]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
-
-[node name="StatsMargin" type="MarginContainer" parent="VBox/StatsPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
-
-[node name="StatsRow" type="HBoxContainer" parent="VBox/StatsPanel/StatsMargin"]
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="LeftColumn" type="VBoxContainer" parent="VBox/StatsPanel/StatsMargin/StatsRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="BetRow" type="HBoxContainer" parent="VBox/StatsPanel/StatsMargin/StatsRow/LeftColumn"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="BetMinusButton" type="Button" parent="VBox/StatsPanel/StatsMargin/StatsRow/LeftColumn/BetRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(60, 44)
-text = "-"
-
-[node name="BetLabel" type="Label" parent="VBox/StatsPanel/StatsMargin/StatsRow/LeftColumn/BetRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "STAKE  1.00"
-
-[node name="BetPlusButton" type="Button" parent="VBox/StatsPanel/StatsMargin/StatsRow/LeftColumn/BetRow"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(60, 44)
-text = "+"
-
-[node name="GoalLabel" type="Label" parent="VBox/StatsPanel/StatsMargin/StatsRow/LeftColumn"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "DIRECTIVE  NONE"
-
-[node name="MultiplierReadout" type="Label" parent="VBox/StatsPanel/StatsMargin/StatsRow/LeftColumn"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "AMPLIFIER  1X"
-
-[node name="BudgetLabel" type="Label" parent="VBox/StatsPanel/StatsMargin/StatsRow/LeftColumn"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "SPIN LOG  0  STATUS  RUNNING"
-
-[node name="BankrollLabel" type="Label" parent="VBox/StatsPanel/StatsMargin/StatsRow/LeftColumn"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "BANKROLL  10000.00"
-
-[node name="MeterColumn" type="VBoxContainer" parent="VBox/StatsPanel/StatsMargin/StatsRow"]
-layout_mode = 2
+[node name="RightMeterStack" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 154.0
+offset_right = -14.0
+offset_bottom = 370.0
+grow_horizontal = 0
+theme_override_constants/separation = 0
 alignment = 1
-theme_override_constants/separation = 2
 
-[node name="PremiumMeterCircle" type="Control" parent="VBox/StatsPanel/StatsMargin/StatsRow/MeterColumn"]
+[node name="PremiumMeterCircle" type="Control" parent="RightMeterStack"]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+size_flags_horizontal = 4
 script = ExtResource("4_meter")
 
-[node name="PremiumMeterLabel" type="Label" parent="VBox/StatsPanel/StatsMargin/StatsRow/MeterColumn"]
+[node name="MeterSpacer" type="Control" parent="RightMeterStack"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 16)
+
+[node name="MultiplierReadout" type="Label" parent="RightMeterStack"]
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 1
-text = "PREMIUM CHARGE"
+text = "AMPLIFIER  1X"
 
-[node name="MeterStateLabel" type="Label" parent="VBox/StatsPanel/StatsMargin/StatsRow/MeterColumn"]
+[node name="BudgetLabel" type="Label" parent="." unique_id=516365597]
 unique_name_in_owner = true
-layout_mode = 2
-horizontal_alignment = 1
-text = "SECTIONS  0 / 3"
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -34.0
+offset_right = 280.0
+offset_bottom = -8.0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 20
+text = "SPIN LOG  0"
 
-[node name="CombatRoot" parent="." unique_id=952603979 instance=ExtResource("2_combat_root")]
+[node name="SpinButton" type="Button" parent="." unique_id=1986715139]
 unique_name_in_owner = true
-position = Vector2(482, 260)
+layout_mode = 1
+anchors_preset = 14
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -330.0
+offset_top = -112.0
+offset_right = 330.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0.73, 0.73, 1)
+theme_override_colors/font_pressed_color = Color(0.02, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(0.02, 0, 0, 1)
+theme_override_colors/font_disabled_color = Color(0.35, 0.1, 0.1, 1)
+theme_override_font_sizes/font_size = 60
+theme_override_styles/normal = SubResource("StyleBoxFlat_spin_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_spin_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_spin_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_spin_disabled")
+text = "EXECUTE"
 
 [node name="ScanlineOverlay" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_scanline")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -228,5 +239,4 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-material = SubResource("ShaderMaterial_scanline")
 color = Color(1, 1, 1, 0.18)

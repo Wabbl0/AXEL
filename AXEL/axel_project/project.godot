@@ -26,3 +26,11 @@ ScriptReloadMarker="*res://ScriptReloadMarker.gd"
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+
+[window]
+
+size/viewport_width=1400
+size/viewport_height=900
+content_scale_mode=1
+content_scale_aspect=4
+content_scale_factor=1.0

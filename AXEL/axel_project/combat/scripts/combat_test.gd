@@ -9,18 +9,16 @@ const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
 @onready var bet_label: Label = %BetLabel
 @onready var mult_label: Label = %MultiplierReadout
 @onready var meter_circle: Control = %PremiumMeterCircle
-@onready var meter_caption: Label = %PremiumMeterLabel
 @onready var goal_label: Label = %GoalLabel
 @onready var budget_label: Label = %BudgetLabel
 @onready var bankroll_label: Label = %BankrollLabel
-@onready var meter_state_label: Label = %MeterStateLabel
 @onready var combat: CombatRootScript = %CombatRoot
 
 
 func _ready() -> void:
 	seed_spin.min_value = 0
 	seed_spin.max_value = 12345
-	seed_spin.value = 12345
+	seed_spin.value = _pick_start_seed()
 	spin_btn.pressed.connect(_on_spin_pressed)
 	bet_minus_btn.pressed.connect(_on_bet_minus_pressed)
 	bet_plus_btn.pressed.connect(_on_bet_plus_pressed)
@@ -35,6 +33,11 @@ func _ready() -> void:
 
 
 func _on_spin_pressed() -> void:
+	if combat.is_encounter_complete():
+		combat.setup_new_grid(int(seed_spin.value))
+		_refresh_readouts()
+		_refresh_spin_button_state()
+		return
 	spin_btn.disabled = true
 	_refresh_spin_button_state()
 	await combat.spin()
@@ -49,13 +52,8 @@ func _refresh_readouts() -> void:
 	mult_label.text = "AMPLIFIER  %dX" % combat.get_multiplier_value()
 	var meter_sections := combat.get_meter_sections_filled()
 	meter_circle.call("set_sections", meter_sections)
-	meter_caption.text = "PREMIUM CHARGE"
-	meter_state_label.text = "SECTIONS  %d / 3" % meter_sections
-	goal_label.text = "DIRECTIVE  %s" % combat.get_goal_label()
-	var state := "running"
-	if combat.is_encounter_complete():
-		state = "won" if combat.did_win_encounter() else "lost"
-	budget_label.text = "SPIN LOG  %d  STATUS  %s" % [combat.get_spins_used(), state.to_upper()]
+	goal_label.text = _goal_progress_only(combat.get_goal_label())
+	budget_label.text = "SPIN LOG  %d" % combat.get_spins_used()
 	bankroll_label.text = "BANKROLL  %.2f" % combat.get_bankroll()
 
 
@@ -92,5 +90,24 @@ func _layout_combat() -> void:
 func _refresh_spin_button_state() -> void:
 	if spin_btn.disabled:
 		spin_btn.text = "SPIN LOCKED"
+	elif combat.is_encounter_complete():
+		spin_btn.text = "EXECUTE"
 	else:
-		spin_btn.text = "EXECUTE SPIN"
+		spin_btn.text = "EXECUTE"
+
+
+func _goal_progress_only(goal_text: String) -> String:
+	var open_idx := goal_text.find("(")
+	if open_idx != -1:
+		var close_idx := goal_text.find(")", open_idx + 1)
+		if close_idx != -1:
+			var inside := goal_text.substr(open_idx + 1, close_idx - open_idx - 1).strip_edges()
+			if inside.contains("/"):
+				return inside
+	return "0 / 0"
+
+
+func _pick_start_seed() -> int:
+	var local_rng := RandomNumberGenerator.new()
+	local_rng.randomize()
+	return local_rng.randi_range(int(seed_spin.min_value), int(seed_spin.max_value))

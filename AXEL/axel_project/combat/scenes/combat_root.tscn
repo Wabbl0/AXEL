@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://combat_root_scene"]
+[gd_scene load_steps=13 format=3 uid="uid://combat_root_scene"]
 
 [ext_resource type="Script" path="res://combat/scripts/combat_root.gd" id="1_combat_root"]
 [ext_resource type="Script" path="res://combat/scripts/grid_manager.gd" id="2_grid_manager"]
@@ -11,6 +11,7 @@
 [ext_resource type="Resource" path="res://combat/data/symbols/sym_booze.tres" id="9_sym_booze"]
 [ext_resource type="Resource" path="res://combat/data/symbols/sym_bloody_hand.tres" id="10_sym_bloody_hand"]
 [ext_resource type="Resource" path="res://combat/data/encounters/encounter_payout.tres" id="11_encounter"]
+[ext_resource type="Theme" path="res://combat/ui/terminal_theme.tres" id="12_theme"]
 
 [node name="CombatRoot" type="Node2D"]
 script = ExtResource("1_combat_root")
@@ -37,10 +38,36 @@ columns = 5
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
 
+[node name="WinningsOverlayBar" type="ColorRect" parent="."]
+visible = false
+offset_left = 8.0
+offset_top = 136.0
+offset_right = 200.0
+offset_bottom = 176.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.74)
+
+[node name="WinningsOverlayLabel" type="Label" parent="."]
+visible = false
+offset_left = 8.0
+offset_top = 128.0
+offset_right = 200.0
+offset_bottom = 184.0
+theme = ExtResource("12_theme")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(1, 0.33, 0.33, 0.45)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 34
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "ROUND WINNINGS  0.00"
+mouse_filter = 2
+
 [node name="RoundWinningsLabel" type="Label" parent="."]
 offset_left = 8.0
 offset_top = 256.0
 offset_right = 400.0
 offset_bottom = 288.0
-theme_override_font_sizes/font_size = 16
-text = "Round Winnings: 0.00"
+theme = ExtResource("12_theme")
+theme_override_font_sizes/font_size = 20
+text = "ROUND WINNINGS  0.00"
