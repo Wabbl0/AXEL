@@ -8,10 +8,12 @@ const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
 @onready var bet_plus_btn: Button = %BetPlusButton
 @onready var bet_label: Label = %BetLabel
 @onready var mult_label: Label = %MultiplierReadout
-@onready var meter_label: Label = %CurrentPrincessLabel
+@onready var meter_circle: Control = %PremiumMeterCircle
+@onready var meter_caption: Label = %PremiumMeterLabel
 @onready var goal_label: Label = %GoalLabel
 @onready var budget_label: Label = %BudgetLabel
 @onready var bankroll_label: Label = %BankrollLabel
+@onready var meter_state_label: Label = %MeterStateLabel
 @onready var combat: CombatRootScript = %CombatRoot
 
 
@@ -29,26 +31,32 @@ func _ready() -> void:
 	_set_default_bet()
 	_layout_combat()
 	_refresh_readouts()
+	_refresh_spin_button_state()
 
 
 func _on_spin_pressed() -> void:
 	spin_btn.disabled = true
+	_refresh_spin_button_state()
 	await combat.spin()
 	spin_btn.disabled = false
 	_refresh_readouts()
+	_refresh_spin_button_state()
 
 
 func _refresh_readouts() -> void:
 	seed_spin.value = combat.get_current_seed()
-	bet_label.text = "Bet: %.2f" % combat.get_current_bet()
-	mult_label.text = "Multiplier (after last action): %d×" % combat.get_multiplier_value()
-	meter_label.text = "Premium meter: %d / 3" % combat.get_meter_sections_filled()
-	goal_label.text = "Goal: %s" % combat.get_goal_label()
+	bet_label.text = "STAKE  %.2f" % combat.get_current_bet()
+	mult_label.text = "AMPLIFIER  %dX" % combat.get_multiplier_value()
+	var meter_sections := combat.get_meter_sections_filled()
+	meter_circle.call("set_sections", meter_sections)
+	meter_caption.text = "PREMIUM CHARGE"
+	meter_state_label.text = "SECTIONS  %d / 3" % meter_sections
+	goal_label.text = "DIRECTIVE  %s" % combat.get_goal_label()
 	var state := "running"
 	if combat.is_encounter_complete():
 		state = "won" if combat.did_win_encounter() else "lost"
-	budget_label.text = "Spins: %d (%s)" % [combat.get_spins_used(), state]
-	bankroll_label.text = "Bankroll: %.2f" % combat.get_bankroll()
+	budget_label.text = "SPIN LOG  %d  STATUS  %s" % [combat.get_spins_used(), state.to_upper()]
+	bankroll_label.text = "BANKROLL  %.2f" % combat.get_bankroll()
 
 
 func _on_spin_started(seed_value: int) -> void:
@@ -79,3 +87,10 @@ func _on_size_changed() -> void:
 
 func _layout_combat() -> void:
 	combat.fit_to_viewport(size)
+
+
+func _refresh_spin_button_state() -> void:
+	if spin_btn.disabled:
+		spin_btn.text = "SPIN LOCKED"
+	else:
+		spin_btn.text = "EXECUTE SPIN"
