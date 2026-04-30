@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bu33braj3e6km"
-path="res://.godot/imported/ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_1.png-2d8be207dacdeb680e281ae415740267.ctex"
+uid="uid://e8t60ldn8r8b"
+path="res://.godot/imported/1.1_Road_Top.png-d8dc2ea266034c1cf55fa69bbcc30e4a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/background_tiles/ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_1.png"
-dest_files=["res://.godot/imported/ME_Singles_Terrains_and_Fences_48x48_Props_Dirt_1.png-2d8be207dacdeb680e281ae415740267.ctex"]
+source_file="res://assets/background_tiles/1.1_Road_Top.png"
+dest_files=["res://.godot/imported/1.1_Road_Top.png-d8dc2ea266034c1cf55fa69bbcc30e4a.ctex"]
 
 [params]
 

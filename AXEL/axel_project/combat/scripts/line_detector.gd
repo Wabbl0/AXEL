@@ -27,35 +27,31 @@ static func score_wild_at(cells: Array, at: Vector2i) -> int:
 
 
 static func _scan_run(cells: Array, out_lines: Array, start: Vector2i, delta: Vector2i, length: int) -> void:
-	var run_cells: Array[Vector2i] = []
-	var run_symbol_id: StringName = &""
+	var axis_positions: Array[Vector2i] = []
+	var axis_symbols: Array = []
+	var symbol_ids: Dictionary = {}
 	for i in length:
 		var p := start + (delta * i)
 		var sym: SymbolDefScript = cells[p.y][p.x]
-		if sym == null or sym.tier == SymbolDefScript.Tier.HAZARD:
-			_emit_run(run_cells, run_symbol_id, out_lines, delta)
+		axis_positions.append(p)
+		axis_symbols.append(sym)
+		if sym != null and sym.tier != SymbolDefScript.Tier.HAZARD and sym.tier != SymbolDefScript.Tier.WILD:
+			symbol_ids[sym.id] = true
+
+	var emitted_keys: Dictionary = {}
+	for sid in symbol_ids.keys():
+		var run_cells: Array[Vector2i] = []
+		for i in length:
+			var sym: SymbolDefScript = axis_symbols[i]
+			var can_match := false
+			if sym != null and sym.tier != SymbolDefScript.Tier.HAZARD:
+				can_match = sym.tier == SymbolDefScript.Tier.WILD or sym.id == sid
+			if can_match:
+				run_cells.append(axis_positions[i])
+				continue
+			_emit_run_for_symbol(run_cells, sid, out_lines, delta, emitted_keys, cells)
 			run_cells.clear()
-			run_symbol_id = &""
-			continue
-		if sym.tier == SymbolDefScript.Tier.WILD:
-			if run_symbol_id == &"":
-				run_symbol_id = &"__wild__"
-			run_cells.append(p)
-			continue
-		var sid: StringName = sym.id
-		if run_symbol_id == &"":
-			run_symbol_id = sid
-			run_cells.append(p)
-			continue
-		if run_symbol_id == sid or run_symbol_id == &"__wild__":
-			if run_symbol_id == &"__wild__":
-				run_symbol_id = sid
-			run_cells.append(p)
-			continue
-		_emit_run(run_cells, run_symbol_id, out_lines, delta)
-		run_cells = [p]
-		run_symbol_id = sid
-	_emit_run(run_cells, run_symbol_id, out_lines, delta)
+		_emit_run_for_symbol(run_cells, sid, out_lines, delta, emitted_keys, cells)
 
 
 static func _emit_run(run_cells: Array[Vector2i], run_symbol_id: StringName, out_lines: Array, delta: Vector2i) -> void:
@@ -70,6 +66,31 @@ static func _emit_run(run_cells: Array[Vector2i], run_symbol_id: StringName, out
 		"length": run_cells.size(),
 		"axis": "h" if delta.x != 0 else "v",
 	})
+
+
+static func _emit_run_for_symbol(run_cells: Array[Vector2i], sid: StringName, out_lines: Array, delta: Vector2i, emitted_keys: Dictionary, cells: Array) -> void:
+	if run_cells.size() < 3:
+		return
+	var has_base_symbol := false
+	for p in run_cells:
+		var sym: SymbolDefScript = cells[p.y][p.x]
+		if sym != null and sym.tier != SymbolDefScript.Tier.WILD and sym.id == sid:
+			has_base_symbol = true
+			break
+	if not has_base_symbol:
+		return
+	var axis := "h" if delta.x != 0 else "v"
+	var coords_key := ""
+	for idx in run_cells.size():
+		var c: Vector2i = run_cells[idx]
+		if idx > 0:
+			coords_key += ","
+		coords_key += "%d:%d" % [c.x, c.y]
+	var key := "%s|%s|%s" % [axis, String(sid), coords_key]
+	if emitted_keys.has(key):
+		return
+	emitted_keys[key] = true
+	_emit_run(run_cells, sid, out_lines, delta)
 
 
 static func _score_axis_with_wild(cells: Array, at: Vector2i, start: Vector2i, delta: Vector2i, length: int) -> int:

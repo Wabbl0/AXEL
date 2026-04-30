@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://e8t60ldn8r8b"
-path="res://.godot/imported/ME_Singles_City_Terrains_48x48_Sidewalk_1_6.png-e67e92366bdbf7a365dd112aa369ea8d.ctex"
+uid="uid://cq478k0vxkk47"
+path="res://.godot/imported/1.1_Plant_03.png-50164c2c227cb2ca24a67c97019f3fc8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/background_tiles/ME_Singles_City_Terrains_48x48_Sidewalk_1_6.png"
-dest_files=["res://.godot/imported/ME_Singles_City_Terrains_48x48_Sidewalk_1_6.png-e67e92366bdbf7a365dd112aa369ea8d.ctex"]
+source_file="res://assets/background_tiles/1.1_Plant_03.png"
+dest_files=["res://.godot/imported/1.1_Plant_03.png-50164c2c227cb2ca24a67c97019f3fc8.ctex"]
 
 [params]
 

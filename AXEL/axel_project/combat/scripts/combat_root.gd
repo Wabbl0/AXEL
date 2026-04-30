@@ -556,10 +556,12 @@ func _refresh_multiplier_label() -> void:
 
 
 func _refresh_round_winnings_label() -> void:
+	var has_winnings := _round_winnings_cents > 0
 	if round_winnings_label:
-		round_winnings_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents)
+		round_winnings_label.visible = has_winnings
+		round_winnings_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents) if has_winnings else ""
 	if winnings_overlay_label:
-		winnings_overlay_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents)
+		winnings_overlay_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents) if has_winnings else ""
 
 
 func _ensure_symbol_slots() -> void:
