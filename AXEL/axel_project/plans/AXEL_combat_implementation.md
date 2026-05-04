@@ -70,7 +70,7 @@ enum Tier { LOW, PREMIUM, WILD, HAZARD }
 
 Register the eight gameplay symbols as `.tres` files:
 - Low: `sym_green_circle`, `sym_yellow_triangle`, `sym_blue_star`, `sym_red_heart`
-- Premium: `sym_cigarette` (Storm), `sym_booze` (Star), `sym_bloody_hand` (Love)
+- Premium (Princess Power aliases): `sym_cigarette` (= Storm), `sym_booze`/alcohol (= Star), `sym_bloody_hand` (= Love)
 - Wild: `sym_satanic`
 - Hazard (later): `sym_scar`
 

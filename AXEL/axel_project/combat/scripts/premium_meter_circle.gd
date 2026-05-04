@@ -8,17 +8,42 @@ extends Control
 @export var ring_radius: float = 42.0
 @export var ring_width: float = 10.0
 @export var show_charge_pulse: bool = true
+@export var full_flash_scale_peak: float = 1.18
+@export var full_flash_duration_sec: float = 0.55
 
 var _pulse_phase: float = 0.0
+var _full_flash_tween: Tween
 
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(120, 120)
 	set_process(true)
+	pivot_offset = custom_minimum_size * 0.5
 
 
 func set_sections(value: int) -> void:
 	filled_sections = value
+
+
+func play_full_flash() -> void:
+	_kill_full_flash_tween()
+	pivot_offset = size * 0.5
+	scale = Vector2.ONE
+	modulate = Color(1.0, 1.0, 1.0, 1.0)
+	var half: float = max(full_flash_duration_sec * 0.5, 0.08)
+	_full_flash_tween = create_tween()
+	_full_flash_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_full_flash_tween.tween_property(self, "scale", Vector2(full_flash_scale_peak, full_flash_scale_peak), half)
+	_full_flash_tween.parallel().tween_property(self, "modulate", Color(1.6, 1.4, 1.4, 1.0), half)
+	_full_flash_tween.set_ease(Tween.EASE_IN)
+	_full_flash_tween.tween_property(self, "scale", Vector2.ONE, half)
+	_full_flash_tween.parallel().tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 1.0), half)
+
+
+func _kill_full_flash_tween() -> void:
+	if _full_flash_tween != null and is_instance_valid(_full_flash_tween):
+		_full_flash_tween.kill()
+	_full_flash_tween = null
 
 
 func _process(delta: float) -> void:

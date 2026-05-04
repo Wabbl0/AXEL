@@ -220,7 +220,7 @@ def main() -> None:
     _draw_line(buf, w, h, 22, 9, 20, 7, DARK_RED)
     write_png(out_dir / "satanic_wild.png", w, h, bytes(buf))
 
-    # Premium: cigarette
+    # Premium power alias: Storm (sprite id/file kept as cigarette for compatibility)
     buf = bytearray(solid_rgba(w, h, BLACK))
     draw_rect(buf, w, h, 7, 14, 22, 17, WHITE)
     draw_rect(buf, w, h, 23, 14, 26, 17, RED)
@@ -228,7 +228,7 @@ def main() -> None:
     _draw_line(buf, w, h, 5, 16, 3, 14, DARK_RED)
     write_png(out_dir / "cigarette.png", w, h, bytes(buf))
 
-    # Premium: booze bottle
+    # Premium power alias: Star (sprite id/file kept as booze for compatibility)
     # Distinct silhouette: outlined bottle with dark label.
     buf = bytearray(solid_rgba(w, h, BLACK))
     draw_rect_outline(buf, w, h, 13, 5, 18, 10, 1, RED)
@@ -237,7 +237,7 @@ def main() -> None:
     _draw_line(buf, w, h, 12, 18, 19, 18, WHITE)
     write_png(out_dir / "booze.png", w, h, bytes(buf))
 
-    # Premium: bloody hand (simple palm + fingers)
+    # Premium power alias: Love (sprite id/file kept as bloody_hand for compatibility)
     # Distinct silhouette: handprint with palm outline + finger drips.
     buf = bytearray(solid_rgba(w, h, BLACK))
     draw_rect_outline(buf, w, h, 10, 13, 21, 24, 2, RED)

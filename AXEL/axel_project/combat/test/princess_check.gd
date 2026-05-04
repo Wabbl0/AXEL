@@ -13,7 +13,9 @@ func _init() -> void:
 
 func _main() -> void:
 	_assert_line_detector_finds_row_and_column()
+	await _assert_default_girl_power_chance_is_one_percent()
 	await _assert_rotation_only_advances_on_activation()
+	await _assert_regular_start_girl_power_advances_rotation()
 	await _assert_love_changes_full_symbol_set()
 	await _assert_star_adds_one_or_two_wilds()
 	await _assert_wild_spawn_only_on_3_line()
@@ -85,6 +87,34 @@ func _assert_line_detector_finds_row_and_column() -> void:
 	var lines: Array = LineDetectorScript.find_lines(cr.grid.cells)
 	if lines.size() < 2:
 		push_error("Expected horizontal + vertical lines from run-length scan.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_default_girl_power_chance_is_one_percent() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	if not is_equal_approx(cr.girl_power_chance, 0.01):
+		push_error("Default girl_power_chance should be 0.01 (1%%).")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_regular_start_girl_power_advances_rotation() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.encounter_def = null
+	cr.setup_new_grid(1011)
+	_set_checkerboard_no_clusters(cr)
+	cr.princesses.set_current_id(&"love")
+	cr.girl_power_chance = 1.0
+	cr.spin_sync()
+	if cr.get_princess_current_id() != &"star":
+		push_error("Start-of-spin Girl Power at 100%% should advance love -> star.")
 		quit(1)
 		return
 	cr.queue_free()

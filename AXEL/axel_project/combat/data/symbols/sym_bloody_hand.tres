@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"bloody_hand"
-display_name = "Bloody hand"
+display_name = "Love Power (Bloody Hand)"
 tier = 1
 texture = ExtResource("2_tex")
 base_weight = 0.35

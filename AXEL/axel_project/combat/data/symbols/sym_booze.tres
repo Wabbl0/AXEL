@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"booze"
-display_name = "Booze bottle"
+display_name = "Star Power (Booze/Alcohol)"
 tier = 1
 texture = ExtResource("2_tex")
 base_weight = 0.35

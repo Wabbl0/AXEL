@@ -24,8 +24,10 @@ func _ready() -> void:
 	bet_plus_btn.pressed.connect(_on_bet_plus_pressed)
 	combat.spin_started.connect(_on_spin_started)
 	combat.readouts_progressed.connect(_refresh_readouts)
+	combat.meter_full_transition_started.connect(_on_meter_full_transition_started)
 	resized.connect(_on_size_changed)
 	combat.setup_new_grid(int(seed_spin.value))
+	seed_spin.value_changed.connect(_on_seed_spin_value_changed)
 	_set_default_bet()
 	_layout_combat()
 	_refresh_readouts()
@@ -59,6 +61,23 @@ func _refresh_readouts() -> void:
 
 func _on_spin_started(seed_value: int) -> void:
 	seed_spin.value = seed_value
+
+
+func _on_meter_full_transition_started() -> void:
+	if meter_circle != null and meter_circle.has_method("play_full_flash"):
+		meter_circle.call("play_full_flash")
+
+
+func _on_seed_spin_value_changed(value: float) -> void:
+	if combat.is_encounter_complete():
+		return
+	if combat.get_spins_used() != 0:
+		return
+	if combat.get_state() != CombatRoot.State.IDLE:
+		return
+	combat.setup_new_grid(int(value))
+	_refresh_readouts()
+	_refresh_spin_button_state()
 
 
 func _on_bet_minus_pressed() -> void:

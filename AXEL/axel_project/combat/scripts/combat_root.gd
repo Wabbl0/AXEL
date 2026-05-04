@@ -4,6 +4,9 @@ extends Node2D
 enum State { IDLE, SPINNING, POWER, FREE_SPINS_CHOOSE, ENDED }
 signal spin_started(seed_value: int)
 signal readouts_progressed()
+## Emitted when the premium meter has filled and the trinity/free-spin transition
+## animation begins. UI hosts can use this to glow / pulse the meter readout.
+signal meter_full_transition_started()
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -22,7 +25,35 @@ signal readouts_progressed()
 @export var spawn_drop_duration_sec: float = 0.24
 @export var count_flash_duration_sec: float = 0.1
 @export var fx_stagger_sec: float = 0.01
-@export var girl_power_chance: float = 0.6
+@export_group("Transition FX")
+## Master toggle for premium-meter-full and free-spin entry animations.
+@export var enable_transition_fx: bool = true
+## Total duration of one grid white-flash pulse (rises then falls).
+@export var grid_flash_duration_sec: float = 0.32
+## Number of grid flashes performed during the meter-full transition.
+@export_range(1, 4, 1) var grid_flash_count: int = 2
+## Peak alpha of the grid flash overlay during a pulse.
+@export_range(0.0, 1.0, 0.01) var grid_flash_peak_alpha: float = 0.7
+## Duration of the grid border red->white tween during the transition.
+@export var grid_border_pulse_duration_sec: float = 0.3
+## Hold pause after the meter-full transition before the new grid populates.
+@export var meter_handoff_pause_sec: float = 0.25
+## Brief pause before `choose_free_spins_princess` so the free-spin handoff reads as its own beat.
+@export var free_spin_handoff_pause_sec: float = 0.12
+@export_group("Power Intro FX")
+## Master toggle for the center power intro flash before princess powers apply.
+@export var enable_power_intro_fx: bool = true
+## Time spent scaling the icon up from small/transparent to the peak.
+@export var power_intro_scale_in_sec: float = 0.18
+## Time the icon holds at peak scale + glow before scaling out.
+@export var power_intro_hold_sec: float = 0.18
+## Time spent scaling the icon back down and fading out.
+@export var power_intro_scale_out_sec: float = 0.14
+## Peak scale of the icon during the intro flash.
+@export var power_intro_peak_scale: float = 1.8
+## Peak alpha of the power intro background glow.
+@export_range(0.0, 1.0, 0.01) var power_intro_glow_alpha: float = 0.5
+@export var girl_power_chance: float = 0.01
 @export var encounter_def: Resource
 @export var total_bet: float = 1.0
 
@@ -32,6 +63,11 @@ signal readouts_progressed()
 @onready var round_winnings_label: Label = $RoundWinningsLabel
 @onready var winnings_overlay_bar: ColorRect = $WinningsOverlayBar
 @onready var winnings_overlay_label: Label = $WinningsOverlayLabel
+@onready var grid_frame: ReferenceRect = $GridFrame
+@onready var grid_flash_overlay: ColorRect = $GridFlashOverlay
+@onready var power_intro_layer: Control = $PowerIntroLayer
+@onready var power_intro_glow: ColorRect = $PowerIntroLayer/PowerIntroGlow
+@onready var power_intro_icon: TextureRect = $PowerIntroLayer/PowerIntroIcon
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
 const PrincessControllerScript := preload("res://combat/scripts/princess_controller.gd")
@@ -90,6 +126,14 @@ var _winnings_overlay_tween: Tween
 var _winnings_overlay_showing: bool = false
 var _grid_width_cached: float = 0.0
 var _grid_height_cached: float = 0.0
+var _grid_flash_tween: Tween
+var _grid_border_tween: Tween
+var _power_intro_tween: Tween
+var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
+var _power_symbol_by_id: Dictionary = {}
+var _power_intro_fallback_label: Label
+const GRID_FRAME_OUTSET := 4.0
+const POWER_INTRO_ICON_SIZE_RATIO := 0.55
 
 
 func _ready() -> void:
@@ -113,9 +157,22 @@ func _ready() -> void:
 		winnings_overlay_label.visible = false
 		winnings_overlay_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
 		winnings_overlay_label.add_theme_color_override("font_outline_color", Color(1.0, 0.33, 0.33, 0.45))
+	if grid_frame != null:
+		_default_grid_border_color = grid_frame.border_color
+	if grid_flash_overlay != null:
+		grid_flash_overlay.visible = false
+		grid_flash_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
+	if power_intro_layer != null:
+		power_intro_layer.visible = false
+	if power_intro_icon != null:
+		power_intro_icon.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		power_intro_icon.scale = Vector2(0.4, 0.4)
+	if power_intro_glow != null:
+		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
 	set_process_unhandled_input(true)
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
+	_refresh_grid_border_for_state()
 
 
 func _load_symbols_from_export() -> void:
@@ -124,6 +181,7 @@ func _load_symbols_from_export() -> void:
 	premium_symbol_pool.clear()
 	_premium_symbol_ids.clear()
 	_symbols_by_id.clear()
+	_power_symbol_by_id.clear()
 	wild_symbol = null
 	for res in symbol_resources:
 		var sd := res as SymbolDef
@@ -139,6 +197,8 @@ func _load_symbols_from_export() -> void:
 			premium_symbol_pool.append(sd)
 			_weights[sd.id] = sd.base_weight
 			_premium_symbol_ids[sd.id] = true
+		if sd.princess_id != &"":
+			_power_symbol_by_id[sd.princess_id] = sd
 	if wild_symbol == null:
 		push_error("CombatRoot: assign wild SymbolDef in symbol_resources.")
 	if low_symbol_pool.is_empty():
@@ -250,6 +310,7 @@ func setup_new_grid(seed_value: int) -> void:
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
+	_refresh_grid_border_for_state()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
 
@@ -270,28 +331,34 @@ func spin() -> void:
 	_refresh_multiplier_label()
 	emit_signal("readouts_progressed")
 	await _pause_visual(pause_at_spin_start_sec)
-	var spin_summary := await _play_one_spin_async()
-	var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
-	if should_trigger_power and _should_trigger_girl_power():
-		_state = State.POWER
-		var power_id := _pick_power_for_current_spin()
-		if free_spins.active:
+	var spin_summary := _empty_spin_summary()
+	await _try_regular_spin_start_girl_power_async(spin_summary)
+	var main_summary := await _play_one_spin_async()
+	_merge_spin_summary(spin_summary, main_summary)
+
+	## Free Spins: keep post-resolve Girl Power on non-winning spins (MP100-style).
+	if free_spins.active:
+		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
+		if should_trigger_power and _should_trigger_girl_power():
+			_state = State.POWER
+			var power_id := _pick_power_for_current_spin()
 			free_spins.mark_power_used_once(power_id)
-		princesses.trigger_power_by_id(power_id, _make_princess_ctx())
-		spin_summary["princess_triggered"] = true
-		_refresh_cells_visual()
-		await _pause_visual(pause_after_power_sec)
-		await _apply_gravity_and_refill(not free_spins.active)
-		var after_power: Dictionary = await _resolve_cascade_loop_async()
-		_merge_spin_summary(spin_summary, after_power)
-		if not free_spins.active:
-			princesses.advance_rotation()
+			await _play_power_intro_flash_async(power_id)
+			princesses.trigger_power_by_id(power_id, _make_princess_ctx())
+			spin_summary["princess_triggered"] = true
+			_refresh_cells_visual()
+			await _pause_visual(pause_after_power_sec)
+			await _apply_gravity_and_refill(not free_spins.active)
+			var after_power: Dictionary = await _resolve_cascade_loop_async()
+			_merge_spin_summary(spin_summary, after_power)
 	spin_summary["grid_cleared"] = _is_grid_empty()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
 		spin_summary["payout"] += clear_bonus
 		_add_round_winnings(clear_bonus)
 	if _pending_free_spins:
+		if free_spin_handoff_pause_sec > 0.0:
+			await _pause_visual(free_spin_handoff_pause_sec)
 		_state = State.FREE_SPINS_CHOOSE
 		choose_free_spins_princess(princesses.current_id())
 		_pending_free_spins = false
@@ -303,6 +370,7 @@ func spin() -> void:
 	goal_tracker.on_spin_completed(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_reset_premium_meter_after_paid_spin()
+	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED:
 		_state = State.IDLE
@@ -327,21 +395,23 @@ func spin_sync() -> void:
 	if not free_spins.active:
 		multiplier.reset()
 	emit_signal("readouts_progressed")
-	var spin_summary := _play_one_spin_sync()
-	var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
-	if should_trigger_power and _should_trigger_girl_power():
-		_state = State.POWER
-		var power_id := _pick_power_for_current_spin()
-		if free_spins.active:
+	var spin_summary := _empty_spin_summary()
+	_try_regular_spin_start_girl_power_sync(spin_summary)
+	var main_summary := _play_one_spin_sync()
+	_merge_spin_summary(spin_summary, main_summary)
+
+	if free_spins.active:
+		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
+		if should_trigger_power and _should_trigger_girl_power():
+			_state = State.POWER
+			var power_id := _pick_power_for_current_spin()
 			free_spins.mark_power_used_once(power_id)
-		princesses.trigger_power_by_id(power_id, _make_princess_ctx())
-		spin_summary["princess_triggered"] = true
-		_refresh_cells_visual()
-		_apply_gravity_and_refill_sync(not free_spins.active)
-		var after_power: Dictionary = _resolve_cascade_loop_sync()
-		_merge_spin_summary(spin_summary, after_power)
-		if not free_spins.active:
-			princesses.advance_rotation()
+			princesses.trigger_power_by_id(power_id, _make_princess_ctx())
+			spin_summary["princess_triggered"] = true
+			_refresh_cells_visual()
+			_apply_gravity_and_refill_sync(not free_spins.active)
+			var after_power: Dictionary = _resolve_cascade_loop_sync()
+			_merge_spin_summary(spin_summary, after_power)
 	spin_summary["grid_cleared"] = _is_grid_empty()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
@@ -359,6 +429,7 @@ func spin_sync() -> void:
 	goal_tracker.on_spin_completed(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_reset_premium_meter_after_paid_spin()
+	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED:
 		_state = State.IDLE
@@ -381,6 +452,7 @@ func choose_free_spins_princess(princess_id: StringName) -> void:
 	multiplier.cap_enabled = true
 	multiplier.cap_value = free_spins.multiplier_cap
 	_state = State.IDLE
+	_refresh_grid_border_for_state()
 
 
 func end_encounter(success: bool) -> void:
@@ -409,6 +481,41 @@ func _play_one_spin_sync() -> Dictionary:
 		free_spins.award_from_meter()
 		meter.reset()
 	return summary
+
+
+## Regular spins only: roll `girl_power_chance` at spin start (before main cascade).
+func _try_regular_spin_start_girl_power_async(spin_summary: Dictionary) -> void:
+	if free_spins.active:
+		return
+	if not _should_trigger_girl_power():
+		return
+	_state = State.POWER
+	var power_id := _pick_power_for_current_spin()
+	await _play_power_intro_flash_async(power_id)
+	princesses.trigger_power_by_id(power_id, _make_princess_ctx())
+	spin_summary["princess_triggered"] = true
+	_refresh_cells_visual()
+	await _pause_visual(pause_after_power_sec)
+	await _apply_gravity_and_refill(true)
+	var after_power: Dictionary = await _resolve_cascade_loop_async()
+	_merge_spin_summary(spin_summary, after_power)
+	princesses.advance_rotation()
+
+
+func _try_regular_spin_start_girl_power_sync(spin_summary: Dictionary) -> void:
+	if free_spins.active:
+		return
+	if not _should_trigger_girl_power():
+		return
+	_state = State.POWER
+	var power_id := _pick_power_for_current_spin()
+	princesses.trigger_power_by_id(power_id, _make_princess_ctx())
+	spin_summary["princess_triggered"] = true
+	_refresh_cells_visual()
+	_apply_gravity_and_refill_sync(true)
+	var after_power: Dictionary = _resolve_cascade_loop_sync()
+	_merge_spin_summary(spin_summary, after_power)
+	princesses.advance_rotation()
 
 
 func _resolve_cascade_loop_async() -> Dictionary:
@@ -618,8 +725,29 @@ func fit_to_viewport(viewport_size: Vector2) -> void:
 	_apply_slot_min_size(cell_size)
 	round_winnings_label.position = Vector2(0.0, grid_ui.position.y + grid_height + ROUND_WINNINGS_GAP)
 	round_winnings_label.size = Vector2(grid_width, ROUND_WINNINGS_HEIGHT)
+	_layout_grid_fx_nodes()
 	_layout_winnings_overlay()
 	_slot_positions_ready = false
+
+
+func _layout_grid_fx_nodes() -> void:
+	if grid_frame != null:
+		grid_frame.position = grid_ui.position - Vector2(GRID_FRAME_OUTSET, GRID_FRAME_OUTSET)
+		grid_frame.size = grid_ui.size + Vector2(GRID_FRAME_OUTSET, GRID_FRAME_OUTSET) * 2.0
+	if grid_flash_overlay != null:
+		grid_flash_overlay.position = grid_ui.position
+		grid_flash_overlay.size = grid_ui.size
+	if power_intro_layer != null:
+		power_intro_layer.position = grid_ui.position
+		power_intro_layer.size = grid_ui.size
+	if power_intro_icon != null:
+		var icon_dim: float = max(min(grid_ui.size.x, grid_ui.size.y) * POWER_INTRO_ICON_SIZE_RATIO, 32.0)
+		var icon_size := Vector2(icon_dim, icon_dim)
+		power_intro_icon.size = icon_size
+		power_intro_icon.position = (grid_ui.size - icon_size) * 0.5
+		power_intro_icon.pivot_offset = icon_size * 0.5
+		power_intro_icon.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
+	_layout_power_intro_fallback_label()
 
 
 func _play_round_winnings_win_glow() -> void:
@@ -800,9 +928,8 @@ func _play_count_flash_for_lines(lines: Array) -> void:
 
 func _start_spin_with_new_grid() -> void:
 	_bankroll_cents -= _to_cents(total_bet)
-	var seed_value := rng.randi_range(0, 12345)
-	_current_seed = seed_value
-	rng.seed(seed_value)
+	## Do not re-seed here: _current_seed stays the encounter seed from setup_new_grid;
+	## populate and cascade logic continue the same RNG stream for reproducible spins.
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
@@ -1002,12 +1129,164 @@ func _pick_power_for_current_spin() -> StringName:
 
 
 func _play_meter_full_transition_async() -> void:
+	emit_signal("meter_full_transition_started")
 	emit_signal("readouts_progressed")
-	await _pause_visual(pause_after_power_sec * 0.6)
+	if not enable_transition_fx:
+		await _pause_visual(pause_after_power_sec * 0.6)
+		return
+	var border_target := Color(1.0, 1.0, 1.0, 1.0)
+	if grid_frame != null:
+		_kill_tween(_grid_border_tween)
+		_grid_border_tween = create_tween()
+		_grid_border_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_grid_border_tween.tween_property(grid_frame, "border_color", border_target, max(grid_border_pulse_duration_sec, 0.05))
+	for i in maxi(grid_flash_count, 1):
+		await _play_grid_white_flash_async(grid_flash_duration_sec, grid_flash_peak_alpha)
+	if grid_frame != null and _grid_border_tween != null and is_instance_valid(_grid_border_tween):
+		await _grid_border_tween.finished
+	await _pause_visual(meter_handoff_pause_sec)
 
 
 func _play_meter_full_transition_sync() -> void:
+	emit_signal("meter_full_transition_started")
 	emit_signal("readouts_progressed")
+
+
+func _play_grid_white_flash_async(duration: float, peak_alpha: float) -> void:
+	if grid_flash_overlay == null:
+		await _pause_visual(duration)
+		return
+	_kill_tween(_grid_flash_tween)
+	grid_flash_overlay.visible = true
+	grid_flash_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
+	var half: float = max(duration * 0.5, 0.04)
+	_grid_flash_tween = create_tween()
+	_grid_flash_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_grid_flash_tween.tween_property(grid_flash_overlay, "color:a", clampf(peak_alpha, 0.0, 1.0), half)
+	_grid_flash_tween.set_ease(Tween.EASE_IN)
+	_grid_flash_tween.tween_property(grid_flash_overlay, "color:a", 0.0, half)
+	await _grid_flash_tween.finished
+	if is_instance_valid(grid_flash_overlay):
+		grid_flash_overlay.visible = false
+		grid_flash_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
+
+
+func _power_display_name_for(power_id: StringName, sym: SymbolDef) -> String:
+	if sym != null:
+		var dn: String = sym.display_name.strip_edges()
+		if not dn.is_empty():
+			return dn
+	return String(power_id).capitalize()
+
+
+func _ensure_power_intro_fallback_label() -> void:
+	if _power_intro_fallback_label != null and is_instance_valid(_power_intro_fallback_label):
+		return
+	if power_intro_layer == null:
+		return
+	var lb := Label.new()
+	lb.name = "PowerIntroFallbackLabel"
+	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lb.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
+	lb.add_theme_font_size_override("font_size", 22)
+	lb.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55, 1.0))
+	lb.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.85))
+	lb.add_theme_constant_override("outline_size", 2)
+	lb.visible = false
+	power_intro_layer.add_child(lb)
+	_power_intro_fallback_label = lb
+
+
+func _layout_power_intro_fallback_label() -> void:
+	if _power_intro_fallback_label == null or not is_instance_valid(_power_intro_fallback_label):
+		return
+	if power_intro_icon == null:
+		return
+	_power_intro_fallback_label.position = power_intro_icon.position
+	_power_intro_fallback_label.size = power_intro_icon.size
+	_power_intro_fallback_label.pivot_offset = power_intro_icon.pivot_offset
+
+
+func _play_power_intro_flash_async(power_id: StringName) -> void:
+	if not enable_power_intro_fx or power_intro_layer == null or power_intro_icon == null:
+		return
+	var sym := _power_symbol_by_id.get(power_id, null) as SymbolDef
+	var display_text := _power_display_name_for(power_id, sym)
+	var use_texture := sym != null and sym.texture != null
+	if not use_texture and display_text.is_empty():
+		return
+	_ensure_power_intro_fallback_label()
+	_kill_tween(_power_intro_tween)
+	var target: Control = power_intro_icon
+	if use_texture:
+		if _power_intro_fallback_label != null:
+			_power_intro_fallback_label.visible = false
+		power_intro_icon.visible = true
+		power_intro_icon.texture = sym.texture
+		target = power_intro_icon
+	else:
+		power_intro_icon.visible = false
+		power_intro_icon.texture = null
+		_power_intro_fallback_label.text = display_text
+		_power_intro_fallback_label.visible = true
+		_layout_power_intro_fallback_label()
+		target = _power_intro_fallback_label
+	power_intro_layer.visible = true
+	target.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	target.scale = Vector2(0.4, 0.4)
+	if power_intro_glow != null:
+		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
+	var scale_in: float = max(power_intro_scale_in_sec, 0.05)
+	var hold: float = max(power_intro_hold_sec, 0.0)
+	var scale_out: float = max(power_intro_scale_out_sec, 0.05)
+	var peak: float = max(power_intro_peak_scale, 1.0)
+	_power_intro_tween = create_tween()
+	_power_intro_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_power_intro_tween.tween_property(target, "scale", Vector2(peak, peak), scale_in)
+	_power_intro_tween.parallel().tween_property(target, "modulate:a", 1.0, scale_in * 0.8)
+	if power_intro_glow != null:
+		_power_intro_tween.parallel().tween_property(power_intro_glow, "color:a", clampf(power_intro_glow_alpha, 0.0, 1.0), scale_in)
+	if hold > 0.0:
+		_power_intro_tween.tween_interval(hold)
+	_power_intro_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_power_intro_tween.tween_property(target, "scale", Vector2(0.6, 0.6), scale_out)
+	_power_intro_tween.parallel().tween_property(target, "modulate:a", 0.0, scale_out)
+	if power_intro_glow != null:
+		_power_intro_tween.parallel().tween_property(power_intro_glow, "color:a", 0.0, scale_out)
+	await _power_intro_tween.finished
+	if is_instance_valid(power_intro_layer):
+		power_intro_layer.visible = false
+	if is_instance_valid(power_intro_icon):
+		power_intro_icon.visible = true
+		power_intro_icon.scale = Vector2(0.4, 0.4)
+		power_intro_icon.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		power_intro_icon.texture = null
+	if _power_intro_fallback_label != null and is_instance_valid(_power_intro_fallback_label):
+		_power_intro_fallback_label.visible = false
+		_power_intro_fallback_label.scale = Vector2(0.4, 0.4)
+		_power_intro_fallback_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+
+
+func _refresh_grid_border_for_state() -> void:
+	if grid_frame == null:
+		return
+	var target := Color(1.0, 1.0, 1.0, 1.0) if free_spins.active else _default_grid_border_color
+	if grid_frame.border_color.is_equal_approx(target):
+		return
+	_kill_tween(_grid_border_tween)
+	if not is_inside_tree() or not enable_transition_fx:
+		grid_frame.border_color = target
+		return
+	_grid_border_tween = create_tween()
+	_grid_border_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_grid_border_tween.tween_property(grid_frame, "border_color", target, max(grid_border_pulse_duration_sec * 0.6, 0.08))
+
+
+func _kill_tween(tween: Tween) -> void:
+	if tween != null and is_instance_valid(tween):
+		tween.kill()
 
 
 func _run_trinity_round_async() -> Dictionary:
@@ -1025,6 +1304,7 @@ func _run_trinity_round_async() -> Dictionary:
 	_merge_spin_summary(out, rebuilt_summary)
 	for id in order:
 		princesses.set_current_id(id)
+		await _play_power_intro_flash_async(id)
 		princesses.trigger_power_by_id(id, _make_princess_ctx())
 		out["princess_triggered"] = true
 		_refresh_cells_visual()

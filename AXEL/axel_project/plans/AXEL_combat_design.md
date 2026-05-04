@@ -21,7 +21,7 @@ Combat is a **slot-machine encounter layer** — a dream/memory/intrusion space 
 
 Why this fits AXEL:
 - Cascading clusters + a rising multiplier is "one memory unlocks the next." A good spin chains into a flashback.
-- The three rotating princesses map cleanly onto three modes of self-medication / coping.
+- The three rotating princesses map cleanly onto AXEL's three premium power symbols through a fixed alias map.
 - "Clear the grid" as a meta-goal = "fully remember" as a meta-goal.
 - Slot machines as a horror object tie into the gambling system you want — the loop is seductive by design.
 
@@ -67,7 +67,12 @@ All symbols are placeholder art for now (red-on-black, respects the existing pal
 | Star | **Blue star** | TBD (badge? pin?) |
 | Heart | **Red heart** | TBD (literal heart? locket?) |
 
-### Premium symbols (the three "princesses")
+### Premium symbols (Princess Power aliases)
+
+Power-symbol alias map used across this project:
+- `cigarette` means **Storm**
+- `booze`/`alcohol` means **Star**
+- `bloody hand` means **Love**
 
 | MP100 princess | AXEL premium | Power role |
 |---|---|---|
@@ -81,7 +86,7 @@ All symbols are placeholder art for now (red-on-black, respects the existing pal
 |---|---|
 | Moon | **Satanic symbol (red)** — placeholder |
 
-Princess-symbol wins (AXEL: cigarette/booze/bloody hand) are the only wins that feed the Trinity meter; low-pay suit symbols do not charge it.
+Princess-symbol wins (including AXEL alias symbols cigarette/booze/bloody hand) are the only wins that feed the Trinity meter; low-pay suit symbols do not charge it.
 
 ### MP100 paytable snapshot (from provided info screens)
 
@@ -93,7 +98,7 @@ Princess-symbol wins (AXEL: cigarette/booze/bloody hand) are the only wins that 
 | Star / Green coin | 3.20 | 0.32 | 0.16 |
 | Wild | 80.00 | 3.20 | 1.60 |
 
-Reading the theme: the three premium symbols are escalating self-harm vectors (smoke → drink → self-injury). The wild is the ritualized moment of surrender to them. The multiplier rising with each drop reads as "the deeper you let it go, the more it rewards you, right up until it doesn't."
+Reading the combat language: the three premium symbols are simply the visual aliases for the same Princess Power trio (Storm/Star/Love). The wild remains the high-impact catalyst symbol.
 
 ---
 
@@ -169,7 +174,7 @@ Items should be **theme-coded**, not just mechanically driven: each one tied to 
 
 ## 7. Thematic ties — keep these honest
 
-- The three premium symbols (cigarette, bottle, bloody hand) form a deliberate progression of self-harm. The game should **not celebrate** these acts; the UI, sound, and FX around princess-power triggers should feel uneasy rather than triumphant — CRT distortion, muffled audio, a shake on "big" multipliers.
+- The three premium symbols (cigarette, bottle/alcohol, bloody hand) are visual aliases for Storm/Star/Love and should be communicated as equivalent power channels in UI and tuning docs.
 - Every time a princess power triggers and *helps* the player, something in the overworld should subtly worsen — more mold on a wall, a flickering bulb, a new stain. This makes the combat-exploration loop bidirectional: combat rewards come at exploration cost.
 - **Winning loudly is suspicious.** Big payouts should trigger glitch/shake FX not as celebration but as intrusion. Consider a "you went too far" flag when the player hits max multiplier too early in an encounter — it unlocks harder variants for the rest of the run.
 - **Grid clear = clarity.** The one "clean" feeling in the combat layer should be reserved for full grid clears, where the screen briefly goes still and quiet before the next spin. This is the mechanical equivalent of a recovered memory.

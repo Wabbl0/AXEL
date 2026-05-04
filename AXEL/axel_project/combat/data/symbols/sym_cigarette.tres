@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"cigarette"
-display_name = "Cigarette"
+display_name = "Storm Power (Cigarette)"
 tier = 1
 texture = ExtResource("2_tex")
 base_weight = 0.35
