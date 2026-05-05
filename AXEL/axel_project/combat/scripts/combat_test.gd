@@ -1,8 +1,11 @@
 extends Control
 
 const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
+const DEBUG_LOG_PATH := "res://../../debug-1d1bdd.log"
+const DEBUG_SESSION_ID := "1d1bdd"
 
 @onready var seed_spin: SpinBox = %SeedSpinBox
+@onready var fixed_seed_check: CheckBox = %FixedSeedCheck
 @onready var spin_btn: Button = %SpinButton
 @onready var bet_minus_btn: Button = %BetMinusButton
 @onready var bet_plus_btn: Button = %BetPlusButton
@@ -14,19 +17,38 @@ const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
 @onready var bankroll_label: Label = %BankrollLabel
 @onready var combat: CombatRootScript = %CombatRoot
 
+var _encounter_run: int = 1
+var _last_meter_sections: int = -1
+var _queued_seed: int = 0
 
 func _ready() -> void:
 	seed_spin.min_value = 0
 	seed_spin.max_value = 12345
 	seed_spin.value = _pick_start_seed()
+	_queued_seed = int(seed_spin.value)
+	fixed_seed_check.toggled.connect(_on_fixed_seed_toggled)
 	spin_btn.pressed.connect(_on_spin_pressed)
 	bet_minus_btn.pressed.connect(_on_bet_minus_pressed)
 	bet_plus_btn.pressed.connect(_on_bet_plus_pressed)
 	combat.spin_started.connect(_on_spin_started)
 	combat.readouts_progressed.connect(_refresh_readouts)
+	combat.spin_finished.connect(_on_spin_finished)
+	combat.premium_meter_changed.connect(_on_premium_meter_changed)
 	combat.meter_full_transition_started.connect(_on_meter_full_transition_started)
 	resized.connect(_on_size_changed)
 	combat.setup_new_grid(int(seed_spin.value))
+	# #region agent log
+	_debug_log(
+		"seed-ui-ready",
+		"H5",
+		"combat_test.gd:_ready",
+		"initial setup_new_grid called from _ready",
+		{
+			"seed_spin_value": int(seed_spin.value),
+			"combat_seed_after_setup": combat.get_current_seed(),
+		}
+	)
+	# #endregion
 	seed_spin.value_changed.connect(_on_seed_spin_value_changed)
 	_set_default_bet()
 	_layout_combat()
@@ -36,10 +58,16 @@ func _ready() -> void:
 
 func _on_spin_pressed() -> void:
 	if combat.is_encounter_complete():
-		combat.setup_new_grid(int(seed_spin.value))
+		_encounter_run += 1
+		var restart_seed := _get_restart_seed()
+		combat.setup_new_grid(restart_seed)
+		_queued_seed = restart_seed
+		_log_seed_restart(restart_seed)
 		_refresh_readouts()
 		_refresh_spin_button_state()
 		return
+	if _can_apply_queued_seed_on_execute():
+		combat.setup_new_grid(_queued_seed)
 	spin_btn.disabled = true
 	_refresh_spin_button_state()
 	await combat.spin()
@@ -49,18 +77,37 @@ func _on_spin_pressed() -> void:
 
 
 func _refresh_readouts() -> void:
-	seed_spin.value = combat.get_current_seed()
+	var display_seed := combat.get_current_seed()
+	if _can_queue_seed_change():
+		display_seed = _queued_seed
+	_set_seed_spin_value_no_signal(display_seed)
 	bet_label.text = "STAKE  %.2f" % combat.get_current_bet()
 	mult_label.text = "AMPLIFIER  %dX" % combat.get_multiplier_value()
 	var meter_sections := combat.get_meter_sections_filled()
-	meter_circle.call("set_sections", meter_sections)
+	if _last_meter_sections < 0:
+		meter_circle.call("set_sections", meter_sections)
+	elif meter_sections < _last_meter_sections:
+		meter_circle.call("set_sections", meter_sections)
+	elif meter_sections > _last_meter_sections and not meter_circle.has_method("animate_to_sections"):
+		# Fallback path when meter widget does not expose tweened section animation.
+		meter_circle.call("set_sections", meter_sections)
+	_last_meter_sections = meter_sections
 	goal_label.text = _goal_progress_only(combat.get_goal_label())
-	budget_label.text = "SPIN LOG  %d" % combat.get_spins_used()
+	var mode_text := "FIXED" if fixed_seed_check.button_pressed else "AUTO"
+	budget_label.text = "SPIN LOG  %d   RUN %d   %s" % [combat.get_spins_used(), _encounter_run, mode_text]
 	bankroll_label.text = "BANKROLL  %.2f" % combat.get_bankroll()
 
 
 func _on_spin_started(seed_value: int) -> void:
-	seed_spin.value = seed_value
+	_queued_seed = seed_value
+	_set_seed_spin_value_no_signal(seed_value)
+
+
+func _on_spin_finished() -> void:
+	# Defensive unlock: if combat spin lifecycle reports completion, keep button recoverable.
+	if combat.get_state() == CombatRoot.State.IDLE or combat.is_encounter_complete():
+		spin_btn.disabled = false
+	_refresh_spin_button_state()
 
 
 func _on_meter_full_transition_started() -> void:
@@ -68,16 +115,42 @@ func _on_meter_full_transition_started() -> void:
 		meter_circle.call("play_full_flash")
 
 
+func _on_premium_meter_changed(previous_sections: int, next_sections: int) -> void:
+	if meter_circle == null:
+		return
+	if meter_circle.has_method("animate_to_sections"):
+		meter_circle.call("animate_to_sections", previous_sections, next_sections)
+	else:
+		meter_circle.call("set_sections", next_sections)
+	_last_meter_sections = next_sections
+
+
 func _on_seed_spin_value_changed(value: float) -> void:
-	if combat.is_encounter_complete():
+	if not _can_queue_seed_change():
 		return
-	if combat.get_spins_used() != 0:
-		return
-	if combat.get_state() != CombatRoot.State.IDLE:
-		return
-	combat.setup_new_grid(int(value))
+	_queued_seed = int(value)
+	# #region agent log
+	_debug_log(
+		"seed-ui-change-%d" % int(value),
+		"H5",
+		"combat_test.gd:_on_seed_spin_value_changed",
+		"seed change queued for execute",
+		{
+			"input_seed": int(value),
+			"queued_seed": _queued_seed,
+			"combat_seed_current": combat.get_current_seed(),
+			"spins_used": combat.get_spins_used(),
+			"state": combat.get_state(),
+		}
+	)
+	# #endregion
+	_encounter_run = 1
 	_refresh_readouts()
 	_refresh_spin_button_state()
+
+
+func _on_fixed_seed_toggled(_is_fixed: bool) -> void:
+	_refresh_readouts()
 
 
 func _on_bet_minus_pressed() -> void:
@@ -130,3 +203,63 @@ func _pick_start_seed() -> int:
 	var local_rng := RandomNumberGenerator.new()
 	local_rng.randomize()
 	return local_rng.randi_range(int(seed_spin.min_value), int(seed_spin.max_value))
+
+
+func _get_restart_seed() -> int:
+	if fixed_seed_check.button_pressed:
+		return _queued_seed
+	var min_seed := int(seed_spin.min_value)
+	var max_seed := int(seed_spin.max_value)
+	var span := max_seed - min_seed + 1
+	if span <= 0:
+		return int(seed_spin.value)
+	var next_seed := _queued_seed + 1
+	var wrapped := ((next_seed - min_seed) % span + span) % span
+	var advanced_seed := min_seed + wrapped
+	_queued_seed = advanced_seed
+	_set_seed_spin_value_no_signal(advanced_seed)
+	return advanced_seed
+
+
+func _can_queue_seed_change() -> bool:
+	if combat.is_encounter_complete():
+		return false
+	if combat.get_spins_used() != 0:
+		return false
+	return combat.get_state() == CombatRoot.State.IDLE
+
+
+func _can_apply_queued_seed_on_execute() -> bool:
+	if not _can_queue_seed_change():
+		return false
+	return _queued_seed != combat.get_current_seed()
+
+
+func _set_seed_spin_value_no_signal(seed_value: int) -> void:
+	if int(seed_spin.value) == seed_value:
+		return
+	seed_spin.set_value_no_signal(seed_value)
+
+
+func _log_seed_restart(seed_value: int) -> void:
+	var mode_text := "fixed" if fixed_seed_check.button_pressed else "auto-advance"
+	print("CombatTest restart #%d using %s seed %d" % [_encounter_run, mode_text, seed_value])
+
+
+func _debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(DEBUG_LOG_PATH) else FileAccess.WRITE_READ
+	var file := FileAccess.open(DEBUG_LOG_PATH, mode)
+	if file == null:
+		return
+	file.seek_end()
+	var payload := {
+		"sessionId": DEBUG_SESSION_ID,
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000,
+	}
+	file.store_line(JSON.stringify(payload))
+	file.close()

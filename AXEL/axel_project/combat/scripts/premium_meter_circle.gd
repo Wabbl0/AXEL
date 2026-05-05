@@ -10,19 +10,44 @@ extends Control
 @export var show_charge_pulse: bool = true
 @export var full_flash_scale_peak: float = 1.18
 @export var full_flash_duration_sec: float = 0.55
+@export var section_fill_duration_sec: float = 0.22
 
 var _pulse_phase: float = 0.0
 var _full_flash_tween: Tween
+var _section_fill_tween: Tween
+var _visual_sections: float = 0.0:
+	set(value):
+		_visual_sections = clampf(value, 0.0, 3.0)
+		queue_redraw()
 
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(120, 120)
 	set_process(true)
 	pivot_offset = custom_minimum_size * 0.5
+	_visual_sections = float(filled_sections)
 
 
 func set_sections(value: int) -> void:
-	filled_sections = value
+	var clamped := clampi(value, 0, 3)
+	filled_sections = clamped
+	_kill_section_fill_tween()
+	_visual_sections = float(clamped)
+
+
+func animate_to_sections(previous_sections: int, next_sections: int) -> void:
+	var prev := clampi(previous_sections, 0, 3)
+	var next := clampi(next_sections, 0, 3)
+	filled_sections = next
+	_kill_section_fill_tween()
+	_visual_sections = float(prev)
+	if next <= prev:
+		_visual_sections = float(next)
+		return
+	var duration: float = maxf(section_fill_duration_sec * float(next - prev), 0.01)
+	_section_fill_tween = create_tween()
+	_section_fill_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_section_fill_tween.tween_property(self, "_visual_sections", float(next), duration)
 
 
 func play_full_flash() -> void:
@@ -46,6 +71,12 @@ func _kill_full_flash_tween() -> void:
 	_full_flash_tween = null
 
 
+func _kill_section_fill_tween() -> void:
+	if _section_fill_tween != null and is_instance_valid(_section_fill_tween):
+		_section_fill_tween.kill()
+	_section_fill_tween = null
+
+
 func _process(delta: float) -> void:
 	if show_charge_pulse and filled_sections >= 3:
 		_pulse_phase += delta * 4.0
@@ -59,7 +90,7 @@ func _draw() -> void:
 
 	draw_arc(center, ring_radius, 0.0, TAU, 96, base_color, ring_width, true)
 
-	var fill_amount := float(filled_sections) / 3.0
+	var fill_amount := _visual_sections / 3.0
 	if fill_amount > 0.0:
 		draw_arc(center, ring_radius, -PI * 0.5, -PI * 0.5 + TAU * fill_amount, 96, fill_color, ring_width, true)
 

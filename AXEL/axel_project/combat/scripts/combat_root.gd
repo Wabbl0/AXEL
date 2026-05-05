@@ -4,6 +4,8 @@ extends Node2D
 enum State { IDLE, SPINNING, POWER, FREE_SPINS_CHOOSE, ENDED }
 signal spin_started(seed_value: int)
 signal readouts_progressed()
+signal spin_finished()
+signal premium_meter_changed(previous_sections: int, next_sections: int)
 ## Emitted when the premium meter has filled and the trinity/free-spin transition
 ## animation begins. UI hosts can use this to glow / pulse the meter readout.
 signal meter_full_transition_started()
@@ -12,43 +14,43 @@ signal meter_full_transition_started()
 
 @export_group("Visual pacing (async spin() only)")
 ## Pause at the start of a spin so the initial grid reads before anything resolves.
-@export var pause_at_spin_start_sec: float = 0.85
+@export var pause_at_spin_start_sec: float = 1.275
 ## Pause after clusters are cleared and wilds are placed (before gravity).
-@export var pause_after_cluster_resolve_sec: float = 1.6
+@export var pause_after_cluster_resolve_sec: float = 0.6
 ## Pause after symbols fall and new symbols spawn.
-@export var pause_after_gravity_refill_sec: float = 1.5
+@export var pause_after_gravity_refill_sec: float = 1.0
 ## Pause after princess power modifies the grid.
-@export var pause_after_power_sec: float = 1.2
+@export var pause_after_power_sec: float = 1.8
 @export_group("Symbol FX")
 @export var enable_symbol_fx: bool = true
 @export var drop_duration_sec: float = 0.2
 @export var spawn_drop_duration_sec: float = 0.24
-@export var count_flash_duration_sec: float = 0.1
+@export var count_flash_duration_sec: float = 0.2
 @export var fx_stagger_sec: float = 0.01
 @export_group("Transition FX")
 ## Master toggle for premium-meter-full and free-spin entry animations.
 @export var enable_transition_fx: bool = true
 ## Total duration of one grid white-flash pulse (rises then falls).
-@export var grid_flash_duration_sec: float = 0.32
+@export var grid_flash_duration_sec: float = 0.48
 ## Number of grid flashes performed during the meter-full transition.
 @export_range(1, 4, 1) var grid_flash_count: int = 2
 ## Peak alpha of the grid flash overlay during a pulse.
 @export_range(0.0, 1.0, 0.01) var grid_flash_peak_alpha: float = 0.7
 ## Duration of the grid border red->white tween during the transition.
-@export var grid_border_pulse_duration_sec: float = 0.3
+@export var grid_border_pulse_duration_sec: float = 0.45
 ## Hold pause after the meter-full transition before the new grid populates.
-@export var meter_handoff_pause_sec: float = 0.25
+@export var meter_handoff_pause_sec: float = 0.375
 ## Brief pause before `choose_free_spins_princess` so the free-spin handoff reads as its own beat.
-@export var free_spin_handoff_pause_sec: float = 0.12
+@export var free_spin_handoff_pause_sec: float = 0.18
 @export_group("Power Intro FX")
 ## Master toggle for the center power intro flash before princess powers apply.
 @export var enable_power_intro_fx: bool = true
 ## Time spent scaling the icon up from small/transparent to the peak.
-@export var power_intro_scale_in_sec: float = 0.18
+@export var power_intro_scale_in_sec: float = 0.27
 ## Time the icon holds at peak scale + glow before scaling out.
-@export var power_intro_hold_sec: float = 0.18
+@export var power_intro_hold_sec: float = 0.27
 ## Time spent scaling the icon back down and fading out.
-@export var power_intro_scale_out_sec: float = 0.14
+@export var power_intro_scale_out_sec: float = 0.21
 ## Peak scale of the icon during the intro flash.
 @export var power_intro_peak_scale: float = 1.8
 ## Peak alpha of the power intro background glow.
@@ -134,9 +136,15 @@ var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
+const DEBUG_LOG_PATH := "res://../../debug-1d1bdd.log"
+const DEBUG_SESSION_ID := "1d1bdd"
 
 
 func _ready() -> void:
+	if _is_headless_runtime():
+		enable_symbol_fx = false
+		enable_transition_fx = false
+		enable_power_intro_fx = false
 	_ensure_symbol_slots()
 	_load_symbols_from_export()
 	grid.grid_populated.connect(_on_grid_populated)
@@ -308,6 +316,19 @@ func setup_new_grid(seed_value: int) -> void:
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	# #region agent log
+	_debug_log(
+		"seed-%d-setup" % _current_seed,
+		"H1",
+		"combat_root.gd:setup_new_grid",
+		"setup_new_grid populated grid",
+		{
+			"seed": _current_seed,
+			"spins_used": _spins_used,
+			"grid_snapshot": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
@@ -317,15 +338,17 @@ func setup_new_grid(seed_value: int) -> void:
 
 func spin() -> void:
 	if _state != State.IDLE or _encounter_complete:
+		emit_signal("spin_finished")
 		return
 	if not _can_afford_spin():
 		emit_signal("readouts_progressed")
+		emit_signal("spin_finished")
 		return
 	_state = State.SPINNING
 	_round_winnings_cents = 0
 	_hide_round_winnings_overlay(false)
 	_refresh_round_winnings_label()
-	_start_spin_with_new_grid()
+	_begin_spin_round()
 	if not free_spins.active:
 		multiplier.reset()
 	_refresh_multiplier_label()
@@ -351,7 +374,7 @@ func spin() -> void:
 			await _apply_gravity_and_refill(not free_spins.active)
 			var after_power: Dictionary = await _resolve_cascade_loop_async()
 			_merge_spin_summary(spin_summary, after_power)
-	spin_summary["grid_cleared"] = _is_grid_empty()
+	spin_summary["grid_cleared"] = _is_grid_cleared_for_current_mode()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
 		spin_summary["payout"] += clear_bonus
@@ -378,6 +401,7 @@ func spin() -> void:
 		_play_round_winnings_win_glow()
 	_refresh_multiplier_label()
 	emit_signal("readouts_progressed")
+	emit_signal("spin_finished")
 
 
 ## Headless / determinism: same logic as spin() without awaiting the renderer.
@@ -391,7 +415,7 @@ func spin_sync() -> void:
 	_round_winnings_cents = 0
 	_hide_round_winnings_overlay(false)
 	_refresh_round_winnings_label()
-	_start_spin_with_new_grid()
+	_begin_spin_round()
 	if not free_spins.active:
 		multiplier.reset()
 	emit_signal("readouts_progressed")
@@ -412,7 +436,7 @@ func spin_sync() -> void:
 			_apply_gravity_and_refill_sync(not free_spins.active)
 			var after_power: Dictionary = _resolve_cascade_loop_sync()
 			_merge_spin_summary(spin_summary, after_power)
-	spin_summary["grid_cleared"] = _is_grid_empty()
+	spin_summary["grid_cleared"] = _is_grid_cleared_for_current_mode()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
 		spin_summary["payout"] += clear_bonus
@@ -526,12 +550,28 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		if guard > MAX_CASCADE_ITERATIONS:
 			push_error("CombatRoot: cascade exceeded MAX_CASCADE_ITERATIONS (async).")
 			break
+		var before_snapshot := grid.snapshot_ids()
 		var lines: Array = LineDetectorScript.find_lines(grid.cells)
+		# #region agent log
+		_debug_log(
+			"seed-%d-spin-%d-cascade-%d" % [_current_seed, _spins_used, guard],
+			"H2",
+			"combat_root.gd:_resolve_cascade_loop_async",
+			"cascade scan result",
+			{
+				"seed": _current_seed,
+				"spin": _spins_used,
+				"iteration": guard,
+				"before_snapshot": before_snapshot,
+				"line_count": lines.size(),
+				"lines": _summarize_lines(lines),
+			}
+		)
+		# #endregion
 		if lines.is_empty():
 			break
 		out["produced_any_win"] = true
 		await _resolve_lines(lines)
-		_apply_meter_from_lines(lines)
 		await _apply_gravity_and_refill(not free_spins.active)
 		multiplier.add(1)
 		_refresh_multiplier_label()
@@ -556,7 +596,6 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 			break
 		out["produced_any_win"] = true
 		_resolve_lines_sync(lines)
-		_apply_meter_from_lines(lines)
 		_apply_gravity_and_refill_sync(not free_spins.active)
 		multiplier.add(1)
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
@@ -581,11 +620,13 @@ func _make_princess_ctx() -> Dictionary:
 func _resolve_lines(lines: Array) -> void:
 	await _play_count_flash_for_lines(lines)
 	_resolve_lines_impl(lines)
+	_apply_meter_from_lines(lines)
 	await _pause_visual(pause_after_cluster_resolve_sec)
 
 
 func _resolve_lines_sync(lines: Array) -> void:
 	_resolve_lines_impl(lines)
+	_apply_meter_from_lines(lines)
 
 
 func _resolve_lines_impl(lines: Array) -> void:
@@ -665,8 +706,8 @@ func _refresh_multiplier_label() -> void:
 func _refresh_round_winnings_label() -> void:
 	var has_winnings := _round_winnings_cents > 0
 	if round_winnings_label:
-		round_winnings_label.visible = has_winnings
-		round_winnings_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents) if has_winnings else ""
+		round_winnings_label.visible = false
+		round_winnings_label.text = ""
 	if winnings_overlay_label:
 		winnings_overlay_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents) if has_winnings else ""
 
@@ -931,6 +972,20 @@ func _start_spin_with_new_grid() -> void:
 	## Do not re-seed here: _current_seed stays the encounter seed from setup_new_grid;
 	## populate and cascade logic continue the same RNG stream for reproducible spins.
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	# #region agent log
+	_debug_log(
+		"seed-%d-spin-%d-start" % [_current_seed, _spins_used + 1],
+		"H4",
+		"combat_root.gd:_start_spin_with_new_grid",
+		"spin started with populated grid",
+		{
+			"seed": _current_seed,
+			"next_spin": _spins_used + 1,
+			"fixed_seed_expected": _current_seed,
+			"grid_snapshot": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 	_spins_used += 1
@@ -938,8 +993,21 @@ func _start_spin_with_new_grid() -> void:
 	emit_signal("readouts_progressed")
 
 
+func _begin_spin_round() -> void:
+	if free_spins.active:
+		# Free spins continue from current depleted grid; they should not repopulate.
+		emit_signal("spin_started", _current_seed)
+		emit_signal("readouts_progressed")
+		return
+	_start_spin_with_new_grid()
+
+
 func _can_afford_spin() -> bool:
 	return _bankroll_cents >= _to_cents(total_bet)
+
+
+func _is_headless_runtime() -> bool:
+	return DisplayServer.get_name() == "headless"
 
 
 func _add_round_winnings(amount_cents: int) -> void:
@@ -1071,6 +1139,44 @@ func _format_currency_from_cents(amount_cents: int) -> String:
 	return "%.2f" % (float(amount_cents) / 100.0)
 
 
+func _summarize_lines(lines: Array) -> Array:
+	var out: Array = []
+	for line in lines:
+		var cells: Array = line.get("cells", [])
+		var coords: Array = []
+		for p in cells:
+			var v := p as Vector2i
+			coords.append("%d:%d" % [v.x, v.y])
+		out.append(
+			{
+				"symbol_id": String(line.get("symbol_id", &"")),
+				"axis": String(line.get("axis", "")),
+				"length": int(line.get("length", 0)),
+				"cells": coords,
+			}
+		)
+	return out
+
+
+func _debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(DEBUG_LOG_PATH) else FileAccess.WRITE_READ
+	var file := FileAccess.open(DEBUG_LOG_PATH, mode)
+	if file == null:
+		return
+	file.seek_end()
+	var payload := {
+		"sessionId": DEBUG_SESSION_ID,
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000,
+	}
+	file.store_line(JSON.stringify(payload))
+	file.close()
+
+
 func _should_trigger_girl_power() -> bool:
 	if free_spins.active:
 		return not free_spins.all_powers_used_once()
@@ -1084,9 +1190,14 @@ func _reset_premium_meter_after_paid_spin() -> void:
 
 
 func _apply_meter_from_lines(lines: Array) -> void:
+	var before_sections := meter.sections_filled
 	for line in lines:
 		if _line_is_premium(line):
 			meter.add_from_line_length(int(line["length"]))
+	var after_sections := meter.sections_filled
+	if after_sections != before_sections:
+		emit_signal("premium_meter_changed", before_sections, after_sections)
+		emit_signal("readouts_progressed")
 
 
 func _line_is_premium(line: Dictionary) -> bool:
@@ -1100,6 +1211,12 @@ func _is_grid_empty() -> bool:
 			if grid.cells[r][c] != null:
 				return false
 	return true
+
+
+func _is_grid_cleared_for_current_mode() -> bool:
+	if free_spins.active:
+		return _count_non_wild_symbols() == 0
+	return _is_grid_empty()
 
 
 func _count_non_wild_symbols() -> int:
@@ -1135,15 +1252,18 @@ func _play_meter_full_transition_async() -> void:
 		await _pause_visual(pause_after_power_sec * 0.6)
 		return
 	var border_target := Color(1.0, 1.0, 1.0, 1.0)
+	var border_wait_sec: float = maxf(grid_border_pulse_duration_sec, 0.05)
 	if grid_frame != null:
 		_kill_tween(_grid_border_tween)
 		_grid_border_tween = create_tween()
 		_grid_border_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		_grid_border_tween.tween_property(grid_frame, "border_color", border_target, max(grid_border_pulse_duration_sec, 0.05))
+		_grid_border_tween.tween_property(grid_frame, "border_color", border_target, border_wait_sec)
 	for i in maxi(grid_flash_count, 1):
 		await _play_grid_white_flash_async(grid_flash_duration_sec, grid_flash_peak_alpha)
+	# Avoid awaiting tween.finished late; the signal may have fired already while flashes run.
+	# Use deterministic wait so transition cannot deadlock even if tween was replaced/killed.
 	if grid_frame != null and _grid_border_tween != null and is_instance_valid(_grid_border_tween):
-		await _grid_border_tween.finished
+		await _pause_visual(border_wait_sec)
 	await _pause_visual(meter_handoff_pause_sec)
 
 
@@ -1213,8 +1333,9 @@ func _play_power_intro_flash_async(power_id: StringName) -> void:
 	if not enable_power_intro_fx or power_intro_layer == null or power_intro_icon == null:
 		return
 	var sym := _power_symbol_by_id.get(power_id, null) as SymbolDef
+	var intro_texture: Texture2D = sym.texture_for_power_intro() if sym != null else null
 	var display_text := _power_display_name_for(power_id, sym)
-	var use_texture := sym != null and sym.texture != null
+	var use_texture := intro_texture != null
 	if not use_texture and display_text.is_empty():
 		return
 	_ensure_power_intro_fallback_label()
@@ -1224,7 +1345,7 @@ func _play_power_intro_flash_async(power_id: StringName) -> void:
 		if _power_intro_fallback_label != null:
 			_power_intro_fallback_label.visible = false
 		power_intro_icon.visible = true
-		power_intro_icon.texture = sym.texture
+		power_intro_icon.texture = intro_texture
 		target = power_intro_icon
 	else:
 		power_intro_icon.visible = false

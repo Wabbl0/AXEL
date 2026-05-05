@@ -358,6 +358,9 @@ Create a dedicated `free_spins.gd` controller.
   - Storm: 8 starting spins
 - During Free Spins:
   - chosen Girl Power triggers on every non-winning spin
+  - spin start does not repopulate a fresh 5x5 grid; each spin continues from the previous grid state
+  - cascade resolve is gravity-only (no top refill / no new symbol spawns)
+  - free-spin depletion/clear checks are based on non-wild symbols; wild-only board states count as cleared
   - Trinity cannot trigger
   - meter fills grant extra spins:
     - Love +4
@@ -461,7 +464,7 @@ Write headless tests (no scene tree) for:
 3. **Wild placement** — 3-line spawns in middle cell only; no spawns for 4/5 lines; overlap-spawn dedupe.
 4. **Princess powers** — mocked grid before/after for Love, Star, Storm and rotation changes only on activation.
 5. **Trinity meter** — princess-line meter increments (x3/x4/x5), cap at 3, save/restore active princess behavior.
-6. **Free Spins** — initial spin awards by chosen princess, extra-spin awards, Trinity disabled in feature, x100 multiplier cap.
+6. **Free Spins** — initial spin awards by chosen princess, extra-spin awards, Trinity disabled in feature, x100 multiplier cap, no per-spin repopulation, and no refill spawns during free-spin cascades.
 7. **Goal evaluation** — every goal type with synthetic spin summaries.
 8. **Determinism** — seed the RNG, run 100 spins on a fixed encounter, verify identical final grid on replay.
 

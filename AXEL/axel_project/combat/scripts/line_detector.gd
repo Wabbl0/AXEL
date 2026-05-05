@@ -4,6 +4,8 @@ extends RefCounted
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
 const ROWS := 5
 const COLS := 5
+const DEBUG_LOG_PATH := "res://../../debug-1d1bdd.log"
+const DEBUG_SESSION_ID := "1d1bdd"
 
 
 static func find_lines(cells: Array) -> Array:
@@ -78,6 +80,21 @@ static func _emit_run_for_symbol(run_cells: Array[Vector2i], sid: StringName, ou
 			has_base_symbol = true
 			break
 	if not has_base_symbol:
+		if sid == &"sym_yellow_triangle":
+			# #region agent log
+			_debug_log(
+				"line-scan-triangle-rejected",
+				"H3",
+				"line_detector.gd:_emit_run_for_symbol",
+				"triangle run rejected due to missing base symbol",
+				{
+					"sid": String(sid),
+					"run_len": run_cells.size(),
+					"axis": "h" if delta.x != 0 else "v",
+					"coords": _coords_to_strings(run_cells),
+				}
+			)
+			# #endregion
 		return
 	var axis := "h" if delta.x != 0 else "v"
 	var coords_key := ""
@@ -90,6 +107,21 @@ static func _emit_run_for_symbol(run_cells: Array[Vector2i], sid: StringName, ou
 	if emitted_keys.has(key):
 		return
 	emitted_keys[key] = true
+	if sid == &"sym_yellow_triangle":
+		# #region agent log
+		_debug_log(
+			"line-scan-triangle-emitted",
+			"H3",
+			"line_detector.gd:_emit_run_for_symbol",
+			"triangle run emitted",
+			{
+				"sid": String(sid),
+				"run_len": run_cells.size(),
+				"axis": axis,
+				"coords": _coords_to_strings(run_cells),
+			}
+		)
+		# #endregion
 	_emit_run(run_cells, sid, out_lines, delta)
 
 
@@ -121,3 +153,29 @@ static func _matches_id(cells: Array, forced_wild: Vector2i, pos: Vector2i, sid:
 	if sym == null or sym.tier == SymbolDefScript.Tier.HAZARD:
 		return false
 	return sym.tier == SymbolDefScript.Tier.WILD or sym.id == sid
+
+
+static func _coords_to_strings(coords: Array[Vector2i]) -> Array:
+	var out: Array = []
+	for p in coords:
+		out.append("%d:%d" % [p.x, p.y])
+	return out
+
+
+static func _debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(DEBUG_LOG_PATH) else FileAccess.WRITE_READ
+	var file := FileAccess.open(DEBUG_LOG_PATH, mode)
+	if file == null:
+		return
+	file.seek_end()
+	var payload := {
+		"sessionId": DEBUG_SESSION_ID,
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000,
+	}
+	file.store_line(JSON.stringify(payload))
+	file.close()
