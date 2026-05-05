@@ -1,7 +1,7 @@
 class_name GoalPayoutThreshold
 extends "res://combat/scripts/goal_def.gd"
 
-@export var target_payout: int = 100
+@export var target_payout: float = 100.0
 
 
 func init_progress() -> Dictionary:
@@ -13,8 +13,10 @@ func on_spin_completed(summary: Dictionary, progress: Dictionary) -> void:
 
 
 func is_complete(progress: Dictionary) -> bool:
-	return int(progress.get("payout", 0)) >= target_payout
+	var payout_cents := int(progress.get("payout", 0))
+	return payout_cents >= int(round(target_payout * 100.0))
 
 
 func progress_label(progress: Dictionary) -> String:
-	return "%d / %d" % [int(progress.get("payout", 0)), target_payout]
+	var payout_units := float(int(progress.get("payout", 0))) / 100.0
+	return "%.2f / %.2f" % [payout_units, target_payout]

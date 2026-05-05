@@ -70,7 +70,6 @@ signal meter_full_transition_started()
 @onready var power_intro_layer: Control = $PowerIntroLayer
 @onready var power_intro_glow: ColorRect = $PowerIntroLayer/PowerIntroGlow
 @onready var power_intro_icon: TextureRect = $PowerIntroLayer/PowerIntroIcon
-@onready var encounter_won_label: Label = $EncounterWonLabel
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
 const PrincessControllerScript := preload("res://combat/scripts/princess_controller.gd")
@@ -82,7 +81,7 @@ const EncounterScript := preload("res://combat/scripts/encounter.gd")
 
 ## Safety cap so pathological grids / RNG cannot infinite-loop cascade resolution.
 const MAX_CASCADE_ITERATIONS := 512
-const STARTING_BANKROLL_CENTS := 1000000
+const STARTING_BANKROLL_CENTS := 100000
 const GRID_VISUAL_SCALE := 1.5
 const GRID_EDGE_MARGIN := 8.0
 const VIEWPORT_TOP_SAFE := 84.0
@@ -133,7 +132,6 @@ var _grid_height_cached: float = 0.0
 var _grid_flash_tween: Tween
 var _grid_border_tween: Tween
 var _power_intro_tween: Tween
-var _encounter_won_tween: Tween
 var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
@@ -180,10 +178,6 @@ func _ready() -> void:
 		power_intro_icon.scale = Vector2(0.4, 0.4)
 	if power_intro_glow != null:
 		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
-	if encounter_won_label != null:
-		encounter_won_label.visible = false
-		encounter_won_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
-		encounter_won_label.scale = Vector2.ONE
 	set_process_unhandled_input(true)
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
@@ -837,40 +831,13 @@ func _layout_grid_fx_nodes() -> void:
 		power_intro_icon.pivot_offset = icon_size * 0.5
 		power_intro_icon.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
 	_layout_power_intro_fallback_label()
-	if encounter_won_label != null:
-		var label_height := 48.0
-		encounter_won_label.position = Vector2(0.0, grid_ui.position.y - label_height - 10.0)
-		encounter_won_label.size = Vector2(grid_ui.size.x, label_height)
-
-
 func _show_encounter_won_banner() -> void:
-	if encounter_won_label == null:
-		return
-	_hide_encounter_won_banner()
-	encounter_won_label.text = "Encounter won!"
-	encounter_won_label.visible = true
-	encounter_won_label.modulate = Color(1.0, 0.85, 0.85, 1.0)
-	encounter_won_label.scale = Vector2.ONE
-	encounter_won_label.position.y = grid_ui.position.y - encounter_won_label.size.y - 10.0
-	_encounter_won_tween = create_tween()
-	_encounter_won_tween.set_loops()
-	_encounter_won_tween.tween_property(encounter_won_label, "position:y", encounter_won_label.position.y - 6.0, 0.6)
-	_encounter_won_tween.parallel().tween_property(encounter_won_label, "scale", Vector2(1.06, 1.06), 0.6)
-	_encounter_won_tween.parallel().tween_property(encounter_won_label, "modulate", Color(1.0, 0.98, 0.98, 1.0), 0.6)
-	_encounter_won_tween.tween_property(encounter_won_label, "position:y", grid_ui.position.y - encounter_won_label.size.y - 10.0, 0.6)
-	_encounter_won_tween.parallel().tween_property(encounter_won_label, "scale", Vector2.ONE, 0.6)
-	_encounter_won_tween.parallel().tween_property(encounter_won_label, "modulate", Color(1.0, 0.85, 0.85, 1.0), 0.6)
+	# Encounter win presentation is handled by the fullscreen overlay in CombatTest UI.
+	return
 
 
 func _hide_encounter_won_banner() -> void:
-	if _encounter_won_tween != null and is_instance_valid(_encounter_won_tween):
-		_encounter_won_tween.kill()
-	_encounter_won_tween = null
-	if encounter_won_label == null:
-		return
-	encounter_won_label.visible = false
-	encounter_won_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	encounter_won_label.scale = Vector2.ONE
+	return
 
 
 func _play_round_winnings_win_glow() -> void:

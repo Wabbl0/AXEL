@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://c7wake2sd6m4d"]
+[gd_scene load_steps=11 format=3 uid="uid://c7wake2sd6m4d"]
 
 [ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
@@ -63,6 +63,20 @@ shader = ExtResource("5_scanline")
 shader_parameter/line_color = Color(1, 0, 0, 0.08)
 shader_parameter/line_density = 420.0
 shader_parameter/chroma_strength = 0.025
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_encounter_win_panel"]
+bg_color = Color(0.09, 0, 0, 0.94)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.25, 0.25, 0.95)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 12
 
 [node name="CombatTest" type="Control" unique_id=161757197]
 layout_mode = 3
@@ -240,3 +254,58 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(1, 1, 1, 0.18)
+
+[node name="EncounterWinOverlay" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="EncounterWinDimmer" type="ColorRect" parent="EncounterWinOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.72)
+
+[node name="EncounterWinPanel" type="Panel" parent="EncounterWinOverlay"]
+custom_minimum_size = Vector2(940, 300)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -470.0
+offset_top = -150.0
+offset_right = 470.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_encounter_win_panel")
+mouse_filter = 2
+
+[node name="EncounterWinLabel" type="Label" parent="EncounterWinOverlay/EncounterWinPanel"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.93, 0.93, 1)
+theme_override_colors/font_outline_color = Color(1, 0.25, 0.25, 0.95)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 88
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "Encounter won!"
+mouse_filter = 2

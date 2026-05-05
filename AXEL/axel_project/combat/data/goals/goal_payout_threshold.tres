@@ -6,4 +6,4 @@
 script = ExtResource("1_script")
 id = &"goal_payout_threshold"
 display_text = "Reach payout target"
-target_payout = 140
+target_payout = 100.0

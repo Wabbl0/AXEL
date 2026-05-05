@@ -15,6 +15,8 @@ const DEBUG_SESSION_ID := "1d1bdd"
 @onready var budget_label: Label = %BudgetLabel
 @onready var bankroll_label: Label = %BankrollLabel
 @onready var combat: CombatRootScript = %CombatRoot
+@onready var encounter_win_overlay: Control = %EncounterWinOverlay
+@onready var encounter_win_label: Label = %EncounterWinLabel
 
 var _last_meter_sections: int = -1
 var _queued_seed: int = 0
@@ -50,6 +52,7 @@ func _ready() -> void:
 	_set_default_bet()
 	_layout_combat()
 	_refresh_readouts()
+	_refresh_encounter_win_overlay()
 	_refresh_spin_button_state()
 
 
@@ -85,6 +88,7 @@ func _refresh_readouts() -> void:
 	goal_label.text = _goal_progress_only(combat.get_goal_label())
 	budget_label.text = "SPIN LOG  %d" % combat.get_lifetime_spins_used()
 	bankroll_label.text = "BANKROLL  %.2f" % combat.get_bankroll()
+	_refresh_encounter_win_overlay()
 
 
 func _on_spin_started(seed_value: int) -> void:
@@ -170,6 +174,15 @@ func _refresh_spin_button_state() -> void:
 		spin_btn.text = "EXECUTE"
 	else:
 		spin_btn.text = "EXECUTE"
+
+
+func _refresh_encounter_win_overlay() -> void:
+	if encounter_win_overlay == null:
+		return
+	var should_show := combat.is_encounter_complete() and combat.did_win_encounter()
+	encounter_win_overlay.visible = should_show
+	if encounter_win_label != null and should_show:
+		encounter_win_label.text = "Encounter won!"
 
 
 func _goal_progress_only(goal_text: String) -> String:
