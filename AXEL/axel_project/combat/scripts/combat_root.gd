@@ -70,6 +70,7 @@ signal meter_full_transition_started()
 @onready var power_intro_layer: Control = $PowerIntroLayer
 @onready var power_intro_glow: ColorRect = $PowerIntroLayer/PowerIntroGlow
 @onready var power_intro_icon: TextureRect = $PowerIntroLayer/PowerIntroIcon
+@onready var encounter_won_label: Label = $EncounterWonLabel
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
 const PrincessControllerScript := preload("res://combat/scripts/princess_controller.gd")
@@ -113,6 +114,7 @@ var _current_bet_index: int = 4
 var _state: State = State.IDLE
 var _weights: Dictionary = {}
 var _spins_used: int = 0
+var _lifetime_spins_used: int = 0
 var _current_seed: int = 0
 var _encounter_complete: bool = false
 var _encounter_won: bool = false
@@ -131,6 +133,7 @@ var _grid_height_cached: float = 0.0
 var _grid_flash_tween: Tween
 var _grid_border_tween: Tween
 var _power_intro_tween: Tween
+var _encounter_won_tween: Tween
 var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
@@ -177,6 +180,10 @@ func _ready() -> void:
 		power_intro_icon.scale = Vector2(0.4, 0.4)
 	if power_intro_glow != null:
 		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
+	if encounter_won_label != null:
+		encounter_won_label.visible = false
+		encounter_won_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		encounter_won_label.scale = Vector2.ONE
 	set_process_unhandled_input(true)
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
@@ -267,6 +274,10 @@ func get_spins_used() -> int:
 	return _spins_used
 
 
+func get_lifetime_spins_used() -> int:
+	return _lifetime_spins_used
+
+
 func get_spin_budget() -> int:
 	var encounter := encounter_def as EncounterScript
 	if encounter == null:
@@ -310,11 +321,13 @@ func setup_new_grid(seed_value: int) -> void:
 	_pending_free_spins = false
 	_round_winnings_cents = 0
 	_bankroll_cents = STARTING_BANKROLL_CENTS
+	_lifetime_spins_used = 0
 	var encounter := encounter_def as EncounterScript
 	var goal = encounter.get("goal") if encounter != null else null
 	goal_tracker.call("set_goal", goal)
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
+	_hide_encounter_won_banner()
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	# #region agent log
 	_debug_log(
@@ -483,6 +496,41 @@ func end_encounter(success: bool) -> void:
 	_encounter_complete = true
 	_encounter_won = success
 	_state = State.ENDED
+	if success:
+		_show_encounter_won_banner()
+	else:
+		_hide_encounter_won_banner()
+
+
+func begin_next_playtest_encounter(seed_value: int) -> void:
+	var preserved_bankroll := _bankroll_cents
+	_current_seed = seed_value
+	rng.seed(seed_value)
+	princesses.randomize_start(rng)
+	multiplier.reset()
+	multiplier.cap_enabled = false
+	meter.reset()
+	free_spins.reset()
+	_spins_used = 0
+	_encounter_complete = false
+	_encounter_won = false
+	_state = State.IDLE
+	_in_trinity_round = false
+	_pending_free_spins = false
+	_round_winnings_cents = 0
+	_bankroll_cents = preserved_bankroll
+	var encounter := encounter_def as EncounterScript
+	var goal = encounter.get("goal") if encounter != null else null
+	goal_tracker.call("set_goal", goal)
+	_refresh_multiplier_label()
+	_refresh_round_winnings_label()
+	_hide_encounter_won_banner()
+	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+	_refresh_grid_border_for_state()
+	emit_signal("spin_started", _current_seed)
+	emit_signal("readouts_progressed")
 
 
 func _play_one_spin_async() -> Dictionary:
@@ -789,6 +837,40 @@ func _layout_grid_fx_nodes() -> void:
 		power_intro_icon.pivot_offset = icon_size * 0.5
 		power_intro_icon.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
 	_layout_power_intro_fallback_label()
+	if encounter_won_label != null:
+		var label_height := 48.0
+		encounter_won_label.position = Vector2(0.0, grid_ui.position.y - label_height - 10.0)
+		encounter_won_label.size = Vector2(grid_ui.size.x, label_height)
+
+
+func _show_encounter_won_banner() -> void:
+	if encounter_won_label == null:
+		return
+	_hide_encounter_won_banner()
+	encounter_won_label.text = "Encounter won!"
+	encounter_won_label.visible = true
+	encounter_won_label.modulate = Color(1.0, 0.85, 0.85, 1.0)
+	encounter_won_label.scale = Vector2.ONE
+	encounter_won_label.position.y = grid_ui.position.y - encounter_won_label.size.y - 10.0
+	_encounter_won_tween = create_tween()
+	_encounter_won_tween.set_loops()
+	_encounter_won_tween.tween_property(encounter_won_label, "position:y", encounter_won_label.position.y - 6.0, 0.6)
+	_encounter_won_tween.parallel().tween_property(encounter_won_label, "scale", Vector2(1.06, 1.06), 0.6)
+	_encounter_won_tween.parallel().tween_property(encounter_won_label, "modulate", Color(1.0, 0.98, 0.98, 1.0), 0.6)
+	_encounter_won_tween.tween_property(encounter_won_label, "position:y", grid_ui.position.y - encounter_won_label.size.y - 10.0, 0.6)
+	_encounter_won_tween.parallel().tween_property(encounter_won_label, "scale", Vector2.ONE, 0.6)
+	_encounter_won_tween.parallel().tween_property(encounter_won_label, "modulate", Color(1.0, 0.85, 0.85, 1.0), 0.6)
+
+
+func _hide_encounter_won_banner() -> void:
+	if _encounter_won_tween != null and is_instance_valid(_encounter_won_tween):
+		_encounter_won_tween.kill()
+	_encounter_won_tween = null
+	if encounter_won_label == null:
+		return
+	encounter_won_label.visible = false
+	encounter_won_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	encounter_won_label.scale = Vector2.ONE
 
 
 func _play_round_winnings_win_glow() -> void:
@@ -989,6 +1071,7 @@ func _start_spin_with_new_grid() -> void:
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 	_spins_used += 1
+	_lifetime_spins_used += 1
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
 

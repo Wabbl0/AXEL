@@ -273,3 +273,16 @@ These questions have not yet been answered and are required before full implemen
    When this feature is implemented, it should not undermine the core run-restart loop or trivialize True Ending requirements.
 
 8. **Existing endings integration.** The five existing endings from `AXEL_SCENES_BLUEPRINT.md` (Fear, Darkness, Wrong Answer, No Name, True) need explicit mapping to the new combat-loss / area-clear / memory-count system. For example: does losing a run still let you reach Ending 1 (Fear)? Or does the loss-restart loop replace the fear-based ending entirely? This needs reconciliation between exploration outcomes and combat outcomes.
+
+---
+
+## 12. Combat Symbol Asset Policy
+
+Combat symbol rendering now uses a dual-texture policy for performance and clarity:
+
+- **Grid symbol texture (`SymbolDef.texture`)** must point to `res://combat/art/grid_symbols/*.png` and is imported with `process/size_limit=128`.
+- **Power intro texture (`SymbolDef.power_intro_texture`)** must point to the high-resolution source in `res://combat/art/placeholders/*.png` (720 assets).
+- `CombatRoot` power-intro FX must resolve textures via `SymbolDef.texture_for_power_intro()`, so activation moments keep high-definition visuals while normal grid play stays lightweight.
+- Flat background art direction is preserved. No transparency-only pipeline is required for these symbols.
+
+When adding or replacing symbols, always provide both texture paths so grid memory use remains capped and power activations stay crisp.
