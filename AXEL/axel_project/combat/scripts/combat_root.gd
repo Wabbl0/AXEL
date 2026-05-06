@@ -119,6 +119,7 @@ var _encounter_complete: bool = false
 var _encounter_won: bool = false
 var _in_trinity_round: bool = false
 var _pending_free_spins: bool = false
+var _awaiting_free_spin_choice: bool = false
 var _pending_fall_moves: Array = []
 var _pending_spawns: Array = []
 var _slot_positions_ready: bool = false
@@ -139,6 +140,8 @@ const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
 const DEBUG_LOG_PATH := "res://../../debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
+const AGENT_DEBUG_LOG_PATH := "res://../../debug-c9d495.log"
+const AGENT_DEBUG_SESSION_ID := "c9d495"
 
 
 func _ready() -> void:
@@ -299,6 +302,10 @@ func did_win_encounter() -> bool:
 	return _encounter_won
 
 
+func is_waiting_for_free_spin_choice() -> bool:
+	return _awaiting_free_spin_choice
+
+
 func setup_new_grid(seed_value: int) -> void:
 	_current_seed = seed_value
 	rng.seed(seed_value)
@@ -313,6 +320,7 @@ func setup_new_grid(seed_value: int) -> void:
 	_state = State.IDLE
 	_in_trinity_round = false
 	_pending_free_spins = false
+	_awaiting_free_spin_choice = false
 	_round_winnings_cents = 0
 	_bankroll_cents = STARTING_BANKROLL_CENTS
 	_lifetime_spins_used = 0
@@ -366,13 +374,12 @@ func spin() -> void:
 	var main_summary := await _play_one_spin_async()
 	_merge_spin_summary(spin_summary, main_summary)
 
-	## Free Spins: keep post-resolve Girl Power on non-winning spins (MP100-style).
+	## SUPER Free Spins: keep post-resolve Girl Power on non-winning spins (MP100-style).
 	if free_spins.active:
 		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
 		if should_trigger_power and _should_trigger_girl_power():
 			_state = State.POWER
-			var power_id := _pick_power_for_current_spin()
-			free_spins.mark_power_used_once(power_id)
+			var power_id := free_spins.chosen_princess
 			await _play_power_intro_flash_async(power_id)
 			princesses.trigger_power_by_id(power_id, _make_princess_ctx())
 			spin_summary["princess_triggered"] = true
@@ -387,22 +394,53 @@ func spin() -> void:
 		spin_summary["payout"] += clear_bonus
 		_add_round_winnings(clear_bonus)
 	if _pending_free_spins:
+		# #region agent log
+		_agent_debug_log(
+			"pre-fix",
+			"H8",
+			"combat_root.gd:spin",
+			"pending free spins handoff reached",
+			{
+				"pending_free_spins": _pending_free_spins,
+				"free_spins_active_before_choose": free_spins.active,
+				"spins_remaining_before_choose": free_spins.spins_remaining,
+				"state": _state,
+				"spins_used": _spins_used,
+			}
+		)
+		# #endregion
 		if free_spin_handoff_pause_sec > 0.0:
 			await _pause_visual(free_spin_handoff_pause_sec)
 		_state = State.FREE_SPINS_CHOOSE
-		choose_free_spins_princess(princesses.current_id())
+		_awaiting_free_spin_choice = true
 		_pending_free_spins = false
-	if free_spins.active:
-		free_spins.ensure_end_guard_spin()
+		emit_signal("readouts_progressed")
+	if free_spins.active and not _awaiting_free_spin_choice:
+		# #region agent log
+		_agent_debug_log(
+			"pre-fix",
+			"H8",
+			"combat_root.gd:spin",
+			"free spin consume reached",
+			{
+				"free_spins_active_before_consume": free_spins.active,
+				"spins_remaining_before_consume": free_spins.spins_remaining,
+				"state": _state,
+				"spins_used": _spins_used,
+			}
+		)
+		# #endregion
 		free_spins.consume_spin()
 		multiplier.cap_enabled = true
 		multiplier.cap_value = free_spins.multiplier_cap
 	goal_tracker.on_spin_completed(spin_summary)
+	if free_spins.active and goal_tracker.is_complete():
+		_settle_symbols_down_without_refill()
 	_bankroll_cents += int(spin_summary["payout"])
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
-	if _state != State.ENDED:
+	if _state != State.ENDED and _state != State.FREE_SPINS_CHOOSE:
 		_state = State.IDLE
 	if _round_winnings_cents > 0:
 		_play_round_winnings_win_glow()
@@ -435,8 +473,7 @@ func spin_sync() -> void:
 		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
 		if should_trigger_power and _should_trigger_girl_power():
 			_state = State.POWER
-			var power_id := _pick_power_for_current_spin()
-			free_spins.mark_power_used_once(power_id)
+			var power_id := free_spins.chosen_princess
 			princesses.trigger_power_by_id(power_id, _make_princess_ctx())
 			spin_summary["princess_triggered"] = true
 			_refresh_cells_visual()
@@ -450,19 +487,21 @@ func spin_sync() -> void:
 		_add_round_winnings(clear_bonus)
 	if _pending_free_spins:
 		_state = State.FREE_SPINS_CHOOSE
-		choose_free_spins_princess(princesses.current_id())
+		_awaiting_free_spin_choice = true
 		_pending_free_spins = false
-	if free_spins.active:
-		free_spins.ensure_end_guard_spin()
+		emit_signal("readouts_progressed")
+	if free_spins.active and not _awaiting_free_spin_choice:
 		free_spins.consume_spin()
 		multiplier.cap_enabled = true
 		multiplier.cap_value = free_spins.multiplier_cap
 	goal_tracker.on_spin_completed(spin_summary)
+	if free_spins.active and goal_tracker.is_complete():
+		_settle_symbols_down_without_refill()
 	_bankroll_cents += int(spin_summary["payout"])
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
-	if _state != State.ENDED:
+	if _state != State.ENDED and _state != State.FREE_SPINS_CHOOSE:
 		_state = State.IDLE
 	if _round_winnings_cents > 0:
 		_play_round_winnings_win_glow()
@@ -479,11 +518,32 @@ func serialize_spin_result() -> String:
 
 
 func choose_free_spins_princess(princess_id: StringName) -> void:
+	if not _awaiting_free_spin_choice:
+		return
+	## SUPER Free Spins entry (post-Trinity handoff).
+	# #region agent log
+	_agent_debug_log(
+		"pre-fix",
+		"H6",
+		"combat_root.gd:choose_free_spins_princess",
+		"free spins started with princess",
+		{
+			"princess_id": String(princess_id),
+			"free_spins_active_before_start": free_spins.active,
+			"spins_remaining_before_start": free_spins.spins_remaining,
+			"state": _state,
+			"spins_used": _spins_used,
+		}
+	)
+	# #endregion
 	free_spins.start_with_princess(princess_id)
+	princesses.set_current_id(princess_id)
+	_awaiting_free_spin_choice = false
 	multiplier.cap_enabled = true
 	multiplier.cap_value = free_spins.multiplier_cap
 	_state = State.IDLE
 	_refresh_grid_border_for_state()
+	emit_signal("readouts_progressed")
 
 
 func end_encounter(success: bool) -> void:
@@ -511,6 +571,7 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	_state = State.IDLE
 	_in_trinity_round = false
 	_pending_free_spins = false
+	_awaiting_free_spin_choice = false
 	_round_winnings_cents = 0
 	_bankroll_cents = preserved_bankroll
 	var encounter := encounter_def as EncounterScript
@@ -648,6 +709,53 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 	return out
 
 
+func _resolve_trinity_cascade_loop_async() -> Dictionary:
+	var out := _empty_spin_summary()
+	var guard := 0
+	while true:
+		guard += 1
+		if guard > MAX_CASCADE_ITERATIONS:
+			push_error("CombatRoot: trinity cascade exceeded MAX_CASCADE_ITERATIONS (async).")
+			break
+		var lines: Array = LineDetectorScript.find_lines(grid.cells)
+		if lines.is_empty():
+			break
+		out["produced_any_win"] = true
+		await _resolve_lines(lines)
+		await _apply_gravity_and_refill(false)
+		multiplier.add(1)
+		_refresh_multiplier_label()
+		out["cascade_drops"] = int(out["cascade_drops"]) + 1
+		var line_win := _estimate_payout(lines)
+		out["payout"] = int(out["payout"]) + line_win
+		_add_round_winnings(line_win)
+		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
+	return out
+
+
+func _resolve_trinity_cascade_loop_sync() -> Dictionary:
+	var out := _empty_spin_summary()
+	var guard := 0
+	while true:
+		guard += 1
+		if guard > MAX_CASCADE_ITERATIONS:
+			push_error("CombatRoot: trinity cascade exceeded MAX_CASCADE_ITERATIONS (sync).")
+			break
+		var lines: Array = LineDetectorScript.find_lines(grid.cells)
+		if lines.is_empty():
+			break
+		out["produced_any_win"] = true
+		_resolve_lines_sync(lines)
+		_apply_gravity_and_refill_sync(false)
+		multiplier.add(1)
+		out["cascade_drops"] = int(out["cascade_drops"]) + 1
+		var line_win := _estimate_payout(lines)
+		out["payout"] = int(out["payout"]) + line_win
+		_add_round_winnings(line_win)
+		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
+	return out
+
+
 func _make_princess_ctx() -> Dictionary:
 	return {
 		"grid": grid,
@@ -678,7 +786,7 @@ func _resolve_lines_impl(lines: Array) -> void:
 		var cells: Array = line["cells"]
 		for p in cells:
 			to_clear[p] = true
-		if int(line["length"]) == 3:
+		if int(line["length"]) == 3 and not free_spins.active:
 			var mid: Vector2i = cells[1]
 			wild_spawns[mid] = true
 	var all_cleared: Array = to_clear.keys()
@@ -693,7 +801,26 @@ func _apply_gravity_and_refill(allow_refill: bool = true) -> void:
 	_pending_fall_moves.clear()
 	_pending_spawns.clear()
 	grid.apply_gravity()
-	if allow_refill:
+	var should_refill := allow_refill and not free_spins.active
+	# #region agent log
+	_agent_debug_log(
+		"pre-fix",
+		"H4",
+		"combat_root.gd:_apply_gravity_and_refill",
+		"apply_gravity_and_refill gate evaluated",
+		{
+			"allow_refill": allow_refill,
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"should_refill": should_refill,
+			"state": _state,
+			"spins_used": _spins_used,
+		}
+	)
+	# #endregion
+	if allow_refill and free_spins.active:
+		push_warning("CombatRoot: blocked refill during Free Spins.")
+	if should_refill:
 		grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	await _play_pending_gravity_refill_fx()
 	await _pause_visual(pause_after_gravity_refill_sec)
@@ -703,7 +830,10 @@ func _apply_gravity_and_refill_sync(allow_refill: bool = true) -> void:
 	_pending_fall_moves.clear()
 	_pending_spawns.clear()
 	grid.apply_gravity()
-	if allow_refill:
+	var should_refill := allow_refill and not free_spins.active
+	if allow_refill and free_spins.active:
+		push_warning("CombatRoot: blocked refill during Free Spins (sync).")
+	if should_refill:
 		grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	_refresh_cells_visual()
 
@@ -719,6 +849,20 @@ func _pause_visual(seconds: float) -> void:
 
 
 func _on_grid_populated() -> void:
+	# #region agent log
+	_agent_debug_log(
+		"pre-fix",
+		"H2",
+		"combat_root.gd:_on_grid_populated",
+		"grid_populated signal fired",
+		{
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"state": _state,
+			"spins_used": _spins_used,
+		}
+	)
+	# #endregion
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 		return
@@ -734,6 +878,21 @@ func _on_symbols_fell(_moves: Array) -> void:
 
 
 func _on_symbols_spawned(_spawns: Array) -> void:
+	# #region agent log
+	_agent_debug_log(
+		"pre-fix",
+		"H3",
+		"combat_root.gd:_on_symbols_spawned",
+		"symbols_spawned signal fired",
+		{
+			"spawn_count": _spawns.size(),
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"state": _state,
+			"spins_used": _spins_used,
+		}
+	)
+	# #endregion
 	_pending_spawns = _spawns.duplicate(true)
 
 
@@ -1017,6 +1176,20 @@ func _play_count_flash_for_lines(lines: Array) -> void:
 
 
 func _start_spin_with_new_grid() -> void:
+	# #region agent log
+	_agent_debug_log(
+		"pre-fix",
+		"H1",
+		"combat_root.gd:_start_spin_with_new_grid",
+		"start_spin_with_new_grid called (about to populate)",
+		{
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"state": _state,
+			"spins_used": _spins_used,
+		}
+	)
+	# #endregion
 	_bankroll_cents -= _to_cents(total_bet)
 	## Do not re-seed here: _current_seed stays the encounter seed from setup_new_grid;
 	## populate and cascade logic continue the same RNG stream for reproducible spins.
@@ -1044,6 +1217,20 @@ func _start_spin_with_new_grid() -> void:
 
 
 func _begin_spin_round() -> void:
+	# #region agent log
+	_agent_debug_log(
+		"pre-fix",
+		"H1",
+		"combat_root.gd:_begin_spin_round",
+		"begin_spin_round branch check",
+		{
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"state": _state,
+			"spins_used": _spins_used,
+		}
+	)
+	# #endregion
 	if free_spins.active:
 		# Free spins continue from current depleted grid; they should not repopulate.
 		emit_signal("spin_started", _current_seed)
@@ -1069,6 +1256,21 @@ func _add_round_winnings(amount_cents: int) -> void:
 
 
 func _play_pending_gravity_refill_fx() -> void:
+	# #region agent log
+	_agent_debug_log(
+		"pre-fix",
+		"H5",
+		"combat_root.gd:_play_pending_gravity_refill_fx",
+		"gravity/refill FX payload",
+		{
+			"pending_fall_moves": _pending_fall_moves.size(),
+			"pending_spawns": _pending_spawns.size(),
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"state": _state,
+		}
+	)
+	# #endregion
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 		return
@@ -1227,9 +1429,28 @@ func _debug_log(run_id: String, hypothesis_id: String, location: String, message
 	file.close()
 
 
+func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(AGENT_DEBUG_LOG_PATH) else FileAccess.WRITE_READ
+	var file := FileAccess.open(AGENT_DEBUG_LOG_PATH, mode)
+	if file == null:
+		return
+	file.seek_end()
+	var payload := {
+		"sessionId": AGENT_DEBUG_SESSION_ID,
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000,
+	}
+	file.store_line(JSON.stringify(payload))
+	file.close()
+
+
 func _should_trigger_girl_power() -> bool:
 	if free_spins.active:
-		return not free_spins.all_powers_used_once()
+		return true
 	return rng.randf() <= girl_power_chance
 
 
@@ -1280,6 +1501,22 @@ func _count_non_wild_symbols() -> int:
 				continue
 			count += 1
 	return count
+
+
+func _grid_has_floating_symbols() -> bool:
+	for c in GridManager.COLS:
+		for r in range(GridManager.ROWS - 1):
+			if grid.cells[r][c] != null and grid.cells[r + 1][c] == null:
+				return true
+	return false
+
+
+func _settle_symbols_down_without_refill() -> void:
+	var guard := GridManager.ROWS
+	while guard > 0 and _grid_has_floating_symbols():
+		grid.apply_gravity()
+		guard -= 1
+	_refresh_cells_visual()
 
 
 func _pick_power_for_current_spin() -> StringName:
@@ -1468,11 +1705,8 @@ func _run_trinity_round_async() -> Dictionary:
 	_in_trinity_round = true
 	var order: Array[StringName] = [&"love", &"star", &"storm"]
 	await _play_meter_full_transition_async()
-	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
-	if not enable_symbol_fx:
-		_refresh_cells_visual()
-	var rebuilt_summary := await _resolve_cascade_loop_async()
-	_merge_spin_summary(out, rebuilt_summary)
+	## Regular Free Spins (Trinity Run): allow gravity-only cascades, but no top refill/new spawns.
+	## Use the existing grid as-is, then resolve with gravity-only.
 	for id in order:
 		princesses.set_current_id(id)
 		await _play_power_intro_flash_async(id)
@@ -1480,10 +1714,24 @@ func _run_trinity_round_async() -> Dictionary:
 		out["princess_triggered"] = true
 		_refresh_cells_visual()
 		await _pause_visual(pause_after_power_sec)
-		await _apply_gravity_and_refill(true)
-		var post_power := await _resolve_cascade_loop_async()
+		var post_power := await _resolve_trinity_cascade_loop_async()
 		_merge_spin_summary(out, post_power)
 		if _count_non_wild_symbols() == 0:
+			# #region agent log
+			_agent_debug_log(
+				"pre-fix",
+				"H7",
+				"combat_root.gd:_run_trinity_round_async",
+				"pending free spins flagged",
+				{
+					"free_spins_active": free_spins.active,
+					"spins_remaining": free_spins.spins_remaining,
+					"state": _state,
+					"spins_used": _spins_used,
+					"trigger_princess_id": String(id),
+				}
+			)
+			# #endregion
 			_pending_free_spins = true
 			break
 	_in_trinity_round = false
@@ -1499,18 +1747,14 @@ func _run_trinity_round_sync() -> Dictionary:
 	_in_trinity_round = true
 	var order: Array[StringName] = [&"love", &"star", &"storm"]
 	_play_meter_full_transition_sync()
-	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
-	if not enable_symbol_fx:
-		_refresh_cells_visual()
-	var rebuilt_summary := _resolve_cascade_loop_sync()
-	_merge_spin_summary(out, rebuilt_summary)
+	## Regular Free Spins (Trinity Run): allow gravity-only cascades, but no top refill/new spawns.
+	## Use the existing grid as-is, then resolve with gravity-only.
 	for id in order:
 		princesses.set_current_id(id)
 		princesses.trigger_power_by_id(id, _make_princess_ctx())
 		out["princess_triggered"] = true
 		_refresh_cells_visual()
-		_apply_gravity_and_refill_sync(true)
-		var post_power := _resolve_cascade_loop_sync()
+		var post_power := _resolve_trinity_cascade_loop_sync()
 		_merge_spin_summary(out, post_power)
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true

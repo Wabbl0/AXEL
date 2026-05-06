@@ -3,6 +3,9 @@ extends Control
 const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
 const DEBUG_LOG_PATH := "res://../../debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
+const PRINCESS_LOVE: StringName = &"love"
+const PRINCESS_STAR: StringName = &"star"
+const PRINCESS_STORM: StringName = &"storm"
 
 @onready var seed_spin: SpinBox = %SeedSpinBox
 @onready var spin_btn: Button = %SpinButton
@@ -17,6 +20,10 @@ const DEBUG_SESSION_ID := "1d1bdd"
 @onready var combat: CombatRootScript = %CombatRoot
 @onready var encounter_win_overlay: Control = %EncounterWinOverlay
 @onready var encounter_win_label: Label = %EncounterWinLabel
+@onready var super_fs_choice_overlay: Control = %SuperFSChoiceOverlay
+@onready var choose_love_button: Button = %ChooseLoveButton
+@onready var choose_star_button: Button = %ChooseStarButton
+@onready var choose_storm_button: Button = %ChooseStormButton
 
 var _last_meter_sections: int = -1
 var _queued_seed: int = 0
@@ -34,6 +41,9 @@ func _ready() -> void:
 	combat.spin_finished.connect(_on_spin_finished)
 	combat.premium_meter_changed.connect(_on_premium_meter_changed)
 	combat.meter_full_transition_started.connect(_on_meter_full_transition_started)
+	choose_love_button.pressed.connect(_on_choose_love_pressed)
+	choose_star_button.pressed.connect(_on_choose_star_pressed)
+	choose_storm_button.pressed.connect(_on_choose_storm_pressed)
 	resized.connect(_on_size_changed)
 	combat.setup_new_grid(int(seed_spin.value))
 	# #region agent log
@@ -53,6 +63,7 @@ func _ready() -> void:
 	_layout_combat()
 	_refresh_readouts()
 	_refresh_encounter_win_overlay()
+	_refresh_super_fs_choice_overlay()
 	_refresh_spin_button_state()
 
 
@@ -89,6 +100,7 @@ func _refresh_readouts() -> void:
 	budget_label.text = "SPIN LOG  %d" % combat.get_lifetime_spins_used()
 	bankroll_label.text = "BANKROLL  %.2f" % combat.get_bankroll()
 	_refresh_encounter_win_overlay()
+	_refresh_super_fs_choice_overlay()
 
 
 func _on_spin_started(seed_value: int) -> void:
@@ -183,6 +195,40 @@ func _refresh_encounter_win_overlay() -> void:
 	encounter_win_overlay.visible = should_show
 	if encounter_win_label != null and should_show:
 		encounter_win_label.text = "Encounter won!"
+
+
+func _refresh_super_fs_choice_overlay() -> void:
+	if super_fs_choice_overlay == null:
+		return
+	var awaiting_choice: bool = combat.is_waiting_for_free_spin_choice()
+	super_fs_choice_overlay.visible = awaiting_choice
+	if choose_love_button != null:
+		choose_love_button.disabled = not awaiting_choice
+	if choose_star_button != null:
+		choose_star_button.disabled = not awaiting_choice
+	if choose_storm_button != null:
+		choose_storm_button.disabled = not awaiting_choice
+
+
+func _on_choose_love_pressed() -> void:
+	_submit_super_fs_choice(PRINCESS_LOVE)
+
+
+func _on_choose_star_pressed() -> void:
+	_submit_super_fs_choice(PRINCESS_STAR)
+
+
+func _on_choose_storm_pressed() -> void:
+	_submit_super_fs_choice(PRINCESS_STORM)
+
+
+func _submit_super_fs_choice(princess_id: StringName) -> void:
+	if not combat.is_waiting_for_free_spin_choice():
+		return
+	combat.choose_free_spins_princess(princess_id)
+	spin_btn.disabled = false
+	_refresh_readouts()
+	_refresh_spin_button_state()
 
 
 func _goal_progress_only(goal_text: String) -> String:

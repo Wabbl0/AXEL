@@ -23,6 +23,7 @@ func _main() -> void:
 	await _assert_premium_meter_updates_on_wild_assisted_booze_line()
 	await _assert_paid_spin_resets_meter_before_next_spin()
 	await _assert_trinity_transition_completes_without_freeze()
+	await _assert_trinity_round_has_gravity_but_no_spawned_symbols()
 	await _assert_free_spins_does_not_refill_from_top()
 	await _assert_free_spins_spin_preserves_existing_grid()
 	await _assert_free_spins_non_wild_clear_counts_as_grid_clear()
@@ -409,6 +410,48 @@ func _assert_trinity_transition_completes_without_freeze() -> void:
 		return
 	if not cr.free_spins.active:
 		push_error("Expected free spins to activate after pending free-spin handoff.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_trinity_round_has_gravity_but_no_spawned_symbols() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(2491)
+	_set_checkerboard_no_clusters(cr)
+	cr.girl_power_chance = 0.0
+	cr._in_trinity_round = true
+	var a := _symbol_by_id(cr, &"sym_green_circle")
+	if a == null:
+		push_error("Missing symbol for trinity gravity/no-spawn test.")
+		quit(1)
+		return
+	# Seed one 3-line in the middle with symbols above and empty space below.
+	# After clear, upper symbols must fall down (gravity) but no spawns are allowed.
+	cr.grid.set_cell(Vector2i(0, 2), a)
+	cr.grid.set_cell(Vector2i(1, 2), a)
+	cr.grid.set_cell(Vector2i(2, 2), a)
+	for y in range(3, GridManagerScript.ROWS):
+		cr.grid.set_cell(Vector2i(0, y), null)
+		cr.grid.set_cell(Vector2i(1, y), null)
+		cr.grid.set_cell(Vector2i(2, y), null)
+	var fell_events := {"count": 0}
+	var spawn_events := {"count": 0}
+	cr.grid.symbols_fell.connect(func(_moves: Array) -> void:
+		fell_events["count"] = int(fell_events["count"]) + 1
+	)
+	cr.grid.symbols_spawned.connect(func(_spawns: Array) -> void:
+		spawn_events["count"] = int(spawn_events["count"]) + 1
+	)
+	cr._resolve_trinity_cascade_loop_sync()
+	if int(fell_events["count"]) <= 0:
+		push_error("Regular Free Spins (Trinity Run) should allow symbols to fall via gravity.")
+		quit(1)
+		return
+	if int(spawn_events["count"]) != 0:
+		push_error("Regular Free Spins (Trinity Run) should not spawn new symbols.")
 		quit(1)
 		return
 	cr.queue_free()

@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://c7wake2sd6m4d"]
+[gd_scene load_steps=12 format=3 uid="uid://c7wake2sd6m4d"]
 
 [ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
@@ -76,6 +76,20 @@ corner_radius_top_right = 16
 corner_radius_bottom_right = 16
 corner_radius_bottom_left = 16
 shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_super_fs_choice_panel"]
+bg_color = Color(0.09, 0, 0, 0.95)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.25, 0.25, 0.95)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.6)
 shadow_size = 12
 
 [node name="CombatTest" type="Control" unique_id=161757197]
@@ -309,3 +323,96 @@ horizontal_alignment = 1
 vertical_alignment = 1
 text = "Encounter won!"
 mouse_filter = 2
+
+[node name="SuperFSChoiceOverlay" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="SuperFSChoiceDimmer" type="ColorRect" parent="SuperFSChoiceOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.74)
+
+[node name="SuperFSChoicePanel" type="Panel" parent="SuperFSChoiceOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -430.0
+offset_top = -210.0
+offset_right = 430.0
+offset_bottom = 210.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_super_fs_choice_panel")
+mouse_filter = 2
+
+[node name="SuperFSChoiceVBox" type="VBoxContainer" parent="SuperFSChoiceOverlay/SuperFSChoicePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 22.0
+offset_right = -28.0
+offset_bottom = -22.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="SuperFSChoiceTitle" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+horizontal_alignment = 1
+text = "Choose SUPER Free Spins Power"
+
+[node name="SuperFSChoiceHint" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+text = "Fewer spins, higher potential"
+
+[node name="SuperFSChoiceButtons" type="HBoxContainer" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ChooseLoveButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "BLOODY HANDS\nLOVE POWER\n\n4 SPINS\n+4 on meter fill"
+
+[node name="ChooseStarButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "ALCOHOL\nSTAR POWER\n\n5 SPINS\n+3 on meter fill"
+
+[node name="ChooseStormButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "CIGARETTES\nSTORM POWER\n\n8 SPINS\n+2 on meter fill"

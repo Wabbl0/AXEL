@@ -286,3 +286,19 @@ Combat symbol rendering now uses a dual-texture policy for performance and clari
 - Flat background art direction is preserved. No transparency-only pipeline is required for these symbols.
 
 When adding or replacing symbols, always provide both texture paths so grid memory use remains capped and power activations stay crisp.
+
+---
+
+## 13. Terminology Lock (Free Spins vs SUPER Free Spins)
+
+To avoid future confusion in chats, reviews, and implementation notes, use these exact terms:
+
+- **Regular Free Spins** = **Trinity Run** (the sequence immediately after the premium meter fills).
+- **SUPER Free Spins** = the later bonus feature previously referred to in code/docs as Free Spins.
+
+Gameplay rules tied to those names:
+
+- During **Regular Free Spins (Trinity Run)**, there should be **no cascading symbols** (no new symbol drops/refill behavior).
+- During **SUPER Free Spins**, cascading symbols **should** be allowed.
+
+If any doc or task says only "Free Spins" without qualifier, treat it as ambiguous and restate which mode is intended before implementation.
