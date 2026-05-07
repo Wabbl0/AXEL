@@ -55,7 +55,7 @@ signal meter_full_transition_started()
 @export var power_intro_peak_scale: float = 1.8
 ## Peak alpha of the power intro background glow.
 @export_range(0.0, 1.0, 0.01) var power_intro_glow_alpha: float = 0.5
-@export var girl_power_chance: float = 0.01
+@export var girl_power_chance: float = 0.0
 @export var encounter_def: Resource
 @export var total_bet: float = 1.0
 
@@ -133,6 +133,7 @@ var _grid_height_cached: float = 0.0
 var _grid_flash_tween: Tween
 var _grid_border_tween: Tween
 var _power_intro_tween: Tween
+var _last_spin_summary: Dictionary = {}
 var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
@@ -294,6 +295,10 @@ func get_bankroll() -> float:
 	return float(_bankroll_cents) / 100.0
 
 
+func get_last_spin_summary() -> Dictionary:
+	return _last_spin_summary.duplicate(true)
+
+
 func is_encounter_complete() -> bool:
 	return _encounter_complete
 
@@ -322,6 +327,7 @@ func setup_new_grid(seed_value: int) -> void:
 	_pending_free_spins = false
 	_awaiting_free_spin_choice = false
 	_round_winnings_cents = 0
+	_last_spin_summary = _empty_spin_summary()
 	_bankroll_cents = STARTING_BANKROLL_CENTS
 	_lifetime_spins_used = 0
 	var encounter := encounter_def as EncounterScript
@@ -356,6 +362,7 @@ func spin() -> void:
 		emit_signal("spin_finished")
 		return
 	if not _can_afford_spin():
+		_last_spin_summary = _empty_spin_summary()
 		emit_signal("readouts_progressed")
 		emit_signal("spin_finished")
 		return
@@ -392,6 +399,7 @@ func spin() -> void:
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
 		spin_summary["payout"] += clear_bonus
+		spin_summary["clear_bonus_payout"] = int(spin_summary["clear_bonus_payout"]) + clear_bonus
 		_add_round_winnings(clear_bonus)
 	if _pending_free_spins:
 		# #region agent log
@@ -445,6 +453,7 @@ func spin() -> void:
 	if _round_winnings_cents > 0:
 		_play_round_winnings_win_glow()
 	_refresh_multiplier_label()
+	_last_spin_summary = spin_summary.duplicate(true)
 	emit_signal("readouts_progressed")
 	emit_signal("spin_finished")
 
@@ -454,6 +463,7 @@ func spin_sync() -> void:
 	if _state != State.IDLE or _encounter_complete:
 		return
 	if not _can_afford_spin():
+		_last_spin_summary = _empty_spin_summary()
 		emit_signal("readouts_progressed")
 		return
 	_state = State.SPINNING
@@ -484,6 +494,7 @@ func spin_sync() -> void:
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
 		spin_summary["payout"] += clear_bonus
+		spin_summary["clear_bonus_payout"] = int(spin_summary["clear_bonus_payout"]) + clear_bonus
 		_add_round_winnings(clear_bonus)
 	if _pending_free_spins:
 		_state = State.FREE_SPINS_CHOOSE
@@ -505,6 +516,7 @@ func spin_sync() -> void:
 		_state = State.IDLE
 	if _round_winnings_cents > 0:
 		_play_round_winnings_win_glow()
+	_last_spin_summary = spin_summary.duplicate(true)
 	emit_signal("readouts_progressed")
 
 
@@ -681,6 +693,7 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
+		out["line_payout"] = int(out["line_payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 	return out
@@ -704,6 +717,7 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
+		out["line_payout"] = int(out["line_payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 	return out
@@ -728,6 +742,7 @@ func _resolve_trinity_cascade_loop_async() -> Dictionary:
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
+		out["line_payout"] = int(out["line_payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 	return out
@@ -751,6 +766,7 @@ func _resolve_trinity_cascade_loop_sync() -> Dictionary:
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
+		out["line_payout"] = int(out["line_payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 	return out
@@ -1339,6 +1355,8 @@ func _empty_spin_summary() -> Dictionary:
 		"cascade_drops": 0,
 		"wilds_placed": 0,
 		"payout": 0,
+		"line_payout": 0,
+		"clear_bonus_payout": 0,
 		"princess_triggered": false,
 		"grid_cleared": false,
 	}
@@ -1349,6 +1367,8 @@ func _merge_spin_summary(base: Dictionary, extra: Dictionary) -> void:
 	base["cascade_drops"] = int(base["cascade_drops"]) + int(extra.get("cascade_drops", 0))
 	base["wilds_placed"] = int(base["wilds_placed"]) + int(extra.get("wilds_placed", 0))
 	base["payout"] = int(base["payout"]) + int(extra.get("payout", 0))
+	base["line_payout"] = int(base["line_payout"]) + int(extra.get("line_payout", 0))
+	base["clear_bonus_payout"] = int(base["clear_bonus_payout"]) + int(extra.get("clear_bonus_payout", 0))
 	base["princess_triggered"] = bool(base["princess_triggered"]) or bool(extra.get("princess_triggered", false))
 	base["grid_cleared"] = bool(base["grid_cleared"]) or bool(extra.get("grid_cleared", false))
 

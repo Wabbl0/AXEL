@@ -124,3 +124,51 @@ Copy and fill:
 - Behavior impact: OAF terminal-focus workflow and PixelLab asset restyling workflow are fully removed from this repository state.
 - Verification: Confirmed file deletions and re-scanned repository for `oaf`, `agent_feed`, `restyle_assets`, `asset_input`, `asset_output`, and `pixellab` references.
 - Notes: Historical changelog text was adjusted per explicit user request to remove direct mentions of removed OAF/restyle files.
+
+## 2026-05-07 - Add Combat RTP Audit Harness
+
+- Request: Audit current no-item combat RTP/win frequency against a 75-80% target and identify why winnings feel too frequent/easy.
+- Implementation: Added per-spin telemetry exposure in combat orchestration (line payout vs clear-bonus payout) and created a deterministic headless Monte Carlo audit runner that reports RTP, hit rate, encounter success, and confidence intervals.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/test/rtp_audit.gd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Combat runtime behavior is unchanged for players; developers can now run repeatable RTP audits and attribute payout sources precisely.
+- Verification: Executed `Godot_v4.6.2-stable_win64_console.exe --path AXEL/axel_project --headless -s res://combat/test/rtp_audit.gd` and captured JSON metrics from the run.
+- Notes: RTP baseline measured far above target in this sample; follow-up balance tuning should focus first on line payout scale and multiplier growth effects before item-based difficulty layering.
+
+## 2026-05-07 - Baseline RTP Frequency Rebalance (Constrained Knobs)
+
+- Request: Rebalance baseline so symbols match less often and target 75-80% RTP, without changing multiplier function or encounter goals.
+- Implementation: Applied constrained tuning only on allowed knobs by setting all playable symbol `base_weight` values to `1.0` and reducing `girl_power_chance` to `0.0`, then iterated verification using the RTP audit harness.
+- Files changed:
+  - `AXEL/axel_project/combat/data/symbols/sym_green_circle.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_yellow_triangle.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_blue_star.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_red_heart.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_cigarette.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_booze.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_bloody_hand.tres`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Match frequency drivers were constrained to pure symbol-frequency and power-trigger knobs while leaving multiplier logic, goal resources, and paytable payouts unchanged.
+- Verification: Ran `Godot_v4.6.2-stable_win64_console.exe --path AXEL/axel_project --headless -s res://combat/test/rtp_audit.gd` after each pass; best constrained result reached `rtp_mean = 2.6895` with `paid_hit_rate = 0.415`.
+- Notes: Under the imposed constraints, target 75-80% RTP was not reachable; dominant over-return remains line-win payout accumulation from unchanged core payout/multiplier mechanics.
+
+## 2026-05-07 - Paytable Reduction to 75-80 RTP
+
+- Request: Reduce paytable values so baseline no-item RTP lands in the 75-80% range.
+- Implementation: Applied proportional reductions across all symbol paytable fields (`payout_x3`, `payout_x4`, `payout_x5`) for low, premium, and wild symbols while keeping multiplier behavior unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/data/symbols/sym_green_circle.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_yellow_triangle.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_blue_star.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_red_heart.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_cigarette.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_booze.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_bloody_hand.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_satanic.tres`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Win frequency rules remain unchanged, but payouts per resolved line are substantially lower, bringing return closer to target economy.
+- Verification: Ran `Godot_v4.6.2-stable_win64_console.exe --path AXEL/axel_project --headless -s res://combat/test/rtp_audit.gd`; baseline `rtp_mean = 0.78928`, target position `within` `[0.75, 0.8]`.
+- Notes: This pass intentionally targets payout scaling only; any future encounter feel tuning should be done separately from RTP control.
