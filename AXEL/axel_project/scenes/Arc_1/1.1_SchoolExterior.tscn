@@ -11,6 +11,7 @@
 [ext_resource type="Texture2D" uid="uid://nevjsyl7y830" path="res://assets/background_tiles/1.1_Plant_06.png" id="7_xfe7p"]
 [ext_resource type="Texture2D" uid="uid://c50rbilldakwt" path="res://assets/background_tiles/1.1_Road_Bottom.png" id="8_p1pmw"]
 [ext_resource type="Texture2D" uid="uid://e8t60ldn8r8b" path="res://assets/background_tiles/1.1_Road_Top.png" id="9_3wojh"]
+[ext_resource type="PackedScene" path="res://scenes/fx/NoirPaletteOverlay.tscn" id="10_noir_overlay"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_sq0yi"]
 texture = ExtResource("2_qou8c")
@@ -355,3 +356,5 @@ autowrap_mode = 3
 [node name="InventoryHintLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=1908787916]
 layout_mode = 2
 text = "Press I to close."
+
+[node name="NoirPaletteOverlay" parent="." instance=ExtResource("10_noir_overlay")]

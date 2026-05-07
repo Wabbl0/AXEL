@@ -1,0 +1,47 @@
+{
+  "min_main_route_width": 280,
+  "max_route_occupancy": 0.22,
+  "results": [
+    {
+      "scene_id": "loc_board",
+      "draft_file": "loc_board_draft.json",
+      "route_width": 720,
+      "route_occupancy": 0.0331,
+      "path_clear": true,
+      "notes": []
+    },
+    {
+      "scene_id": "loc_board_success",
+      "draft_file": "loc_board_success_draft.json",
+      "route_width": 720,
+      "route_occupancy": 0.0331,
+      "path_clear": true,
+      "notes": []
+    },
+    {
+      "scene_id": "loc_classroom",
+      "draft_file": "loc_classroom_draft.json",
+      "route_width": 720,
+      "route_occupancy": 0.0331,
+      "path_clear": true,
+      "notes": []
+    },
+    {
+      "scene_id": "loc_desk",
+      "draft_file": "loc_desk_draft.json",
+      "route_width": 720,
+      "route_occupancy": 0.0331,
+      "path_clear": true,
+      "notes": []
+    },
+    {
+      "scene_id": "scene_2",
+      "draft_file": "scene_2_draft.json",
+      "route_width": 640,
+      "route_occupancy": 0.0313,
+      "path_clear": true,
+      "notes": []
+    }
+  ],
+  "all_valid": true
+}

@@ -11,7 +11,10 @@ func _ready() -> void:
 	quit_button.pressed.connect(_on_quit_pressed)
 
 func _on_start_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/Arc_1/1.1_SchoolExterior.tscn")
+	var corridor_test_scene := "res://scenes/Arc_1/Corridor.tscn"
+	var default_scene := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
+	var target_scene := corridor_test_scene if ResourceLoader.exists(corridor_test_scene) else default_scene
+	get_tree().change_scene_to_file(target_scene)
 
 func _on_continue_pressed() -> void:
 	var dialog := AcceptDialog.new()

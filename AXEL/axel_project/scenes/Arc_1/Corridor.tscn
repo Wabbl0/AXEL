@@ -1,0 +1,163 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scenes/Arc_1/Corridor.gd" id="1_corridor_script"]
+[ext_resource type="Script" path="res://scripts/Player.gd" id="2_player_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
+[ext_resource type="Texture2D" path="res://assets/props/lockers/locker_single_48.png" id="4_locker"]
+[ext_resource type="Texture2D" path="res://assets/props/graffiti/graffiti_monkey_deformed.png" id="5_graffiti"]
+[ext_resource type="Texture2D" path="res://assets/props/debris/debris_chunk_01.png" id="6_debris"]
+[ext_resource type="Texture2D" path="res://assets/props/debris/trash_bag_01.png" id="7_trash"]
+[ext_resource type="PackedScene" path="res://scenes/fx/NoirPaletteOverlay.tscn" id="8_noir_overlay"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
+radius = 16.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
+size = Vector2(1280, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
+size = Vector2(24, 720)
+
+[node name="Corridor" type="Node2D"]
+script = ExtResource("1_corridor_script")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0, 0, 1)
+
+[node name="FarWallBand" type="Polygon2D" parent="."]
+z_index = -5
+color = Color(0.16, 0, 0, 1)
+polygon = PackedVector2Array(0, 120, 1280, 120, 1280, 225, 0, 225)
+
+[node name="FloorBand" type="Polygon2D" parent="."]
+z_index = -4
+color = Color(0.1, 0, 0, 1)
+polygon = PackedVector2Array(0, 360, 1280, 360, 1280, 720, 0, 720)
+
+[node name="LockerRow" type="Node2D" parent="."]
+z_index = 2
+
+[node name="Locker01" type="Sprite2D" parent="LockerRow"]
+position = Vector2(448, 284)
+texture = ExtResource("4_locker")
+
+[node name="Locker02" type="Sprite2D" parent="LockerRow"]
+position = Vector2(496, 284)
+texture = ExtResource("4_locker")
+
+[node name="Locker03" type="Sprite2D" parent="LockerRow"]
+position = Vector2(544, 284)
+texture = ExtResource("4_locker")
+
+[node name="Locker04" type="Sprite2D" parent="LockerRow"]
+position = Vector2(592, 284)
+texture = ExtResource("4_locker")
+
+[node name="HighlightedLocker" type="Sprite2D" parent="LockerRow"]
+position = Vector2(640, 284)
+texture = ExtResource("4_locker")
+
+[node name="Locker06" type="Sprite2D" parent="LockerRow"]
+position = Vector2(688, 284)
+texture = ExtResource("4_locker")
+
+[node name="Locker07" type="Sprite2D" parent="LockerRow"]
+position = Vector2(736, 284)
+texture = ExtResource("4_locker")
+
+[node name="Locker08" type="Sprite2D" parent="LockerRow"]
+position = Vector2(784, 284)
+texture = ExtResource("4_locker")
+
+[node name="Locker09" type="Sprite2D" parent="LockerRow"]
+position = Vector2(832, 284)
+texture = ExtResource("4_locker")
+
+[node name="GraffitiLayer" type="Node2D" parent="."]
+z_index = 4
+
+[node name="MonkeyGraffiti" type="Sprite2D" parent="GraffitiLayer"]
+position = Vector2(640, 180)
+texture = ExtResource("5_graffiti")
+
+[node name="DebrisLayer" type="Node2D" parent="."]
+z_index = 3
+
+[node name="DebrisLeft" type="Sprite2D" parent="DebrisLayer"]
+position = Vector2(266, 552)
+texture = ExtResource("6_debris")
+
+[node name="DebrisRight" type="Sprite2D" parent="DebrisLayer"]
+position = Vector2(1016, 566)
+rotation = -0.17
+texture = ExtResource("6_debris")
+
+[node name="TrashLeft" type="Sprite2D" parent="DebrisLayer"]
+position = Vector2(360, 598)
+rotation = 0.06
+texture = ExtResource("7_trash")
+
+[node name="TrashRight" type="Sprite2D" parent="DebrisLayer"]
+position = Vector2(930, 608)
+rotation = -0.08
+texture = ExtResource("7_trash")
+
+[node name="CeilingLight" type="PointLight2D" parent="."]
+position = Vector2(640, 126)
+color = Color(1, 0.09, 0.09, 1)
+energy = 0.7
+texture_scale = 8.0
+
+[node name="TopWall" type="StaticBody2D" parent="."]
+position = Vector2(640, 12)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TopWall"]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="BottomWall" type="StaticBody2D" parent="."]
+position = Vector2(640, 708)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="BottomWall"]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="LeftWall" type="StaticBody2D" parent="."]
+position = Vector2(12, 360)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="RightWall" type="StaticBody2D" parent="."]
+position = Vector2(1268, 360)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="Player" type="CharacterBody2D" parent="."]
+z_index = 20
+position = Vector2(640, 520)
+script = ExtResource("2_player_script")
+sprite_sheet = ExtResource("3_player_sheet")
+speed = 180.0
+animation_fps = 5.0
+
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="Player"]
+
+[node name="ShadowOutline" type="AnimatedSprite2D" parent="Player"]
+modulate = Color(0, 0, 0, 0.55)
+z_index = -1
+position = Vector2(1, 2)
+scale = Vector2(1.08, 1.08)
+
+[node name="FallbackBody" type="Polygon2D" parent="Player"]
+color = Color(1, 1, 1, 1)
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+shape = SubResource("CircleShape2D_player")
+
+[node name="NoirPaletteOverlay" parent="." instance=ExtResource("8_noir_overlay")]

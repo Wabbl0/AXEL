@@ -115,6 +115,27 @@ For substantive AXEL requests:
 5. Implement changes.
 6. Verify behavior (tests or explicit manual checks).
 7. Append one entry to `AXEL/axel_project/plans/AI_CHANGELOG.md` if change was implemented.
+8. If a task introduces or updates a reusable workflow/agent pipeline (scripts, specs, rules, runner contracts), record it in this file and in `.cursor/rules/axel-ai-docs-governance.mdc` so future chats can reference it directly.
+
+## 11) Reusable Agent Names
+
+- `scene agent` = the scene-building draft pipeline centered at:
+  - `AXEL/axel_project/plans/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/tools/scene_builder/*`
+- `qa agent` (short form: `qa`) = simulated QA review workflow centered at:
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md`
+- If this agent is updated, refresh `AI_DOCS.md`, `.cursor/rules/axel-ai-docs-governance.mdc`, and `AI_CHANGELOG.md` together.
+
+## 12) Simulated QA Reviewer
+
+- **Purpose:** Opt-in simulated QA pass: style/canon alignment, player-experience critique (consistency, immersion, excitement), scored rubric, and analytics-style finding counts.
+- **Invocation:** If the user requests `qa agent` or `qa`, read and apply `.cursor/skills/axel-simulated-qa/SKILL.md`. Also use it when the user agrees to run QA after a substantive change.
+- **Artifacts:**
+  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md` — axes, weights, severity/category taxonomy
+  - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md` — optional append-only history for trend analytics
+- **Governance:** Agents should **ask** after substantial AXEL edits whether to run this QA; see `.cursor/rules/axel-ai-docs-governance.mdc`.
 
 ## 10) Consistency Checklist (Quick)
 

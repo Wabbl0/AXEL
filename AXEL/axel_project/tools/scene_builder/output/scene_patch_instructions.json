@@ -1,0 +1,9 @@
+{
+  "approved_scene_ids": [],
+  "instruction_count": 0,
+  "instructions": [],
+  "notes": [
+    "Generated only for approved scene IDs.",
+    "This file is a patch interface contract and does not modify scenes directly."
+  ]
+}
