@@ -2,9 +2,9 @@ extends Node
 
 func _ready() -> void:
 	#region agent log
-	var file := FileAccess.open("C:/Users/valtt/OneDrive/Godot/debug-7980eb.log", FileAccess.READ_WRITE)
+	var file := FileAccess.open("C:/Users/valtt/OneDrive/Godot/logs/debug/debug-7980eb.log", FileAccess.READ_WRITE)
 	if file == null:
-		file = FileAccess.open("C:/Users/valtt/OneDrive/Godot/debug-7980eb.log", FileAccess.WRITE_READ)
+		file = FileAccess.open("C:/Users/valtt/OneDrive/Godot/logs/debug/debug-7980eb.log", FileAccess.WRITE_READ)
 	if file != null:
 		file.seek_end()
 		file.store_line(JSON.stringify({

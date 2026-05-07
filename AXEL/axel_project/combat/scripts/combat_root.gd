@@ -138,9 +138,9 @@ var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
-const DEBUG_LOG_PATH := "res://../../debug-1d1bdd.log"
+const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
-const AGENT_DEBUG_LOG_PATH := "res://../../debug-c9d495.log"
+const AGENT_DEBUG_LOG_PATH := "res://../../logs/debug/debug-c9d495.log"
 const AGENT_DEBUG_SESSION_ID := "c9d495"
 
 

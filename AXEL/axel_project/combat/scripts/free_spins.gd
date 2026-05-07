@@ -20,7 +20,7 @@ var spins_awarded_total: int = 0
 var multiplier_cap: int = 100
 var total_spin_cap: int = 100
 var powers_used_once: Dictionary = {}
-const AGENT_DEBUG_LOG_PATH := "res://../../debug-c9d495.log"
+const AGENT_DEBUG_LOG_PATH := "res://../../logs/debug/debug-c9d495.log"
 const AGENT_DEBUG_SESSION_ID := "c9d495"
 
 

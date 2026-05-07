@@ -6,9 +6,9 @@ extends Node
 class_name GameManager
 
 func _debug_log(hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
-	var file := FileAccess.open("C:/Users/valtt/OneDrive/Godot/debug-7980eb.log", FileAccess.READ_WRITE)
+	var file := FileAccess.open("C:/Users/valtt/OneDrive/Godot/logs/debug/debug-7980eb.log", FileAccess.READ_WRITE)
 	if file == null:
-		file = FileAccess.open("C:/Users/valtt/OneDrive/Godot/debug-7980eb.log", FileAccess.WRITE_READ)
+		file = FileAccess.open("C:/Users/valtt/OneDrive/Godot/logs/debug/debug-7980eb.log", FileAccess.WRITE_READ)
 	if file == null:
 		return
 	file.seek_end()

@@ -28,8 +28,8 @@
 **Headless checks (from repo root, with Godot on PATH):**
 
 ```bat
-godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
-godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
+tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
+tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
 ```
 
 **Troubleshooting headless / `class_name` resolution:** If Godot reports missing types like `EncounterDef` or `GoalDef`, ensure [`.godot/global_script_class_cache.cfg`](../.godot/global_script_class_cache.cfg) includes all combat `class_name` entries, or open the project once in the editor to regenerate the cache.

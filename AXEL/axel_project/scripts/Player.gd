@@ -17,7 +17,7 @@ const _MIKE_FRAME_INDICES := {
 const _MIKE_FRAME_COUNT := 13
 
 @export var speed: float = 220.0
-## When empty, tries common paths under res://sprites/ (including mike walking exports).
+## When empty, tries common paths under res://assets/sprites/ (including mike walking exports).
 @export var sprite_sheet: Texture2D
 ## AUTO: wide strip if width divisible by 13; else if width and height divisible by sheet_columns / sheet_rows, use GRID.
 @export var sheet_layout_mode: SheetLayoutMode = SheetLayoutMode.AUTO
@@ -55,12 +55,12 @@ func _ready() -> void:
 
 func _try_load_default_sprite_sheet() -> Texture2D:
 	var candidates: Array[String] = [
-		"res://sprites/mike_walking-Sheet.png",
-		"res://sprites/mike_walking.png",
-		"res://sprites/player_sheet.png",
-		"res://sprites/player.png",
-		"res://sprites/character.png",
-		"res://sprites/sprite.png",
+		"res://assets/sprites/mike_walking-Sheet.png",
+		"res://assets/sprites/mike_walking.png",
+		"res://assets/sprites/player_sheet.png",
+		"res://assets/sprites/player.png",
+		"res://assets/sprites/character.png",
+		"res://assets/sprites/sprite.png",
 	]
 	for path in candidates:
 		if ResourceLoader.exists(path):

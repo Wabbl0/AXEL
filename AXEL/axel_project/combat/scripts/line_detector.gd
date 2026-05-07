@@ -4,7 +4,7 @@ extends RefCounted
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
 const ROWS := 5
 const COLS := 5
-const DEBUG_LOG_PATH := "res://../../debug-1d1bdd.log"
+const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
 
 

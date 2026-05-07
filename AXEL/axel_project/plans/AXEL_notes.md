@@ -1,7 +1,7 @@
 # AXEL — Game Design Notes
 
 > Compiled from design conversation. Single source of truth for the roguelite encounter, economy, and progression layer.
-> Companion docs: `AXEL_combat_design.md`, `AXEL_combat_implementation.md`, `AXEL_SCENES_BLUEPRINT.md`, `AXEL_SCENE_DIALOGUES.md`.
+> Companion docs: `AXEL_combat_design.md`, `AXEL_combat_implementation.md`, `AXEL_SCENES_BLUEPRINT.md`, `AXEL_SCENE_DIALOGUES.md`, `README_STRUCTURE.md`.
 
 ---
 

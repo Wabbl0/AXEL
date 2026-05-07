@@ -1,7 +1,7 @@
 extends Control
 
 const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
-const DEBUG_LOG_PATH := "res://../../debug-1d1bdd.log"
+const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
 const PRINCESS_LOVE: StringName = &"love"
 const PRINCESS_STAR: StringName = &"star"
