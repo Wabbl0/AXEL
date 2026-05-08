@@ -2,11 +2,17 @@ extends Node2D
 
 @onready var background: ColorRect = $Background
 @onready var ceiling_light: PointLight2D = $CeilingLight
+@onready var _top_dialogue: Node = $TopDialogueOverlay
 
 var _flicker_time := 0.0
 
 func _ready() -> void:
 	_start_push_in_tween()
+	_show_spawn_line()
+
+
+func _show_spawn_line() -> void:
+	await _top_dialogue.show_line("Even after all these years the smell is the same.", 3.5)
 
 func _process(delta: float) -> void:
 	_flicker_time += delta

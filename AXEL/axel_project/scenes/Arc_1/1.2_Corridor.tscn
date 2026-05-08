@@ -8,6 +8,19 @@
 [ext_resource type="Texture2D" uid="uid://1dw7sw0yvk2c" path="res://assets/props/debris/debris_chunk_01.png" id="6_debris"]
 [ext_resource type="Texture2D" uid="uid://ccku02e3vf434" path="res://assets/props/debris/trash_bag_01.png" id="7_trash"]
 [ext_resource type="PackedScene" path="res://scenes/fx/NoirPaletteOverlay.tscn" id="8_noir_overlay"]
+[ext_resource type="Shader" uid="uid://c2rtk7n5ii63o" path="res://scenes/fx/highlighted_locker_palette_filter.gdshader" id="9_highlighted_locker_shader"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_highlighted_locker_local"]
+shader = ExtResource("9_highlighted_locker_shader")
+shader_parameter/black_color = Color(0, 0, 0, 1)
+shader_parameter/dark_blood_color = Color(0.24, 0, 0, 1)
+shader_parameter/blood_red_color = Color(0.86, 0, 0, 1)
+shader_parameter/white_color = Color(0.95, 0.95, 0.95, 1)
+shader_parameter/t0 = 0.2
+shader_parameter/t1 = 0.44
+shader_parameter/t2 = 0.76
+shader_parameter/darken_factor = 0.67
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
 size = Vector2(1280, 90)
@@ -36,52 +49,73 @@ polygon = PackedVector2Array(0, 360, 1280, 360, 1280, 720, 0, 720)
 z_index = 2
 
 [node name="Locker01" type="Sprite2D" parent="LockerRow" unique_id=1012410870]
+texture_filter = 1
 position = Vector2(167, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="Locker02" type="Sprite2D" parent="LockerRow" unique_id=338664235]
+texture_filter = 1
 position = Vector2(274.44, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="Locker03" type="Sprite2D" parent="LockerRow" unique_id=867170295]
+texture_filter = 1
 position = Vector2(381.89, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="Locker04" type="Sprite2D" parent="LockerRow" unique_id=1428697484]
+texture_filter = 1
 position = Vector2(489.33, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="HighlightedLocker" type="Sprite2D" parent="LockerRow" unique_id=1143015727]
+visible = false
+texture_filter = 1
 position = Vector2(596.78, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="Locker06" type="Sprite2D" parent="LockerRow" unique_id=1461331699]
+texture_filter = 1
 position = Vector2(704.22, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="Locker07" type="Sprite2D" parent="LockerRow" unique_id=11006408]
+texture_filter = 1
 position = Vector2(811.67, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="Locker08" type="Sprite2D" parent="LockerRow" unique_id=2133817467]
+texture_filter = 1
 position = Vector2(919.11, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="Locker09" type="Sprite2D" parent="LockerRow" unique_id=2113694645]
+texture_filter = 1
 position = Vector2(1026.56, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
 [node name="Locker10" type="Sprite2D" parent="LockerRow" unique_id=1438307291]
+texture_filter = 1
 position = Vector2(1134, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="HighlightedLockerBypassLayer" type="CanvasLayer" parent="." unique_id=1143015799]
+layer = 95
+
+[node name="HighlightedLockerBypass" type="Sprite2D" parent="HighlightedLockerBypassLayer" unique_id=1143015800]
+texture_filter = 1
+material = SubResource("ShaderMaterial_highlighted_locker_local")
+position = Vector2(596.78, 274)
 scale = Vector2(2.06, 2.06)
 texture = ExtResource("4_locker")
 
@@ -91,7 +125,7 @@ texture = ExtResource("4_locker")
 position = Vector2(640, 360)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockerColliders/UpperWallBlock" unique_id=1200780002]
-position = Vector2(0, -140)
+position = Vector2(0, -125)
 shape = SubResource("RectangleShape2D_upper_block")
 
 [node name="GraffitiLayer" type="Node2D" parent="." unique_id=60741870]
@@ -186,3 +220,5 @@ shape = SubResource("CircleShape2D_player")
 [node name="NoirPaletteOverlay" parent="." unique_id=1037884425 instance=ExtResource("8_noir_overlay")]
 scale = Vector2(1.12, 1.12)
 transform = Transform2D(1.12, 0, 0, 1.12, 0, 0)
+
+[node name="TopDialogueOverlay" parent="." instance=ExtResource("10_top_dialogue")]
