@@ -1,15 +1,360 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=4 uid="uid://bcek6qktdp4ha"]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" uid="uid://dbae7hm87vgv0" path="res://scripts/GameController.gd" id="1_nopav"]
+[ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_elx0u"]
+[ext_resource type="Texture2D" uid="uid://bu33braj3e6km" path="res://assets/background_tiles/1.1_Plant_01.png" id="2_qou8c"]
+[ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_p5syx"]
+[ext_resource type="Texture2D" uid="uid://cciwhdw0rv7it" path="res://assets/background_tiles/1.1_Plant_02.png" id="3_s7cgr"]
+[ext_resource type="Texture2D" uid="uid://cq478k0vxkk47" path="res://assets/background_tiles/1.1_Plant_03.png" id="4_e3p3q"]
+[ext_resource type="Texture2D" uid="uid://dha263u5tj6f0" path="res://assets/background_tiles/1.1_Plant_04.png" id="5_h4vo6"]
+[ext_resource type="Texture2D" uid="uid://dilnvk86tbqe2" path="res://assets/background_tiles/1.1_Plant_05.png" id="6_djrpt"]
+[ext_resource type="Texture2D" uid="uid://nevjsyl7y830" path="res://assets/background_tiles/1.1_Plant_06.png" id="7_xfe7p"]
+[ext_resource type="Texture2D" uid="uid://c50rbilldakwt" path="res://assets/background_tiles/1.1_Road_Bottom.png" id="8_p1pmw"]
+[ext_resource type="Texture2D" uid="uid://e8t60ldn8r8b" path="res://assets/background_tiles/1.1_Road_Top.png" id="9_3wojh"]
+[ext_resource type="PackedScene" path="res://scenes/fx/NoirPaletteOverlay.tscn" id="10_noir_overlay"]
 
-[node name="ScenePlaceholder" type="Control"]
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_sq0yi"]
+texture = ExtResource("2_qou8c")
+1:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_xoc5p"]
+texture = ExtResource("3_s7cgr")
+1:0/0 = 0
+2:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_8rkf6"]
+texture = ExtResource("4_e3p3q")
+1:0/0 = 0
+2:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+1:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_35anl"]
+texture = ExtResource("5_h4vo6")
+0:1/0 = 0
+1:1/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3px33"]
+texture = ExtResource("6_djrpt")
+1:1/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_r4ypr"]
+texture = ExtResource("7_xfe7p")
+texture_region_size = Vector2i(12, 12)
+1:1/0 = 0
+2:1/0 = 0
+3:1/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+3:2/0 = 0
+1:3/0 = 0
+2:3/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_fwlst"]
+tile_size = Vector2i(12, 12)
+sources/0 = SubResource("TileSetAtlasSource_sq0yi")
+sources/1 = SubResource("TileSetAtlasSource_xoc5p")
+sources/2 = SubResource("TileSetAtlasSource_8rkf6")
+sources/3 = SubResource("TileSetAtlasSource_35anl")
+sources/4 = SubResource("TileSetAtlasSource_3px33")
+sources/6 = SubResource("TileSetAtlasSource_r4ypr")
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_h0l6j"]
+texture = ExtResource("8_p1pmw")
+texture_region_size = Vector2i(48, 48)
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_xcoce"]
+texture = ExtResource("9_3wojh")
+texture_region_size = Vector2i(48, 48)
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_e4cnb"]
+tile_size = Vector2i(48, 48)
+sources/6 = SubResource("TileSetAtlasSource_h0l6j")
+sources/7 = SubResource("TileSetAtlasSource_xcoce")
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
+size = Vector2(1280, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
+size = Vector2(32, 720)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
+radius = 16.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_interact"]
+size = Vector2(28, 28)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_memory_pickup"]
+size = Vector2(30, 30)
+
+[node name="Game" type="Node2D" unique_id=521734377]
+script = ExtResource("1_nopav")
+
+[node name="Floor" type="Polygon2D" parent="." unique_id=574739080]
+z_index = -100
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="1.1_EnvironmentPlaceholders" type="Node2D" parent="." unique_id=1975434927]
+
+[node name="1.1_School_Building_Exterior_01" type="Polygon2D" parent="1.1_EnvironmentPlaceholders" unique_id=437449365]
+z_index = -50
+color = Color(0.3255383, 0.045045167, 0.06506997, 1)
+polygon = PackedVector2Array(980, 170, 1250, 170, 1250, 560, 980, 560)
+
+[node name="1.1_School_Building_Doors_01" type="Polygon2D" parent="1.1_EnvironmentPlaceholders" unique_id=461524344]
+z_index = -45
+position = Vector2(-55, 18)
+color = Color(0.41846925, 0.01662989, 0, 1)
+polygon = PackedVector2Array(1035, 305, 1115, 305, 1115, 430, 1035, 430)
+
+[node name="Background_Plants" type="TileMapLayer" parent="." unique_id=645481539]
+tile_map_data = PackedByteArray("AAALACMABgABAAEAAAALACQABgABAAIAAAALACUABgABAAMAAAAMACMABgACAAEAAAAMACQABgACAAIAAAAMACUABgACAAMAAAANACMABgADAAEAAAANACQABgADAAIAAAAaACUABgABAAEAAAAaACYABgABAAIAAAAaACcABgABAAMAAAAbACUABgACAAEAAAAbACYABgACAAIAAAAbACcABgACAAMAAAAcACUABgADAAEAAAAcACYABgADAAIAAAAhACMABgABAAEAAAAhACQABgABAAIAAAAhACUABgABAAMAAAAiACMABgACAAEAAAAiACQABgACAAIAAAAiACUABgACAAMAAAAjACMABgADAAEAAAAjACQABgADAAIAAAArACUABgABAAEAAAArACYABgABAAIAAAArACcABgABAAMAAAAsACUABgACAAEAAAAsACYABgACAAIAAAAsACcABgACAAMAAAAtACUABgADAAEAAAAtACYABgADAAIAAAA4ACQABgABAAEAAAA4ACUABgABAAIAAAA4ACYABgABAAMAAAA5ACQABgACAAEAAAA5ACUABgACAAIAAAA5ACYABgACAAMAAAA6ACQABgADAAEAAAA6ACUABgADAAIAAAA/ACYABgABAAEAAAA/ACcABgABAAIAAAA/ACgABgABAAMAAABAACYABgACAAEAAABAACcABgACAAIAAABAACgABgACAAMAAABBACYABgADAAEAAABBACcABgADAAIAAABJACQABgABAAEAAABJACUABgABAAIAAABJACYABgABAAMAAABKACQABgACAAEAAABKACUABgACAAIAAABKACYABgACAAMAAABLACQABgADAAEAAABLACUABgADAAIAAABOACYABgABAAEAAABOACcABgABAAIAAABOACgABgABAAMAAABPACYABgACAAEAAABPACcABgACAAIAAABPACgABgACAAMAAABQACYABgADAAEAAABQACcABgADAAIAAAASACgABAABAAEAAAAZACwABAABAAEAAAAhACsABAABAAEAAAAsAC4ABAABAAEAAAAyACsABAABAAEAAAA4ACsABAABAAEAAAA9AC0ABAABAAEAAABDAC4ABAABAAEAAABIAC4ABAABAAEAAABMAA8ABAABAAEAAABHAA0ABAABAAEAAABBAA4ABAABAAEAAAA4AA0ABAABAAEAAAAtAA0ABAABAAEAAAAmAA0AAQAAAAEAAAAmAA4ABAABAAEAAAAMAA0ABAABAAEAAAANAA0ABAABAAEAAAANAA4ABAABAAEAAAAYAAsABAABAAEAAAAKABoAAgAAAAEAAAALABkAAgABAAAAAAALABoAAgABAAEAAAALABsAAgABAAIAAAAMABkAAgACAAAAAAAMABoAAgACAAEAAAASABsAAgAAAAEAAAATABoAAgABAAAAAAATABsAAgABAAEAAAATABwAAgABAAIAAAAUABoAAgACAAAAAAAUABsAAgACAAEAAAAbABoAAgAAAAEAAAAcABkAAgABAAAAAAAcABoAAgABAAEAAAAcABsAAgABAAIAAAAdABkAAgACAAAAAAAdABoAAgACAAEAAAAqABcAAgAAAAEAAAArABYAAgABAAAAAAArABcAAgABAAEAAAArABgAAgABAAIAAAAsABYAAgACAAAAAAAsABcAAgACAAEAAAAuABkAAgAAAAEAAAAvABgAAgABAAAAAAAvABkAAgABAAEAAAAvABoAAgABAAIAAAAwABgAAgACAAAAAAAwABkAAgACAAEAAAA1ABwAAgAAAAEAAAA2ABsAAgABAAAAAAA2ABwAAgABAAEAAAA2AB0AAgABAAIAAAA3ABsAAgACAAAAAAA3ABwAAgACAAEAAABGABkAAgAAAAEAAABHABgAAgABAAAAAABHABkAAgABAAEAAABHABoAAgABAAIAAABIABgAAgACAAAAAABIABkAAgACAAEAAABIABoAAgAAAAEAAABJABkAAgABAAAAAABJABoAAgABAAEAAABJABsAAgABAAIAAABKABkAAgACAAAAAABKABoAAgACAAEAAAAKAC8AAQAAAAEAAAALAC4AAQABAAAAAAALAC8AAQABAAEAAAAMAC4AAQACAAAAAAAMAC8AAQACAAEAAAAOADEAAQAAAAEAAAAPADAAAQABAAAAAAAPADEAAQABAAEAAAAQADAAAQACAAAAAAAQADEAAQACAAEAAAAyAC8AAQAAAAEAAAAzAC4AAQABAAAAAAAzAC8AAQABAAEAAAA0AC4AAQACAAAAAAA0AC8AAQACAAEAAAA0ADEAAQAAAAEAAAA1ADAAAQABAAAAAAA1ADEAAQABAAEAAAA2ADAAAQACAAAAAAA2ADEAAQACAAEAAABLADAAAQAAAAEAAABMAC8AAQABAAAAAABMADAAAQABAAEAAABNAC8AAQACAAAAAABNADAAAQACAAEAAABKADIAAQAAAAEAAABLADEAAQABAAAAAABLADIAAQABAAEAAABMADEAAQACAAAAAABMADIAAQACAAEAAAA4AAwAAQAAAAEAAAA5AAsAAQABAAAAAAA5AAwAAQABAAEAAAA6AAsAAQACAAAAAAA6AAwAAQACAAEAAABFAAwAAQAAAAEAAABGAAsAAQABAAAAAABGAAwAAQABAAEAAABHAAsAAQACAAAAAABHAAwAAQACAAEAAAAnAAwAAQABAAAAAAAnAA0AAQABAAEAAAAoAAwAAQACAAAAAAAoAA0AAQACAAEAAAAiABoAAAAAAAEAAAAiABsAAAAAAAIAAAAjABkAAAABAAAAAAAjABoAAAABAAEAAAAjABsAAAABAAIAAAAkABoAAAACAAEAAAAkABsAAAACAAIAAAA4ABEAAAAAAAEAAAA4ABIAAAAAAAIAAAA5ABAAAAABAAAAAAA5ABEAAAABAAEAAAA5ABIAAAABAAIAAAA6ABEAAAACAAEAAAA6ABIAAAACAAIAAAA7AC8AAAAAAAEAAAA7ADAAAAAAAAIAAAA8AC4AAAABAAAAAAA8AC8AAAABAAEAAAA8ADAAAAABAAIAAAA9AC8AAAACAAEAAAA9ADAAAAACAAIAAABXADEAAAAAAAEAAABXADIAAAAAAAIAAABYADAAAAABAAAAAABYADEAAAABAAEAAABYADIAAAABAAIAAABZADEAAAACAAEAAABZADIAAAAAAAEAAABZADMAAAAAAAIAAABaADEAAAABAAAAAABaADIAAAABAAEAAABaADMAAAABAAIAAABbADIAAAACAAEAAABbADMAAAACAAIAAAA9ABkAAAAAAAEAAAA9ABoAAAAAAAIAAAA+ABgAAAABAAAAAAA+ABkAAAABAAEAAAA+ABoAAAABAAIAAAA/ABkAAAACAAEAAAA/ABoAAAACAAIAAAA=")
+tile_set = SubResource("TileSet_fwlst")
+
+[node name="Background_Road" type="TileMapLayer" parent="." unique_id=280234083]
+z_index = -60
+tile_map_data = PackedByteArray("AAAAAAcABwAAAAAAAAABAAcABwAAAAAAAAACAAcABwAAAAAAAAADAAcABwAAAAAAAAAEAAcABwAAAAAAAAAFAAcABwAAAAAAAAAGAAcABwAAAAAAAAAHAAcABwAAAAAAAAAIAAcABwAAAAAAAAAJAAcABwAAAAAAAAAKAAcABwAAAAAAAAALAAcABwAAAAAAAAAMAAcABwAAAAAAAAANAAcABwAAAAAAAAAOAAcABwAAAAAAAAAPAAcABwAAAAAAAAAQAAcABwAAAAAAAAARAAcABwAAAAAAAAASAAcABwAAAAAAAAATAAcABwAAAAAAAAAUAAcABwAAAAAAAAAVAAcABwAAAAAAAAAWAAcABwAAAAAAAAAXAAcABwAAAAAAAAAYAAcABwAAAAAAAAAZAAcABwAAAAAAAAAAAAgABgAAAAAAAAABAAgABgAAAAAAAAACAAgABgAAAAAAAAADAAgABgAAAAAAAAAEAAgABgAAAAAAAAAFAAgABgAAAAAAAAAGAAgABgAAAAAAAAAHAAgABgAAAAAAAAAIAAgABgAAAAAAAAAJAAgABgAAAAAAAAAKAAgABgAAAAAAAAALAAgABgAAAAAAAAAMAAgABgAAAAAAAAANAAgABgAAAAAAAAAOAAgABgAAAAAAAAAPAAgABgAAAAAAAAAQAAgABgAAAAAAAAARAAgABgAAAAAAAAASAAgABgAAAAAAAAATAAgABgAAAAAAAAAUAAgABgAAAAAAAAAVAAgABgAAAAAAAAAWAAgABgAAAAAAAAAXAAgABgAAAAAAAAAYAAgABgAAAAAAAAAZAAgABgAAAAAAAAA=")
+tile_set = SubResource("TileSet_e4cnb")
+
+[node name="TopWall" type="StaticBody2D" parent="." unique_id=1058376895]
+position = Vector2(640, 16)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TopWall" unique_id=1627696374]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="BottomWall" type="StaticBody2D" parent="." unique_id=1196423384]
+position = Vector2(640, 704)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="BottomWall" unique_id=324826100]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="LeftWall" type="StaticBody2D" parent="." unique_id=1418059198]
+position = Vector2(16, 360)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall" unique_id=963137740]
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="RightWall" type="StaticBody2D" parent="." unique_id=432242208]
+position = Vector2(1264, 360)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall" unique_id=455161837]
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="Player" type="CharacterBody2D" parent="." unique_id=304166626]
+unique_name_in_owner = true
+z_index = 20
+position = Vector2(120, 360)
+script = ExtResource("2_elx0u")
+speed = 180.0
+sprite_sheet = ExtResource("3_p5syx")
+animation_fps = 5.0
+
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="Player" unique_id=663540772]
+
+[node name="ShadowOutline" type="AnimatedSprite2D" parent="Player" unique_id=124778921]
+modulate = Color(0, 0, 0, 0.55)
+z_index = -1
+position = Vector2(1, 2)
+scale = Vector2(1.08, 1.08)
+
+[node name="FallbackBody" type="Polygon2D" parent="Player" unique_id=506965154]
+color = Color(0.36, 0.85, 0.94, 1)
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player" unique_id=1911443813]
+shape = SubResource("CircleShape2D_player")
+
+[node name="KeyArea" type="Area2D" parent="." unique_id=539758875]
+unique_name_in_owner = true
+position = Vector2(360, 210)
+
+[node name="Marker" type="Polygon2D" parent="KeyArea" unique_id=737173223]
+color = Color(1, 0.87, 0.2, 1)
+polygon = PackedVector2Array(-12, 0, 0, -12, 12, 0, 0, 12)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="KeyArea" unique_id=1829478860]
+shape = SubResource("RectangleShape2D_interact")
+
+[node name="ExitArea" type="Area2D" parent="." unique_id=2048341469]
+unique_name_in_owner = true
+position = Vector2(1100, 360)
+
+[node name="Door" type="Polygon2D" parent="ExitArea" unique_id=1406190197]
+position = Vector2(-101, 25)
+color = Color(0.7, 0.46, 0.2, 1)
+polygon = PackedVector2Array(-18, -24, 18, -24, 18, 24, -18, 24)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ExitArea" unique_id=1637044733]
+position = Vector2(-101, 25)
+shape = SubResource("RectangleShape2D_interact")
+
+[node name="MemoryPickupArea" type="Area2D" parent="." unique_id=1605060640]
+unique_name_in_owner = true
+position = Vector2(760, 250)
+
+[node name="Token" type="Polygon2D" parent="MemoryPickupArea" unique_id=674573916]
+color = Color(0.56, 0.82, 1, 1)
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MemoryPickupArea" unique_id=880707678]
+shape = SubResource("RectangleShape2D_memory_pickup")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1730323409]
+visible = false
+
+[node name="Root" type="Control" parent="HUD" unique_id=221697165]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_scene_placeholder")
-scene_id = "1.1"
-location_label = ""
-dialogue = PackedStringArray("You promised, you'd never come back.", "[beat]", "Yet, here we are.", "[[beat]]", "Pathetic.")
+
+[node name="TimerLabel" type="Label" parent="HUD/Root" unique_id=2016506900]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 46.0
+text = "TIME: 45"
+
+[node name="ObjectiveLabel" type="Label" parent="HUD/Root" unique_id=1874566833]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 20.0
+offset_top = 52.0
+offset_right = 580.0
+offset_bottom = 82.0
+text = "Objective: Find the key."
+
+[node name="MemoryLabel" type="Label" parent="HUD/Root" unique_id=690642757]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 20.0
+offset_top = 88.0
+offset_right = 280.0
+offset_bottom = 118.0
+text = "MEMORY: 0"
+
+[node name="HelpLabel" type="Label" parent="HUD/Root" unique_id=608235649]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 124.0
+offset_right = 660.0
+offset_bottom = 154.0
+text = "Move: Arrows/WASD | Interact: Enter/Space | Inventory: I | Restart: R"
+
+[node name="MessagePanel" type="PanelContainer" parent="HUD/Root" unique_id=1407907279]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 350.0
+offset_top = 300.0
+offset_right = 940.0
+offset_bottom = 380.0
+
+[node name="MessageLabel" type="Label" parent="HUD/Root/MessagePanel" unique_id=1020408934]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Status message"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DialoguePanel" type="PanelContainer" parent="HUD/Root" unique_id=2013024347]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 160.0
+offset_top = 520.0
+offset_right = 1120.0
+offset_bottom = 680.0
+
+[node name="DialogueMargin" type="MarginContainer" parent="HUD/Root/DialoguePanel" unique_id=201058677]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="DialogueVBox" type="VBoxContainer" parent="HUD/Root/DialoguePanel/DialogueMargin" unique_id=42601580]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DialogueTextLabel" type="Label" parent="HUD/Root/DialoguePanel/DialogueMargin/DialogueVBox" unique_id=313969766]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Narration goes here."
+autowrap_mode = 3
+
+[node name="DialogueHintLabel" type="Label" parent="HUD/Root/DialoguePanel/DialogueMargin/DialogueVBox" unique_id=547920551]
+layout_mode = 2
+text = "Enter/Space: Next | Tab: Skip typing"
+horizontal_alignment = 2
+
+[node name="InventoryPanel" type="PanelContainer" parent="HUD/Root" unique_id=127666297]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 840.0
+offset_top = 180.0
+offset_right = 1240.0
+offset_bottom = 620.0
+
+[node name="InventoryMargin" type="MarginContainer" parent="HUD/Root/InventoryPanel" unique_id=112585625]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="InventoryVBox" type="VBoxContainer" parent="HUD/Root/InventoryPanel/InventoryMargin" unique_id=1644433897]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="InventoryTitleLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=1060097569]
+layout_mode = 2
+text = "Inventory"
+horizontal_alignment = 1
+
+[node name="InventoryItemsLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=844138061]
+unique_name_in_owner = true
+layout_mode = 2
+text = "No items collected yet."
+autowrap_mode = 3
+
+[node name="InventoryHintLabel" type="Label" parent="HUD/Root/InventoryPanel/InventoryMargin/InventoryVBox" unique_id=1908787916]
+layout_mode = 2
+text = "Press I to close."
+
+[node name="NoirPaletteOverlay" parent="." instance=ExtResource("10_noir_overlay")]
