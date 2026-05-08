@@ -1,6 +1,40 @@
 # AXEL Simulated QA Review Rubric
 
-Scoring reference for the **Simulated QA Reviewer** skill (`.cursor/skills/axel-simulated-qa/SKILL.md`). Canon order: `AI_DOCS.md` wins on conflicts.
+Scoring reference for **`qa agent` / `qa`** (`.cursor/skills/axel-simulated-qa/SKILL.md`). Canon order: `AI_DOCS.md` wins on conflicts.
+
+## Playtest-mode criteria
+
+Use this section to set **confidence** and required **evidence**. Default `qa` voice is **technical-first** and **concise**; playtest mode adds **simulated runs** for higher confidence.
+
+### Confidence tiers
+
+| Tier | Meaning | Required evidence |
+|------|---------|-------------------|
+| `static review` | Code/docs/drafts only | File pointers; no automated runs |
+| `combat simulated` | Headless combat checks passed | `princess_check.gd` + `determinism_check.gd` exit 0; optional `rtp_audit.gd` stdout captured |
+| `combat + scene smoke` | High-confidence default for playtest requests | All of **combat simulated** **plus** `scene_smoke_check.gd` exit 0 **plus** `rtp_audit.gd` metrics line captured (metrics only; not a pass/fail gate unless user defines thresholds) |
+
+### Default command set (playtest: combat + scene smoke)
+
+Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
+
+```bat
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd
+```
+
+- **Pass/fail gates:** `princess_check`, `determinism_check`, `scene_smoke_check` — non-zero exit = report as **blocker** / `BUG` or `REGRESSION`.
+- **`rtp_audit.gd`:** always exits 0 — parse stdout for `RTP_AUDIT_JSON` (or printed metrics) and record in analytics; do not fail the run on RTP alone unless thresholds are specified.
+
+### When user says “playtest” or “high confidence”
+
+1. Run the full command set above (or report which steps failed / were skipped).
+2. Set **Confidence:** to `combat + scene smoke` only if all gates passed and metrics captured.
+3. Prioritize **bugs, regressions, and fix recommendations** over subjective feel.
+
+---
 
 ## Axes (0–5 each)
 
@@ -77,6 +111,7 @@ Use these `category` labels in findings and analytics:
 | `COMBAT` | Grid / RNG / invariants | Violates `AI_DOCS.md` §5 |
 | `ARCH` | Layer mixing | Narrative vs combat boundaries blurred without intent |
 | `REGRESSION` | Prior spec / flags | Blueprint or state machine drift |
+| `BUG` | Crashes / failed smoke or tests | Non-zero test exit, load errors, exceptions |
 | `TOOL` | Pipeline / drafts | `layout_validation`, quarantine, approval gates only (when reviewing scene_builder output) |
 
 ## Severity definitions
@@ -90,12 +125,31 @@ Use these `category` labels in findings and analytics:
 
 ## Analytics snapshot (minimum)
 
-In every QA report, include:
+In every QA report, include (keep **≤6 lines** total per skill brevity caps):
 
 - Count of findings per **severity**
 - Count of findings per **category**
-- One line **confidence**: e.g. `static review`, `draft JSON + validation only`, `would need playtest`
+- One line **Confidence:** `static review` | `combat simulated` | `combat + scene smoke` (must match evidence from §Playtest-mode)
+- Playtest runs: **pass/fail** per gate command (if playtest mode)
 
-## Player Experience Review (qualitative)
+## Persistent analytics payload (for trend graphing)
 
-Not scored separately; it **must** accompany the numeric axes and speak to how a player would feel about **consistency**, **immersion**, and **excitement** in one cohesive voice.
+In addition to the concise report, each run should append one machine-readable JSON payload to `AXEL_QA_RUN_LOG.md` between:
+
+- `<!-- QA_ANALYTICS_JSON_BEGIN -->`
+- `<!-- QA_ANALYTICS_JSON_END -->`
+
+Required keys:
+
+- `timestamp`, `run_title`, `mode`, `scope`, `trigger`
+- `scores` with numeric `S/N/I/E/C/R/Total` and string `Band`
+- `findings_count` with `blocker/major/minor/nit`
+- `by_category` with taxonomy counts from this rubric
+- `playtest_commands` with `princess_check/determinism/rtp_audit/scene_smoke`
+- `bugs_or_regressions` as short list entries
+
+This payload is the source of truth for historical analytics and Mermaid trend lines.
+
+## Player experience (optional)
+
+Not required by default. If the user explicitly asks for player-feel, add **one short paragraph** (see skill). Do not replace technical findings.

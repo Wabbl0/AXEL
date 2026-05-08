@@ -38,9 +38,15 @@ def _instruction_from_draft(draft: Dict[str, object]) -> Dict[str, object]:
             }
         )
 
+    arc_dir = str(draft.get("arc_dir") or "").strip()
+    scene_file = draft["scene_file"]
+    target_path = (
+        f"res://scenes/{arc_dir}/{scene_file}" if arc_dir else f"res://scenes/{scene_file}"
+    )
+
     return {
         "scene_id": draft["scene_id"],
-        "target_scene_path_hint": f"res://scenes/{draft['scene_file']}",
+        "target_scene_path_hint": target_path,
         "player_profile": draft["player"],
         "operations": [
             {

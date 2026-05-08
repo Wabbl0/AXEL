@@ -296,3 +296,319 @@ Copy and fill:
 - Behavior impact: Future chats can consistently invoke the same simulated QA workflow using short alias calls (`qa agent` or `qa`).
 - Verification: Confirmed alias text appears in skill, rule, and canonical docs with matching spellings.
 - Notes: Alias follows existing reusable-agent naming pattern alongside `scene agent`.
+
+## 2026-05-08 - Corridor Canonical Filename Guard
+
+- Request: Fix that `scene agent` wrote a new corridor scene to `Corridor.tscn` instead of overwriting the canonical placeholder `1.2_Corridor.tscn`, and make this rule permanent for future runs.
+- Implementation: Migrated the generated corridor scene content from `Corridor.tscn` into the canonical `1.2_Corridor.tscn`, deleted the non-canonical `Corridor.tscn`, repointed the MainMenu corridor test path to the canonical scene, hardened the scene-builder planner to resolve canonical numbered filenames + Arc folders (new `CANONICAL_BY_SCENE_ID` map and section-number-aware blueprint parser), updated the patch interface to include the Arc folder in `target_scene_path_hint`, refreshed existing draft JSON artifacts, and codified the canonical-filename invariant in scene-agent spec, `AI_DOCS.md`, and the always-on governance rule.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/Corridor.tscn`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/tools/scene_builder/layout_planner.py`
+  - `AXEL/axel_project/tools/scene_builder/scene_patch_interface.py`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/scene_2_draft.json`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/loc_classroom_draft.json`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/loc_desk_draft.json`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/loc_board_draft.json`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/loc_board_success_draft.json`
+  - `AXEL/axel_project/plans/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Corridor test path now loads the canonical numbered scene; `scene agent` outputs are guaranteed to overwrite canonical placeholders (e.g. `Arc_1/1.2_Corridor.tscn`) and can never silently create non-canonical aliases. Library has no canonical numbered scene yet, so the planner now flags it (`UNCANONICALIZED_*`, `arc_dir = UNRESOLVED`) instead of writing a non-canonical filename.
+- Verification: Ran `rg "Corridor\.tscn"` across the project; only historical changelog references and the source-of-truth blueprint heading text remain. All runtime/code targets resolve to `Arc_1/1.2_Corridor.tscn`. Lint check on edited Python and GDScript files reported no errors.
+- Notes: Source-hierarchy resolution: `AI_DOCS.md` invariants now take precedence over the simplified scene names that appear in `AXEL_SCENES_BLUEPRINT.md`; canonical numbered filenames are the implementation truth and the blueprint heading text remains as human-readable scene shorthand.
+
+## 2026-05-08 - Corridor 1.2 Locker Row, Graffiti, Player Overlay
+
+- Request: Refit `1.2_Corridor` lockers between user-tuned endpoints with even maximum-density spacing, static darker highlight (no pulse), replace broken monkey graffiti with supplied Christmas 48×48 asset, and fix player appearing under/wrong layer vs noir filter while scaling the character with locker scale.
+- Implementation: Rebuilt `LockerRow` with ten evenly spaced `2.06` scaled lockers from `167` to `1134` (extra capacity vs nine slots; right cap node is `Locker10` so naming stays unique), kept `HighlightedLocker` on the fifth column with script-driven static `modulate` only; swapped graffiti `ext_resource` to `corridor_christmas_graffiti_85.png` plus `.import` sidecar; moved `Player` under a high `CanvasLayer` (`layer = 100`, `follow_viewport_enabled`) so it renders above `NoirPaletteOverlay` (layer 90) and is not palette-filtered; scaled `Player` to `2.06` and raised `speed` to ~`180 * 2.06` for similar traversal feel.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/assets/props/graffiti/corridor_christmas_graffiti_85.png`
+  - `AXEL/axel_project/assets/props/graffiti/corridor_christmas_graffiti_85.png.import`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Corridor reads as a full locker run with one clearly darker story locker; graffiti uses the new art; exploration character stays full-color above the noir post-process and matches locker scale.
+- Verification: Confirmed scene node paths and layer ordering in `.tscn`; script no longer animates highlight position/modulate beyond `_ready`; import metadata MD5 matches `res://` path convention. Godot editor not run in this session—open `1.2_Corridor.tscn` once to refresh `.godot/imported` cache if needed.
+- Notes: Right-end locker is named `Locker10` to avoid duplicate `Locker09` labels while keeping max count; rename in-editor if you prefer strict `Locker01`–`Locker09` only (will reduce count by one column). Source PNG copied from user-supplied absolute path into `res://` for portability per `AI_DOCS.md` guardrails.
+
+## 2026-05-08 - Corridor Graffiti Filter Selection (Variant 05)
+
+- Request: Apply the selected graffiti preview filter (fifth option, palette-crush) to the active corridor mascot wall graphic.
+- Implementation: Promoted `graffiti_preview_05_palette_crush.png` from preview outputs into the live asset path by overwriting `corridor_christmas_graffiti_85.png`, preserving the existing scene texture reference.
+- Files changed:
+  - `AXEL/axel_project/assets/props/graffiti/corridor_christmas_graffiti_85.png`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Wall mascot now uses the selected subdued palette treatment, reducing floating/sticker-like contrast against corridor wall tones.
+- Verification: Confirmed replacement copy completed to the live `res://assets/props/graffiti/` texture path used by `1.2_Corridor.tscn`.
+- Notes: `.import` sidecar path remains unchanged; Godot will refresh imported cache content on next scene/project load.
+
+## 2026-05-08 - Corridor Graffiti Variant 05 Rebased To Monkey Source
+
+- Request: Use option 1 after review: keep the Variant 05 palette-crush look but apply it to the original monkey graffiti source so wall graffiti reads as a full decal instead of sparse red dots.
+- Implementation: Re-generated `corridor_christmas_graffiti_85.png` from `graffiti_monkey_deformed.png` using the same Variant 05 quantize/desaturate/darken recipe; preserved the existing live scene reference path.
+- Files changed:
+  - `AXEL/axel_project/assets/props/graffiti/corridor_christmas_graffiti_85.png`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Corridor graffiti keeps subdued palette integration while restoring the full monkey silhouette and wall-presence read.
+- Verification: Checked resulting live asset dimensions/alpha bounds are now `96x48` with monkey-shaped coverage (`bbox (8, 10, 85, 47)`), matching original silhouette footprint.
+- Notes: No scene path updates required because `1.2_Corridor.tscn` already references `corridor_christmas_graffiti_85.png`.
+
+## 2026-05-08 - Corridor Graffiti Source Correction (Use User PNG)
+
+- Request: Keep the user-provided replacement PNG as the graffiti source (not monkey geometry) and apply the selected Variant 05 filter on that asset.
+- Implementation: Restored `corridor_christmas_graffiti_85.png` from the user-provided Christmas PNG path and re-applied the Variant 05 palette-crush recipe directly to that file.
+- Files changed:
+  - `AXEL/axel_project/assets/props/graffiti/corridor_christmas_graffiti_85.png`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Corridor graffiti now uses the intended replacement geometry/shape with the selected subdued filter treatment.
+- Verification: Confirmed live asset after filtering is `64x96` with alpha coverage `bbox (2, 15, 59, 75)`, matching the replacement PNG footprint rather than monkey source dimensions.
+- Notes: `1.2_Corridor.tscn` texture reference remains unchanged and continues to target `corridor_christmas_graffiti_85.png`.
+
+## 2026-05-08 - Corridor Graffiti Opacity + Midtone Recovery
+
+- Request: Address remaining red-blob look from interaction between local graffiti filter and corridor noir post-process, with a focus on higher opacity.
+- Implementation: Reprocessed `corridor_christmas_graffiti_85.png` using a gentler palette crush (`8` colors, milder desaturation, near-neutral brightness) and restored full opaque alpha on all non-transparent pixels.
+- Files changed:
+  - `AXEL/axel_project/assets/props/graffiti/corridor_christmas_graffiti_85.png`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Graffiti keeps the replacement geometry while retaining more visible structure through the noir filter; non-transparent pixels no longer fade out from reduced alpha.
+- Verification: Confirmed output remains `64x96`, alpha coverage unchanged (`bbox (2, 15, 59, 75)`), and alpha range now spans full opacity (`0..255`).
+- Notes: If detail still collapses under scene noir thresholds, next step is to exempt `MonkeyGraffiti` from the full-screen noir layer (CanvasLayer above overlay) or tweak shader thresholds globally.
+
+## 2026-05-08 - Corridor Graffiti Filter Removed (Original Replacement Restored)
+
+- Request: Remove all applied filter processing from corridor graffiti and use the original user-provided replacement PNG as-is.
+- Implementation: Overwrote `corridor_christmas_graffiti_85.png` with the original source file from the provided external path, discarding prior palette/opacity processing passes.
+- Files changed:
+  - `AXEL/axel_project/assets/props/graffiti/corridor_christmas_graffiti_85.png`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Corridor now renders the raw replacement graffiti art without additional local filter transformations.
+- Verification: Confirmed live file replacement completed and asset remains loadable (`64x96`, alpha range `0..255`).
+- Notes: Scene reference remains unchanged (`1.2_Corridor.tscn` still points to `corridor_christmas_graffiti_85.png`).
+
+## 2026-05-08 - Corridor 1.2 Locker + Wall Collision (Invisible Borders)
+
+- Request: Add invisible borders so the player cannot walk through lockers or wall edges in Corridor 1.2.
+- Implementation: Added `LockerColliders` under the scene root with one `StaticBody2D` + `CollisionShape2D` per locker sprite (`Locker01`–`Locker10` and `HighlightedLocker`), using a shared `RectangleShape2D` (`100x130`) centered at each locker’s X and `y = 387` so the block covers the locker lower/front band into the walkable floor (sprite-only collision at `y ≈ 274` does not intersect the player at `y ≈ 520`). Existing `TopWall` / `BottomWall` / `LeftWall` / `RightWall` `StaticBody2D` colliders left unchanged after review.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Player `CharacterBody2D` should now slide against locker fronts when moving toward the row; perimeter walls remain blocked as before.
+- Verification: Confirmed scene structure and locker X alignment match `LockerRow`; default spawn `Player` at `(640, 520)` lies outside locker block AABB (`y ≈ 322–452`). In-editor run recommended: **Debug → Visible Collision Shapes** and walk-test along the row.
+- Notes: If you add or move lockers in the editor, duplicate/reposition matching `LockerBlock*` nodes or widen the shared rectangle resource.
+
+## 2026-05-08 - Corridor Collision Simplification (Single Upper Block)
+
+- Request: Remove individual locker colliders and replace with one large collision shape, starting from `y = -140` offset, so the player cannot walk on the wall zone.
+- Implementation: Replaced per-locker `StaticBody2D` nodes under `LockerColliders` with a single `UpperWallBlock` using `CollisionShape2D` + `RectangleShape2D_upper_block` (`1280x90`) and shape offset `position = Vector2(0, -140)`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: A continuous blocker now spans corridor width near the locker/wall boundary, preventing entry into upper wall space and simplifying maintenance versus per-locker colliders.
+- Verification: Confirmed `LockerColliders/UpperWallBlock` exists with requested `y` offset and full-width rectangle shape in scene file.
+- Notes: Fine-tune by adjusting `RectangleShape2D_upper_block` height or `UpperWallBlock` base `position.y` if you want a tighter/looser walkable lane.
+
+## 2026-05-08 - Highlighted Locker Artifact Fix (No Animation/Filter)
+
+- Request: Revert highlighted locker to original look, remove custom highlight filtering/animation behavior, and keep it only subtly darker while validating against the global noir filter so locker holes do not fill with black artifacts.
+- Implementation: Removed highlighted-locker script modulation logic from `1.2_Corridor.gd` (no locker-specific runtime effects remain). Set `HighlightedLocker` to static scene-level `modulate = Color(0.78, 1, 1, 1)` in `1.2_Corridor.tscn`, which keeps original texture details while slightly darkening red.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Highlighted locker remains visually close to neighboring lockers, with reduced red intensity but without the black line/fill artifacts seen under the noir pass.
+- Verification: Simulated noir threshold mapping against `locker_single_48.png` variants before applying; exact 25% red reduction (`0.75`) produced clipping artifacts, while `0.78` preserved hole/readability details in the mapped output.
+- Notes: Because the full-scene noir pass quantizes luminance, exact 25% red reduction crosses the black threshold on some locker pixels.
+
+## 2026-05-08 - Highlighted Locker Threshold Tuning
+
+- Request: Fix persistent black-fill artifacts in highlighted locker while keeping it darker than normal.
+- Implementation: Tuned `HighlightedLocker` static modulate from `Color(0.78, 1, 1, 1)` to `Color(0.8, 1, 1, 1)` in `1.2_Corridor.tscn` to stay above noir threshold clipping for the locker interior details.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Highlighted locker remains subtly darker than neighbors but avoids hole/vent regions collapsing to black blobs under the global noir filter.
+- Verification: Change targets the measured threshold edge where `0.75` clips and `0.8` stays in non-black bins in noir mapping.
+- Notes: Exact 25% channel darken is incompatible with current noir thresholds for this texture; if exact 25% is mandatory, the locker must be rendered outside the noir pass or shader thresholds adjusted.
+
+## 2026-05-08 - Highlighted Locker Excluded From Global Noir
+
+- Request: Exclude highlighted locker from global noir filter and apply a similar but slightly darker local treatment to avoid repeated black artifact blobs.
+- Implementation: Hid in-row `LockerRow/HighlightedLocker` sprite and added `HighlightedLockerBypassLayer` (`CanvasLayer` layer 95) with `HighlightedLockerBypass` sprite rendered above `NoirPaletteOverlay` (layer 90). Added a local palette shader `highlighted_locker_palette_filter.gdshader` with noir-like thresholds/colors tuned slightly darker than baseline.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/fx/highlighted_locker_palette_filter.gdshader`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Highlighted locker remains stylistically consistent with scene palette but no longer passes through the full-screen noir quantization that caused vent/hole fill artifacts.
+- Verification: Confirmed scene wiring places bypass locker on layer 95 (between global overlay and player layer), with original row highlight hidden.
+- Notes: Since bypass uses `CanvasLayer`, keep its position/scale synced if locker layout changes in future scene edits.
+
+## 2026-05-08 - Highlighted Locker Local Filter Darkened 33%
+
+- Request: Make the highlighted locker local filter even darker by 33%.
+- Implementation: Added a `darken_factor` uniform to `highlighted_locker_palette_filter.gdshader` and applied it to mapped output (`COLOR.rgb = mapped.rgb * darken_factor`) with default value `0.67`.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/highlighted_locker_palette_filter.gdshader`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Highlighted locker keeps the same local palette mapping but renders 33% darker overall while still bypassing global noir artifacts.
+- Verification: Shader compiles structurally with unchanged thresholds/palette branches; only final output intensity scaling changed.
+- Notes: You can tune darkness quickly by adjusting `darken_factor` in the material inspector.
+
+## 2026-05-08 - Scene Builder Output Cleanup + Completion Rule
+
+- Request: Remove unnecessary scene-builder temporary files (such as `graffiti_filter_previews`) and record a future rule that `scene agent` should clean such artifacts once the user says the scene is complete.
+- Implementation: Deleted ad-hoc look-dev preview artifacts from `tools/scene_builder/output/layout_previews/` (graffiti filter preview set and locker noir comparison images, including `.import` sidecars). Added a completion-cleanup invariant to the `scene agent` spec, `AI_DOCS.md`, and workspace governance rule.
+- Files changed:
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_01_multiply_fade.png`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_01_multiply_fade.png.import`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_02_desat_dark.png`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_02_desat_dark.png.import`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_03_erosion_wear.png`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_03_erosion_wear.png.import`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_04_softened_edges.png`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_04_softened_edges.png.import`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_05_palette_crush.png`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/graffiti_filter_previews/graffiti_preview_05_palette_crush.png.import`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/locker_noir_compare.png`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/locker_noir_compare.png.import`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/locker_noir_alpha_compare.png`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/locker_noir_alpha_compare.png.import`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/locker_noir_redonly.png`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_previews/locker_noir_redonly.png.import`
+  - `AXEL/axel_project/plans/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Scene-builder output folders are cleaner after scene completion, and future scene-agent runs now have an explicit cleanup trigger policy tied to user confirmation.
+- Verification: Confirmed deleted files no longer appear in `layout_previews` glob results; policy text now present in spec/docs/rule.
+- Notes: Cleanup policy intentionally preserves canonical draft contract artifacts unless the user asks for full output purge.
+
+## 2026-05-08 - QA Agent Concise Output + Playtest Mode
+
+- Request: Make `qa agent` answers shorter and technical-first, always include recommendations, and add playtest-mode criteria with combat simulations plus scene smoke for higher confidence (more data/bugs, less player-opinion default).
+- Implementation: Rewrote QA skill output contract (brevity caps, mandatory ≥3 recommendations, optional player note only on request, playtest vs static modes). Extended `AXEL_QA_REVIEW_RUBRIC.md` with confidence tiers, default Godot command set, `BUG` category, and playtest evidence rules. Added headless `test/scene_smoke_check.gd` for canonical scene load smoke. Updated `AXEL_QA_RUN_LOG.md` template, `AI_DOCS.md` §12 / `qa` bullet, governance rule 11–12, and `combat/VERIFICATION_CHECKLIST.md` playtest command block.
+- Files changed:
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/test/scene_smoke_check.gd`
+  - `AXEL/axel_project/combat/VERIFICATION_CHECKLIST.md`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Future `qa` / `qa agent` chats default to concise technical reports with required recommendations; playtest/high-confidence runs have a documented, reproducible command sequence including scene instantiation smoke.
+- Verification: Script follows existing `extends SceneTree` headless test pattern; rubric command paths match `VERIFICATION_CHECKLIST` / combat test layout. Local Godot binary was not available in agent shell to execute smoke run.
+- Notes: `rtp_audit.gd` remains metrics-only per rubric unless user-defined thresholds are added later.
+
+## 2026-05-08 - Premium-to-Auto Planning Guardrails
+
+- Request: Ensure premium planning chats produce highly detailed implementation-ready handoffs for auto models, infer deeper intent against AXEL project context, and hard-stop with user option choices when requests conflict with project guidelines.
+- Implementation: Added persistent governance requirements for a Premium Planning Depth Protocol, intent-deduction plus project-correlation pass, stable auto-model handoff structure, and mandatory hard conflict gate in the always-on rule and canonical AI docs. Added reusable planning artifact `PREMIUM_TO_AUTO_HANDOFF_TEMPLATE.md` for consistent plan formatting.
+- Files changed:
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `AXEL/axel_project/plans/PREMIUM_TO_AUTO_HANDOFF_TEMPLATE.md`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Future substantive AXEL planning responses are standardized for auto-model execution and now enforce immediate user choice before any continuation when canon conflicts are detected.
+- Verification: Confirmed new protocol text is present in both governance layers and that both references point to the new handoff template path.
+- Notes: No source-hierarchy conflict during this update; changes extend governance behavior while preserving existing AXEL canonical invariants.
+
+## 2026-05-08 - Canonical Scene Placeholder Rollout
+
+- Request: Roll out minimal parse-safe placeholder scenes across canonical `Arc_1`..`Arc_7` and `Endings` directories, including additional `4.1b/4.1c/4.1d` beats, while preserving non-canonical alias files and leaving unresolved rewrite dialogue entries empty.
+- Implementation: Added shared placeholder renderer script at `scenes/core/ScenePlaceholder.gd` and regenerated canonical scene beat files from `AXEL_SCENES_NEW.md` to reference that script with per-scene `scene_id`, `location_label`, and `dialogue` metadata. Overwrote `1.1_SchoolExterior.tscn` with rewrite dialogue and set unresolved entries (literal `x`, bracketed implementation-note rewrites, and missing rewrites) to empty dialogue arrays.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/ScenePlaceholder.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_BasementBlockedTemp.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.2_CafeteriaMemory.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.4_KitchenFlashlightPickup.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1b_BackyardClickStep1.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1c_BackyardNameReveal.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1d_BackyardNamedScene.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.2_BackyardHint.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.2_TeachersMemory.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.3_TeachersKeyWall.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.4_TeachersKeyPickup.tscn`
+  - `AXEL/axel_project/scenes/Arc_6/6.1_Classroom.tscn`
+  - `AXEL/axel_project/scenes/Arc_6/6.2_ClassroomDesk.tscn`
+  - `AXEL/axel_project/scenes/Arc_6/6.3_ClassroomBoard.tscn`
+  - `AXEL/axel_project/scenes/Arc_6/6.4_ClassroomBoardSuccess.tscn`
+  - `AXEL/axel_project/scenes/Arc_7/7.1_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_7/7.2_BasementLocked.tscn`
+  - `AXEL/axel_project/scenes/Arc_7/7.3_BasementStairs.tscn`
+  - `AXEL/axel_project/scenes/Arc_7/7.4_BasementMain.tscn`
+  - `AXEL/axel_project/scenes/Arc_7/7.5_BasementShovelPickup.tscn`
+  - `AXEL/axel_project/scenes/Arc_7/7.6_BasementStuck.tscn`
+  - `AXEL/axel_project/scenes/Arc_7/7.7_BasementDigging.tscn`
+  - `AXEL/axel_project/scenes/Arc_7/7.8_BasementCorpse.tscn`
+  - `AXEL/axel_project/scenes/Endings/8.1_Ending1.tscn`
+  - `AXEL/axel_project/scenes/Endings/8.2_Ending2.tscn`
+  - `AXEL/axel_project/scenes/Endings/8.3_Ending3.tscn`
+  - `AXEL/axel_project/scenes/Endings/8.4_Ending4.tscn`
+  - `AXEL/axel_project/scenes/Endings/8.5_EndingTrue.tscn`
+  - `AXEL/axel_project/scenes/Endings/8.6_Epilogue.tscn`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Canonical beat files now load as uniform placeholder scenes with explicit metadata and safe fallback rendering for incomplete rewrite content.
+- Verification: Executed headless scene smoke command against `res://test/scene_smoke_check.gd` from `AXEL/axel_project` root and captured pass/fail status.
+
+## 2026-05-08 - Fix Godot Launcher Path + Re-run Scene Smoke
+
+- Request: Run the pending scene smoke verification and fix `godot.cmd` launcher path (possibly still pointing at old location/version).
+- Implementation: Corrected `tools/cmd/godot.cmd` root resolution from `tools/` to repo root so it launches the existing `Godot_v4.6.2-stable_win64.exe`, then reran the headless scene smoke command.
+- Files changed:
+  - `tools/cmd/godot.cmd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Repo-local `tools/cmd/godot.cmd` now resolves the Godot executable correctly and can run project verification scripts again.
+- Verification: Ran `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd`; result `Scene smoke check OK (6 scenes).`
+- Notes: Version is `4.6.2` (not `4.6.1`); failure source was incorrect relative root path in the wrapper script.
+
+## 2026-05-08 - QA Persistent Analytics + Trend Graph Pipeline
+
+- Request: Make every `qa agent` run persist score analytics/bugs and continuously update a historical graph with separate lines for weighted `Total` and rubric axes (`S/N/I/E/C/R`).
+- Implementation: Added required machine-readable payload blocks to `AXEL_QA_RUN_LOG.md` and documented parser expectations in the QA rubric. Added `tools/qa/update_qa_analytics.py` to parse run-log payloads and regenerate `AXEL_QA_ANALYTICS.md` (latest snapshot, deltas, Mermaid trend chart). Updated the `qa` skill to append a run payload then trigger analytics refresh each run. Updated `AI_DOCS.md` and workspace governance rule with the QA persistence invariant and canonical analytics artifacts.
+- Files changed:
+  - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/AXEL_QA_ANALYTICS.md`
+  - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: QA now supports longitudinal production analytics with automatic chart refresh from append-only run payloads, while preserving concise technical QA report output.
+- Verification: Ran `python AXEL/axel_project/tools/qa/update_qa_analytics.py` for empty-log handling and again after two synthetic validation entries (static + playtest); parser reported `Payloads parsed: 2` and generated multi-line Mermaid trends for `Total/S/N/I/E/C/R`.
+- Notes: No canon hierarchy conflicts encountered; this change extends QA tooling/docs only and does not alter gameplay logic.
+
+## 2026-05-08 - Corridor canonical recovery + Christmas graffiti
+
+- Request: Implement corridor scene recovery: single canonical `1.2_Corridor.tscn`, retire non-canonical `Corridor.tscn`, use `corridor_christmas_graffiti_85.png` instead of monkey graffiti.
+- Implementation: Replaced placeholder `1.2_Corridor.tscn` with the full corridor layout from the legacy alias scene, swapped graffiti `ExtResource` to `corridor_christmas_graffiti_85.png` (importer uid `uid://b2qaxk4m8nqwc`), renamed sprite node `MonkeyGraffiti` → `ChristmasGraffiti`, deleted `Corridor.tscn`, and updated `AXEL_SCENES_BLUEPRINT.md` headings/todo text to reference `1.2_Corridor.tscn` per canonical filename invariant (`AI_DOCS.md` / scene-agent spec).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/Corridor.tscn` (removed)
+  - `AXEL/axel_project/plans/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Main menu / smoke tests that load `res://scenes/Arc_1/1.2_Corridor.tscn` now get the full exploration corridor with Christmas graffiti; no runtime path should load `Arc_1/Corridor.tscn`.
+- Verification: Ran `rg "Arc_1/Corridor\\.tscn"` / `Corridor\.tscn` on code and scenes (only docs/changelog mentions of alias as examples); ran headless `res://test/scene_smoke_check.gd` after migration.
+- Notes: Resolves drift where full scene lived on the alias file while canonical file was a `ScenePlaceholder`; aligned with hierarchy in `AI_DOCS.md` §11 canonical filename invariant.
+
+## 2026-05-08 - Reapply Lost Corridor Layout/Layer/Collision Tuning
+
+- Request: Reapply previously lost corridor settings: tuned locker scale/placement, player scale and render layer above noir/floor, and a full-width upper wall collision border.
+- Implementation: Updated `1.2_Corridor.tscn` locker row to the prior tuned layout (`Locker01`..`Locker10` from `x=167` to `x=1134`, `y=274`, `scale=Vector2(2.06, 2.06)`), restored player render isolation via `PlayerLayer` (`CanvasLayer`, `layer=100`, `follow_viewport_enabled=true`) and moved `Player` under it with `scale=Vector2(2.06, 2.06)` and `speed=371.0`, and restored a single full-width upper blocker (`RectangleShape2D_upper_block` + `UpperWallBlock` with collision shape offset `Vector2(0, -140)`).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Corridor locker composition and traversal feel are back to the tuned version, player now consistently renders above noir overlay/floor-space conflicts, and the upper wall lane is blocked by one maintainable collision border.
+- Verification: Confirmed all restored node/property signatures in scene file (`Locker10`, `scale=2.06`, `PlayerLayer layer=100`, `follow_viewport_enabled`, `UpperWallBlock`, `RectangleShape2D_upper_block`, `speed=371.0`); scene smoke check rerun after patch.
+- Notes: Root cause was canonical recovery being based on a stale legacy `Corridor.tscn` snapshot that lacked later tuning edits; keeping canonical scene as sole edit target plus pre-migration diff checks prevents recurrence.

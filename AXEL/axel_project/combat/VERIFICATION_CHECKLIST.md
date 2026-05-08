@@ -32,6 +32,15 @@ tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/pri
 tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
 ```
 
+**`qa agent` playtest bundle (combat + canonical scene smoke + RTP metrics):** same two lines above, then:
+
+```bat
+tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd
+tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd
+```
+
+(`rtp_audit` prints metrics; exit code is always 0 unless the script errors. `scene_smoke_check` exits non-zero on load/instantiate failure.)
+
 **Troubleshooting headless / `class_name` resolution:** If Godot reports missing types like `EncounterDef` or `GoalDef`, ensure [`.godot/global_script_class_cache.cfg`](../.godot/global_script_class_cache.cfg) includes all combat `class_name` entries, or open the project once in the editor to regenerate the cache.
 
 **Test scripts:** In Godot 4, `await node.ready` after the node is already ready never resumes; tests use `is_node_ready()` guards (see `princess_check.gd` / `determinism_check.gd`).

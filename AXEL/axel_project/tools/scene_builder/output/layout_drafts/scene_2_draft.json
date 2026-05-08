@@ -1,6 +1,7 @@
 {
   "scene_id": "scene_2",
-  "scene_file": "Corridor.tscn",
+  "scene_file": "1.2_Corridor.tscn",
+  "arc_dir": "Arc_1",
   "scene_key": "corridor.tscn",
   "profile": "corridor_large",
   "player": {

@@ -21,32 +21,101 @@ PROFILE_BY_SCENE_KEY = {
     "default": {"profile": "default", "player_scale": 1.00, "player_speed": 180.0},
 }
 
+# Canonical filename + Arc folder resolution per scene_id.
+# This is the authoritative mapping. The planner MUST emit canonical numbered
+# filenames (e.g. `1.2_Corridor.tscn`) that overwrite the matching placeholder,
+# never simplified aliases (e.g. `Corridor.tscn`).
+CANONICAL_BY_SCENE_ID: Dict[str, Dict[str, str]] = {
+    "scene_2": {"scene_file": "1.2_Corridor.tscn", "arc_dir": "Arc_1"},
+    "loc_classroom": {"scene_file": "6.1_Classroom.tscn", "arc_dir": "Arc_6"},
+    "loc_desk": {"scene_file": "6.2_ClassroomDesk.tscn", "arc_dir": "Arc_6"},
+    "loc_board": {"scene_file": "6.3_ClassroomBoard.tscn", "arc_dir": "Arc_6"},
+    "loc_board_success": {"scene_file": "6.4_ClassroomBoardSuccess.tscn", "arc_dir": "Arc_6"},
+}
+
 
 def _load_asset_catalog() -> Dict[str, object]:
     return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 
 
+def _arc_dir_from_section(section: str) -> str:
+    # `1.2` -> `Arc_1`; `8.6` -> `Endings`; `0.1` -> `Main_Menu`.
+    if section.startswith("0."):
+        return "Main_Menu"
+    if section.startswith("8."):
+        return "Endings"
+    major = section.split(".", 1)[0]
+    return f"Arc_{major}"
+
+
+def _canonical_filename(section: str, raw_name: str) -> str:
+    # Avoid double-prefixing if blueprint already includes the section number.
+    return raw_name if raw_name.startswith(f"{section}_") else f"{section}_{raw_name}"
+
+
+def _resolve_canonical(scene_id: str, section: str, raw_name: str) -> Dict[str, str]:
+    override = CANONICAL_BY_SCENE_ID.get(scene_id)
+    if override:
+        return {
+            "scene_file": override["scene_file"],
+            "arc_dir": override["arc_dir"],
+        }
+    return {
+        "scene_file": _canonical_filename(section, raw_name),
+        "arc_dir": _arc_dir_from_section(section),
+    }
+
+
 def _extract_target_scenes() -> List[Dict[str, str]]:
     scenes: List[Dict[str, str]] = []
     text = BLUEPRINT_PATH.read_text(encoding="utf-8")
-    for match in re.finditer(r"###\s+\d+\.\d+\s+`([^`]+)`\s+\(`([^`]+)`\)", text):
-        tscn_name = match.group(1).strip()
-        scene_id = match.group(2).strip()
-        lowered = tscn_name.lower()
-        if any(key in lowered for key in ("corridor", "classroom", "library")):
-            scenes.append({"scene_file": tscn_name, "scene_id": scene_id, "scene_key": lowered})
+    for match in re.finditer(r"###\s+(\d+\.\d+)\s+`([^`]+)`\s+\(`([^`]+)`\)", text):
+        section = match.group(1).strip()
+        raw_name = match.group(2).strip()
+        scene_id = match.group(3).strip()
+        lowered = raw_name.lower()
+        if not any(key in lowered for key in ("corridor", "classroom", "library")):
+            continue
+        canonical = _resolve_canonical(scene_id, section, raw_name)
+        scenes.append({
+            "scene_file": canonical["scene_file"],
+            "arc_dir": canonical["arc_dir"],
+            "scene_id": scene_id,
+            "scene_key": lowered,
+        })
     if scenes:
         return scenes
 
     # Fallback to AXEL_SCENES_NEW.md if blueprint headings are not matched.
+    # Fallback ALSO emits canonical numbered filenames so the agent can never
+    # regress to non-canonical scene targets like `Corridor.tscn`.
     backup = SCENES_NEW_PATH.read_text(encoding="utf-8").lower()
-    fallback = []
+    fallback: List[Dict[str, str]] = []
     if "corridor" in backup:
-        fallback.append({"scene_file": "Corridor.tscn", "scene_id": "scene_2", "scene_key": "corridor"})
+        canonical = CANONICAL_BY_SCENE_ID["scene_2"]
+        fallback.append({
+            "scene_file": canonical["scene_file"],
+            "arc_dir": canonical["arc_dir"],
+            "scene_id": "scene_2",
+            "scene_key": "corridor",
+        })
     if "classroom" in backup:
-        fallback.append({"scene_file": "Classroom.tscn", "scene_id": "loc_classroom", "scene_key": "classroom"})
+        canonical = CANONICAL_BY_SCENE_ID["loc_classroom"]
+        fallback.append({
+            "scene_file": canonical["scene_file"],
+            "arc_dir": canonical["arc_dir"],
+            "scene_id": "loc_classroom",
+            "scene_key": "classroom",
+        })
     if "library" in backup:
-        fallback.append({"scene_file": "Library.tscn", "scene_id": "loc_library", "scene_key": "library"})
+        # Library has no canonical numbered scene yet; flag for human triage
+        # rather than silently writing a non-canonical filename.
+        fallback.append({
+            "scene_file": "UNCANONICALIZED_Library.tscn",
+            "arc_dir": "UNRESOLVED",
+            "scene_id": "loc_library",
+            "scene_key": "library",
+        })
     return fallback
 
 
@@ -181,6 +250,7 @@ def main() -> None:
         draft_payload = {
             "scene_id": scene["scene_id"],
             "scene_file": scene["scene_file"],
+            "arc_dir": scene.get("arc_dir", ""),
             "scene_key": scene_key,
             "profile": profile["profile"],
             "player": {

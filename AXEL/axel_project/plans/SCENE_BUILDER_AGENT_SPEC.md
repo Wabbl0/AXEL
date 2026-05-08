@@ -81,12 +81,48 @@ If conflicts appear, `AI_DOCS.md` wins and the conflict must be noted in `AI_CHA
   - human-readable rationale summary
   - unknown-asset quarantine report
 
+## Cleanup Policy (MUST FOLLOW)
+
+- When the user explicitly confirms a scene is complete, `scene agent` MUST remove ephemeral debug artifacts created during iterative look-dev (for example ad-hoc filter preview sets, one-off comparison renders, and their `.import` sidecars) from `tools/scene_builder/output/`.
+- Keep canonical draft pipeline outputs unless the user asks to purge them:
+  - `layout_drafts/*.json`
+  - validation/review contracts under `output/*.json` and `review_notes.md`
+- Prefer deleting only clearly non-pipeline temporary assets first, then report exactly what was removed.
+
 ## Layout Rules (high-level)
 
 - Composition style: mixed decay.
 - Pathing policy: balanced readability + occasional chokepoints.
 - Unknown assets: quarantine only, never auto-place.
 - Large maps: per-scene profile values (not one global profile).
+
+## Canonical Filename Invariant (MUST FOLLOW)
+
+The scene agent MUST always target the canonical numbered `.tscn` file for a
+scene, never a simplified alias. This prevents producing duplicate placeholder
+files alongside the canonical one and silently desyncing the project.
+
+Rules:
+
+1. Canonical filename pattern is `<arc>.<index>_<Name>.tscn` (for example
+   `1.2_Corridor.tscn`, `6.1_Classroom.tscn`, `8.6_Epilogue.tscn`).
+2. Scenes live under their `Arc_<N>/` folder (or `Endings/`, `Main_Menu/` for
+   the special prefixes `8.x` and `0.x`).
+3. When generating output for a known scene, the agent MUST:
+   - resolve the canonical filename + folder before writing,
+   - overwrite the existing placeholder at the canonical path, and
+   - never create or overwrite a non-canonical alias such as `Corridor.tscn`.
+4. The authoritative resolution map lives in
+   [tools/scene_builder/layout_planner.py](../tools/scene_builder/layout_planner.py)
+   as `CANONICAL_BY_SCENE_ID` plus the section-number heading parser. The
+   blueprint `### <section> \`<file>\` (\`<scene_id>\`)` heading is parsed to
+   build the canonical name, and explicit overrides in `CANONICAL_BY_SCENE_ID`
+   take precedence when set.
+5. If a scene has no canonical entry yet (e.g. library), the planner MUST emit
+   an `UNCANONICALIZED_*` flag and an `arc_dir` of `UNRESOLVED` instead of
+   silently writing a non-canonical file.
+6. The patch-interface `target_scene_path_hint` MUST include the Arc folder, in
+   the form `res://scenes/<arc_dir>/<canonical_file>`.
 
 ## Runtime Entry Points
 

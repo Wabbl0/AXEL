@@ -1,0 +1,188 @@
+[gd_scene format=3 uid="uid://c0maa5ogdaoxx"]
+
+[ext_resource type="Script" uid="uid://c06a0uigsapjy" path="res://scenes/Arc_1/1.2_Corridor.gd" id="1_462mc"]
+[ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_player_script"]
+[ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
+[ext_resource type="Texture2D" uid="uid://dou5b8cvq6b8o" path="res://assets/props/lockers/locker_single_48.png" id="4_locker"]
+[ext_resource type="Texture2D" uid="uid://b2qaxk4m8nqwc" path="res://assets/props/graffiti/corridor_christmas_graffiti_85.png" id="5_graffiti"]
+[ext_resource type="Texture2D" uid="uid://1dw7sw0yvk2c" path="res://assets/props/debris/debris_chunk_01.png" id="6_debris"]
+[ext_resource type="Texture2D" uid="uid://ccku02e3vf434" path="res://assets/props/debris/trash_bag_01.png" id="7_trash"]
+[ext_resource type="PackedScene" path="res://scenes/fx/NoirPaletteOverlay.tscn" id="8_noir_overlay"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
+size = Vector2(1280, 90)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
+size = Vector2(1280, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
+size = Vector2(24, 720)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
+radius = 16.0
+
+[node name="Corridor" type="Node2D" unique_id=1412693129]
+script = ExtResource("1_462mc")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1065278382]
+color = Color(0.05, 0, 0, 1)
+
+[node name="FloorBand" type="Polygon2D" parent="." unique_id=983087306]
+z_index = -4
+color = Color(0.1, 0, 0, 1)
+polygon = PackedVector2Array(0, 360, 1280, 360, 1280, 720, 0, 720)
+
+[node name="LockerRow" type="Node2D" parent="." unique_id=1375729306]
+z_index = 2
+
+[node name="Locker01" type="Sprite2D" parent="LockerRow" unique_id=1012410870]
+position = Vector2(167, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="Locker02" type="Sprite2D" parent="LockerRow" unique_id=338664235]
+position = Vector2(274.44, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="Locker03" type="Sprite2D" parent="LockerRow" unique_id=867170295]
+position = Vector2(381.89, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="Locker04" type="Sprite2D" parent="LockerRow" unique_id=1428697484]
+position = Vector2(489.33, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="HighlightedLocker" type="Sprite2D" parent="LockerRow" unique_id=1143015727]
+position = Vector2(596.78, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="Locker06" type="Sprite2D" parent="LockerRow" unique_id=1461331699]
+position = Vector2(704.22, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="Locker07" type="Sprite2D" parent="LockerRow" unique_id=11006408]
+position = Vector2(811.67, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="Locker08" type="Sprite2D" parent="LockerRow" unique_id=2133817467]
+position = Vector2(919.11, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="Locker09" type="Sprite2D" parent="LockerRow" unique_id=2113694645]
+position = Vector2(1026.56, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="Locker10" type="Sprite2D" parent="LockerRow" unique_id=1438307291]
+position = Vector2(1134, 274)
+scale = Vector2(2.06, 2.06)
+texture = ExtResource("4_locker")
+
+[node name="LockerColliders" type="Node2D" parent="." unique_id=2100010001]
+
+[node name="UpperWallBlock" type="StaticBody2D" parent="LockerColliders" unique_id=1200780001]
+position = Vector2(640, 360)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockerColliders/UpperWallBlock" unique_id=1200780002]
+position = Vector2(0, -140)
+shape = SubResource("RectangleShape2D_upper_block")
+
+[node name="GraffitiLayer" type="Node2D" parent="." unique_id=60741870]
+z_index = 4
+
+[node name="ChristmasGraffiti" type="Sprite2D" parent="GraffitiLayer" unique_id=1735545444]
+position = Vector2(638, 108.5)
+scale = Vector2(1.65625, 1.65625)
+texture = ExtResource("5_graffiti")
+
+[node name="DebrisLayer" type="Node2D" parent="." unique_id=1052782801]
+z_index = 3
+
+[node name="DebrisLeft" type="Sprite2D" parent="DebrisLayer" unique_id=852325726]
+position = Vector2(266, 552)
+texture = ExtResource("6_debris")
+
+[node name="DebrisRight" type="Sprite2D" parent="DebrisLayer" unique_id=1360980313]
+position = Vector2(1016, 566)
+rotation = -0.17
+texture = ExtResource("6_debris")
+
+[node name="TrashLeft" type="Sprite2D" parent="DebrisLayer" unique_id=293521827]
+position = Vector2(360, 598)
+rotation = 0.06
+texture = ExtResource("7_trash")
+
+[node name="TrashRight" type="Sprite2D" parent="DebrisLayer" unique_id=372305736]
+position = Vector2(930, 608)
+rotation = -0.08
+texture = ExtResource("7_trash")
+
+[node name="CeilingLight" type="PointLight2D" parent="." unique_id=1200548679]
+position = Vector2(640, 126)
+color = Color(1, 0.09, 0.09, 1)
+energy = 0.7
+texture_scale = 8.0
+
+[node name="TopWall" type="StaticBody2D" parent="." unique_id=850397541]
+position = Vector2(640, 12)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TopWall" unique_id=1179354634]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="BottomWall" type="StaticBody2D" parent="." unique_id=1197718744]
+position = Vector2(640, 708)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="BottomWall" unique_id=310166024]
+position = Vector2(0, 20)
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="LeftWall" type="StaticBody2D" parent="." unique_id=1349544675]
+position = Vector2(12, 360)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall" unique_id=830387823]
+position = Vector2(-20, 0)
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="RightWall" type="StaticBody2D" parent="." unique_id=158922864]
+position = Vector2(1268, 360)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall" unique_id=1612973167]
+position = Vector2(20, 0)
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=558325097]
+layer = 100
+follow_viewport_enabled = true
+
+[node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=558325098]
+position = Vector2(46, 455)
+scale = Vector2(2.06, 2.06)
+script = ExtResource("2_player_script")
+speed = 371.0
+sprite_sheet = ExtResource("3_player_sheet")
+animation_fps = 5.0
+
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1306492370]
+
+[node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1138124680]
+modulate = Color(0, 0, 0, 0.55)
+z_index = -1
+position = Vector2(1, 2)
+scale = Vector2(1.08, 1.08)
+
+[node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player" unique_id=1889231691]
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=641622148]
+shape = SubResource("CircleShape2D_player")
+
+[node name="NoirPaletteOverlay" parent="." unique_id=1037884425 instance=ExtResource("8_noir_overlay")]
+scale = Vector2(1.12, 1.12)
+transform = Transform2D(1.12, 0, 0, 1.12, 0, 0)

@@ -12,7 +12,7 @@ todos:
     content: "SchoolExterior.tscn (start): school.png bg, intro monologue, choices Walk inside / Turn away, onEnter resets GameState, fade-in + sway animation."
     status: pending
   - id: scene-corridor
-    content: "Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, push-in camera tween and flickering PointLight2D."
+    content: "1.2_Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, push-in camera tween and flickering PointLight2D."
     status: pending
   - id: scene-locker-hub
     content: "LockerHub.tscn (scene_3): hub.png bg that swaps to map.png on click Area2D, five destination choices plus red basement entry, add_memory_once('scene_3') on enter."
@@ -155,7 +155,7 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
     - School exterior sits at the far-right end of the path.
     - Doors are layered in front of the school exterior at the path endpoint.
 
-### 1.2 `Corridor.tscn` (`scene_2`)
+### 1.2 `1.2_Corridor.tscn` (`scene_2`)
 - Location label: `CORRIDOR`
 - Background: `corridor.png`
 - Dialogue: "You step inside. The smell hits you - a mix of mold and old floor cleaner. The past is leaking into the present. You remember that your locker is at the end of the hallway."

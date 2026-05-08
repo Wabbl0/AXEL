@@ -1,6 +1,7 @@
 {
   "scene_id": "loc_board_success",
-  "scene_file": "ClassroomBoardSuccess.tscn",
+  "scene_file": "6.4_ClassroomBoardSuccess.tscn",
+  "arc_dir": "Arc_6",
   "scene_key": "classroomboardsuccess.tscn",
   "profile": "classroom_large",
   "player": {
