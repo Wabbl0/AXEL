@@ -695,6 +695,29 @@ Copy and fill:
 - Verification: Changelog-only documentation update based on user-confirmed scene edit details.
 - Notes: No source-hierarchy conflict; this entry documents the canonical numbered scene boundary update (`1.1_SchoolExterior`).
 
+## 2026-05-08 - Scene 1.1 Door Marker + Third Intro Dialogue Line
+
+- Request: Place a white rectangular polygon at the school exterior/path boundary as a visible "door" marker, and restore the missing third intro dialogue iteration (`"pathetic"`).
+- Implementation: Added `1.1_School_Door_Boundary_01` (`Polygon2D`, white rectangle) under `1.1_EnvironmentPlaceholders` aligned with the school door area at the path boundary, and extended `1.1_SchoolExterior.gd` intro flow with a third `TopDialogueOverlay.show_line("pathetic.", ...)` call after a short pause.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Scene `1.1` now visually indicates the school entry threshold using a white rectangular door marker, and intro dialogue sequence now runs in three beats instead of two.
+- Verification: IDE lint check reports no errors in `1.1_SchoolExterior.gd`.
+- Notes: Door marker is currently visual-only (`Polygon2D`); if you want it to also enforce collision at that exact rectangle, we can add a matching `StaticBody2D` + `CollisionShape2D`.
+
+## 2026-05-08 - Scene 1.1 Door Collision Matches Door Polygon
+
+- Request: Place a collision boundary for `school_building_doors_01` exactly matching the door.
+- Implementation: Added `1.1_School_Building_Doors_01_Collision` (`StaticBody2D`) under `1.1_EnvironmentPlaceholders` with `position = Vector2(-66, 13)` and a child `CollisionPolygon2D` using the same polygon points as `1.1_School_Building_Doors_01` (`1035,305` `1115,305` `1115,430` `1035,430`), so collision footprint matches door geometry 1:1.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Player can no longer pass through the door polygon area; collision now aligns exactly with the visual door placement.
+- Verification: Scene-file structural check confirms matching position and polygon values between door visual node and collision node.
+- Notes: No canon/source-hierarchy conflict; update targets canonical scene `1.1_SchoolExterior.tscn`.
+
 ## 2026-05-08 - Dialogue overlay: bottom center + viewport padding
 
 - Request: Position the dialogue box at the bottom center of the window with a small gap above the bottom edge.

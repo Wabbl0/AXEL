@@ -25,7 +25,7 @@
 > You promised, you'd never come back.  
 > [beat]  
 > Yet, here we are.  
-> [[beat]]  
+> [beat]  
 > Pathetic.
 
 **Choices:**

@@ -11,3 +11,5 @@ func _run_intro_dialogue() -> void:
 	await _top_dialogue.show_line("You promised, you'd never come back.", 2.0)
 	await get_tree().create_timer(0.8).timeout
 	await _top_dialogue.show_line("Yet, here we are...", 2.5)
+	await get_tree().create_timer(0.55).timeout
+	await _top_dialogue.show_line("Pathetic.", 1.6)

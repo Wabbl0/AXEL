@@ -130,8 +130,20 @@ polygon = PackedVector2Array(980, 170, 1250, 170, 1250.4868, 417.00928, 1250.999
 
 [node name="1.1_School_Building_Doors_01" type="Polygon2D" parent="1.1_EnvironmentPlaceholders" unique_id=461524344]
 z_index = -45
-position = Vector2(-55, 18)
+position = Vector2(-66, 13)
 color = Color(0.41846925, 0.01662989, 0, 1)
+polygon = PackedVector2Array(1035, 305, 1115, 305, 1115, 430, 1035, 430)
+
+[node name="1.1_School_Door_Boundary_01" type="Polygon2D" parent="1.1_EnvironmentPlaceholders" unique_id=160114273]
+z_index = -44
+position = Vector2(828.72974, -27.052612)
+scale = Vector2(0.13513513, 0.92105263)
+polygon = PackedVector2Array(1038, 430, 1112, 430, 1112, 468, 1038, 468)
+
+[node name="1.1_School_Building_Doors_01_Collision" type="StaticBody2D" parent="1.1_EnvironmentPlaceholders" unique_id=1045591823]
+position = Vector2(-66, 13)
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_Collision" unique_id=123314690]
 polygon = PackedVector2Array(1035, 305, 1115, 305, 1115, 430, 1035, 430)
 
 [node name="Background_Plants" type="TileMapLayer" parent="." unique_id=645481539]
