@@ -42,6 +42,22 @@ SERIES_LABELS = {
     "R": "R (Regression Risk)",
 }
 
+# Extra series fed by `playtest_commands.bot_*` keys instead of `scores`.
+# Plotted on the same 0..5 axis (pass=5, fail=0). Missing/skip values render
+# as gaps (None) so pre-bot historical runs do not look like regressions.
+EXTRA_SERIES_ORDER = ["Bots"]
+EXTRA_SERIES_COLORS = {
+    "Bots": "#ffffff",
+}
+EXTRA_SERIES_LABELS = {
+    "Bots": "Bots (Avg pass-rate)",
+}
+
+BOT_STATUS_TO_SCORE = {
+    "pass": 5.0,
+    "fail": 0.0,
+}
+
 
 def _safe_float(value: Any) -> float:
     try:
@@ -93,9 +109,41 @@ def _sort_payloads(payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [payload for _, payload in indexed]
 
 
-def _extract_series(payloads: list[dict[str, Any]]) -> tuple[list[str], dict[str, list[float]]]:
+def _bot_status_to_score(status: Any) -> float | None:
+    """Map a `playtest_commands.bot_*` status string to a 0..5 score, or None for skip/missing."""
+    if not isinstance(status, str):
+        return None
+    return BOT_STATUS_TO_SCORE.get(status.strip().lower())
+
+
+def _bots_aggregate_for_payload(payload: dict[str, Any]) -> float | None:
+    """Mean of all `bot_*` numeric pass/fail values in this payload, or None if none plottable.
+
+    Auto-discovers any key in `playtest_commands` starting with `bot_`, so future
+    bots (e.g. `bot_corridor_traversal`) automatically join the aggregate without
+    further code changes.
+    """
+    commands = payload.get("playtest_commands", {})
+    if not isinstance(commands, dict):
+        return None
+    numeric_values: list[float] = []
+    for key, value in commands.items():
+        if not isinstance(key, str) or not key.lower().startswith("bot_"):
+            continue
+        score = _bot_status_to_score(value)
+        if score is not None:
+            numeric_values.append(score)
+    if not numeric_values:
+        return None
+    return round(sum(numeric_values) / len(numeric_values), 2)
+
+
+def _extract_series(
+    payloads: list[dict[str, Any]],
+) -> tuple[list[str], dict[str, list[float]], dict[str, list[float | None]]]:
     labels: list[str] = []
     series: dict[str, list[float]] = {name: [] for name in SERIES_ORDER}
+    extra_series: dict[str, list[float | None]] = {name: [] for name in EXTRA_SERIES_ORDER}
     for index, payload in enumerate(payloads, start=1):
         timestamp = str(payload.get("timestamp", "")).strip()
         short_ts = timestamp[:10] if timestamp else "undated"
@@ -107,7 +155,9 @@ def _extract_series(payloads: list[dict[str, Any]]) -> tuple[list[str], dict[str
             scores = {}
         for name in SERIES_ORDER:
             series[name].append(round(_safe_float(scores.get(name, 0.0)), 2))
-    return labels, series
+
+        extra_series["Bots"].append(_bots_aggregate_for_payload(payload))
+    return labels, series, extra_series
 
 
 def _format_values(values: list[float]) -> str:
@@ -139,7 +189,12 @@ def _svg_escape(value: str) -> str:
     )
 
 
-def _build_svg_chart(labels: list[str], series: dict[str, list[float]]) -> str:
+def _build_svg_chart(
+    labels: list[str],
+    series: dict[str, list[float]],
+    extra_series: dict[str, list[float | None]] | None = None,
+) -> str:
+    extra_series = extra_series or {}
     width = 1200
     height = 700
     plot_left = 110
@@ -190,6 +245,37 @@ def _build_svg_chart(labels: list[str], series: dict[str, list[float]]) -> str:
         for i, value in enumerate(values):
             lines.append(f'<circle cx="{x_for(i):.2f}" cy="{y_for(value):.2f}" r="3.5" fill="{color}"/>')
 
+    # Extra series (e.g. "Bots") may contain None for skip/missing/pre-bot runs;
+    # render as broken polyline (one segment per consecutive non-None span) so
+    # historical gaps don't look like flat-zero regressions.
+    for name in EXTRA_SERIES_ORDER:
+        values = extra_series.get(name, [])
+        if not values or all(v is None for v in values):
+            continue
+        color = EXTRA_SERIES_COLORS[name]
+        segment: list[tuple[float, float]] = []
+        for i, value in enumerate(values):
+            if value is None:
+                if len(segment) >= 2:
+                    points = " ".join(f"{x:.2f},{y:.2f}" for x, y in segment)
+                    lines.append(
+                        f'<polyline points="{points}" fill="none" stroke="{color}" stroke-width="3" stroke-dasharray="6,4"/>'
+                    )
+                segment = []
+                continue
+            segment.append((x_for(i), y_for(value)))
+        if len(segment) >= 2:
+            points = " ".join(f"{x:.2f},{y:.2f}" for x, y in segment)
+            lines.append(
+                f'<polyline points="{points}" fill="none" stroke="{color}" stroke-width="3" stroke-dasharray="6,4"/>'
+            )
+        for i, value in enumerate(values):
+            if value is None:
+                continue
+            lines.append(
+                f'<circle cx="{x_for(i):.2f}" cy="{y_for(value):.2f}" r="4.5" fill="{color}" stroke="#0f1116" stroke-width="1.5"/>'
+            )
+
     legend_x = float(plot_left)
     legend_y = 620
     swatch_width = 24
@@ -207,15 +293,42 @@ def _build_svg_chart(labels: list[str], series: dict[str, list[float]]) -> str:
         approx_text_width = len(label) * 7.4
         legend_x += swatch_width + swatch_to_text_gap + approx_text_width + item_gap
 
+    for name in EXTRA_SERIES_ORDER:
+        values = extra_series.get(name, [])
+        if not values or all(v is None for v in values):
+            continue
+        color = EXTRA_SERIES_COLORS[name]
+        label = EXTRA_SERIES_LABELS[name]
+        lines.append(
+            f'<line x1="{legend_x:.2f}" y1="{legend_y}" x2="{legend_x + swatch_width:.2f}" y2="{legend_y}" stroke="{color}" stroke-width="4" stroke-dasharray="6,4"/>'
+        )
+        lines.append(
+            f'<text x="{legend_x + swatch_width + swatch_to_text_gap:.2f}" y="{legend_y + 5}" fill="#d9d9d9" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="600">{label}</text>'
+        )
+        approx_text_width = len(label) * 7.4
+        legend_x += swatch_width + swatch_to_text_gap + approx_text_width + item_gap
+
     lines.append("</svg>")
     return "\n".join(lines) + "\n"
+
+
+def _format_bot_commands(payload: dict[str, Any]) -> str:
+    commands = payload.get("playtest_commands", {})
+    if not isinstance(commands, dict):
+        return "no playtest_commands"
+    bot_pairs = [
+        f"{key}={value}"
+        for key, value in commands.items()
+        if isinstance(key, str) and key.lower().startswith("bot_")
+    ]
+    return " ".join(bot_pairs) if bot_pairs else "no bot keys"
 
 
 def _render_markdown(payloads: list[dict[str, Any]]) -> str:
     if not payloads:
         return _render_empty_markdown()
 
-    labels, series = _extract_series(payloads)
+    labels, series, extra_series = _extract_series(payloads)
     now = datetime.now(timezone.utc).isoformat()
     latest = payloads[-1]
     previous = payloads[-2] if len(payloads) > 1 else None
@@ -233,6 +346,8 @@ def _render_markdown(payloads: list[dict[str, Any]]) -> str:
     if not isinstance(bugs, list):
         bugs = []
 
+    bots_status_text = _format_bot_commands(latest)
+
     delta_lines: list[str] = []
     for name in SERIES_ORDER:
         latest_val = _safe_float(latest_scores.get(name, 0.0))
@@ -240,6 +355,19 @@ def _render_markdown(payloads: list[dict[str, Any]]) -> str:
             delta_lines.append(f"- `{name}`: `{latest_val:.2f}` (n/a first run)")
             continue
         prev_val = _safe_float(prev_scores.get(name, 0.0))
+        diff = latest_val - prev_val
+        delta_lines.append(f"- `{name}`: `{latest_val:.2f}` (`{diff:+.2f}` vs previous)")
+
+    for name in EXTRA_SERIES_ORDER:
+        values = extra_series.get(name, [])
+        latest_val = values[-1] if values else None
+        prev_val = values[-2] if len(values) >= 2 else None
+        if latest_val is None:
+            delta_lines.append(f"- `{name}`: `n/a` (no bot data this run)")
+            continue
+        if prev_val is None:
+            delta_lines.append(f"- `{name}`: `{latest_val:.2f}` (n/a previous bot data)")
+            continue
         diff = latest_val - prev_val
         delta_lines.append(f"- `{name}`: `{latest_val:.2f}` (`{diff:+.2f}` vs previous)")
 
@@ -253,7 +381,12 @@ def _render_markdown(payloads: list[dict[str, Any]]) -> str:
     for name in SERIES_ORDER:
         chart_lines.append(f"  line [{_format_values(series[name])}]")
     chart_lines.append("```")
-    legend_text = "Series order: Total, S, N, I, E, C, R."
+    legend_text = (
+        "Series order: Total, S, N, I, E, C, R. The dashed `Bots` aggregate "
+        "(pass=5, fail=0; gaps for skip/missing) appears in the SVG only — "
+        "Mermaid `xychart-beta` cannot render gaps cleanly so it is omitted "
+        "from the fallback view."
+    )
 
     severity_text = (
         f"blocker={_safe_int(findings.get('blocker'))} "
@@ -278,10 +411,11 @@ def _render_markdown(payloads: list[dict[str, Any]]) -> str:
         f"- Trigger: `{latest_trigger}`\n"
         f"- Findings: `{severity_text}`\n"
         f"- Categories: `{category_text}`\n"
-        f"- Bugs/problems: `{bugs_text}`\n\n"
+        f"- Bugs/problems: `{bugs_text}`\n"
+        f"- Bots: `{bots_status_text}`\n\n"
         "## Latest deltas vs previous run\n\n"
         + "\n".join(delta_lines)
-        + "\n\n## Trend chart (Total + S/N/I/E/C/R)\n\n"
+        + "\n\n## Trend chart (Total + S/N/I/E/C/R + Bots)\n\n"
         + "![AXEL QA Score Trends](AXEL_QA_ANALYTICS.svg)\n\n"
         + "Fallback Mermaid view:\n\n"
         + "\n".join(chart_lines)
@@ -297,8 +431,10 @@ def main() -> int:
     rendered = _render_markdown(payloads)
     ANALYTICS_PATH.write_text(rendered, encoding="utf-8")
     if payloads:
-        labels, series = _extract_series(payloads)
-        ANALYTICS_SVG_PATH.write_text(_build_svg_chart(labels, series), encoding="utf-8")
+        labels, series, extra_series = _extract_series(payloads)
+        ANALYTICS_SVG_PATH.write_text(
+            _build_svg_chart(labels, series, extra_series), encoding="utf-8"
+        )
     else:
         ANALYTICS_SVG_PATH.write_text("", encoding="utf-8")
     print(f"Updated analytics: {ANALYTICS_PATH}")

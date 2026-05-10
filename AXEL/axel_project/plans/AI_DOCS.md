@@ -97,6 +97,7 @@ Keep these narrative anchors coherent across edits:
   - story flags/memories/endings
   - combat goals/economy
   - style/thematic presentation
+- **Playtest collision overlay:** cyan/teal outlines for invisible 2D collision helpers (`PlaytestCollisionDebug` autoload) are a **debug-only readability exception** to the AXEL palette; ships only under `OS.is_debug_build()`. See `AXEL/axel_project/plans/PLAYTEST_DEBUG_COLLISIONS.md`.
 
 ## 9) Agent Workflow Requirements
 
@@ -151,21 +152,31 @@ For all substantive AXEL tasks, planning outputs must be implementation-ready fo
     look-dev (for example filter-preview folders/comparison renders) under
     `tools/scene_builder/output/`, while keeping canonical draft contracts
     unless the user explicitly asks for a full purge.
-- `qa agent` (short form: `qa`) = simulated QA review workflow centered at:
+- `qa agent` (short forms: `qa`, `run qa`) = simulated QA review workflow centered at:
   - `.cursor/skills/axel-simulated-qa/SKILL.md`
   - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md`
   - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md`
   - `AXEL/axel_project/plans/AXEL_QA_ANALYTICS.md`
   - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
   - **Default output:** concise, **technical-first** (evidence, scores, data); **Recommendations** required every run (minimum 3).
-  - **Playtest mode** (`qa playtest` / high-confidence): run headless checks documented in rubric §Playtest-mode, including `res://test/scene_smoke_check.gd`.
-  - **Persistence invariant:** every `qa` run appends one structured payload to `AXEL_QA_RUN_LOG.md`, then refreshes `AXEL_QA_ANALYTICS.md` via `tools/qa/update_qa_analytics.py` so score trends remain continuous over production.
+  - **Default execution:** plain `qa` / `run qa` / `qa agent` runs **combined static + full playtest** in one QA pass. The default playtest command bundle is the **six** headless commands from rubric §Playtest-mode: `princess_check`, `determinism_check`, `rtp_audit`, `scene_smoke_check`, **`playthrough_arc1_exterior`, `playthrough_dialogue_loop`**. Default confidence tier is `combat + scene smoke + bot playthrough` when all gates pass.
+  - **Playtest mode** (`qa playtest` / high-confidence): same default command set as plain `qa` (still includes static review).
+  - **Static-only override:** run static-only checks only when the user explicitly requests `qa static` (skips all six headless commands, including bots).
+  - **Skip policy:** if any default command cannot run, name every skipped command explicitly in the report and downgrade the tier per rubric §Playtest-mode skip policy.
+  - **Persistence invariant:** every `qa` run appends one structured payload to `AXEL_QA_RUN_LOG.md` (with `playtest_commands` keys including `bot_arc1_exterior` and `bot_dialogue_loop`), then refreshes `AXEL_QA_ANALYTICS.md` via `tools/qa/update_qa_analytics.py` so score trends remain continuous over production. The analytics generator aggregates all `playtest_commands.bot_*` keys (auto-discovered) into a dashed `Bots` series on `AXEL_QA_ANALYTICS.svg` (`pass=5`, `fail=0`, `skip`/missing = gap), so bot pass-rate trends share the same dashboard as the score axes.
+- `bot playthrough` = headless overworld input bots that synthesize real `InputEventKey` events through `Input.parse_input_event()` to exercise player-input code paths (`Player.gd::_physics_process` polling, `_unhandled_input` interaction, `TopDialogueOverlay._input` Tab-skip). Centered at:
+  - `AXEL/axel_project/test/bots/README.md`
+  - `AXEL/axel_project/test/bots/input_event_driver.gd` — press/release/hold/tap utilities + frame stepper.
+  - `AXEL/axel_project/test/bots/scenario_runner.gd` — deterministic command list interpreter (`press`, `tap`, `hold`, `wait_frames`, `assert`, `assert_eventually`, ...).
+  - `AXEL/axel_project/test/bots/playthrough_arc1_exterior.gd` — walks player to door, taps `E`, asserts `1.1_SchoolExterior.tscn` -> `1.2_Corridor.tscn` transition.
+  - `AXEL/axel_project/test/bots/playthrough_dialogue_loop.gd` — drives `TopDialogueOverlay` Tab-skip, then walks + taps `SPACE` (alternate interact key), asserts same transition.
+  - **Confidence integration:** included by default in the `combat + scene smoke + bot playthrough` tier of `AXEL_QA_REVIEW_RUBRIC.md` (see §Playtest-mode); plain `qa` / `run qa` / `qa agent` always runs both bot scripts unless they have to be explicitly skipped (and reported as such).
 - If this agent is updated, refresh `AI_DOCS.md`, `.cursor/rules/axel-ai-docs-governance.mdc`, and `AI_CHANGELOG.md` together.
 
 ## 12) Simulated QA Reviewer
 
-- **Purpose:** Opt-in simulated QA: concise **technical-first** reports (findings, scores, analytics), **mandatory recommendations** (≥3), optional short player-feel only when explicitly requested. **Playtest mode** adds headless combat + scene smoke simulations for higher confidence (see rubric §Playtest-mode).
-- **Invocation:** If the user requests `qa agent`, `qa`, or `qa playtest` / playtest-level confidence, read and apply `.cursor/skills/axel-simulated-qa/SKILL.md`. Also use when the user agrees to run QA after a substantive change.
+- **Purpose:** Opt-in simulated QA: concise **technical-first** reports (findings, scores, analytics), **mandatory recommendations** (≥3), optional short player-feel only when explicitly requested. Default `qa` now runs **combined static + full playtest** (combat + scene smoke + bot playthrough); see rubric §Playtest-mode for command set and confidence tiers.
+- **Invocation:** If the user requests `qa agent`, `qa`, `run qa`, or `qa playtest` / playtest-level confidence, read and apply `.cursor/skills/axel-simulated-qa/SKILL.md`. Also use when the user agrees to run QA after a substantive change.
 - **Artifacts:**
   - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md` — axes, weights, taxonomy, **Playtest-mode** command set and confidence tiers
   - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md` — append-only run history with machine-readable payloads (scores/findings/categories/playtest outcomes/bugs)

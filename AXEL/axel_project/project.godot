@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+PlaytestCollisionDebug="*res://scripts/debug/playtest_collision_debug.gd"
 ScriptReloadMarker="*res://ScriptReloadMarker.gd"
 
 [physics]

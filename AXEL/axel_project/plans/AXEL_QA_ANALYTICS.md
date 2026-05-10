@@ -2,29 +2,31 @@
 
 Auto-generated from `AXEL_QA_RUN_LOG.md` by `tools/qa/update_qa_analytics.py`.
 
-- Last generated (UTC): `2026-05-08T16:01:29.834960+00:00`
-- Runs parsed: `3`
+- Last generated (UTC): `2026-05-10T16:14:36.609056+00:00`
+- Runs parsed: `4`
 
 ## Latest snapshot
 
 - Mode: `static`
-- Scope: `scenes/Arc_1/1.1_SchoolExterior.tscn placeholder behavior/dialogue plus shared scenes/core/ScenePlaceholder.gd`
+- Scope: `scenes/Arc_1/1.1_SchoolExterior.gd and scenes/Arc_1/1.1_SchoolExterior.tscn door interaction trigger, key handling, and corridor transition path`
 - Trigger: `user request`
-- Findings: `blocker=1 major=1 minor=2 nit=0`
-- Categories: `STYLE=1 LORE=0 IMMERSION=1 TENSION=0 CLARITY=1 COMBAT=0 ARCH=0 REGRESSION=1 BUG=1 TOOL=0`
-- Bugs/problems: `Arc 1.1 placeholder has no transition interaction to 1.2_Corridor`
+- Findings: `blocker=0 major=0 minor=1 nit=1`
+- Categories: `STYLE=0 LORE=0 IMMERSION=0 TENSION=1 CLARITY=1 COMBAT=0 ARCH=0 REGRESSION=0 BUG=0 TOOL=0`
+- Bugs/problems: `none`
+- Bots: `no bot keys`
 
 ## Latest deltas vs previous run
 
-- `Total`: `1.95` (`-1.70` vs previous)
-- `S`: `2.00` (`-2.00` vs previous)
-- `N`: `3.00` (`-1.00` vs previous)
-- `I`: `2.00` (`-1.00` vs previous)
-- `E`: `2.00` (`-1.00` vs previous)
-- `C`: `1.00` (`-3.00` vs previous)
-- `R`: `1.00` (`-3.00` vs previous)
+- `Total`: `3.85` (`+1.90` vs previous)
+- `S`: `4.00` (`+2.00` vs previous)
+- `N`: `4.00` (`+1.00` vs previous)
+- `I`: `4.00` (`+2.00` vs previous)
+- `E`: `3.00` (`+1.00` vs previous)
+- `C`: `4.00` (`+3.00` vs previous)
+- `R`: `4.00` (`+3.00` vs previous)
+- `Bots`: `n/a` (no bot data this run)
 
-## Trend chart (Total + S/N/I/E/C/R)
+## Trend chart (Total + S/N/I/E/C/R + Bots)
 
 ![AXEL QA Score Trends](AXEL_QA_ANALYTICS.svg)
 
@@ -33,15 +35,15 @@ Fallback Mermaid view:
 ```mermaid
 xychart-beta
   title "AXEL QA Score Trends"
-  x-axis ["2026-05-08#1", "2026-05-08#2", "2026-05-08#3"]
+  x-axis ["2026-05-08#1", "2026-05-08#2", "2026-05-08#3", "2026-05-08#4"]
   y-axis "Score" 0 --> 5
-  line [2.7, 3.65, 1.95]
-  line [3, 4, 2]
-  line [3, 4, 3]
-  line [2, 3, 2]
-  line [2, 3, 2]
-  line [3, 4, 1]
-  line [3, 4, 1]
+  line [2.7, 3.65, 1.95, 3.85]
+  line [3, 4, 2, 4]
+  line [3, 4, 3, 4]
+  line [2, 3, 2, 4]
+  line [2, 3, 2, 3]
+  line [3, 4, 1, 4]
+  line [3, 4, 1, 4]
 ```
 
-- Series order: Total, S, N, I, E, C, R.
+- Series order: Total, S, N, I, E, C, R. The dashed `Bots` aggregate (pass=5, fail=0; gaps for skip/missing) appears in the SVG only — Mermaid `xychart-beta` cannot render gaps cleanly so it is omitted from the fallback view.

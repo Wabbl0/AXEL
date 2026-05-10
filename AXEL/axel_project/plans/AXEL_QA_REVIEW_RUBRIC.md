@@ -12,26 +12,32 @@ Use this section to set **confidence** and required **evidence**. Default `qa` v
 |------|---------|-------------------|
 | `static review` | Code/docs/drafts only | File pointers; no automated runs |
 | `combat simulated` | Headless combat checks passed | `princess_check.gd` + `determinism_check.gd` exit 0; optional `rtp_audit.gd` stdout captured |
-| `combat + scene smoke` | High-confidence default for playtest requests | All of **combat simulated** **plus** `scene_smoke_check.gd` exit 0 **plus** `rtp_audit.gd` metrics line captured (metrics only; not a pass/fail gate unless user defines thresholds) |
+| `combat + scene smoke` | Mid-tier playtest (subset of default; report only when bot scripts had to be skipped) | All of **combat simulated** **plus** `scene_smoke_check.gd` exit 0 **plus** `rtp_audit.gd` metrics line captured (metrics only; not a pass/fail gate unless user defines thresholds) |
+| `combat + scene smoke + bot playthrough` | **Default tier for plain `qa` / `run qa` / `qa agent`** — full default playtest, exercises real-input paths | All of **combat + scene smoke** **plus** `playthrough_arc1_exterior.gd` + `playthrough_dialogue_loop.gd` exit 0 (synthesized `InputEventKey` traversal of `Player.gd` polling, `_unhandled_input` interaction, and `TopDialogueOverlay._input` Tab-skip) |
 
-### Default command set (playtest: combat + scene smoke)
+### Default command set (playtest: combat + scene smoke + bot playthrough)
 
-Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
+Plain `qa` / `run qa` / `qa agent` runs **all six** commands below in one pass. Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
 
 ```bat
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_arc1_exterior.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_dialogue_loop.gd
 ```
 
-- **Pass/fail gates:** `princess_check`, `determinism_check`, `scene_smoke_check` — non-zero exit = report as **blocker** / `BUG` or `REGRESSION`.
+The two bot scripts are documented in `AXEL/axel_project/test/bots/README.md`.
+
+- **Pass/fail gates:** `princess_check`, `determinism_check`, `scene_smoke_check`, `playthrough_arc1_exterior`, `playthrough_dialogue_loop` — non-zero exit = report as **blocker** / `BUG` or `REGRESSION`.
 - **`rtp_audit.gd`:** always exits 0 — parse stdout for `RTP_AUDIT_JSON` (or printed metrics) and record in analytics; do not fail the run on RTP alone unless thresholds are specified.
+- **Skip policy:** if any command cannot run (missing tooling, unavailable Godot binary, etc.), name every skipped command explicitly in the report and downgrade confidence one tier per missing gate (drop bots first → `combat + scene smoke`; drop scene smoke → `combat simulated`; drop combat → `static review`).
 
 ### When user says “playtest” or “high confidence”
 
-1. Run the full command set above (or report which steps failed / were skipped).
-2. Set **Confidence:** to `combat + scene smoke` only if all gates passed and metrics captured.
+1. Run the full default command set above (six commands) — same as plain `qa` — and report which (if any) failed or were skipped.
+2. Set **Confidence:** to `combat + scene smoke + bot playthrough` only if **all** pass/fail gates passed and metrics captured. Otherwise pick the highest tier still satisfied by the evidence (see Skip policy above).
 3. Prioritize **bugs, regressions, and fix recommendations** over subjective feel.
 
 ---
@@ -129,8 +135,8 @@ In every QA report, include (keep **≤6 lines** total per skill brevity caps):
 
 - Count of findings per **severity**
 - Count of findings per **category**
-- One line **Confidence:** `static review` | `combat simulated` | `combat + scene smoke` (must match evidence from §Playtest-mode)
-- Playtest runs: **pass/fail** per gate command (if playtest mode)
+- One line **Confidence:** `static review` | `combat simulated` | `combat + scene smoke` | `combat + scene smoke + bot playthrough` (must match evidence from §Playtest-mode)
+- Playtest runs: **pass/fail** per gate command, including `bot_arc1_exterior` and `bot_dialogue_loop` (if playtest mode)
 
 ## Persistent analytics payload (for trend graphing)
 
@@ -145,10 +151,10 @@ Required keys:
 - `scores` with numeric `S/N/I/E/C/R/Total` and string `Band`
 - `findings_count` with `blocker/major/minor/nit`
 - `by_category` with taxonomy counts from this rubric
-- `playtest_commands` with `princess_check/determinism/rtp_audit/scene_smoke`
+- `playtest_commands` with `princess_check/determinism/rtp_audit/scene_smoke/bot_arc1_exterior/bot_dialogue_loop`
 - `bugs_or_regressions` as short list entries
 
-This payload is the source of truth for historical analytics and Mermaid trend lines.
+This payload is the source of truth for historical analytics and Mermaid trend lines. `tools/qa/update_qa_analytics.py` auto-discovers any `playtest_commands` key prefixed `bot_*` and aggregates them into a single dashed `Bots` line on `AXEL_QA_ANALYTICS.svg` (mapping: `pass=5`, `fail=0`, `skip`/missing = gap). New bot scripts that use the same key prefix automatically join the aggregate without further code changes.
 
 ## Player experience (optional)
 

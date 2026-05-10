@@ -4,10 +4,10 @@ uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_l
 uniform vec4 black_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 uniform vec4 dark_blood_color : source_color = vec4(0.36, 0.0, 0.0, 1.0);
 uniform vec4 blood_red_color : source_color = vec4(1.0, 0.0, 0.0, 1.0);
-uniform vec4 white_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
+uniform vec4 white_color : source_color = vec4(0.95, 0.95, 0.95, 1.0);
 uniform float t0 = 0.08;
 uniform float t1 = 0.30;
-uniform float t2 = 0.62;
+uniform float t2 = 0.72;
 
 void fragment() {
 	vec4 src = texture(screen_texture, SCREEN_UV);

@@ -18,7 +18,7 @@ Copy the template block, fill values, paste **below** the last entry.
 - **Mode:** <static | playtest>
 - **Scope:** <one line: feature, scene list, or paths reviewed>
 - **Trigger:** <user request | post-change agreed QA>
-- **Playtest commands:** princess_check=<pass|fail|skip> determinism=<pass|fail|skip> rtp_audit=<captured|skip> scene_smoke=<pass|fail|skip>
+- **Playtest commands:** princess_check=<pass|fail|skip> determinism=<pass|fail|skip> rtp_audit=<captured|skip> scene_smoke=<pass|fail|skip> bot_arc1_exterior=<pass|fail|skip> bot_dialogue_loop=<pass|fail|skip>
 - **Scores:** S=_ N=_ I=_ E=_ C=_ R=_ **Total=_._** Band=_
 - **Findings count:** blocker=_ major=_ minor=_ nit=_
 - **By category:** STYLE=_ LORE=_ IMMERSION=_ TENSION=_ CLARITY=_ COMBAT=_ ARCH=_ REGRESSION=_ BUG=_ TOOL=_
@@ -37,6 +37,37 @@ Copy the template block, fill values, paste **below** the last entry.
   "scores": {"S": 0, "N": 0, "I": 0, "E": 0, "C": 0, "R": 0, "Total": 0.0, "Band": "F"},
   "findings_count": {"blocker": 0, "major": 0, "minor": 0, "nit": 0},
   "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 0, "TENSION": 0, "CLARITY": 0, "COMBAT": 0, "ARCH": 0, "REGRESSION": 0, "BUG": 0, "TOOL": 0},
+  "playtest_commands": {"princess_check": "skip", "determinism": "skip", "rtp_audit": "skip", "scene_smoke": "skip", "bot_arc1_exterior": "skip", "bot_dialogue_loop": "skip"},
+  "bugs_or_regressions": []
+}
+<!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-08 — Arc 1.1 door interaction follow-up QA
+
+- **Mode:** static
+- **Scope:** `scenes/Arc_1/1.1_SchoolExterior.gd` and `scenes/Arc_1/1.1_SchoolExterior.tscn` door interaction trigger, key handling, and corridor transition path
+- **Trigger:** user request
+- **Playtest commands:** princess_check=skip determinism=skip rtp_audit=skip scene_smoke=skip
+- **Scores:** S=4 N=4 I=4 E=3 C=4 R=4 **Total=3.85** Band=B
+- **Findings count:** blocker=0 major=0 minor=1 nit=1
+- **By category:** STYLE=0 LORE=0 IMMERSION=0 TENSION=1 CLARITY=1 COMBAT=0 ARCH=0 REGRESSION=0 BUG=0 TOOL=0
+- **Recommendations (logged):**
+  - Add a contextual prompt near the door (`E / Space / Enter`) while inside interact range to improve affordance clarity.
+  - Optionally migrate interaction keys into an InputMap action (for example `interact`) to keep future remapping centralized.
+  - Add a headless scene smoke pass (`res://test/scene_smoke_check.gd`) after future scene-transition edits for faster regression detection.
+- **Bug / regression notes:** none observed in static review; user-confirmed manual interaction flow works after interact-area reposition
+- **Trend vs previous run:** up — progression gate in Arc 1.1 is now implemented and no blockers remain in reviewed paths
+- **Link / notes:** follow-up QA after door trigger placement adjustment
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-08T17:27:00Z",
+  "run_title": "Arc 1.1 door interaction follow-up QA",
+  "mode": "static",
+  "scope": "scenes/Arc_1/1.1_SchoolExterior.gd and scenes/Arc_1/1.1_SchoolExterior.tscn door interaction trigger, key handling, and corridor transition path",
+  "trigger": "user request",
+  "scores": {"S": 4, "N": 4, "I": 4, "E": 3, "C": 4, "R": 4, "Total": 3.85, "Band": "B"},
+  "findings_count": {"blocker": 0, "major": 0, "minor": 1, "nit": 1},
+  "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 0, "TENSION": 1, "CLARITY": 1, "COMBAT": 0, "ARCH": 0, "REGRESSION": 0, "BUG": 0, "TOOL": 0},
   "playtest_commands": {"princess_check": "skip", "determinism": "skip", "rtp_audit": "skip", "scene_smoke": "skip"},
   "bugs_or_regressions": []
 }
@@ -81,7 +112,7 @@ Copy the template block, fill values, paste **below** the last entry.
   - `<!-- QA_ANALYTICS_JSON_END -->`
 - Keep key names stable so `tools/qa/update_qa_analytics.py` can parse history safely.
 - Allowed `mode`: `static`, `playtest`.
-- Allowed playtest command values: `pass`, `fail`, `captured`, `skip`.
+- Allowed `playtest_commands` keys: `princess_check`, `determinism`, `rtp_audit`, `scene_smoke`, `bot_arc1_exterior`, `bot_dialogue_loop`. Allowed values: `pass`, `fail`, `captured`, `skip` (`captured` is for `rtp_audit` metrics; the rest are pass/fail gates that may also be `skip`).
 - `scores.Total` must be numeric and rounded to 2 decimals.
 - `bugs_or_regressions` should list short strings (IDs or concise notes) for discovered bugs/problems.
 

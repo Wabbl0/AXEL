@@ -718,6 +718,18 @@ Copy and fill:
 - Verification: Scene-file structural check confirms matching position and polygon values between door visual node and collision node.
 - Notes: No canon/source-hierarchy conflict; update targets canonical scene `1.1_SchoolExterior.tscn`.
 
+## 2026-05-08 - Scene 1.1 Door Interaction To Corridor Transition
+
+- Request: Make the school door boundary interactable so when the player is close and presses interaction (`E`, `Space`, or `Enter`), they are teleported to the corridor scene.
+- Implementation: Added door-proximity trigger `1.1_School_Building_Doors_01_InteractArea` (`Area2D`) reusing the same transform and polygon as `1.1_School_Building_Doors_01`. Extended `1.1_SchoolExterior.gd` with `_unhandled_input` key handling (`KEY_E`, `KEY_SPACE`, `KEY_ENTER`, `KEY_KP_ENTER`), overlap check against the player body via `get_overlapping_bodies()`, and guarded scene transition to `res://scenes/Arc_1/1.2_Corridor.tscn` using `change_scene_to_file`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Door area now supports explicit interaction-based progression from Scene `1.1` to Scene `1.2` rather than passive traversal alone.
+- Verification: `ReadLints` reports no errors in `1.1_SchoolExterior.gd` after adding interaction logic.
+- Notes: Transition is proximity-gated and one-shot guarded (`_is_transitioning`) to prevent duplicate scene-change calls on repeated keypress events.
+
 ## 2026-05-08 - Dialogue overlay: bottom center + viewport padding
 
 - Request: Position the dialogue box at the bottom center of the window with a small gap above the bottom edge.
@@ -729,3 +741,157 @@ Copy and fill:
 - Behavior impact: Dialogue reads as a bottom cinematic bar on every scene that instances the overlay; horizontal alignment stays centered via full-width strip + centered label text.
 - Verification: Headless `res://test/scene_smoke_check.gd` → `Scene smoke check OK (6 scenes).`
 - Notes: Filename `TopDialogueOverlay` unchanged to avoid breaking instances; visual placement is now bottom-centered.
+
+## 2026-05-08 - Scene 1.2 Local Noir White-Balance Guardrail
+
+- Request: Fix Scene `1.2` over-bright whites caused by the prior `NoirPaletteOverlay` retune, while avoiding broad cross-scene drift.
+- Implementation: Applied Option B (scene-local override) in `1.2_Corridor.gd` by targeting `NoirPaletteOverlay/FilterRect` material at runtime and overriding shader uniforms for Scene `1.2` only: raised white-threshold cutoff (`t2 = 0.72`) and softened peak white mapping (`white_color = Color(0.93, 0.93, 0.93, 1.0)`).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Corridor lockers/graffiti/debris retain noir quantization but fewer mid-bright texels collapse to pure white, improving detail retention in Scene `1.2` without changing Scene `1.1` global grading.
+- Verification: `ReadLints` reports no errors in `1.2_Corridor.gd`; repository search confirms only `1.2_Corridor.gd` now sets local `t2` and `white_color` overrides while `1.1_SchoolExterior.tscn` continues using the shared overlay instance unchanged.
+- Notes: Canon-aligned with AXEL palette intent (controlled white highlights); this is a contained scene calibration with no global shader default edits.
+
+## 2026-05-08 - QA Default Upgraded To Combined Static + Playtest
+
+- Request: Make future `qa` requests always mean both static review and playtest.
+- Implementation: Updated QA skill contract so plain `qa` / `qa agent` now defaults to a combined run (static analysis + rubric playtest command set). Added explicit `qa static` override for static-only runs, and synchronized canonical docs/rules so governance and alias behavior are consistent.
+- Files changed:
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Any future plain `qa` invocation now targets higher-confidence combined QA evidence by default; static-only becomes opt-in via explicit request.
+- Verification: Confirmed updated wording exists in QA skill, canonical AI docs, and always-on governance rule with aligned alias semantics.
+- Notes: No source-hierarchy conflict; this is a reusable workflow policy change and was documented in both persistent governance layers as required.
+
+## 2026-05-08 - Option 1 Global Noir Rebalance Trial (Revert-Safe)
+
+- Request: Implement Option 1 global white-balance trial so Scene `1.1` and `1.2` can be tested together, with a guaranteed path back to the current baseline state.
+- Implementation: Created rollback anchors before edits (`rollback/option1-baseline-20260508-2038` branch pointer and `option1-baseline-20260508-2038` tag), then switched to `test/noir-option1-global` and tuned only `noir_palette_filter.gdshader` for first-pass global trial: `t2` `0.62 -> 0.72` and `white_color` `vec4(1.0,1.0,1.0,1.0) -> vec4(0.95,0.95,0.95,1.0)`.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/noir_palette_filter.gdshader`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Global overlay now routes fewer mid-high luminance texels into the white bucket, reducing white clipping pressure across scenes that instance `NoirPaletteOverlay` (including `1.1` and `1.2`).
+- Verification: `ReadLints` reports no shader lint errors; `git diff` confirms only the two intended uniform changes in `noir_palette_filter.gdshader`; validation criteria for user pass: (1) `1.2` locker vents/panel seams retain detail, (2) `1.2` graffiti no longer blooms as clipped white patch, (3) `1.1` door marker remains readable without harsh clipping, (4) `1.1` background separation remains intact.
+- Notes: Trial is intentionally kept active on `test/noir-option1-global` for user testing; one-step baseline restore remains available via `git switch main` (or `git switch rollback/option1-baseline-20260508-2038`).
+
+## 2026-05-08 - Option 1 Test Unmasked In Scene 1.2
+
+- Request: Make Option 1 global test visibly affect Scene `1.2` after user observed no practical difference.
+- Implementation: Added a simple scene flag in `1.2_Corridor.gd` and disabled the local corridor override during this trial (`_USE_LOCAL_NOIR_TUNING := false`), so Scene `1.2` now reads global `noir_palette_filter.gdshader` uniforms directly.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Scene `1.2` no longer masks global palette-tuning with local `t2/white_color` values, enabling a true Option 1 side-by-side read against Scene `1.1`.
+- Verification: `ReadLints` reports no errors in `1.2_Corridor.gd`; `_ready()` now gates `_apply_local_noir_tuning()` behind a disabled constant.
+- Notes: Re-enable prior local behavior by setting `_USE_LOCAL_NOIR_TUNING := true` after trial if needed.
+
+## 2026-05-08 - Scene 1.2 Locker Detail Recovery via Bypass Layer
+
+- Request: Replace ineffective global-threshold trial with a stronger Scene `1.2` approach that preserves locker vent/panel detail.
+- Implementation: Added a full `LockerBypassLayer` (`CanvasLayer`, layer `95`) and moved visible locker rendering to bypass sprites (`Locker01Bypass..Locker10Bypass` + `HighlightedLockerBypass`) using a shared locker-local shader material. Hid original in-row lockers (`Locker01..Locker10` and `HighlightedLocker`) to prevent duplicate rendering under the global overlay. Introduced new shader `locker_palette_filter.gdshader` with noir-adjacent palette mapping plus controlled luminance variation (`detail_strength`) to preserve micro-contrast in locker linework.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/fx/locker_palette_filter.gdshader`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Scene `1.2` locker art now bypasses destructive full-screen quantization while still receiving a local noir-style grade; vent slots and panel outlines are expected to remain legible at play distance without introducing player-layer conflicts.
+- Verification: `ReadLints` reports no diagnostics for touched scene/script/shader paths; scene diff confirms bypass nodes preserve original locker transforms and highlighted locker now uses the same shader family as the rest of the row with no duplicate visible sources.
+- Notes: This is intentionally scene-scoped (`1.2` only) to contain drift; rollback remains low-risk by reverting `1.2_Corridor.tscn` and `locker_palette_filter.gdshader` on the current trial branch.
+
+## 2026-05-08 - Scene 1.2 Highlighted Locker Faint Glow Restore
+
+- Request: Restore visible emphasis for the highlighted locker after bypass normalization by adding a faint glow.
+- Implementation: Extended `locker_palette_filter.gdshader` with a `glow_strength` uniform and a soft luminance-gated glow term (`smoothstep(t1, t2, lum)`) so glow is constrained to brighter locker tones. In `1.2_Corridor.tscn`, kept base lockers on `ShaderMaterial_locker_local` (`glow_strength = 0.0`) and assigned `HighlightedLockerBypass` a dedicated `ShaderMaterial_highlighted_locker_glow` with subtle boost (`glow_strength = 0.12`) plus slightly lifted detail/darken tuning.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/locker_palette_filter.gdshader`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Highlighted locker regains faint visual emphasis while remaining stylistically aligned with the bypass locker row and avoiding strong bloom spill.
+- Verification: `ReadLints` reports no diagnostics for touched shader/scene files.
+
+## 2026-05-08 - Highlighted Locker Glow Fallback Pulse (Runtime)
+
+- Request: Re-apply highlighted locker emphasis after user reported no visible glow change during live playtesting.
+- Implementation: Added a runtime fallback pulse in `1.2_Corridor.gd` that directly animates `LockerBypassLayer/HighlightedLockerBypass` each frame (`modulate` tint + tiny scale breathing), independent of shader hot-reload/material cache behavior. New toggles: `_USE_HIGHLIGHT_PULSE` (enabled) and `_update_highlight_pulse()` driven by `_flicker_time`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Highlighted locker now has an unmistakable but still faint animated glow/readability cue even if shader-only glow path is not visually updating in a live session.
+- Verification: `ReadLints` reports no diagnostics for `1.2_Corridor.gd`.
+
+## 2026-05-08 - Highlighted Locker Standout Boost (Additive Aura)
+
+- Request: Make highlighted locker stand out more because faint pulse motion was visible but no white glow separation was perceived.
+- Implementation: Added `HighlightedLockerAura` sprite behind `HighlightedLockerBypass` in `1.2_Corridor.tscn` using `CanvasItemMaterial` additive blending (`blend_mode = 1`), larger base scale, and white-tinted alpha. Extended runtime pulse in `1.2_Corridor.gd` to animate both locker and aura: increased highlight tint range, slightly stronger locker scale pulse, and independent aura alpha/scale pulse for a clearer white halo read.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Highlighted locker now has explicit white-glow separation from the rest of the locker row while preserving noir tone and avoiding full-screen bloom.
+- Verification: `ReadLints` reports no diagnostics for touched scene/script files.
+
+## 2026-05-10 - Playtest cyan collision debug overlay (global)
+
+- Request: Separate invisible playtest geometry (collision borders etc.) from shipped AXEL palette (red/black/white); use project-wide cyan accents for readability.
+- Implementation: Added autoload **`PlaytestCollisionDebug`** (`CanvasLayer` **2000**) that scans `CollisionShape2D` / `CollisionPolygon2D`, draws cyan/teal outlines via `playtest_collision_debug_draw.gd`, refreshes cache on scene/tree topology changes. **`F7`** toggles overlay in debug/editor builds only (`OS.is_debug_build()` exits early otherwise). Documented rationale as debug-only palette exception in `PLAYTEST_DEBUG_COLLISIONS.md` + `AI_DOCS.md`.
+- Files changed:
+  - `AXEL/axel_project/scripts/debug/playtest_collision_debug.gd`
+  - `AXEL/axel_project/scripts/debug/playtest_collision_debug_draw.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/plans/PLAYTEST_DEBUG_COLLISIONS.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Debug playtests show collision/interact contours in neon cyan/teal above normal layers; scenes and shaders are untouched; overlay absent in release (`is_debug_build() == false`).
+- Verification: `ReadLints` clean on new scripts; architectural check: Noir/`PlayerLayer` use lower CanvasLayer IDs than overlay; shapes in `1.1_SchoolExterior.tscn` / `1.2_Corridor.tscn` are rectangles/circles/polygons handled by drawers. **Manual:** Play `1.1` / `1.2`, confirm cyan borders, press **`F7`** to hide/show; export/release build should not draw overlay.
+- Notes: Aligns with `AI_DOCS.md` readability exception for debug-only helpers; engine “Visible collision shapes” may still show alongside—disable in editor View if redundant.
+
+## 2026-05-10 - Overworld Real-Input Playthrough Bots (`bot playthrough`)
+
+- Request: Implement the "Overworld Real-Input Bot Implementation Plan" — high-fidelity headless bots that simulate a real player by synthesizing key events over time (not API shortcuts), starting with Arc 1 overworld flow.
+- Implementation: Added a reusable test-only input layer + scenario runner + two end-to-end Arc 1 bot scripts. `input_event_driver.gd` emits `InputEventKey` press/release/hold/tap through `Input.parse_input_event()` so events traverse the engine input pipeline (visible to both `_input/_unhandled_input` callbacks and `Input.is_key_pressed()` polling). `scenario_runner.gd` interprets a deterministic command list (`press`, `tap`, `hold`, `wait_frames`, `assert`, `assert_eventually`, ...) with structured failure context (step index + frame). `playthrough_arc1_exterior.gd` walks the player right (KEY_D, ~340 physics frames at 180 px/s) until overlapping the door interact area, taps `KEY_E`, and asserts `current_scene` becomes `1.2_Corridor.tscn`. `playthrough_dialogue_loop.gd` exercises the dialogue/interact loop using the *currently wired* canon: drives `TopDialogueOverlay` Tab-skip, then walks + taps `KEY_SPACE` (alternate interact key in `_is_interaction_event`) and asserts the same transition. Wired into the QA rubric as a new opt-in `combat + scene smoke + bot playthrough` confidence tier and registered as a reusable pipeline (`bot playthrough`) in canonical docs + governance rule.
+- Files changed:
+  - `AXEL/axel_project/test/bots/input_event_driver.gd`
+  - `AXEL/axel_project/test/bots/scenario_runner.gd`
+  - `AXEL/axel_project/test/bots/playthrough_arc1_exterior.gd`
+  - `AXEL/axel_project/test/bots/playthrough_dialogue_loop.gd`
+  - `AXEL/axel_project/test/bots/README.md`
+  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Adds a new headless verification capability that exercises the same key-event code paths a player exercises (movement polling, interact `_unhandled_input`, dialogue `_input` Tab-skip), giving QA playtest a higher-confidence overworld gate without modifying any gameplay code or scenes.
+- Verification: Both bots run green from repo root: `tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_arc1_exterior.gd` -> `Arc1 exterior playthrough OK.` (exit 0, 11 commands, 353 physics frames); `tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_dialogue_loop.gd` -> `Dialogue/interact playthrough OK.` (exit 0, 17 commands, 457 physics frames). `ReadLints` clean on all four new scripts.
+- Notes: Plan step 4 originally targeted `scripts/GameController.gd`. Per `AI_CHANGELOG.md` 2026-05-08 "Restore SchoolExterior Full Layout", that script was deliberately stripped from active scenes; per `AI_DOCS.md` canon hierarchy ("no architecture-layer mixing without intent") we did NOT resurrect it via a synthetic test scene. `playthrough_dialogue_loop.gd` covers the same intent (dialogue advance/skip + interaction + state assertion) using currently-wired `TopDialogueOverlay` + `_is_interaction_event` alternate-key branch, documented in the bot's header and `test/bots/README.md`. TileSet-atlas `ERROR` lines from `1.1_SchoolExterior.tscn` are pre-existing scene content and unrelated to the bot harness.
+
+## 2026-05-10 - Default QA Includes Bot Playthrough
+
+- Request: Make any future `qa`, `run qa`, or `qa agent` invocation automatically run the previous static + playtest contract AND the new overworld bot playthrough scripts as a single default bundle.
+- Implementation: Promoted the `combat + scene smoke + bot playthrough` confidence tier from opt-in to **default** across all four authority layers. (1) QA skill (`SKILL.md`) — added `run qa` alias, expanded the default playtest command set to **six** headless commands including `playthrough_arc1_exterior` and `playthrough_dialogue_loop`, kept `qa static` as the only documented playtest opt-out, and reinforced explicit skip-and-report behavior. (2) Rubric (`AXEL_QA_REVIEW_RUBRIC.md`) — relabeled the bot tier as the **default tier for plain `qa`**, merged the bot commands into the single Default command set block, listed both bots as pass/fail gates, and added a tier-downgrade ladder for skipped commands. Extended Analytics-snapshot Confidence options and Persistent-payload `playtest_commands` schema with `bot_arc1_exterior` and `bot_dialogue_loop` keys. (3) Canon (`AI_DOCS.md` §11–12) — mirrored the new defaults, added `run qa` alias, and clarified that bots are part of the default bundle. (4) Always-on rule (`.cursor/rules/axel-ai-docs-governance.mdc` items 11/12/20) — same alias + default + skip-policy text so future chats hit a unified contract on first read. (5) Run-log template (`AXEL_QA_RUN_LOG.md`) — extended the `Playtest commands:` line, JSON template `playtest_commands` keys, and "Allowed playtest_commands keys" documentation with the two bot keys.
+- Files changed:
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Future plain `qa` / `run qa` / `qa agent` invocations across any chat will execute static review + the four prior playtest commands + both `playthrough_*.gd` bot scripts as one bundle, and produce reports + payload entries that include bot pass/fail/skip status. `qa static` remains the documented opt-out for static-only runs.
+- Verification: `ReadLints` clean on all five updated docs. Analytics regenerator sanity run: `python AXEL/axel_project/tools/qa/update_qa_analytics.py` -> `Payloads parsed: 4` (same count as before; new `bot_*` keys are ignored by the parser, which only consumes `scores`/`findings_count`/`by_category`/`bugs_or_regressions`/`mode`/`scope`/`trigger`/`timestamp` — confirmed by reading `tools/qa/update_qa_analytics.py`). Cross-doc consistency check: every plain QA alias (`qa`, `run qa`, `qa agent`) maps to the same default command set across skill, rubric, AI_DOCS, and rule file; `qa static` consistently scoped as static-only opt-out.
+- Notes: This is a workflow/policy change only — no gameplay, scene, or combat code touched. Skip ladder (in rubric §Playtest-mode and AI_DOCS §11) defines confidence downgrades when individual commands are unavailable, preserving the original "skip and report" invariant from the QA skill.
+
+## 2026-05-10 - QA Analytics: Bots Aggregate Series On Trend SVG
+
+- Request: Make the bot version of `qa agent` feed into the same dataset and analytics as static + combat playtest, with at least one new line on `AXEL_QA_ANALYTICS.svg` representing bot results. User picked the "one aggregate line" granularity from offered options.
+- Implementation: Extended `tools/qa/update_qa_analytics.py` to compute a single derived `Bots` series from each payload's `playtest_commands` block. Added `EXTRA_SERIES_ORDER`/`COLORS`/`LABELS` for `Bots`, `BOT_STATUS_TO_SCORE` mapping (`pass=5.0`, `fail=0.0`; everything else, including `skip` and missing keys, returns `None`), and `_bots_aggregate_for_payload()` which **auto-discovers any `playtest_commands` key prefixed `bot_*`** (so future bots like `bot_corridor_traversal` automatically join the aggregate without further code changes). `_extract_series` now returns a third tuple element `extra_series: dict[str, list[float | None]]`; `_build_svg_chart` was extended to accept it and draws gap-aware broken polylines for any series containing `None` values (one segment per consecutive non-None span, dashed stroke + outlined dots so the new line reads as visually distinct on the existing 7 score axes). Legend gained a dashed swatch entry. `_render_markdown` adds a `Bots: ...` row to the Latest snapshot (per-bot status) and a `Bots` row to Latest deltas (with `n/a` handling for missing data); the trend chart heading now reads `Total + S/N/I/E/C/R + Bots`. Mermaid fallback is intentionally left as the original 7-score view (Mermaid `xychart-beta` cannot gap a series cleanly); legend text in the regenerated MD documents that the `Bots` line is SVG-only by design. `tools/qa/update_qa_analytics.py` exit `0`, parses 4 historical payloads correctly with new code path. Mirrored the new behavior in rubric §Persistent analytics payload and AI_DOCS §11 so future chats discover the auto-aggregation rule.
+- Files changed:
+  - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
+  - `AXEL/axel_project/plans/AXEL_QA_ANALYTICS.md` (regenerated)
+  - `AXEL/axel_project/plans/AXEL_QA_ANALYTICS.svg` (regenerated)
+  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/AI_DOCS.md`
+  - `AXEL/axel_project/plans/AI_CHANGELOG.md`
+- Behavior impact: Future `qa` runs that include bot pass/fail status produce a dashed `Bots` line on `AXEL_QA_ANALYTICS.svg` showing real-input bot pass-rate trend across runs. Pre-bot historical entries render as gaps (no false-zero regression), and any future bot that uses the `bot_<name>` payload key joins the aggregate automatically. No score axes were touched — the existing `Total + S/N/I/E/C/R` lines and Mermaid fallback render identically to before for the same input.
+- Verification: Throwaway in-memory test (synthetic 4-payload run with mixed bot states) confirmed: aggregate series `[None, 5.0, 2.5, None]` matches mapping rule (gap → both pass=5.0 → mixed pass/fail=2.5 → both skip=gap); SVG output contains `Bots (Avg pass-rate)` legend label and `stroke-dasharray="6,4"` polyline; markdown output contains `Bots: bot_arc1_exterior=... bot_dialogue_loop=...` snapshot row and a `Bots` row in Latest deltas. Live regenerator run on the actual run log: `python AXEL/axel_project/tools/qa/update_qa_analytics.py` → `Payloads parsed: 4` (same count as before). `ReadLints` clean on `update_qa_analytics.py` and both touched plan docs.
+- Notes: `Bots` auto-discovery uses the `bot_` key prefix in `playtest_commands`, so adding a new bot QA gate is a one-place change (the new bot's `.gd` script + appending its `bot_<name>=<status>` to the QA payload). No regenerator update is needed for new bots. Mermaid fallback view in `AXEL_QA_ANALYTICS.md` deliberately omits the `Bots` line because Mermaid `xychart-beta` cannot render gap-broken polylines cleanly; the canonical SVG (the user-facing chart) handles gaps natively and is the source of truth for bot trend visibility.
