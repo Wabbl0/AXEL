@@ -63,6 +63,12 @@ Keep these rules stable unless explicitly asked to redesign:
   - SUPER Free Spins = later bonus mode
   - If a request says only "Free Spins", clarify intended mode before changing behavior.
 
+### Combat item catalog (agent convention)
+
+- Extended item ids in plans follow **`TIER-FAMILY`** with **uppercase** letters (e.g. `C-A`, `U-M`, `L-H`); baseline items keep **digit** suffixes (`C1`, `R3`, `E2`, `L1`).
+- When the author says **add an item** (new mechanic) without narrowing scope, default spec is **five variants** (**Common → Legendary**). Single-tier items only when explicitly requested.
+- Reference catalog (single source): **`AXEL/axel_project/plans/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`** — edit only this file for roster changes. `.cursor/plans/combat_starter_item_catalog_fee3a6f1.plan.md` is a stub pointer, not a duplicate catalog.
+
 ## 6) Style and Tone Canon
 
 Primary style direction:
