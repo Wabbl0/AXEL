@@ -1026,3 +1026,46 @@ Copy and fill:
 - Behavior impact: No gameplay/canon/runtime changes. Agent context overhead reduced: ~35 lines removed from every turn's system prompt; 375 MB of files excluded from indexing; progress-feed overhead reduced during implementation stretches.
 - Verification: Governance rule still enforces conflict gate, QA opt-in, canonical aliases, and AI_DOCS-first read. AI_DOCS.md retains all detailed procedures, invariants, and pipeline specs. `.cursorignore` patterns are narrow and exclude only non-authoritative artifacts.
 - Rollback: Restore prior governance rule body from git history. Remove `.cursorignore` to re-index excluded files. Revert `AI_DOCS.md` §9 progress-feed wording and responsibility-split note.
+
+## 2026-05-11 - Medium-Impact Workflow Optimizations (M1/M2/M3)
+
+- Request: Implement the three MEDIUM-priority recommendations from the chat efficiency audit: unify QA command references (M1), consolidate bot-playthrough detail (M2), split scenes monolith into per-arc files (M3).
+- Conflict resolution: AI_DOCS.md hierarchy (§3) designates the QA rubric as the authoritative playtest-mode command source. No canon/invariant conflicts.
+- Implementation:
+  - **M1 — QA doc dedup:** Trimmed duplicate command lists and item-balance-audit details from `AI_DOCS.md` §11–§12 and `.cursor/skills/axel-simulated-qa/SKILL.md`. Both now use pointer-style references to `AXEL_QA_REVIEW_RUBRIC.md` §Playtest-mode as the single canonical command source. Fixed stale path references in SKILL.md (`plans/AI_DOCS.md` → `plans/core/AI_DOCS.md`, `plans/AXEL_QA_REVIEW_RUBRIC.md` → `plans/qa/AXEL_QA_REVIEW_RUBRIC.md`).
+  - **M2 — Bot detail consolidation:** Replaced expanded bot architecture/file-list prose in `AI_DOCS.md` §11 with a one-liner pointing to `test/bots/README.md`. Rubric confidence-tier table retains gating semantics unchanged.
+  - **M3 — Scene doc split:** Moved 999-line `AXEL_SCENES_NEW.md` content into 8 per-arc files (`AXEL_SCENES_ARC1.md` … `AXEL_SCENES_ARC8.md`) under `plans/scenes/`. Original file replaced with a compact TOC/index. Updated `SCENE_BUILDER_AGENT_SPEC.md` canon-sources to note the TOC+arc pattern. Updated `layout_planner.py` fallback to scan `AXEL_SCENES_ARC*.md` via glob instead of reading the monolith.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_NEW.md` (replaced with TOC)
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md` … `AXEL_SCENES_ARC8.md` (new)
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/tools/scene_builder/layout_planner.py`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay/canon/runtime changes. QA command semantics, confidence tiers, skip policy, and persistence invariants are unchanged — only the doc-ownership hierarchy shifted. Scene agent loads ~100-200 lines per arc instead of 999. Layout planner fallback produces identical canonical filenames.
+- Verification: Grep confirms no duplicate command names remain in AI_DOCS or SKILL. Planner fallback glob resolves to the same arc files containing "corridor"/"classroom"/"library" keywords. Rubric remains untouched as the single command-set authority.
+- Rollback: Restore `AXEL_SCENES_NEW.md` monolith from git, delete `AXEL_SCENES_ARC*.md` files, revert `layout_planner.py` to use `SCENES_NEW_PATH`, restore prior AI_DOCS §11–§12 and SKILL.md from git.
+
+## 2026-05-11 - Low-Maintenance Workflow Fixes (path alignment, QA archival, debug cleanup)
+
+- Request: Finish remaining low-priority workflow optimizations from the chat efficiency audit.
+- Conflict resolution: No canon/invariant conflicts. Changes are workflow/docs/tooling hygiene only.
+- Implementation:
+  - **Path alignment:** Fixed Moon Princess export folder references in `AI_DOCS.md` §3 and §4 from `moon_princess_files` to actual on-disk name `Moon Princess Files`. Updated `.cursorignore` to match the real folder path so all capture assets (JS, CSS, hashed files) are properly excluded from indexing.
+  - **Bots README pointer fix:** Updated `test/bots/README.md` canon references from stale `plans/AI_CHANGELOG.md` and `plans/AI_DOCS.md` to correct `plans/core/AI_CHANGELOG.md` and `plans/core/AI_DOCS.md`.
+  - **QA run-log archival:** Created `plans/qa/archive/` directory. Added archival policy note to `AXEL_QA_RUN_LOG.md` header (move entries beyond ~10 to `archive/AXEL_QA_RUN_LOG_<YYYY>.md`). Updated `tools/qa/update_qa_analytics.py` to ingest payloads from both the main log and `archive/*.md` files via new `_collect_all_payloads()` function. Added archival note to QA rubric §Persistent-analytics-payload.
+  - **Debug log archive:** Moved 303 MB and 71 MB inactive debug logs to `logs/debug/archive/`, covered by existing `.cursorignore` pattern. Active debug directory reduced to ~0.3 MB.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursorignore`
+  - `AXEL/axel_project/test/bots/README.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
+  - `AXEL/axel_project/plans/qa/archive/.gitkeep` (new)
+  - `logs/debug/archive/` (2 files moved)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay/canon/runtime changes. `.cursorignore` now correctly excludes the real capture folder. QA analytics generator preserves full trend history across archival. Debug log footprint in active workspace reduced by ~374 MB.
+- Verification: `.cursorignore` pattern matches actual `Moon Princess Files` folder. `AI_DOCS` references match on-disk naming. Bots README points to `plans/core/*`. Analytics generator `_collect_all_payloads()` scans both active log and archive directory.
+- Rollback: Restore old `.cursorignore` and `AI_DOCS` path references from git. Move archived debug logs back to `logs/debug/`. Revert analytics script `_collect_all_payloads()` to single-file `main()`. Remove `plans/qa/archive/` directory.

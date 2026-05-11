@@ -16,7 +16,7 @@ This agent drafts exploration-scene layouts by combining scene-blueprint intent 
 
 1. `AXEL/axel_project/plans/core/AI_DOCS.md`
 2. `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
-3. `AXEL/axel_project/plans/scenes/AXEL_SCENES_NEW.md`
+3. `AXEL/axel_project/plans/scenes/AXEL_SCENES_NEW.md` (index/TOC — links to per-arc files `AXEL_SCENES_ARC1.md` … `AXEL_SCENES_ARC8.md`)
 
 If conflicts appear, `core/AI_DOCS.md` wins and the conflict must be noted in `core/AI_CHANGELOG.md` when implemented.
 

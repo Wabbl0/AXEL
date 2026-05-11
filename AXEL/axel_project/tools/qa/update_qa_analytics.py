@@ -525,9 +525,20 @@ def _render_markdown(payloads: list[dict[str, Any]]) -> str:
     )
 
 
+def _collect_all_payloads() -> list[dict[str, Any]]:
+    """Parse payloads from the main run log and any archived logs under archive/."""
+    all_payloads: list[dict[str, Any]] = []
+    if RUN_LOG_PATH.exists():
+        all_payloads.extend(_parse_payloads(RUN_LOG_PATH.read_text(encoding="utf-8")))
+    archive_dir = RUN_LOG_PATH.parent / "archive"
+    if archive_dir.is_dir():
+        for archive_file in sorted(archive_dir.glob("*.md")):
+            all_payloads.extend(_parse_payloads(archive_file.read_text(encoding="utf-8")))
+    return _sort_payloads(all_payloads)
+
+
 def main() -> int:
-    text = RUN_LOG_PATH.read_text(encoding="utf-8") if RUN_LOG_PATH.exists() else ""
-    payloads = _sort_payloads(_parse_payloads(text))
+    payloads = _collect_all_payloads()
     rendered = _render_markdown(payloads)
     ANALYTICS_PATH.write_text(rendered, encoding="utf-8")
     if payloads:

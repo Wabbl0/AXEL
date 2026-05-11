@@ -12,7 +12,7 @@ PROJECT_ROOT = Path("AXEL/axel_project")
 CATALOG_PATH = PROJECT_ROOT / "tools/scene_builder/output/asset_catalog.json"
 DRAFT_DIR = PROJECT_ROOT / "tools/scene_builder/output/layout_drafts"
 BLUEPRINT_PATH = PROJECT_ROOT / "plans/AXEL_SCENES_BLUEPRINT.md"
-SCENES_NEW_PATH = PROJECT_ROOT / "plans/AXEL_SCENES_NEW.md"
+SCENES_DIR = PROJECT_ROOT / "plans/scenes"
 
 PROFILE_BY_SCENE_KEY = {
     "corridor": {"profile": "corridor_large", "player_scale": 0.82, "player_speed": 150.0},
@@ -86,10 +86,13 @@ def _extract_target_scenes() -> List[Dict[str, str]]:
     if scenes:
         return scenes
 
-    # Fallback to AXEL_SCENES_NEW.md if blueprint headings are not matched.
+    # Fallback to per-arc scene docs if blueprint headings are not matched.
+    # Scans AXEL_SCENES_ARC*.md files under plans/scenes/.
     # Fallback ALSO emits canonical numbered filenames so the agent can never
     # regress to non-canonical scene targets like `Corridor.tscn`.
-    backup = SCENES_NEW_PATH.read_text(encoding="utf-8").lower()
+    backup = ""
+    for arc_file in sorted(SCENES_DIR.glob("AXEL_SCENES_ARC*.md")):
+        backup += arc_file.read_text(encoding="utf-8").lower()
     fallback: List[Dict[str, str]] = []
     if "corridor" in backup:
         canonical = CANONICAL_BY_SCENE_ID["scene_2"]

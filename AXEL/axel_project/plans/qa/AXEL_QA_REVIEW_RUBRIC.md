@@ -188,6 +188,8 @@ Optional keys (include when item data is available):
 
 This payload is the source of truth for historical analytics and Mermaid trend lines. `tools/qa/update_qa_analytics.py` auto-discovers any `playtest_commands` key prefixed `bot_*` and aggregates them into a single dashed `Bots` line on `AXEL_QA_ANALYTICS.svg` (mapping: `pass=5`, `fail=0`, `skip`/missing = gap). New bot scripts that use the same key prefix automatically join the aggregate without further code changes.
 
+**Archival:** When the main run log exceeds ~10 entries, older entries may be moved to `plans/qa/archive/AXEL_QA_RUN_LOG_<YYYY>.md`. The analytics generator ingests both the main log and archived `*.md` files, so trend continuity is preserved.
+
 ## Player experience (optional)
 
 Not required by default. If the user explicitly asks for player-feel, add **one short paragraph** (see skill). Do not replace technical findings.

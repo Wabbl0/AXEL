@@ -102,9 +102,9 @@ automatically on failure). Prefer `wait_frames` (physics) over
 ## Plan-step 4 canon resolution
 
 Plan step 4 originally targeted `scripts/GameController.gd`. Per
-`plans/AI_CHANGELOG.md` (2026-05-08 "Restore SchoolExterior Full Layout"),
+`plans/core/AI_CHANGELOG.md` (2026-05-08 "Restore SchoolExterior Full Layout"),
 that script was deliberately stripped from active scenes. Per
-`plans/AI_DOCS.md` canon hierarchy, we did **not** resurrect it via a
+`plans/core/AI_DOCS.md` canon hierarchy, we did **not** resurrect it via a
 synthetic test scene (would violate "no architecture-layer mixing without
 intent"). `playthrough_dialogue_loop.gd` covers the same intent (dialogue
 advance/skip + interaction + state assertion) using currently-wired

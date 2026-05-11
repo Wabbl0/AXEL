@@ -6,6 +6,10 @@ Optional **append-only** log for simulated QA runs. Use when you want historical
 - Each run is one `##` entry at the **bottom**.
 - Keep entries **compact** to match concise `qa agent` chat output.
 
+### Archival policy
+
+When this file grows beyond ~10 entries, move older entries (keeping the template and header) to `archive/AXEL_QA_RUN_LOG_<YYYY>.md` under the same `plans/qa/archive/` directory. The analytics generator (`tools/qa/update_qa_analytics.py`) ingests both this file and any `*.md` files in `archive/`, so trend data is preserved after archival.
+
 ---
 
 ## How to append an entry
@@ -251,4 +255,25 @@ Copy the template block, fill values, paste **below** the last entry.
   "item_balance": {"schema_version": 1, "items_tested": 1, "items_overpowered": ["C1_ash_reroll_token"], "items_underpowered": [], "items_neutral": [], "items_insufficient_data": []},
   "item_metrics": [{"item_id": "C1_ash_reroll_token", "label": "overpowered", "baseline_rtp": 0.79293, "item_rtp": 1.2577, "delta_rtp": 0.46477, "delta_rtp_ci95": [0.12106, 0.80848], "baseline_hit_rate": 0.417, "item_hit_rate": 0.417, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.03333, "delta_encounter_success": 0.01667, "seeds_used": 20}]
 }
+<!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-11 — Post low-maintenance workflow fixes QA
+
+- **Mode:** playtest
+- **Scope:** Full combined run after workflow hygiene (path alignment, QA archival, debug cleanup). All 7 headless commands + static review.
+- **Trigger:** user request (included in implementation plan)
+- **Playtest commands:** princess_check=pass determinism=pass rtp_audit=captured scene_smoke=pass bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=captured
+- **Scores:** S=4 N=4 I=4 E=3 C=4 R=4 **Total=3.85** Band=B
+- **Findings count:** blocker=0 major=0 minor=1 nit=1
+- **By category:** STYLE=0 LORE=0 IMMERSION=0 TENSION=0 CLARITY=0 COMBAT=0 ARCH=0 REGRESSION=0 BUG=0 TOOL=2
+- **Recommendations (logged):**
+  - Fix pre-existing TileSetAtlasSource coord errors in SchoolExterior tilemap
+  - Register item_synergy_smoke.gd in QA default command set for routine equip-limit regression coverage
+  - Begin using QA run-log archival now that pipeline supports it
+- **Bug / regression notes:** Pre-existing TileSetAtlasSource errors unchanged; no new bugs from workflow changes
+- **Trend vs previous run:** flat — same Total=3.85; all gates passing; C1 now neutral after tuning
+- **Link / notes:** QA run as final step of low-maint workflow fix plan
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{"timestamp":"2026-05-11T18:25:00+03:00","run_title":"Post low-maintenance workflow fixes QA","mode":"playtest","scope":"Full combined run after workflow hygiene changes","trigger":"user request","scores":{"S":4,"N":4,"I":4,"E":3,"C":4,"R":4,"Total":3.85,"Band":"B"},"findings_count":{"blocker":0,"major":0,"minor":1,"nit":1},"by_category":{"STYLE":0,"LORE":0,"IMMERSION":0,"TENSION":0,"CLARITY":0,"COMBAT":0,"ARCH":0,"REGRESSION":0,"BUG":0,"TOOL":2},"playtest_commands":{"princess_check":"pass","determinism":"pass","rtp_audit":"captured","scene_smoke":"pass","bot_arc1_exterior":"pass","bot_dialogue_loop":"pass","item_balance_audit":"captured"},"bugs_or_regressions":["Pre-existing TileSetAtlasSource coord errors in SchoolExterior tilemap"],"rtp_snapshot":{"mean":0.79293,"ci95":[0.60944,0.97642],"target_band":[0.75,0.80],"target_position":"within","paid_hit_rate":0.417,"encounter_success_rate":0.00833,"trinity_entries":0},"item_balance":{"schema_version":1,"items_tested":2,"items_overpowered":[],"items_underpowered":[],"items_neutral":["C1_ash_reroll_token","L3_void_satchel"],"items_insufficient_data":[]},"item_metrics":[{"item_id":"C1_ash_reroll_token","label":"neutral","baseline_rtp":0.79293,"item_rtp":1.06928,"delta_rtp":0.27635,"delta_rtp_ci95":[-0.03199,0.58469],"baseline_hit_rate":0.417,"item_hit_rate":0.417,"delta_hit_rate":0.0,"baseline_encounter_success":0.01667,"item_encounter_success":0.03333,"delta_encounter_success":0.01667,"seeds_used":20},{"item_id":"L3_void_satchel","label":"neutral","baseline_rtp":0.79293,"item_rtp":0.79293,"delta_rtp":0.0,"delta_rtp_ci95":[-0.25949,0.25949],"baseline_hit_rate":0.417,"item_hit_rate":0.417,"delta_hit_rate":0.0,"baseline_encounter_success":0.01667,"item_encounter_success":0.01667,"delta_encounter_success":0.0,"seeds_used":20}]}
 <!-- QA_ANALYTICS_JSON_END -->
