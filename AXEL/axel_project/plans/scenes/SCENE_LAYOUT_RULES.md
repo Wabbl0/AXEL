@@ -48,7 +48,7 @@ Large scenes use per-scene tagged profiles:
 ## Blueprint Reconciliation
 
 - Scene intent comes from `AXEL_SCENES_BLUEPRINT.md`.
-- Narrative tone and canon come from `AI_DOCS.md`.
+- Narrative tone and canon come from `core/AI_DOCS.md`.
 - If a requested scene composition conflicts with path safety, path safety wins and the draft includes a note.
 
 ## Review Bundle Requirements

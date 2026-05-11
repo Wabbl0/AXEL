@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b7bi2mbrc0iqi"
-path="res://.godot/imported/AXEL_QA_ANALYTICS.svg-1fd0f0276b0dff218f6f5b62b4a86d6c.ctex"
+path="res://.godot/imported/AXEL_QA_ANALYTICS.svg-8213a69f1c63b61a54191d0d399ec0f0.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://plans/AXEL_QA_ANALYTICS.svg"
-dest_files=["res://.godot/imported/AXEL_QA_ANALYTICS.svg-1fd0f0276b0dff218f6f5b62b4a86d6c.ctex"]
+source_file="res://plans/qa/AXEL_QA_ANALYTICS.svg"
+dest_files=["res://.godot/imported/AXEL_QA_ANALYTICS.svg-8213a69f1c63b61a54191d0d399ec0f0.ctex"]
 
 [params]
 

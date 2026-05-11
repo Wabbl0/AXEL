@@ -1,6 +1,6 @@
 # AXEL Simulated QA Review Rubric
 
-Scoring reference for **`qa agent` / `qa`** (`.cursor/skills/axel-simulated-qa/SKILL.md`). Canon order: `AI_DOCS.md` wins on conflicts.
+Scoring reference for **`qa agent` / `qa`** (`.cursor/skills/axel-simulated-qa/SKILL.md`). Canon order: `../core/AI_DOCS.md` wins on conflicts.
 
 ## Playtest-mode criteria
 
@@ -32,13 +32,40 @@ The two bot scripts are documented in `AXEL/axel_project/test/bots/README.md`.
 
 - **Pass/fail gates:** `princess_check`, `determinism_check`, `scene_smoke_check`, `playthrough_arc1_exterior`, `playthrough_dialogue_loop` — non-zero exit = report as **blocker** / `BUG` or `REGRESSION`.
 - **`rtp_audit.gd`:** always exits 0 — parse stdout for `RTP_AUDIT_JSON` (or printed metrics) and record in analytics; do not fail the run on RTP alone unless thresholds are specified.
+- **`item_balance_audit.gd` (conditional):** run after the six default commands when item definitions exist under `combat/data/items/`. Always exits 0. If no items found or item API not implemented, record `item_balance_audit=skip` in payload. If items are tested, parse `ITEM_BALANCE_JSON` stdout and include `item_balance` + `item_metrics` in the analytics payload.
 - **Skip policy:** if any command cannot run (missing tooling, unavailable Godot binary, etc.), name every skipped command explicitly in the report and downgrade confidence one tier per missing gate (drop bots first → `combat + scene smoke`; drop scene smoke → `combat simulated`; drop combat → `static review`).
+
+### Item combat simulation command (conditional)
+
+When item definitions exist under `combat/data/items/`, playtest and high-confidence runs also execute:
+
+```bat
+tools\\cmd\\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/item_balance_audit.gd
+```
+
+- **Not a pass/fail gate** — always exits 0. Parse stdout for `ITEM_BALANCE_JSON` and record in analytics.
+- If no items exist, prints `ITEM_BALANCE_SKIP no_items_found` and exits 0. Report as `item_balance_audit=skip` in the payload.
+- Per-item metrics: delta RTP, encounter success delta, hit-rate delta, avg payout delta, 95% CI, classifier label (`overpowered` / `neutral` / `underpowered` / `insufficient_data`).
+- Items classified as `overpowered` or `underpowered` should appear in **Technical findings** as `minor | COMBAT | <item_id> classified <label>`.
+- **Over/underpower classification** uses confidence-aware thresholds: item is `overpowered` when 95% CI lower bound of RTP delta > +0.02; `underpowered` when 95% CI upper bound < -0.02; `insufficient_data` when sample count < minimum seed budget; `neutral` otherwise.
+
+### Item synergy smoke test (conditional)
+
+When item definitions exist under `combat/data/items/`, also run:
+
+```bat
+tools\\cmd\\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/item_synergy_smoke.gd
+```
+
+- **Pass/fail gate** — exits non-zero on any assertion failure. Report failures as `minor | COMBAT | synergy smoke failure`.
+- Verifies: single-item equip, duplicate-id rejection, base slot limit (7), dynamic slot-expander cap (+2 legendary), deterministic payout across identical seeds/loadouts, graceful over-cap behavior on expander removal, C1+L3 coexistence.
 
 ### When user says “playtest” or “high confidence”
 
 1. Run the full default command set above (six commands) — same as plain `qa` — and report which (if any) failed or were skipped.
-2. Set **Confidence:** to `combat + scene smoke + bot playthrough` only if **all** pass/fail gates passed and metrics captured. Otherwise pick the highest tier still satisfied by the evidence (see Skip policy above).
-3. Prioritize **bugs, regressions, and fix recommendations** over subjective feel.
+2. Run the item balance audit command if item definitions exist.
+3. Set **Confidence:** to `combat + scene smoke + bot playthrough` only if **all** pass/fail gates passed and metrics captured. Otherwise pick the highest tier still satisfied by the evidence (see Skip policy above).
+4. Prioritize **bugs, regressions, and fix recommendations** over subjective feel.
 
 ---
 
@@ -114,7 +141,7 @@ Use these `category` labels in findings and analytics:
 | `IMMERSION` | Pacing / diegesis / FX | Breaks mood or reads as generic |
 | `TENSION` | Peaks / cheap tricks | Whiplash, unmotivated scare, flat middle |
 | `CLARITY` | UX / goals / feedback | Confusing gates, unclear affordances |
-| `COMBAT` | Grid / RNG / invariants | Violates `AI_DOCS.md` §5 |
+| `COMBAT` | Grid / RNG / invariants | Violates `../core/AI_DOCS.md` §5 |
 | `ARCH` | Layer mixing | Narrative vs combat boundaries blurred without intent |
 | `REGRESSION` | Prior spec / flags | Blueprint or state machine drift |
 | `BUG` | Crashes / failed smoke or tests | Non-zero test exit, load errors, exceptions |
@@ -151,8 +178,13 @@ Required keys:
 - `scores` with numeric `S/N/I/E/C/R/Total` and string `Band`
 - `findings_count` with `blocker/major/minor/nit`
 - `by_category` with taxonomy counts from this rubric
-- `playtest_commands` with `princess_check/determinism/rtp_audit/scene_smoke/bot_arc1_exterior/bot_dialogue_loop`
+- `playtest_commands` with `princess_check/determinism/rtp_audit/scene_smoke/bot_arc1_exterior/bot_dialogue_loop/item_balance_audit`
 - `bugs_or_regressions` as short list entries
+
+Optional keys (include when item data is available):
+
+- `item_balance` object with `schema_version` (int, currently `1`), `items_tested` (int), `items_overpowered` (list of item ids), `items_underpowered` (list of item ids), `items_neutral` (list of item ids), `items_insufficient_data` (list of item ids)
+- `item_metrics` array of per-item objects: `{ "item_id", "label", "baseline_rtp", "item_rtp", "delta_rtp", "delta_rtp_ci95", "baseline_hit_rate", "item_hit_rate", "delta_hit_rate", "baseline_encounter_success", "item_encounter_success", "delta_encounter_success", "seeds_used" }`
 
 This payload is the source of truth for historical analytics and Mermaid trend lines. `tools/qa/update_qa_analytics.py` auto-discovers any `playtest_commands` key prefixed `bot_*` and aggregates them into a single dashed `Bots` line on `AXEL_QA_ANALYTICS.svg` (mapping: `pass=5`, `fail=0`, `skip`/missing = gap). New bot scripts that use the same key prefix automatically join the aggregate without further code changes.
 

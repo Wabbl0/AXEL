@@ -11,9 +11,12 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[4]
-RUN_LOG_PATH = ROOT / "AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md"
-ANALYTICS_PATH = ROOT / "AXEL/axel_project/plans/AXEL_QA_ANALYTICS.md"
-ANALYTICS_SVG_PATH = ROOT / "AXEL/axel_project/plans/AXEL_QA_ANALYTICS.svg"
+
+_QA_PLANS = ROOT / "AXEL/axel_project/plans/qa"
+_LEGACY_PLANS = ROOT / "AXEL/axel_project/plans"
+RUN_LOG_PATH = _QA_PLANS / "AXEL_QA_RUN_LOG.md" if (_QA_PLANS / "AXEL_QA_RUN_LOG.md").exists() else _LEGACY_PLANS / "AXEL_QA_RUN_LOG.md"
+ANALYTICS_PATH = _QA_PLANS / "AXEL_QA_ANALYTICS.md" if _QA_PLANS.exists() else _LEGACY_PLANS / "AXEL_QA_ANALYTICS.md"
+ANALYTICS_SVG_PATH = _QA_PLANS / "AXEL_QA_ANALYTICS.svg" if _QA_PLANS.exists() else _LEGACY_PLANS / "AXEL_QA_ANALYTICS.svg"
 
 BEGIN_MARKER = "<!-- QA_ANALYTICS_JSON_BEGIN -->"
 END_MARKER = "<!-- QA_ANALYTICS_JSON_END -->"
@@ -82,11 +85,20 @@ def _parse_payloads(text: str) -> list[dict[str, Any]]:
         except json.JSONDecodeError:
             continue
         if isinstance(payload, dict):
-            timestamp = str(payload.get("timestamp", ""))
-            if "YYYY-MM-DD" in timestamp or "<" in timestamp or ">" in timestamp:
+            ts_val = _get_timestamp_value(payload)
+            if "YYYY-MM-DD" in ts_val or "<" in ts_val or ">" in ts_val:
                 continue
             payloads.append(payload)
     return payloads
+
+
+def _get_timestamp_value(payload: dict[str, Any]) -> str:
+    """Return the best available date/time string from a payload, checking both key names."""
+    for key in ("timestamp", "run_date"):
+        val = payload.get(key)
+        if val and isinstance(val, str) and val.strip():
+            return val.strip()
+    return ""
 
 
 def _parse_timestamp(value: Any) -> datetime:
@@ -105,7 +117,7 @@ def _parse_timestamp(value: Any) -> datetime:
 
 def _sort_payloads(payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     indexed = list(enumerate(payloads))
-    indexed.sort(key=lambda item: (_parse_timestamp(item[1].get("timestamp")), item[0]))
+    indexed.sort(key=lambda item: (_parse_timestamp(_get_timestamp_value(item[1])), item[0]))
     return [payload for _, payload in indexed]
 
 
@@ -145,7 +157,7 @@ def _extract_series(
     series: dict[str, list[float]] = {name: [] for name in SERIES_ORDER}
     extra_series: dict[str, list[float | None]] = {name: [] for name in EXTRA_SERIES_ORDER}
     for index, payload in enumerate(payloads, start=1):
-        timestamp = str(payload.get("timestamp", "")).strip()
+        timestamp = _get_timestamp_value(payload)
         short_ts = timestamp[:10] if timestamp else "undated"
         short_ts = f"{short_ts}#{index}"
         labels.append(short_ts)
@@ -293,6 +305,8 @@ def _build_svg_chart(
         approx_text_width = len(label) * 7.4
         legend_x += swatch_width + swatch_to_text_gap + approx_text_width + item_gap
 
+    legend_x = float(plot_left)
+    legend_y += 30
     for name in EXTRA_SERIES_ORDER:
         values = extra_series.get(name, [])
         if not values or all(v is None for v in values):
@@ -322,6 +336,81 @@ def _format_bot_commands(payload: dict[str, Any]) -> str:
         if isinstance(key, str) and key.lower().startswith("bot_")
     ]
     return " ".join(bot_pairs) if bot_pairs else "no bot keys"
+
+
+def _render_item_balance_section(payloads: list[dict[str, Any]]) -> str:
+    """Compact per-item trend summary across runs that contain item_balance data."""
+    runs_with_items: list[dict[str, Any]] = []
+    for payload in payloads:
+        ib = payload.get("item_balance")
+        if isinstance(ib, dict) and ib.get("items_tested", 0) > 0:
+            runs_with_items.append(payload)
+    if not runs_with_items:
+        return ""
+
+    lines: list[str] = [
+        "## Item Balance Summary\n",
+        f"Runs with item data: `{len(runs_with_items)}`\n",
+    ]
+
+    latest = runs_with_items[-1]
+    ib = latest.get("item_balance", {})
+    items_tested = ib.get("items_tested", 0)
+    overpowered = ib.get("items_overpowered", [])
+    underpowered = ib.get("items_underpowered", [])
+    neutral = ib.get("items_neutral", [])
+    insufficient = ib.get("items_insufficient_data", [])
+
+    lines.append(f"- Items tested (latest): `{items_tested}`")
+    lines.append(f"- Overpowered: `{', '.join(overpowered) if overpowered else 'none'}`")
+    lines.append(f"- Underpowered: `{', '.join(underpowered) if underpowered else 'none'}`")
+    lines.append(f"- Neutral: `{len(neutral)}`")
+    lines.append(f"- Insufficient data: `{len(insufficient)}`\n")
+
+    item_metrics = latest.get("item_metrics")
+    if isinstance(item_metrics, list) and item_metrics:
+        lines.append("### Latest per-item deltas\n")
+        lines.append("| Item | Label | \u0394RTP | CI95 | \u0394Hit Rate | \u0394Enc. Success |")
+        lines.append("|------|-------|------|------|-----------|---------------|")
+        for im in item_metrics:
+            if not isinstance(im, dict):
+                continue
+            item_id = im.get("item_id", "?")
+            label = im.get("label", "?")
+            delta_rtp = im.get("delta_rtp", 0.0)
+            ci95 = im.get("delta_rtp_ci95", [0.0, 0.0])
+            delta_hr = im.get("delta_hit_rate", 0.0)
+            delta_es = im.get("delta_encounter_success", 0.0)
+            ci_str = f"[{ci95[0]:+.4f}, {ci95[1]:+.4f}]" if isinstance(ci95, list) and len(ci95) == 2 else "n/a"
+            lines.append(
+                f"| `{item_id}` | **{label}** | `{delta_rtp:+.4f}` | `{ci_str}` | `{delta_hr:+.4f}` | `{delta_es:+.4f}` |"
+            )
+        lines.append("")
+
+    # Historical item classification trend (top risers/fallers)
+    if len(runs_with_items) >= 2:
+        prev_ib = runs_with_items[-2].get("item_balance", {})
+        prev_op = set(prev_ib.get("items_overpowered", []))
+        prev_up = set(prev_ib.get("items_underpowered", []))
+        curr_op = set(overpowered)
+        curr_up = set(underpowered)
+        new_op = curr_op - prev_op
+        new_up = curr_up - prev_up
+        resolved_op = prev_op - curr_op
+        resolved_up = prev_up - curr_up
+        if new_op or new_up or resolved_op or resolved_up:
+            lines.append("### Classification changes vs previous\n")
+            if new_op:
+                lines.append(f"- Newly overpowered: `{', '.join(sorted(new_op))}`")
+            if new_up:
+                lines.append(f"- Newly underpowered: `{', '.join(sorted(new_up))}`")
+            if resolved_op:
+                lines.append(f"- No longer overpowered: `{', '.join(sorted(resolved_op))}`")
+            if resolved_up:
+                lines.append(f"- No longer underpowered: `{', '.join(sorted(resolved_up))}`")
+            lines.append("")
+
+    return "\n".join(lines)
 
 
 def _render_markdown(payloads: list[dict[str, Any]]) -> str:
@@ -400,6 +489,14 @@ def _render_markdown(payloads: list[dict[str, Any]]) -> str:
 
     bugs_text = "; ".join(str(item) for item in bugs) if bugs else "none"
 
+    item_section = _render_item_balance_section(payloads)
+
+    # Item balance audit status from playtest_commands
+    item_audit_status = ""
+    pt_cmds = latest.get("playtest_commands", {})
+    if isinstance(pt_cmds, dict) and "item_balance_audit" in pt_cmds:
+        item_audit_status = f"- Item balance audit: `{pt_cmds['item_balance_audit']}`\n"
+
     return (
         "# AXEL QA Analytics\n\n"
         "Auto-generated from `AXEL_QA_RUN_LOG.md` by `tools/qa/update_qa_analytics.py`.\n\n"
@@ -412,7 +509,9 @@ def _render_markdown(payloads: list[dict[str, Any]]) -> str:
         f"- Findings: `{severity_text}`\n"
         f"- Categories: `{category_text}`\n"
         f"- Bugs/problems: `{bugs_text}`\n"
-        f"- Bots: `{bots_status_text}`\n\n"
+        f"- Bots: `{bots_status_text}`\n"
+        + item_audit_status
+        + "\n"
         "## Latest deltas vs previous run\n\n"
         + "\n".join(delta_lines)
         + "\n\n## Trend chart (Total + S/N/I/E/C/R + Bots)\n\n"
@@ -422,6 +521,7 @@ def _render_markdown(payloads: list[dict[str, Any]]) -> str:
         + "\n\n- "
         + legend_text
         + "\n"
+        + ("\n" + item_section if item_section else "")
     )
 
 

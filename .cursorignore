@@ -1,0 +1,8 @@
+﻿# Exclude large debug logs (up to 300+ MB) from indexing
+logs/debug/**
+
+# Exclude reference-only Moon Princess capture files (2.5+ MB JS bundles)
+AXEL/axel_project/exports/moon_princess_files/**
+
+# Exclude any bundled JS files that may appear elsewhere
+**/*bundle*.js

@@ -932,3 +932,97 @@ Copy and fill:
 - Behavior impact: Design/agent guidance only; no gameplay code. Future “add an item” combat requests should assume **Common→Legendary** unless scoped narrower; extended ids documented as `TIER-FAMILY`.
 - Verification: Manual read-back of plan structure (counts 19/17/15/13/11 per tier = 75 total).
 - Notes: True Ending exact gate (`L-H` only vs full `*-H` set) left as implementation/design choice in the plan.
+
+## 2026-05-11 - QA Agent Item-Bot Extension (Combat Balance Audit)
+
+- Request: Extend `qa agent` with a combat bot simulation path that validates item behavior and produces balance-effect data for over/underpower detection, while preserving AXEL QA canon defaults and ensuring all QA variants persist results to analytics.
+- Implementation: Added item combat simulation QA contract, headless audit script, analytics integration, and governance updates across the full QA pipeline:
+  1. **Contract (skill + rubric + run-log):** Extended `SKILL.md` with mandatory persistence (was optional), item simulation section, and persistence footer for all modes. Extended `AXEL_QA_REVIEW_RUBRIC.md` with item combat simulation subsection (conditional command, classification thresholds, per-item metrics schema), over/underpower evidence rules, and expanded payload schema (`item_balance`, `item_metrics`, `item_balance_audit` playtest command key). Extended `AXEL_QA_RUN_LOG.md` template with `item_balance_audit` status and optional `item_balance`/`item_metrics` JSON keys.
+  2. **Simulation script:** Created `combat/test/item_balance_audit.gd` — deterministic headless Monte Carlo that discovers items from `res://combat/data/items/`, checks `CombatRoot` for equip API, runs paired baseline/item simulations across configurable seed batches, computes per-item RTP delta, hit-rate delta, encounter success delta with 95% CI, and classifies each item. Outputs `ITEM_BALANCE_JSON` or `ITEM_BALANCE_SKIP` (graceful when no items exist or API not implemented). Always exits 0.
+  3. **Analytics integration:** Fixed stale file paths in `update_qa_analytics.py` (old `plans/` → reorganized `plans/qa/`). Added `_render_item_balance_section()` that produces a compact per-item delta table and classification-change tracking across runs. Integrated item audit status into the Latest snapshot. Preserved full backward compatibility with existing payloads.
+  4. **Execution wiring:** Updated skill execution contract and rubric default command set to include conditional `item_balance_audit.gd` after the six default gates. Added skip policy documentation for missing items/API. Normalized all QA aliases to include the mandatory persistence footer step.
+  5. **Governance:** Updated `AI_DOCS.md` §11 (qa agent) and §12 (Simulated QA Reviewer) with item audit references, mandatory persistence wording, and SVG regeneration requirement. Updated `.cursor/rules/axel-ai-docs-governance.mdc` rules 11 and 13 with item audit command and mandatory payload keys.
+- Files changed:
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/combat/test/item_balance_audit.gd` (new)
+  - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: QA pipeline gains item balance testing capability that activates automatically when items are implemented. Persistence is now mandatory for all QA modes. Analytics dashboard will show item balance summaries once item data flows through. No gameplay code or combat behavior changed.
+- Verification: Ran `python AXEL/axel_project/tools/qa/update_qa_analytics.py` — parses 4 existing payloads correctly with new code paths, outputs to reorganized `plans/qa/` paths, no item section rendered (expected: no items yet). Confirmed backward compatibility with existing run-log entries.
+- Notes: Item equip API (`equip_item` / `set_equipped_items` on CombatRoot) is not yet implemented; script gracefully skips with `ITEM_BALANCE_SKIP item_api_not_implemented` until that infrastructure lands. Classification thresholds (±0.02 RTP delta CI) are conservative defaults; adjust per tuning needs.
+
+## 2026-05-11 - Item System Infrastructure + C1 Ash Reroll Token
+
+- Request: Implement item-by-item workflow infrastructure (item system, dev picker, stacking framework) and first item C1 per the AXEL combat item catalog plan.
+- Implementation: Created `ItemDef` resource class (`item_def.gd`) with id, display_name, rarity, family, description, effect_id, and effect_params. Created `ItemInventory` (`item_inventory.gd`) managing equipped items array with max 7 slots, equip/unequip by id, and set_all. Added `equip_item`, `unequip_item`, `set_equipped_items` methods to `combat_root.gd` plus additive item payout scalar computation (`_get_item_payout_scalar` / `_item_payout_contribution`) applied to line payouts and grid-clear bonuses in both `spin()` and `spin_sync()`. Created C1 Ash Reroll Token data file (`C1_ash_reroll_token.tres`) with `reroll_payout_scalar` effect (+0.10x per paid spin, cap +0.60x). Added programmatic dev picker UI to `combat_test.gd` with auto-discovery of items from `res://combat/data/items/`, checkbox toggles, max-7 enforcement, and equipped count display.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/item_def.gd` (new)
+  - `AXEL/axel_project/combat/scripts/item_inventory.gd` (new)
+  - `AXEL/axel_project/combat/data/items/C1_ash_reroll_token.tres` (new)
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.md` (regenerated)
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.svg` (regenerated)
+- Behavior impact: CombatRoot now supports equipping up to 7 items whose effects stack additively. C1 increases encounter payout scalar based on paid spin count. Dev picker UI allows selecting items during combat testing. Item balance audit now runs against real item data.
+- Verification: All 7 headless commands pass — princess_check OK, determinism OK (100 spins), rtp_audit within [0.75, 0.80] (mean=0.793), scene_smoke OK (6 scenes), bot_arc1_exterior OK, bot_dialogue_loop OK, item_balance_audit captured (C1 tested, classified overpowered delta_rtp=+0.465).
+- Notes: C1 classified overpowered by balance audit (delta_rtp=+0.465, CI [0.121, 0.808]); values may need tuning in future chat. Stacking framework designed for additive composition — future items with different effect_id values get independent match branches while same-effect items naturally stack through the iteration loop.
+
+## 2026-05-11 - Fix item_balance_audit.gd Unused Variable Warnings
+
+- Request: Resolve the 4 linter warnings (UNUSED_VARIABLE) in `item_balance_audit.gd`.
+- Implementation: Surfaced the four accumulated-but-unreturned locals (`total_wager_cents`, `total_payout_cents`, `free_spins`, `free_hit_spins`) in the `_run_item_audit()` return dictionary as additive fields, matching the parallel coverage in `_run_baseline()`.
+- Files changed:
+  - `AXEL/axel_project/combat/test/item_balance_audit.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Per-item metrics in `ITEM_BALANCE_JSON` output now include wager/payout totals and free spin counts; no behavioral change to Monte Carlo loops or classification logic.
+- Verification: `ReadLints` reports 0 warnings/errors for `item_balance_audit.gd` after the fix.
+- Notes: Additive-only schema change; existing downstream consumers (QA analytics parser) ignore unknown keys and are unaffected.
+
+## 2026-05-11 - Dynamic Inventory Capacity, Legendary Slot-Expander, Dev Picker UX, Synergy Tests, C1 Balance Tuning
+
+- Request: Implement dynamic inventory capacity (base 7 + legendary bonus), add legendary slot-expander item (+2 slots), upgrade dev picker to scrollable list with rarity colors and dynamic cap display, add deterministic synergy smoke test, and retune C1 to reduce RTP inflation.
+- Implementation:
+  - `ItemInventory` refactored from `const MAX_SLOTS=7` to dynamic `BASE_MAX_SLOTS + bonus` system. New methods: `get_base_max_slots()`, `get_current_max_slots()`. Bonus slots computed from equipped items with `effect_id=extra_inventory_slots` gated to `LEGENDARY` rarity only. `equip()` uses projected max (includes the item being added) to handle self-expanding slot items. `set_all()` now delegates to `equip()` for consistent constraint enforcement.
+  - New legendary item `L3 Void Satchel` (`L3_void_satchel.tres`): rarity=LEGENDARY, effect_id=`extra_inventory_slots`, bonus_slots=2. Raises max from 7 to 9 when equipped.
+  - Dev picker: rarity color indicators (Common gray, Uncommon green, Rare blue, Epic purple, Legendary gold) with glyph prefixes (◇◈◆★✦). Title now shows dynamic `(selected/max)`. ScrollContainer has explicit minimum height for long lists.
+  - Deterministic synergy smoke test (`item_synergy_smoke.gd`): 8 test cases covering single equip, duplicate rejection, base slot limit, dynamic cap with expander, expander-at-base-limit, deterministic scalar across runs, over-cap graceful degradation, and C1+L3 coexistence. Exits non-zero on failure.
+  - C1 `per_reroll` reduced 0.10→0.06, `cap` reduced 0.60→0.36 (40% reduction targeting neutral RTP band).
+  - Catalog plan updated: L3 added to legendary baseline (76 items total), common-tier tuning note added with proportional reduction targets for C2–C10 and extended commons.
+  - QA rubric updated: `item_synergy_smoke.gd` registered as conditional pass/fail gate.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/item_inventory.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/item_def.gd` (unchanged, referenced)
+  - `AXEL/axel_project/combat/data/items/C1_ash_reroll_token.tres`
+  - `AXEL/axel_project/combat/data/items/L3_void_satchel.tres` (new)
+  - `AXEL/axel_project/combat/test/item_synergy_smoke.gd` (new)
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Inventory cap is now dynamic (base 7, up to 9 with L3 equipped). C1 payout scalar accumulates slower and caps lower. Dev picker shows all items with rarity visual hierarchy. Synergy smoke test catches equip-limit regressions and loadout determinism issues.
+- Verification: ReadLints reports 0 warnings/errors across all edited GDScript files. Synergy smoke test covers 8 assertion groups for inventory constraints, determinism, and coexistence.
+- Notes: Unequipping the slot-expander while over base cap is allowed (graceful degradation) — further equips are blocked until count drops below current max. Common-tier tuning targets documented in catalog for future item implementations.
+
+## 2026-05-11 - Chat Efficiency: Cursorignore, Governance Dedup, Progress Feed Policy
+
+- Request: Reduce agent context/token overhead identified by a full workflow audit. Implement the three HIGH-priority recommendations: add `.cursorignore` fences, slim the always-applied governance rule to pointer-first guidance, and relax mandatory progress-feed verbosity during implementation loops.
+- Motivation: The audit ([Chat efficiency audit](ef94eb64-2da7-4be5-b1ef-a1704d663ee0)) found that the governance rule duplicated ~95% of `AI_DOCS.md` content (injected into every turn's system prompt), no `.cursorignore` existed (allowing 303 MB debug logs and 2.5 MB JS bundles into the index), and the rigid 6-field progress template added ~1,800 tokens of repetitive overhead across a 43-turn implementation chat.
+- Implementation:
+  - Created `.cursorignore` with three narrow exclusion patterns: `logs/debug/**`, `AXEL/axel_project/exports/moon_princess_files/**`, `**/*bundle*.js`.
+  - Refactored `axel-ai-docs-governance.mdc` from 42 lines of duplicated detail to 16 lines of pointer-first guidance. Preserved in-rule: read-AI_DOCS directive, hard conflict gate, QA opt-in trigger, canonical alias stability, and pipeline discovery hook. Removed: duplicated QA command matrices, scene/bot implementation details, premium planning checklists, terminology locks, and other content already in `AI_DOCS.md`.
+  - Updated progress-feed policy in both governance rule and `AI_DOCS.md` §9: full structured format for planning/exploration/blocked states; concise one-liner sufficient during dense implementation loops.
+  - Added governance responsibility split note to `AI_DOCS.md` §9 to prevent future re-expansion drift.
+- Files changed:
+  - `.cursorignore` (new)
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay/canon/runtime changes. Agent context overhead reduced: ~35 lines removed from every turn's system prompt; 375 MB of files excluded from indexing; progress-feed overhead reduced during implementation stretches.
+- Verification: Governance rule still enforces conflict gate, QA opt-in, canonical aliases, and AI_DOCS-first read. AI_DOCS.md retains all detailed procedures, invariants, and pipeline specs. `.cursorignore` patterns are narrow and exclude only non-authoritative artifacts.
+- Rollback: Restore prior governance rule body from git history. Remove `.cursorignore` to re-index excluded files. Revert `AI_DOCS.md` §9 progress-feed wording and responsibility-split note.

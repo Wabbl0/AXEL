@@ -1,7 +1,7 @@
 # AXEL — Game Design Notes
 
 > Compiled from design conversation. Single source of truth for the roguelite encounter, economy, and progression layer.
-> Companion docs: `AXEL_combat_design.md`, `AXEL_combat_implementation.md`, `AXEL_SCENES_BLUEPRINT.md`, `AXEL_SCENE_DIALOGUES.md`, `README_STRUCTURE.md`.
+> Companion docs: `../combat/AXEL_combat_design.md`, `../combat/AXEL_combat_implementation.md`, `../scenes/AXEL_SCENES_BLUEPRINT.md`, `AXEL_SCENE_DIALOGUES.md`, `README_STRUCTURE.md`.
 
 ---
 
@@ -44,7 +44,7 @@ Rules:
 - A player **cannot stack 6 Rare items simultaneously**. Realistic ceiling is roughly 3 same-rarity items from larger areas, with the next area's items at Epic.
 
 ### 2.4 Difficulty scaling
-- Each area cleared raises the **base difficulty** of all subsequent encounters in the run. The player feels this directly in payout requirements and symbol weighting (handled in `AXEL_combat_design.md` §5).
+- Each area cleared raises the **base difficulty** of all subsequent encounters in the run. The player feels this directly in payout requirements and symbol weighting (handled in `../combat/AXEL_combat_design.md` §5).
 - This means there is no "skipping" difficulty by avoiding items — clearing areas is the difficulty driver, not item count alone.
 - The player can choose to skip individual items inside an area to enter encounters underequipped. This makes the run "much harder but not impossible" — explicitly **not the intended path**.
 
@@ -85,7 +85,7 @@ Combat phase is triggered by specific actions in exploration. There is no fixed 
 
 ### 4.1 Active items
 - Up to **6 active items** can be held in the locker at a time.
-- Active items modify combat at one or more of the hook points listed in `AXEL_combat_design.md` §6 (encounter start, spin start, cluster resolve, princess power, encounter end).
+- Active items modify combat at one or more of the hook points listed in `../combat/AXEL_combat_design.md` §6 (encounter start, spin start, cluster resolve, princess power, encounter end).
 - Active items can be sold in The Hole.
 
 ### 4.2 Passive items
@@ -223,7 +223,7 @@ All three required, no exceptions:
 - This is **intentional design** — the True Ending is meant to feel earned, including by luck.
 
 ### 9.3 Other endings
-- The five existing endings from the prototype (`AXEL_SCENES_BLUEPRINT.md`) remain. Their integration with the loss/restart system is open (Question 7).
+- The five existing endings from the prototype (`../scenes/AXEL_SCENES_BLUEPRINT.md`) remain. Their integration with the loss/restart system is open (Question 7).
 
 ---
 
@@ -272,7 +272,7 @@ These questions have not yet been answered and are required before full implemen
    - The Slay the Spire-style full restart.
    When this feature is implemented, it should not undermine the core run-restart loop or trivialize True Ending requirements.
 
-8. **Existing endings integration.** The five existing endings from `AXEL_SCENES_BLUEPRINT.md` (Fear, Darkness, Wrong Answer, No Name, True) need explicit mapping to the new combat-loss / area-clear / memory-count system. For example: does losing a run still let you reach Ending 1 (Fear)? Or does the loss-restart loop replace the fear-based ending entirely? This needs reconciliation between exploration outcomes and combat outcomes.
+8. **Existing endings integration.** The five existing endings from `../scenes/AXEL_SCENES_BLUEPRINT.md` (Fear, Darkness, Wrong Answer, No Name, True) need explicit mapping to the new combat-loss / area-clear / memory-count system. For example: does losing a run still let you reach Ending 1 (Fear)? Or does the loss-restart loop replace the fear-based ending entirely? This needs reconciliation between exploration outcomes and combat outcomes.
 
 ---
 

@@ -55,7 +55,7 @@ signal meter_full_transition_started()
 @export var power_intro_peak_scale: float = 1.8
 ## Peak alpha of the power intro background glow.
 @export_range(0.0, 1.0, 0.01) var power_intro_glow_alpha: float = 0.5
-@export var girl_power_chance: float = 0.0
+@export var girl_power_chance: float = 0.01
 @export var encounter_def: Resource
 @export var total_bet: float = 1.0
 
@@ -78,6 +78,8 @@ const MeterScript := preload("res://combat/scripts/meter.gd")
 const FreeSpinsScript := preload("res://combat/scripts/free_spins.gd")
 const GoalTrackerScript := preload("res://combat/scripts/goal_tracker.gd")
 const EncounterScript := preload("res://combat/scripts/encounter.gd")
+const ItemDefScript := preload("res://combat/scripts/item_def.gd")
+const ItemInventoryScript := preload("res://combat/scripts/item_inventory.gd")
 
 ## Safety cap so pathological grids / RNG cannot infinite-loop cascade resolution.
 const MAX_CASCADE_ITERATIONS := 512
@@ -137,6 +139,7 @@ var _last_spin_summary: Dictionary = {}
 var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
+var inventory := ItemInventoryScript.new()
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
 const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
@@ -383,12 +386,13 @@ func spin() -> void:
 
 	## SUPER Free Spins: keep post-resolve Girl Power on non-winning spins (MP100-style).
 	if free_spins.active:
-		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
+		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"]) and not free_spins.all_powers_used_once()
 		if should_trigger_power and _should_trigger_girl_power():
 			_state = State.POWER
 			var power_id := free_spins.chosen_princess
 			await _play_power_intro_flash_async(power_id)
 			princesses.trigger_power_by_id(power_id, _make_princess_ctx())
+			free_spins.mark_power_used_once(power_id)
 			spin_summary["princess_triggered"] = true
 			_refresh_cells_visual()
 			await _pause_visual(pause_after_power_sec)
@@ -397,7 +401,8 @@ func spin() -> void:
 			_merge_spin_summary(spin_summary, after_power)
 	spin_summary["grid_cleared"] = _is_grid_cleared_for_current_mode()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
-		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
+		var clear_item_scalar := 1.0 + _get_item_payout_scalar()
+		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value) * clear_item_scalar)
 		spin_summary["payout"] += clear_bonus
 		spin_summary["clear_bonus_payout"] = int(spin_summary["clear_bonus_payout"]) + clear_bonus
 		_add_round_winnings(clear_bonus)
@@ -480,11 +485,12 @@ func spin_sync() -> void:
 	_merge_spin_summary(spin_summary, main_summary)
 
 	if free_spins.active:
-		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"])
+		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"]) and not free_spins.all_powers_used_once()
 		if should_trigger_power and _should_trigger_girl_power():
 			_state = State.POWER
 			var power_id := free_spins.chosen_princess
 			princesses.trigger_power_by_id(power_id, _make_princess_ctx())
+			free_spins.mark_power_used_once(power_id)
 			spin_summary["princess_triggered"] = true
 			_refresh_cells_visual()
 			_apply_gravity_and_refill_sync(not free_spins.active)
@@ -492,7 +498,8 @@ func spin_sync() -> void:
 			_merge_spin_summary(spin_summary, after_power)
 	spin_summary["grid_cleared"] = _is_grid_cleared_for_current_mode()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
-		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value))
+		var clear_item_scalar := 1.0 + _get_item_payout_scalar()
+		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value) * clear_item_scalar)
 		spin_summary["payout"] += clear_bonus
 		spin_summary["clear_bonus_payout"] = int(spin_summary["clear_bonus_payout"]) + clear_bonus
 		_add_round_winnings(clear_bonus)
@@ -566,6 +573,18 @@ func end_encounter(success: bool) -> void:
 		_show_encounter_won_banner()
 	else:
 		_hide_encounter_won_banner()
+
+
+func equip_item(item: Resource) -> bool:
+	return inventory.equip(item)
+
+
+func unequip_item(item: Resource) -> void:
+	inventory.unequip(item)
+
+
+func set_equipped_items(items: Array) -> void:
+	inventory.set_all(items)
 
 
 func begin_next_playtest_encounter(seed_value: int) -> void:
@@ -1400,11 +1419,32 @@ func _line_payout_cents(line: Dictionary) -> int:
 	var payout_multiplier: float = sd.payout_multiplier_for_length(line_length)
 	if payout_multiplier <= 0.0:
 		return 0
-	return _to_cents(total_bet * payout_multiplier * float(multiplier.value))
+	var item_scalar := 1.0 + _get_item_payout_scalar()
+	return _to_cents(total_bet * payout_multiplier * float(multiplier.value) * item_scalar)
 
 
 func _to_cents(amount: float) -> int:
 	return int(round(amount * 100.0))
+
+
+func _get_item_payout_scalar() -> float:
+	var total := 0.0
+	for item in inventory.items:
+		total += _item_payout_contribution(item)
+	return total
+
+
+func _item_payout_contribution(item: Resource) -> float:
+	var eff_id = item.get("effect_id")
+	var params = item.get("effect_params")
+	if eff_id == null or params == null:
+		return 0.0
+	match StringName(eff_id):
+		&"reroll_payout_scalar":
+			var per_reroll := float(params.get("per_reroll", 0.0))
+			var cap := float(params.get("cap", 0.0))
+			return minf(float(_spins_used) * per_reroll, cap)
+	return 0.0
 
 
 func _format_currency_from_cents(amount_cents: int) -> String:

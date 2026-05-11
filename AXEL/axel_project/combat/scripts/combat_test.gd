@@ -1,11 +1,21 @@
 extends Control
 
 const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
+const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
 const PRINCESS_LOVE: StringName = &"love"
 const PRINCESS_STAR: StringName = &"star"
 const PRINCESS_STORM: StringName = &"storm"
+const RARITY_GLYPHS := ["◇", "◈", "◆", "★", "✦"]
+const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+var RARITY_COLORS: Dictionary = {
+	0: Color(0.65, 0.65, 0.65),
+	1: Color(0.4, 0.78, 0.4),
+	2: Color(0.4, 0.6, 0.9),
+	3: Color(0.72, 0.4, 0.88),
+	4: Color(0.95, 0.75, 0.2),
+}
 
 @onready var seed_spin: SpinBox = %SeedSpinBox
 @onready var spin_btn: Button = %SpinButton
@@ -27,6 +37,9 @@ const PRINCESS_STORM: StringName = &"storm"
 
 var _last_meter_sections: int = -1
 var _queued_seed: int = 0
+var _item_picker_panel: PanelContainer
+var _item_picker_title: Label
+var _item_entries: Array = []
 
 func _ready() -> void:
 	seed_spin.min_value = 0
@@ -60,6 +73,7 @@ func _ready() -> void:
 	# #endregion
 	seed_spin.value_changed.connect(_on_seed_spin_value_changed)
 	_set_default_bet()
+	_build_item_picker()
 	_layout_combat()
 	_refresh_readouts()
 	_refresh_encounter_win_overlay()
@@ -264,6 +278,109 @@ func _set_seed_spin_value_no_signal(seed_value: int) -> void:
 	if int(seed_spin.value) == seed_value:
 		return
 	seed_spin.set_value_no_signal(seed_value)
+
+
+func _build_item_picker() -> void:
+	_item_picker_panel = PanelContainer.new()
+	_item_picker_panel.name = "ItemPickerPanel"
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.0, 0.0, 0.92)
+	style.border_color = Color(0.78, 0.03, 0.03, 0.6)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 8
+	style.content_margin_top = 8
+	style.content_margin_right = 8
+	style.content_margin_bottom = 8
+	_item_picker_panel.add_theme_stylebox_override("panel", style)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+
+	_item_picker_title = Label.new()
+	_item_picker_title.text = "ITEMS (0/%d)" % combat.inventory.get_current_max_slots()
+	_item_picker_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_item_picker_title.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(_item_picker_title)
+
+	var sep := HSeparator.new()
+	vbox.add_child(sep)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, 120)
+
+	var items_vbox := VBoxContainer.new()
+	items_vbox.add_theme_constant_override("separation", 2)
+	items_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var available := _discover_available_items()
+	for item in available:
+		var cb := CheckBox.new()
+		var rarity_idx: int = clampi(int(item.get("rarity")), 0, RARITY_GLYPHS.size() - 1)
+		cb.text = "%s %s" % [RARITY_GLYPHS[rarity_idx], item.display_name]
+		cb.tooltip_text = "%s | %s" % [RARITY_NAMES[rarity_idx], item.description]
+		cb.add_theme_font_size_override("font_size", 13)
+		cb.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
+		cb.toggled.connect(_on_item_checkbox_toggled.bind(item, cb))
+		items_vbox.add_child(cb)
+		_item_entries.append({"checkbox": cb, "item": item})
+
+	if available.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No items available"
+		empty_label.add_theme_font_size_override("font_size", 12)
+		empty_label.add_theme_color_override("font_color", Color(0.5, 0.3, 0.3, 0.8))
+		items_vbox.add_child(empty_label)
+
+	scroll.add_child(items_vbox)
+	vbox.add_child(scroll)
+	_item_picker_panel.add_child(vbox)
+
+	add_child(_item_picker_panel)
+	_item_picker_panel.anchor_left = 0.0
+	_item_picker_panel.anchor_top = 0.0
+	_item_picker_panel.anchor_right = 0.0
+	_item_picker_panel.anchor_bottom = 1.0
+	_item_picker_panel.offset_left = 12.0
+	_item_picker_panel.offset_top = 60.0
+	_item_picker_panel.offset_right = 260.0
+	_item_picker_panel.offset_bottom = -110.0
+
+
+func _discover_available_items() -> Array:
+	var found: Array = []
+	var dir := DirAccess.open("res://combat/data/items")
+	if dir == null:
+		return found
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if file_name.ends_with(".tres") or file_name.ends_with(".res"):
+			var res := load("res://combat/data/items/".path_join(file_name))
+			if res != null and res is ItemDefScript:
+				found.append(res)
+		file_name = dir.get_next()
+	dir.list_dir_end()
+	found.sort_custom(func(a, b): return String(a.id) < String(b.id))
+	return found
+
+
+func _on_item_checkbox_toggled(toggled_on: bool, item: Resource, cb: CheckBox) -> void:
+	if toggled_on:
+		if not combat.equip_item(item):
+			cb.set_pressed_no_signal(false)
+			return
+	else:
+		combat.unequip_item(item)
+	_refresh_item_picker_title()
+
+
+func _refresh_item_picker_title() -> void:
+	if _item_picker_title != null:
+		_item_picker_title.text = "ITEMS (%d/%d)" % [combat.inventory.size(), combat.inventory.get_current_max_slots()]
 
 
 func _debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:

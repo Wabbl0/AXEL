@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"L3"
+display_name = "Void Satchel"
+rarity = 4
+family = ""
+description = "Expands loadout capacity by +2 slots (max 9). Legendary only."
+effect_id = &"extra_inventory_slots"
+effect_params = {"bonus_slots": 2}

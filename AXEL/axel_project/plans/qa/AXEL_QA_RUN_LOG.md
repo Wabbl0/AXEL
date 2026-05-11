@@ -2,7 +2,7 @@
 
 Optional **append-only** log for simulated QA runs. Use when you want historical analytics across sessions.
 
-- **Do not** use this file instead of `AI_CHANGELOG.md` for implemented work; changelog remains for shipped changes only.
+- **Do not** use this file instead of `../core/AI_CHANGELOG.md` for implemented work; changelog remains for shipped changes only.
 - Each run is one `##` entry at the **bottom**.
 - Keep entries **compact** to match concise `qa agent` chat output.
 
@@ -18,7 +18,7 @@ Copy the template block, fill values, paste **below** the last entry.
 - **Mode:** <static | playtest>
 - **Scope:** <one line: feature, scene list, or paths reviewed>
 - **Trigger:** <user request | post-change agreed QA>
-- **Playtest commands:** princess_check=<pass|fail|skip> determinism=<pass|fail|skip> rtp_audit=<captured|skip> scene_smoke=<pass|fail|skip> bot_arc1_exterior=<pass|fail|skip> bot_dialogue_loop=<pass|fail|skip>
+- **Playtest commands:** princess_check=<pass|fail|skip> determinism=<pass|fail|skip> rtp_audit=<captured|skip> scene_smoke=<pass|fail|skip> bot_arc1_exterior=<pass|fail|skip> bot_dialogue_loop=<pass|fail|skip> item_balance_audit=<captured|skip>
 - **Scores:** S=_ N=_ I=_ E=_ C=_ R=_ **Total=_._** Band=_
 - **Findings count:** blocker=_ major=_ minor=_ nit=_
 - **By category:** STYLE=_ LORE=_ IMMERSION=_ TENSION=_ CLARITY=_ COMBAT=_ ARCH=_ REGRESSION=_ BUG=_ TOOL=_
@@ -38,7 +38,9 @@ Copy the template block, fill values, paste **below** the last entry.
   "findings_count": {"blocker": 0, "major": 0, "minor": 0, "nit": 0},
   "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 0, "TENSION": 0, "CLARITY": 0, "COMBAT": 0, "ARCH": 0, "REGRESSION": 0, "BUG": 0, "TOOL": 0},
   "playtest_commands": {"princess_check": "skip", "determinism": "skip", "rtp_audit": "skip", "scene_smoke": "skip", "bot_arc1_exterior": "skip", "bot_dialogue_loop": "skip"},
-  "bugs_or_regressions": []
+  "bugs_or_regressions": [],
+  "item_balance": null,
+  "item_metrics": null
 }
 <!-- QA_ANALYTICS_JSON_END -->
 
@@ -112,7 +114,9 @@ Copy the template block, fill values, paste **below** the last entry.
   - `<!-- QA_ANALYTICS_JSON_END -->`
 - Keep key names stable so `tools/qa/update_qa_analytics.py` can parse history safely.
 - Allowed `mode`: `static`, `playtest`.
-- Allowed `playtest_commands` keys: `princess_check`, `determinism`, `rtp_audit`, `scene_smoke`, `bot_arc1_exterior`, `bot_dialogue_loop`. Allowed values: `pass`, `fail`, `captured`, `skip` (`captured` is for `rtp_audit` metrics; the rest are pass/fail gates that may also be `skip`).
+- Allowed `playtest_commands` keys: `princess_check`, `determinism`, `rtp_audit`, `scene_smoke`, `bot_arc1_exterior`, `bot_dialogue_loop`, `item_balance_audit`. Allowed values: `pass`, `fail`, `captured`, `skip` (`captured` is for `rtp_audit` and `item_balance_audit` metrics; the rest are pass/fail gates that may also be `skip`).
+- Optional `item_balance` object: present when `item_balance_audit=captured`. Contains `schema_version`, `items_tested`, and per-classification item id lists.
+- Optional `item_metrics` array: per-item detail objects with RTP/hit-rate/encounter deltas and confidence intervals.
 - `scores.Total` must be numeric and rounded to 2 decimals.
 - `bugs_or_regressions` should list short strings (IDs or concise notes) for discovered bugs/problems.
 
@@ -180,5 +184,71 @@ Copy the template block, fill values, paste **below** the last entry.
   "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 1, "TENSION": 1, "CLARITY": 0, "COMBAT": 0, "ARCH": 0, "REGRESSION": 0, "BUG": 1, "TOOL": 0},
   "playtest_commands": {"princess_check": "pass", "determinism": "pass", "rtp_audit": "captured", "scene_smoke": "pass"},
   "bugs_or_regressions": ["Minor interaction bug in tested flow"]
+}
+<!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-11 — Combat baseline QA (full playtest + item audit)
+
+- **Mode:** playtest
+- **Scope:** Full combined run — combat system as-is, all 7 headless commands + static review
+- **Trigger:** user request
+- **Playtest commands:** princess_check=fail determinism=pass rtp_audit=captured scene_smoke=pass bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=skip
+- **Scores:** S=4 N=4 I=4 E=3 C=4 R=3 **Total=3.68** Band=C
+- **Findings count:** blocker=1 major=0 minor=2 nit=1
+- **By category:** STYLE=0 LORE=0 IMMERSION=0 TENSION=0 CLARITY=0 COMBAT=3 ARCH=0 REGRESSION=0 BUG=1 TOOL=0
+- **Recommendations (logged):** Set girl_power_chance to 0.01; fix TileSetAtlasSource errors; review encounter goal thresholds; add items for balance pipeline
+- **Bug / regression notes:** princess_check exit 1 — girl_power_chance=0.0 vs expected 0.01; item_balance_audit.gd had missing await keywords (fixed); TileSet atlas coord errors in SchoolExterior tilemap
+- **Trend vs previous run:** down — new blocker (princess_check fail) vs previous run's clean pass
+- **Link / notes:** Combat baseline before item implementation begins
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-11T16:25:00+03:00",
+  "scope": "combat baseline full playtest + item balance audit",
+  "trigger": "user request",
+  "scores": {"S": 4, "N": 4, "I": 4, "E": 3, "C": 4, "R": 3, "Total": 3.68, "Band": "C"},
+  "findings_count": {"blocker": 1, "major": 0, "minor": 2, "nit": 1},
+  "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 0, "TENSION": 0, "CLARITY": 0, "COMBAT": 3, "ARCH": 0, "REGRESSION": 0, "BUG": 1, "TOOL": 0},
+  "playtest_commands": {"princess_check": "fail", "determinism": "pass", "rtp_audit": "captured", "scene_smoke": "pass", "bot_arc1_exterior": "pass", "bot_dialogue_loop": "pass", "item_balance_audit": "skip"},
+  "bugs_or_regressions": ["princess_check fail: girl_power_chance=0.0 vs expected 0.01", "item_balance_audit.gd parse error (fixed: missing await)", "TileSetAtlasSource coord errors in SchoolExterior tilemap"],
+  "rtp_snapshot": {"mean": 0.78928, "ci95": [0.59157, 0.98699], "target_band": [0.75, 0.80], "target_position": "within", "paid_hit_rate": 0.415, "encounter_success_rate": 0.00833, "trinity_entries": 0},
+  "item_balance": null,
+  "item_metrics": null
+}
+<!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-11 — Item system infrastructure + C1 Ash Reroll Token
+
+- **Mode:** playtest
+- **Scope:** Item system infrastructure (ItemDef, ItemInventory, CombatRoot equip API, dev picker UI) + first item C1 implementation + full combined playtest
+- **Trigger:** user request
+- **Playtest commands:** princess_check=pass determinism=pass rtp_audit=captured scene_smoke=pass bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=captured
+- **Scores:** S=4 N=4 I=4 E=3 C=4 R=4 **Total=3.85** Band=B
+- **Findings count:** blocker=0 major=0 minor=2 nit=1
+- **By category:** STYLE=0 LORE=0 IMMERSION=0 TENSION=0 CLARITY=1 COMBAT=2 ARCH=0 REGRESSION=0 BUG=0 TOOL=0
+- **Recommendations (logged):**
+  - Tune C1 per_reroll/cap values down to bring delta_rtp closer to neutral (+/-0.02 target band)
+  - Add rarity color indicators to dev picker checkboxes for visual hierarchy
+  - Add a deterministic synergy smoke test in combat/test/ that verifies multi-item stacking
+  - Implement item persistence display refresh when encounter resets via dev picker
+- **Bug / regression notes:** C1 classified overpowered (delta_rtp=+0.465, CI [0.121, 0.808]); pre-existing TileSetAtlasSource coord errors in SchoolExterior tilemap unchanged
+- **Trend vs previous run:** up — all pass/fail gates pass (princess_check now passes vs prior fail); first item balance audit with real data
+- **Link / notes:** Item-by-item workflow proof-of-concept; first item implemented with stacking infrastructure
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-11T16:55:00+03:00",
+  "run_title": "Item system infrastructure + C1 Ash Reroll Token",
+  "mode": "playtest",
+  "scope": "Item system infra (ItemDef, ItemInventory, CombatRoot equip API, dev picker) + C1 implementation + full combined playtest",
+  "trigger": "user request",
+  "scores": {"S": 4, "N": 4, "I": 4, "E": 3, "C": 4, "R": 4, "Total": 3.85, "Band": "B"},
+  "findings_count": {"blocker": 0, "major": 0, "minor": 2, "nit": 1},
+  "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 0, "TENSION": 0, "CLARITY": 1, "COMBAT": 2, "ARCH": 0, "REGRESSION": 0, "BUG": 0, "TOOL": 0},
+  "playtest_commands": {"princess_check": "pass", "determinism": "pass", "rtp_audit": "captured", "scene_smoke": "pass", "bot_arc1_exterior": "pass", "bot_dialogue_loop": "pass", "item_balance_audit": "captured"},
+  "bugs_or_regressions": ["C1 classified overpowered (delta_rtp=+0.465, CI [0.121, 0.808])", "Pre-existing TileSetAtlasSource coord errors in SchoolExterior tilemap"],
+  "rtp_snapshot": {"mean": 0.79293, "ci95": [0.60944, 0.97642], "target_band": [0.75, 0.80], "target_position": "within", "paid_hit_rate": 0.417, "encounter_success_rate": 0.00833, "trinity_entries": 0},
+  "item_balance": {"schema_version": 1, "items_tested": 1, "items_overpowered": ["C1_ash_reroll_token"], "items_underpowered": [], "items_neutral": [], "items_insufficient_data": []},
+  "item_metrics": [{"item_id": "C1_ash_reroll_token", "label": "overpowered", "baseline_rtp": 0.79293, "item_rtp": 1.2577, "delta_rtp": 0.46477, "delta_rtp_ci95": [0.12106, 0.80848], "baseline_hit_rate": 0.417, "item_hit_rate": 0.417, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.03333, "delta_encounter_success": 0.01667, "seeds_used": 20}]
 }
 <!-- QA_ANALYTICS_JSON_END -->

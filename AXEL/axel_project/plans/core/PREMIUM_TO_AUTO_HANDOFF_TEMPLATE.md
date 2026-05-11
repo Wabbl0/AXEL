@@ -12,10 +12,10 @@ Use this template for substantive AXEL planning responses that are intended for 
 
 - Alignment status: PASS / CONFLICT
 - Sources checked:
-  - `AXEL/axel_project/plans/AI_DOCS.md`
-  - `AXEL/axel_project/plans/AXEL_combat_implementation.md` (if combat touched)
-  - `AXEL/axel_project/plans/AXEL_combat_design.md` (if combat touched)
-  - `AXEL/axel_project/plans/AXEL_notes.md` (if lore/style touched)
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md` (if combat touched)
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md` (if combat touched)
+  - `AXEL/axel_project/plans/references/AXEL_notes.md` (if lore/style touched)
 - Relevant invariants:
 - Conflict details (if any):
 
@@ -71,4 +71,4 @@ Write ordered, executable steps that can be followed with minimal interpretation
 - Files expected to be touched:
 - Verification required before completion:
 - Post-implementation logging reminder:
-  - Append implementation entry to `AXEL/axel_project/plans/AI_CHANGELOG.md`.
+  - Append implementation entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md`.

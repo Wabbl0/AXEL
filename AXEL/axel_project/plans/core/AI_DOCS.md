@@ -23,10 +23,10 @@ Applies to changes in:
 
 When two sources conflict, resolve in this order:
 
-1. This file: `AXEL/axel_project/plans/AI_DOCS.md`
-2. `AXEL/axel_project/plans/AXEL_combat_implementation.md`
-3. `AXEL/axel_project/plans/AXEL_combat_design.md`
-4. `AXEL/axel_project/plans/AXEL_notes.md`
+1. This file: `AXEL/axel_project/plans/core/AI_DOCS.md`
+2. `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+3. `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+4. `AXEL/axel_project/plans/references/AXEL_notes.md`
 5. Prototype style/lore evidence in `AXEL/html/game.html`, `AXEL/html/styles_game.css`, `AXEL/html/styles.css`
 6. Exported references in `AXEL/axel_project/exports/*` and `AXEL/axel_project/exports/moon_princess_files/*`
 
@@ -67,7 +67,7 @@ Keep these rules stable unless explicitly asked to redesign:
 
 - Extended item ids in plans follow **`TIER-FAMILY`** with **uppercase** letters (e.g. `C-A`, `U-M`, `L-H`); baseline items keep **digit** suffixes (`C1`, `R3`, `E2`, `L1`).
 - When the author says **add an item** (new mechanic) without narrowing scope, default spec is **five variants** (**Common → Legendary**). Single-tier items only when explicitly requested.
-- Reference catalog (single source): **`AXEL/axel_project/plans/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`** — edit only this file for roster changes. `.cursor/plans/combat_starter_item_catalog_fee3a6f1.plan.md` is a stub pointer, not a duplicate catalog.
+- Reference catalog (single source): **`AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`** — edit only this file for roster changes. `.cursor/plans/combat_starter_item_catalog_fee3a6f1.plan.md` is a stub pointer, not a duplicate catalog.
 
 ## 6) Style and Tone Canon
 
@@ -103,7 +103,7 @@ Keep these narrative anchors coherent across edits:
   - story flags/memories/endings
   - combat goals/economy
   - style/thematic presentation
-- **Playtest collision overlay:** cyan/teal outlines for invisible 2D collision helpers (`PlaytestCollisionDebug` autoload) are a **debug-only readability exception** to the AXEL palette; ships only under `OS.is_debug_build()`. See `AXEL/axel_project/plans/PLAYTEST_DEBUG_COLLISIONS.md`.
+- **Playtest collision overlay:** cyan/teal outlines for invisible 2D collision helpers (`PlaytestCollisionDebug` autoload) are a **debug-only readability exception** to the AXEL palette; ships only under `OS.is_debug_build()`. See `AXEL/axel_project/plans/core/PLAYTEST_DEBUG_COLLISIONS.md`.
 
 ## 9) Agent Workflow Requirements
 
@@ -112,17 +112,15 @@ For substantive AXEL requests:
 1. Read this file first.
 2. Check relevant source docs for the touched subsystem.
 3. For long or multi-step work, provide a live progress feed in chat while executing.
-4. Live progress feed should include:
-   - current step
-   - command/tool in use
-   - files being checked/read
-   - result/status so far
-   - next step
-   - stuck/not stuck
+4. Progress feed verbosity policy:
+   - **Planning, exploration, or blocked states:** use the full structured format (current step, command/tool in use, files being checked/read, result/status so far, next step, stuck/not stuck).
+   - **Dense implementation loops** (editing files, fixing lints, iterating on code): a concise one-liner status is sufficient.
 5. Implement changes.
 6. Verify behavior (tests or explicit manual checks).
-7. Append one entry to `AXEL/axel_project/plans/AI_CHANGELOG.md` if change was implemented.
+7. Append one entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md` if change was implemented.
 8. If a task introduces or updates a reusable workflow/agent pipeline (scripts, specs, rules, runner contracts), record it in this file and in `.cursor/rules/axel-ai-docs-governance.mdc` so future chats can reference it directly.
+
+**Governance rule / AI_DOCS responsibility split:** The always-applied rule (`.cursor/rules/axel-ai-docs-governance.mdc`) is intentionally concise — it directs agents to read this file and enforces the hard conflict gate, QA opt-in trigger, and canonical alias stability. All detailed procedures, command sets, invariants, and pipeline specs live here in `AI_DOCS.md` and in the referenced subsystem docs (rubric, skill, specs). Do not re-duplicate detailed content into the governance rule.
 
 ## 10) Premium-to-Auto Planning Protocol
 
@@ -133,7 +131,7 @@ For all substantive AXEL tasks, planning outputs must be implementation-ready fo
   - correlate request to AXEL architecture boundaries (combat, scenes, narrative, tools, reusable agents)
   - call out cross-system effects and pipeline touch points
 - Run a canon/guideline alignment check against this file's hierarchy and invariants.
-- Use a stable handoff format for high-detail plans (see `AXEL/axel_project/plans/PREMIUM_TO_AUTO_HANDOFF_TEMPLATE.md`) that includes:
+- Use a stable handoff format for high-detail plans (see `AXEL/axel_project/plans/core/PREMIUM_TO_AUTO_HANDOFF_TEMPLATE.md`) that includes:
   - inferred intent
   - alignment/conflict result
   - impact map with concrete file candidates
@@ -146,13 +144,13 @@ For all substantive AXEL tasks, planning outputs must be implementation-ready fo
 ## 11) Reusable Agent Names
 
 - `scene agent` = the scene-building draft pipeline centered at:
-  - `AXEL/axel_project/plans/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
   - `AXEL/axel_project/tools/scene_builder/*`
   - **Canonical filename invariant:** `scene agent` outputs MUST target the
     canonical numbered scene file (e.g. `1.2_Corridor.tscn` under
     `scenes/Arc_1/`), overwriting the existing placeholder. It MUST NEVER
     create or overwrite a non-canonical alias such as `Corridor.tscn`. See
-    "Canonical Filename Invariant" in `SCENE_BUILDER_AGENT_SPEC.md`.
+    "Canonical Filename Invariant" in `scenes/SCENE_BUILDER_AGENT_SPEC.md`.
   - **Completion cleanup invariant:** once the user says a scene is complete,
     `scene agent` MUST clean up non-pipeline temporary artifacts created during
     look-dev (for example filter-preview folders/comparison renders) under
@@ -160,33 +158,34 @@ For all substantive AXEL tasks, planning outputs must be implementation-ready fo
     unless the user explicitly asks for a full purge.
 - `qa agent` (short forms: `qa`, `run qa`) = simulated QA review workflow centered at:
   - `.cursor/skills/axel-simulated-qa/SKILL.md`
-  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md`
-  - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md`
-  - `AXEL/axel_project/plans/AXEL_QA_ANALYTICS.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.md`
   - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
   - **Default output:** concise, **technical-first** (evidence, scores, data); **Recommendations** required every run (minimum 3).
-  - **Default execution:** plain `qa` / `run qa` / `qa agent` runs **combined static + full playtest** in one QA pass. The default playtest command bundle is the **six** headless commands from rubric §Playtest-mode: `princess_check`, `determinism_check`, `rtp_audit`, `scene_smoke_check`, **`playthrough_arc1_exterior`, `playthrough_dialogue_loop`**. Default confidence tier is `combat + scene smoke + bot playthrough` when all gates pass.
-  - **Playtest mode** (`qa playtest` / high-confidence): same default command set as plain `qa` (still includes static review).
-  - **Static-only override:** run static-only checks only when the user explicitly requests `qa static` (skips all six headless commands, including bots).
+  - **Default execution:** plain `qa` / `run qa` / `qa agent` runs **combined static + full playtest** in one QA pass. The default playtest command bundle is the **six** headless commands from rubric §Playtest-mode: `princess_check`, `determinism_check`, `rtp_audit`, `scene_smoke_check`, **`playthrough_arc1_exterior`, `playthrough_dialogue_loop`** — plus the conditional **`item_balance_audit`** when item definitions exist under `combat/data/items/`. Default confidence tier is `combat + scene smoke + bot playthrough` when all gates pass.
+  - **Item balance audit:** `AXEL/axel_project/combat/test/item_balance_audit.gd` runs paired Monte Carlo (baseline vs equipped item) and outputs `ITEM_BALANCE_JSON` with per-item RTP/hit-rate/encounter deltas, 95% CI, and classification (`overpowered` / `neutral` / `underpowered` / `insufficient_data`). Always exits 0 (metrics only). If no items exist or item API not implemented, prints `ITEM_BALANCE_SKIP` and records `item_balance_audit=skip`.
+  - **Playtest mode** (`qa playtest` / high-confidence): same default command set as plain `qa` (still includes static review and item audit when applicable).
+  - **Static-only override:** run static-only checks only when the user explicitly requests `qa static` (skips all headless commands, including bots and item audit).
   - **Skip policy:** if any default command cannot run, name every skipped command explicitly in the report and downgrade the tier per rubric §Playtest-mode skip policy.
-  - **Persistence invariant:** every `qa` run appends one structured payload to `AXEL_QA_RUN_LOG.md` (with `playtest_commands` keys including `bot_arc1_exterior` and `bot_dialogue_loop`), then refreshes `AXEL_QA_ANALYTICS.md` via `tools/qa/update_qa_analytics.py` so score trends remain continuous over production. The analytics generator aggregates all `playtest_commands.bot_*` keys (auto-discovered) into a dashed `Bots` series on `AXEL_QA_ANALYTICS.svg` (`pass=5`, `fail=0`, `skip`/missing = gap), so bot pass-rate trends share the same dashboard as the score axes.
+  - **Persistence invariant (mandatory):** every `qa` run (all modes: `qa`, `run qa`, `qa agent`, `qa playtest`, `qa static`) appends one structured payload to `qa/AXEL_QA_RUN_LOG.md` (with `playtest_commands` keys including `bot_arc1_exterior`, `bot_dialogue_loop`, and `item_balance_audit`), then refreshes `qa/AXEL_QA_ANALYTICS.md` and `qa/AXEL_QA_ANALYTICS.svg` via `tools/qa/update_qa_analytics.py`. The analytics generator aggregates all `playtest_commands.bot_*` keys (auto-discovered) into a dashed `Bots` series on the SVG (`pass=5`, `fail=0`, `skip`/missing = gap), and renders a compact **Item Balance Summary** section when `item_balance` data is present in payloads.
 - `bot playthrough` = headless overworld input bots that synthesize real `InputEventKey` events through `Input.parse_input_event()` to exercise player-input code paths (`Player.gd::_physics_process` polling, `_unhandled_input` interaction, `TopDialogueOverlay._input` Tab-skip). Centered at:
   - `AXEL/axel_project/test/bots/README.md`
   - `AXEL/axel_project/test/bots/input_event_driver.gd` — press/release/hold/tap utilities + frame stepper.
   - `AXEL/axel_project/test/bots/scenario_runner.gd` — deterministic command list interpreter (`press`, `tap`, `hold`, `wait_frames`, `assert`, `assert_eventually`, ...).
   - `AXEL/axel_project/test/bots/playthrough_arc1_exterior.gd` — walks player to door, taps `E`, asserts `1.1_SchoolExterior.tscn` -> `1.2_Corridor.tscn` transition.
   - `AXEL/axel_project/test/bots/playthrough_dialogue_loop.gd` — drives `TopDialogueOverlay` Tab-skip, then walks + taps `SPACE` (alternate interact key), asserts same transition.
-  - **Confidence integration:** included by default in the `combat + scene smoke + bot playthrough` tier of `AXEL_QA_REVIEW_RUBRIC.md` (see §Playtest-mode); plain `qa` / `run qa` / `qa agent` always runs both bot scripts unless they have to be explicitly skipped (and reported as such).
+  - **Confidence integration:** included by default in the `combat + scene smoke + bot playthrough` tier of `qa/AXEL_QA_REVIEW_RUBRIC.md` (see §Playtest-mode); plain `qa` / `run qa` / `qa agent` always runs both bot scripts unless they have to be explicitly skipped (and reported as such).
 - If this agent is updated, refresh `AI_DOCS.md`, `.cursor/rules/axel-ai-docs-governance.mdc`, and `AI_CHANGELOG.md` together.
 
 ## 12) Simulated QA Reviewer
 
-- **Purpose:** Opt-in simulated QA: concise **technical-first** reports (findings, scores, analytics), **mandatory recommendations** (≥3), optional short player-feel only when explicitly requested. Default `qa` now runs **combined static + full playtest** (combat + scene smoke + bot playthrough); see rubric §Playtest-mode for command set and confidence tiers.
+- **Purpose:** Opt-in simulated QA: concise **technical-first** reports (findings, scores, analytics), **mandatory recommendations** (≥3), optional short player-feel only when explicitly requested. Default `qa` now runs **combined static + full playtest** (combat + scene smoke + bot playthrough + conditional item balance audit); see rubric §Playtest-mode for command set and confidence tiers.
 - **Invocation:** If the user requests `qa agent`, `qa`, `run qa`, or `qa playtest` / playtest-level confidence, read and apply `.cursor/skills/axel-simulated-qa/SKILL.md`. Also use when the user agrees to run QA after a substantive change.
 - **Artifacts:**
-  - `AXEL/axel_project/plans/AXEL_QA_REVIEW_RUBRIC.md` — axes, weights, taxonomy, **Playtest-mode** command set and confidence tiers
-  - `AXEL/axel_project/plans/AXEL_QA_RUN_LOG.md` — append-only run history with machine-readable payloads (scores/findings/categories/playtest outcomes/bugs)
-  - `AXEL/axel_project/plans/AXEL_QA_ANALYTICS.md` — auto-generated historical dashboard with Mermaid trends for `Total` + `S/N/I/E/C/R`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md` — axes, weights, taxonomy, **Playtest-mode** command set and confidence tiers
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md` — append-only run history with machine-readable payloads (scores/findings/categories/playtest outcomes/bugs)
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.md` — auto-generated historical dashboard with Mermaid trends for `Total` + `S/N/I/E/C/R`
   - `AXEL/axel_project/tools/qa/update_qa_analytics.py` — parser/generator that rebuilds analytics from run-log payloads
   - `AXEL/axel_project/test/scene_smoke_check.gd` — headless canonical scene smoke (used by playtest mode)
 - **Governance:** Agents should **ask** after substantial AXEL edits whether to run this QA; see `.cursor/rules/axel-ai-docs-governance.mdc`.

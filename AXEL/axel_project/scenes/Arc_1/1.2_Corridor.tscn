@@ -40,6 +40,7 @@ size = Vector2(24, 720)
 radius = 16.0
 
 [node name="Corridor" type="Node2D" unique_id=1412693129]
+position = Vector2(1, -1)
 script = ExtResource("1_462mc")
 
 [node name="Background" type="ColorRect" parent="." unique_id=1065278382]

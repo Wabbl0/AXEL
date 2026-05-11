@@ -408,8 +408,13 @@ func _assert_trinity_transition_completes_without_freeze() -> void:
 		push_error("Trinity transition appears frozen: spin did not complete in allotted frames.")
 		quit(1)
 		return
+	if not cr.is_waiting_for_free_spin_choice():
+		push_error("Expected FREE_SPINS_CHOOSE state after pending free-spin handoff.")
+		quit(1)
+		return
+	cr.choose_free_spins_princess(&"storm")
 	if not cr.free_spins.active:
-		push_error("Expected free spins to activate after pending free-spin handoff.")
+		push_error("Expected free spins to activate after choosing princess.")
 		quit(1)
 		return
 	cr.queue_free()

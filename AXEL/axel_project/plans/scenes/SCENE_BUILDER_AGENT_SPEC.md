@@ -14,11 +14,11 @@ This agent drafts exploration-scene layouts by combining scene-blueprint intent 
 
 ## Canon Sources
 
-1. `AXEL/axel_project/plans/AI_DOCS.md`
-2. `AXEL/axel_project/plans/AXEL_SCENES_BLUEPRINT.md`
-3. `AXEL/axel_project/plans/AXEL_SCENES_NEW.md`
+1. `AXEL/axel_project/plans/core/AI_DOCS.md`
+2. `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+3. `AXEL/axel_project/plans/scenes/AXEL_SCENES_NEW.md`
 
-If conflicts appear, `AI_DOCS.md` wins and the conflict must be noted in `AI_CHANGELOG.md` when implemented.
+If conflicts appear, `core/AI_DOCS.md` wins and the conflict must be noted in `core/AI_CHANGELOG.md` when implemented.
 
 ## Agent Pipeline
 
