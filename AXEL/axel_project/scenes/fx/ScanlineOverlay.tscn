@@ -4,13 +4,13 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_scanline"]
 shader = ExtResource("1_scanline_shader")
-shader_parameter/noise_intensity = 0.12
-shader_parameter/noise_speed = 8.0
-shader_parameter/scan_strength = 0.04
+shader_parameter/noise_intensity = 0.04
+shader_parameter/noise_speed = 6.0
+shader_parameter/scan_strength = 0.015
 shader_parameter/scan_density = 300.0
-shader_parameter/blend_opacity = 0.7
-shader_parameter/vignette_strength = 0.18
-shader_parameter/flicker_strength = 0.015
+shader_parameter/blend_opacity = 0.22
+shader_parameter/vignette_strength = 0.1
+shader_parameter/flicker_strength = 0.008
 
 [node name="ScanlineOverlay" type="CanvasLayer"]
 layer = 105

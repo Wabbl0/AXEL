@@ -142,7 +142,14 @@ func _setup_shadow_outline() -> void:
 
 
 func _apply_overworld_tint() -> void:
-	animated_sprite.modulate = overworld_tint
+	if overworld_tint == Color(1.0, 1.0, 1.0, 1.0):
+		var shader := load("res://scenes/fx/white_sprite.gdshader") as Shader
+		if shader:
+			var mat := ShaderMaterial.new()
+			mat.shader = shader
+			animated_sprite.material = mat
+	else:
+		animated_sprite.modulate = overworld_tint
 	shadow_outline.modulate = Color(0.0, 0.0, 0.0, 0.55)
 
 func _physics_process(_delta: float) -> void:

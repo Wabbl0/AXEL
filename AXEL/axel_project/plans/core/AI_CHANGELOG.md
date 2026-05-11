@@ -1184,3 +1184,21 @@ Copy and fill:
   - `AXEL/axel_project/scripts/Player.gd` (overworld_tint export + _apply_overworld_tint)
   - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn` (ScanlineOverlay instance added)
 - Behavior impact: Camera movement no longer produces visible banding/grading artifacts. Player sprite renders white in all overworld scenes using the shared `Player.gd`. Old-TV grain is visible as a top-layer effect covering everything. Layer ordering: Noir(90) < LockerBypass(95) < Player(100) < Grain/Noise(105).
+
+## 2026-05-11 - Scene 1.1 Visibility Polish: White Player, Scale, Noise Reduction, Line Preservation
+
+- Request: Fix player still appearing red, increase player scale +20% in Scene 1.1, reduce noise overlay visibility to minimal, preserve thin black line art at 1152x648 viewport.
+- Implementation:
+  - **White player guarantee:** Created `scenes/fx/white_sprite.gdshader` (outputs pure white preserving alpha). `Player.gd` `_apply_overworld_tint()` now applies this shader to the animated sprite when `overworld_tint` is white, guaranteeing white rendering regardless of texture import cache state.
+  - **Player scale +20% (Scene 1.1 only):** Added `scale = Vector2(1.2, 1.2)` to the Player node in `1.1_SchoolExterior.tscn`. Scene 1.2 unchanged.
+  - **Minimal noise overlay:** Reduced `ScanlineOverlay.tscn` defaults: `blend_opacity` 0.7->0.22, `noise_intensity` 0.12->0.04, `scan_strength` 0.04->0.015, `vignette_strength` 0.18->0.1, `flicker_strength` 0.015->0.008. Effect now subtly present without limiting player visibility.
+  - **Noir line preservation at 1152x648:** Switched `noir_palette_filter.gdshader` screen_texture from `filter_linear` to `filter_nearest` to prevent interpolation-based line blurring during downscale. Added `line_contrast` uniform (default 1.4) that boosts luminance contrast before palette thresholding, keeping thin dark strokes firmly in the black band. Local tuning in `1.1_SchoolExterior.gd` updated: raised `t0` to 0.10, `line_contrast` to 1.5 for exterior background detail.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd` (white shader application in _apply_overworld_tint)
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn` (player scale 1.2)
+  - `AXEL/axel_project/scenes/fx/ScanlineOverlay.tscn` (reduced intensity defaults)
+  - `AXEL/axel_project/scenes/fx/noir_palette_filter.gdshader` (filter_nearest, line_contrast uniform)
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd` (updated local noir tuning with line_contrast)
+- New files:
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+- Behavior impact: Player renders guaranteed white in Scene 1.1 at +20% size. Noise overlay is now barely perceptible. Black ink lines in hand-drawn background survive the noir filter at lower viewport resolutions (1152x648) due to nearest-neighbor sampling and contrast pre-boost.

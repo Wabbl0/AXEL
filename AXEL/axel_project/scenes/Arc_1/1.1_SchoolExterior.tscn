@@ -119,6 +119,7 @@ follow_viewport_enabled = true
 unique_name_in_owner = true
 z_index = 20
 position = Vector2(73, 402)
+scale = Vector2(1.2, 1.2)
 script = ExtResource("2_elx0u")
 speed = 180.0
 sprite_sheet = ExtResource("3_p5syx")

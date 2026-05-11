@@ -4,7 +4,7 @@ This document defines the target folder taxonomy for `AXEL/axel_project` and the
 
 ## Goals
 
-- Keep runtime-facing files grouped by purpose (assets, scenes, scripts, data, tools).
+- Keep runtime-facing files grouped by purpose (assets, scenes, scripts, combat, tools).
 - Reduce root-level clutter and make ownership obvious.
 - Preserve backward compatibility while migrating in small, safe steps.
 
@@ -19,6 +19,7 @@ Use this structure for all new content:
   - `ui/` (UI-specific visual assets)
   - `fonts/`
   - `vfx/` (FX textures/shaders that are asset-centric)
+  - `data/` (runtime JSON/config tables, non-export source data)
 - `scenes/`
   - `Main_Menu/`
   - `Arc_1/` ... `Arc_7/`
@@ -31,7 +32,6 @@ Use this structure for all new content:
   - `ui/` (HUD/menu/panel controllers)
 - `combat/` (self-contained combat subsystem)
   - `scripts/`, `scenes/`, `art/`, `test/`
-- `data/` (runtime JSON/config tables, non-export source data)
 - `tools/` (local utility scripts and build helpers)
 - `plans/` (design and AI governance docs)
 - `exports/` (reference exports and migration assets)
@@ -62,6 +62,7 @@ Use this structure for all new content:
 - Commands centralized at repository `tools/cmd/`.
 - Debug logs centralized at repository `logs/debug/`.
 - Character sprites moved from `sprites/` to `assets/sprites/`.
+- Runtime data root moved from `data/` to `assets/data/` (non-breaking because root data was placeholder-only).
 
 ## Next Safe Migrations
 

@@ -22,11 +22,12 @@ func _apply_local_noir_tuning() -> void:
 	var shader_material := _noir_filter_rect.material as ShaderMaterial
 	if shader_material == null:
 		return
-	shader_material.set_shader_parameter("t0", 0.05)
-	shader_material.set_shader_parameter("t1", 0.22)
-	shader_material.set_shader_parameter("t2", 0.62)
-	shader_material.set_shader_parameter("dark_blood_color", Color(0.30, 0.0, 0.0, 1.0))
-	shader_material.set_shader_parameter("blood_red_color", Color(0.92, 0.0, 0.0, 1.0))
+	shader_material.set_shader_parameter("t0", 0.10)
+	shader_material.set_shader_parameter("t1", 0.28)
+	shader_material.set_shader_parameter("t2", 0.58)
+	shader_material.set_shader_parameter("line_contrast", 1.5)
+	shader_material.set_shader_parameter("dark_blood_color", Color(0.26, 0.0, 0.0, 1.0))
+	shader_material.set_shader_parameter("blood_red_color", Color(0.88, 0.0, 0.0, 1.0))
 	shader_material.set_shader_parameter("white_color", Color(0.0, 0.0, 0.0, 1.0))
 
 
