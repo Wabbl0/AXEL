@@ -1,12 +1,14 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Shader" path="res://scenes/fx/noir_palette_filter.gdshader" id="1_noir_shader"]
+[ext_resource type="Script" path="res://scenes/fx/noir_overlay_guard.gd" id="2_guard_script"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_noir"]
 shader = ExtResource("1_noir_shader")
 
 [node name="NoirPaletteOverlay" type="CanvasLayer"]
 layer = 90
+script = ExtResource("2_guard_script")
 
 [node name="FilterRect" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_noir")

@@ -1,6 +1,10 @@
 # GUILT Game - Godot Port Files
 
-This folder contains all the exported data and implementation guides for porting the GUILT narrative adventure game from HTML/JavaScript to Godot 4.x with GDScript.
+> **NOTE:** This is NOT the authoritative README for the AXEL project.
+> It is a legacy reference document bundled with original HTML-to-Godot export artifacts.
+> For current project structure and governance see `AXEL/axel_project/plans/core/AI_DOCS.md`.
+
+This folder contains exported data and migration references for porting the GUILT narrative adventure game from HTML/JavaScript to Godot 4.x with GDScript.
 
 ## Files
 
@@ -14,7 +18,8 @@ Complete game data export containing:
 
 **Usage**: Load this in Godot to populate your game without hardcoding content.
 
-### 2. **GODOT_IMPLEMENTATION_GUIDE.md**
+### 2. **GODOT_IMPLEMENTATION_GUIDE.md** (moved)
+Now lives at `AXEL/axel_project/plans/references/GODOT_IMPLEMENTATION_GUIDE.md`.
 Comprehensive documentation including:
 - Data structure breakdown
 - Game mechanics explanation
@@ -50,7 +55,10 @@ Production-ready GDScript template featuring:
    ├── exports/
    │   ├── game_data.json
    │   ├── GameManager.gd
-   │   └── GODOT_IMPLEMENTATION_GUIDE.md
+   │   └── screenshots/          ← dev screenshots
+   ├── plans/
+   │   └── references/
+   │       └── GODOT_IMPLEMENTATION_GUIDE.md
    ├── pictures/
    │   └── (all image assets)
    ├── scenes/

@@ -1069,3 +1069,118 @@ Copy and fill:
 - Behavior impact: No gameplay/canon/runtime changes. `.cursorignore` now correctly excludes the real capture folder. QA analytics generator preserves full trend history across archival. Debug log footprint in active workspace reduced by ~374 MB.
 - Verification: `.cursorignore` pattern matches actual `Moon Princess Files` folder. `AI_DOCS` references match on-disk naming. Bots README points to `plans/core/*`. Analytics generator `_collect_all_payloads()` scans both active log and archive directory.
 - Rollback: Restore old `.cursorignore` and `AI_DOCS` path references from git. Move archived debug logs back to `logs/debug/`. Revert analytics script `_collect_all_payloads()` to single-file `main()`. Remove `plans/qa/archive/` directory.
+
+## 2026-05-11 - Exports Cleanup Migration
+
+- Request: Reorganize exports folder — move implementation guide to plans, group screenshots into subfolder, add disclaimer to README_NOTREAL.md, verify Moon Princess Files governance alignment, convert Viral Forge PDFs to Markdown.
+- Implementation:
+  - Moved `exports/GODOT_IMPLEMENTATION_GUIDE.md` to `plans/references/GODOT_IMPLEMENTATION_GUIDE.md`.
+  - Created `exports/screenshots/` and moved 7 Screenshot PNGs + 7 matching `.png.import` files into it.
+  - Updated `exports/README_NOTREAL.md` with explicit "not the authoritative README" disclaimer, updated guide path, and reflected new screenshots subfolder in directory tree.
+  - Verified `AI_DOCS.md` §3 and §4 plus `.cursorignore` already reference `Moon Princess Files` (no stale `moon_princess_files` paths in governance).
+  - Converted all 12 Viral Forge PDFs to clean Markdown files (one-to-one, same basenames) preserving all factual content with proper heading/table/list formatting. Deleted original PDFs per user preference.
+- Files changed:
+  - `AXEL/axel_project/plans/references/GODOT_IMPLEMENTATION_GUIDE.md` (moved from exports)
+  - `AXEL/axel_project/exports/screenshots/Screenshot 2026-04-28 14*.png` (7 files moved)
+  - `AXEL/axel_project/exports/screenshots/Screenshot 2026-04-28 14*.png.import` (7 files moved)
+  - `AXEL/axel_project/exports/README_NOTREAL.md` (updated)
+  - `AXEL/axel_project/exports/Viral Forge/*.md` (12 new files created)
+  - `AXEL/axel_project/exports/Viral Forge/*.pdf` (12 files deleted)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay/canon/runtime changes. File organization only. Viral Forge content now indexable/searchable as Markdown.
+- Verification: Confirmed no root-level Screenshot files remain in exports. Confirmed GODOT_IMPLEMENTATION_GUIDE.md exists only under plans/references. Confirmed Viral Forge contains 12 .md files and 0 .pdf files. Confirmed AI_DOCS.md and .cursorignore use `Moon Princess Files` path consistently.
+- Notes: User explicitly chose to keep `Moon Princess Files` (with spaces) as the canonical folder name rather than normalizing to `moon_princess_files`. This is a deliberate override of the snake_case convention in README_STRUCTURE.md; governance docs already reflect this choice from a prior session.
+
+## 2026-05-11 - Separate collision debug: editor-only colors, no runtime overlay
+
+- Request: Collision outlines should be visible only in the 2D editor viewport, not when running the scene. The previous `PlaytestCollisionDebug` autoload drew cyan outlines at runtime which cluttered gameplay.
+- Implementation:
+  - Removed `PlaytestCollisionDebug` autoload from `project.godot` so the runtime overlay no longer loads.
+  - Added `[debug]` section to `project.godot` with `shapes/collision/shape_color = Color(0.0, 0.92, 0.95, 0.42)` (bright cyan), `contact_color = Color(0.0, 1.0, 0.5, 0.8)` (green), and `draw_2d_outlines = true`. These control the 2D editor viewport display only; they do not render at runtime unless Debug > Visible Collision Shapes is manually enabled.
+  - Updated `AI_DOCS.md` §8 to reflect editor-only colors replacing the runtime autoload.
+  - Rewrote `PLAYTEST_DEBUG_COLLISIONS.md` to document the new project-settings approach and note the legacy scripts as disabled.
+- Files changed:
+  - `AXEL/axel_project/project.godot` (autoload removed, `[debug]` section added)
+  - `AXEL/axel_project/plans/core/AI_DOCS.md` (§8 bullet updated)
+  - `AXEL/axel_project/plans/core/PLAYTEST_DEBUG_COLLISIONS.md` (rewritten)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Running scenes no longer show any collision outlines. Editing scenes in the 2D viewport shows bright cyan collision shapes/outlines that contrast with the AXEL red/black/white palette. Debug scripts in `scripts/debug/` remain in repo but are dormant.
+- Verification: Structural check confirms autoload removed, no scene files or scripts depend on the singleton, project settings section is well-formed.
+- Notes: Legacy `playtest_collision_debug.gd` and `playtest_collision_debug_draw.gd` kept in repo for optional future re-enablement; re-add the autoload line to `project.godot` if runtime overlay is ever needed again.
+
+## 2026-05-11 - Noir shader bypass for collision debug colors
+
+- Request: Collision shapes still appeared red in the editor because the `NoirPaletteOverlay` screen-texture shader (layer 90) remaps all pixels to the AXEL 4-color palette, converting cyan debug shapes to blood red.
+- Implementation: Added a cool-hue bypass at the top of `noir_palette_filter.gdshader`. Any pixel where `min(G, B) - R > 0.04` passes through unmodified. Since the AXEL game palette is strictly warm (red/black/white), cool-colored pixels can only come from editor debug overlays.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/noir_palette_filter.gdshader`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Cyan collision shapes now display correctly in the 2D editor viewport instead of being palette-mapped to red. No visual change to game content at runtime since no game art produces cool-hued pixels.
+- Verification: Confirmed `locker_palette_filter.gdshader` and `highlighted_locker_palette_filter.gdshader` use `TEXTURE` (not `screen_texture`) and do not need the bypass.
+- Notes: Superseded by the runtime-only noir guard below — cool-hue bypass has been removed.
+
+## 2026-05-11 - Runtime-only noir overlay (fix editor whiteout)
+
+- Request: After the shader bypass was added, the entire editor viewport turned white except for lockers and the dialogue box — `hint_screen_texture` returns a white fallback in the Godot 2D editor, so the noir shader mapped nearly everything to the white band.
+- Root cause: `NoirPaletteOverlay` (`CanvasLayer` 90) uses a `screen_texture` post-process shader. In the editor viewport, `screen_texture` does not contain live scene content — it falls back to white. This pushes the luminance of every pixel above `t2 (0.72)`, mapping them to `white_color`. Lockers (layer 95) and dialogue (layer 110) are above the noir layer and render directly, which is why they appeared normal.
+- Implementation:
+  - Created `@tool` guard script `scenes/fx/noir_overlay_guard.gd` that sets `visible = false` when `Engine.is_editor_hint()` is true, disabling the entire noir `CanvasLayer` in the editor while keeping it active at runtime.
+  - Attached the guard script to the `NoirPaletteOverlay` root node in `NoirPaletteOverlay.tscn` (load_steps bumped to 4, ext_resource added, `script` property set).
+  - Removed the temporary cool-hue bypass from `noir_palette_filter.gdshader`, restoring it to the original clean 4-band palette mapping. The bypass is no longer needed since the overlay is invisible in the editor.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/noir_overlay_guard.gd` (new)
+  - `AXEL/axel_project/scenes/fx/NoirPaletteOverlay.tscn` (script attached)
+  - `AXEL/axel_project/scenes/fx/noir_palette_filter.gdshader` (bypass removed)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Editor viewport shows raw scene content with cyan collision helpers. Runtime playtest retains full noir post-processing. No gameplay, layering, or scene logic changes.
+- Verification: Both instancing scenes (`1.1_SchoolExterior`, `1.2_Corridor`) use the overlay as PackedScene instance without script overrides — the guard applies automatically. `1.2_Corridor.gd` only accesses noir at runtime (not `@tool`), so no conflict.
+
+## 2026-05-11 - Scene 1.1 Background Swap (Drawing Replaces Placeholder Visuals)
+
+- Request: Replace all legacy placeholder/tilemap background visuals in Scene `1.1` with a single hand-drawn background image (`exports/Drawings/1.1_SchoolExterior.png`), preserving all gameplay logic, collisions, and interaction systems.
+- Implementation: Rewrote `1.1_SchoolExterior.tscn` to replace the old visual stack with one `Sprite2D` node (`Background_1_1`, `z_index = -100`, `centered = false`) backed by the new drawing texture. Removed visual-only nodes: `Floor` (Polygon2D), three environment placeholder polygons (`1.1_School_Building_Exterior_01`, `1.1_School_Building_Doors_01`, `1.1_School_Door_Boundary_01`), `Background_Plants` (TileMapLayer), `Background_Road` (TileMapLayer). Removed orphaned ext_resources (6 plant textures, 2 road textures) and all TileSetAtlasSource/TileSet sub_resources. Preserved all gameplay nodes: wall StaticBody2D boundaries, door collision body, door interact Area2D, NoirPaletteOverlay, PlayerLayer + Player, TopDialogueOverlay.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- New files:
+  - `AXEL/axel_project/plans/scenes/SCENE_BACKGROUND_SWAP_CHECKLIST.md` — reusable per-scene checklist for future drawing-to-scene background replacements.
+- Behavior impact: Scene `1.1` now displays the hand-drawn background instead of colored Polygon2D placeholders and tiled plant/road layers. All gameplay behavior unchanged: intro dialogue sequence, player movement, door interaction + corridor transition, noir overlay, wall boundaries.
+- Preserved gameplay systems: `1.1_SchoolExterior.gd` unmodified; all three script node paths (`$TopDialogueOverlay`, `$PlayerLayer/Player`, `1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea`) still resolve to existing nodes with original unique_ids.
+- Verification: Cross-checked all `@onready`/`get_node()` paths in scene script against updated node tree; confirmed z-order layering (background at -100, collisions unaffected, player on CanvasLayer 100, overlays above).
+- Notes: Collision/trigger geometry retained as-is for this pass (visual-only scope). Future passes can rework collision shapes to match drawn geometry. Reusable checklist established at `plans/scenes/SCENE_BACKGROUND_SWAP_CHECKLIST.md` for repeating this workflow on other scenes.
+
+## 2026-05-11 - Scene 1.1 Upgrade: Camera, Colliders, Noir Tuning, Scanline, Style Options
+
+- Request: Implement vertical camera follow, freeform collision polygon scaffolding, noir tuning for new background, full-scene scanline/terminal overlay, and document external visual style alternatives.
+- Implementation:
+  - **Vertical camera follow:** Created `scenes/Arc_1/camera_follow_vertical.gd` (exports: `target_path`, `fixed_x`, `vertical_smoothing`). Added `Camera2D` node to scene root targeting `PlayerLayer/Player`. Horizontal position locked at 640; vertical follows player Y with exponential smoothing. Limits set to background extents (top=-300, bottom=870) to prevent void.
+  - **Collision polygon scaffolding:** Added `EnvironmentColliders` parent node with 5 named `StaticBody2D` children (`TreeLine_Left`, `TreeLine_Right`, `Rocks_Left`, `Rocks_Right`, `Building_Front`), each with empty `CollisionPolygon2D` ready for manual polygon drawing in the editor.
+  - **Noir retuning:** Enabled `NoirPaletteOverlay` (was `visible=false`). Added `_USE_LOCAL_NOIR_TUNING` const and `_apply_local_noir_tuning()` to `1.1_SchoolExterior.gd` — adjusts thresholds (t0=0.05, t1=0.22, t2=0.62) and slightly muted palette for better exterior detail retention.
+  - **Scanline overlay:** Created `scenes/fx/overworld_scanline.gdshader` (SCREEN_UV-based scanlines with vignette, noise, and chroma aberration) and `scenes/fx/ScanlineOverlay.tscn` (CanvasLayer 92, above noir at 90). Instanced in Scene 1.1. Default: subtle (12% strength, 320 density, low chroma/noise).
+  - **Style alternatives doc:** Created `plans/references/VISUAL_STYLE_OPTIONS.md` covering 5 external options (CRT plugin, GodotRetro VHS/Glitch, palette+dither shaders, CRT Display, CRT Luminance) with comparison matrix and fit assessment.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn` (camera, colliders, scanline instance, noir enabled)
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd` (noir tuning added)
+- New files:
+  - `AXEL/axel_project/scenes/Arc_1/camera_follow_vertical.gd`
+  - `AXEL/axel_project/scenes/fx/overworld_scanline.gdshader`
+  - `AXEL/axel_project/scenes/fx/ScanlineOverlay.tscn`
+  - `AXEL/axel_project/plans/references/VISUAL_STYLE_OPTIONS.md`
+- Behavior impact: Scene 1.1 now scrolls vertically with the player, applies local noir tuning for exterior readability, and renders a subtle scanline/terminal effect over everything. Collision polygon nodes are scaffolded but have empty polygons (user draws in editor). Door interaction and transition logic unchanged.
+- Manual steps remaining: Draw collision polygon points in the editor for `TreeLine_Left/Right`, `Rocks_Left/Right`, `Building_Front`. Adjust wall boundaries if player should traverse the full vertical extent of the new background.
+
+## 2026-05-11 - Overworld: White Player, Stabilized TV Noise Overlay, Layer Fix
+
+- Request: Fix scanline grading artifact during camera movement, make player character render white across overworld scenes, add stronger top-layer old-TV grain/noise effect.
+- Root cause of grading artifact: Hard `step()` scanline pattern combined with chroma oscillation (`sin(SCREEN_UV.y * 900)`) created moire-like interference against the shifting scene content during camera movement.
+- Implementation:
+  - **Shader rewrite:** Replaced `overworld_scanline.gdshader` with a cleaner TV static grain pass. Removed hard `step()` scanlines and chroma oscillation. New effect uses high-frequency hash-based white noise (time-quantized for analog grain feel), soft sine scanlines, vignette, and global brightness flicker. Exposed uniforms: `noise_intensity`, `noise_speed`, `scan_strength`, `scan_density`, `blend_opacity`, `vignette_strength`, `flicker_strength`.
+  - **Layer raise:** Moved `ScanlineOverlay.tscn` from CanvasLayer 92 to 105, placing it above PlayerLayer (100) and LockerBypassLayer (95) so the grain/noise covers the entire rendered image.
+  - **White player:** Added `@export var overworld_tint: Color` to `Player.gd` (default white). `_apply_overworld_tint()` applies the tint to `animated_sprite.modulate` after sprite setup. Shadow outline explicitly kept at black with 0.55 alpha for silhouette contrast.
+  - **Scene wiring:** Added `ScanlineOverlay` instance to `1.2_Corridor.tscn` (already present in 1.1). Both Arc 1 overworld scenes now share the reusable overlay.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/overworld_scanline.gdshader` (full rewrite)
+  - `AXEL/axel_project/scenes/fx/ScanlineOverlay.tscn` (uniforms updated, layer raised to 105)
+  - `AXEL/axel_project/scripts/Player.gd` (overworld_tint export + _apply_overworld_tint)
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn` (ScanlineOverlay instance added)
+- Behavior impact: Camera movement no longer produces visible banding/grading artifacts. Player sprite renders white in all overworld scenes using the shared `Player.gd`. Old-TV grain is visible as a top-layer effect covering everything. Layer ordering: Noir(90) < LockerBypass(95) < Player(100) < Grain/Noise(105).

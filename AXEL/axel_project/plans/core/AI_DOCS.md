@@ -103,7 +103,7 @@ Keep these narrative anchors coherent across edits:
   - story flags/memories/endings
   - combat goals/economy
   - style/thematic presentation
-- **Playtest collision overlay:** cyan/teal outlines for invisible 2D collision helpers (`PlaytestCollisionDebug` autoload) are a **debug-only readability exception** to the AXEL palette; ships only under `OS.is_debug_build()`. See `AXEL/axel_project/plans/core/PLAYTEST_DEBUG_COLLISIONS.md`.
+- **Editor collision colors:** cyan/teal fill and outlines for 2D collision shapes via `debug/shapes/collision/` project settings — visible in the editor viewport only, invisible at runtime unless Debug > Visible Collision Shapes is manually toggled. This is a readability exception to the AXEL palette. Legacy runtime overlay scripts remain in `scripts/debug/` but the autoload is disabled. See `AXEL/axel_project/plans/core/PLAYTEST_DEBUG_COLLISIONS.md`.
 
 ## 9) Agent Workflow Requirements
 

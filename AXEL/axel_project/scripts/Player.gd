@@ -17,6 +17,7 @@ const _MIKE_FRAME_INDICES := {
 const _MIKE_FRAME_COUNT := 13
 
 @export var speed: float = 220.0
+@export var overworld_tint: Color = Color(1.0, 1.0, 1.0, 1.0)
 ## When empty, tries common paths under res://assets/sprites/ (including mike walking exports).
 @export var sprite_sheet: Texture2D
 ## AUTO: wide strip if width divisible by 13; else if width and height divisible by sheet_columns / sheet_rows, use GRID.
@@ -48,6 +49,7 @@ func _ready() -> void:
 		_setup_shadow_outline()
 		fallback_body.visible = false
 		animated_sprite.visible = true
+		_apply_overworld_tint()
 	else:
 		fallback_body.visible = true
 		animated_sprite.visible = false
@@ -137,6 +139,11 @@ func _setup_shadow_outline() -> void:
 	shadow_outline.frame = animated_sprite.frame
 	shadow_outline.frame_progress = animated_sprite.frame_progress
 	shadow_outline.play(animated_sprite.animation)
+
+
+func _apply_overworld_tint() -> void:
+	animated_sprite.modulate = overworld_tint
+	shadow_outline.modulate = Color(0.0, 0.0, 0.0, 0.55)
 
 func _physics_process(_delta: float) -> void:
 	var direction := Vector2.ZERO

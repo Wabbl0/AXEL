@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/fx/NoirPaletteOverlay.tscn" id="8_noir_overlay"]
 [ext_resource type="Shader" uid="uid://cbex5l0q04sc" path="res://scenes/fx/locker_palette_filter.gdshader" id="9_locker_shader"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
+[ext_resource type="PackedScene" path="res://scenes/fx/ScanlineOverlay.tscn" id="11_scanline_overlay"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_locker_local"]
 shader = ExtResource("9_locker_shader")
@@ -214,6 +215,7 @@ position = Vector2(640, 360)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockerColliders/UpperWallBlock" unique_id=1200780002]
 position = Vector2(0, -125)
 shape = SubResource("RectangleShape2D_upper_block")
+debug_color = Color(0.49424207, 0.87887543, 0.9511325, 0.41960785)
 
 [node name="GraffitiLayer" type="Node2D" parent="." unique_id=60741870]
 z_index = 4
@@ -309,3 +311,5 @@ scale = Vector2(1.12, 1.12)
 transform = Transform2D(1.12, 0, 0, 1.12, 0, 0)
 
 [node name="TopDialogueOverlay" parent="." unique_id=529892493 instance=ExtResource("10_top_dialogue")]
+
+[node name="ScanlineOverlay" parent="." instance=ExtResource("11_scanline_overlay")]

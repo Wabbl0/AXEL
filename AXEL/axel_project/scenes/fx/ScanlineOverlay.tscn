@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://scenes/fx/overworld_scanline.gdshader" id="1_scanline_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_scanline"]
+shader = ExtResource("1_scanline_shader")
+shader_parameter/noise_intensity = 0.12
+shader_parameter/noise_speed = 8.0
+shader_parameter/scan_strength = 0.04
+shader_parameter/scan_density = 300.0
+shader_parameter/blend_opacity = 0.7
+shader_parameter/vignette_strength = 0.18
+shader_parameter/flicker_strength = 0.015
+
+[node name="ScanlineOverlay" type="CanvasLayer"]
+layer = 105
+
+[node name="ScanlineRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_scanline")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)

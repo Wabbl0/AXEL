@@ -1,20 +1,21 @@
-# Playtest collision debug overlay
+# Editor collision debug colors
 
-Runtime-only helper kept **out of AXEL palette** so collision / interact geometry is readable while playtesting.
+Editor-only collision shape colors kept **out of AXEL palette** so collision geometry is readable during scene editing without appearing at runtime.
 
-## What it does
+## How it works
 
-Autoload **`PlaytestCollisionDebug`** scans the scene tree for `CollisionShape2D` and `CollisionPolygon2D` and draws neon **cyan/teal** outlines (`outline_color`) on **`CanvasLayer` 2000** so overlays sit above typical gameplay layers (`PlayerLayer` uses 100).
+Project Settings under `debug/shapes/collision/` control the fill color and outline of `CollisionShape2D` and `CollisionPolygon2D` nodes **in the 2D editor viewport**. These shapes are invisible at runtime by default — they only appear during gameplay if you explicitly enable **Debug > Visible Collision Shapes** from the editor menu bar (off by default).
 
-- **Runs only when** `OS.is_debug_build()` is true (editor / debug builds). Exported release builds disable the overlay in `_ready()`.
-- **Toggle:** **`F7`** — show/hide outlines without restarting.
+Current settings (`project.godot`):
 
-## Changing color or width
+- `shape_color` = `Color(0.0, 0.92, 0.95, 0.42)` — bright cyan, stands out against AXEL red/black/white palette.
+- `contact_color` = `Color(0.0, 1.0, 0.5, 0.8)` — green for physics contacts.
+- `draw_2d_outlines` = `true` — draws a solid outline around each collision shape.
 
-Inspect the singleton in Remote scene tree (`/root/PlaytestCollisionDebug`) or edit `@export`:
+## Changing colors
 
-- [`scripts/debug/playtest_collision_debug.gd`](../scripts/debug/playtest_collision_debug.gd) — `outline_color`, `line_width`, `debug_canvas_layer`
+Edit values under **Project > Project Settings > Debug > Shapes > Collision** in the Godot editor, or directly in `project.godot` under `[debug]`.
 
-## Engine collision debug vs this overlay
+## Legacy runtime overlay (disabled)
 
-Project View menu **Visible collision shapes** can still tint built-in diagnostics; this overlay is independent and intentionally uses cyan so it stays distinct from red/black/white gameplay.
+The previous `PlaytestCollisionDebug` autoload (`scripts/debug/playtest_collision_debug.gd`) drew cyan outlines at runtime during debug builds. This was removed from the autoload list because it cluttered the running game view. The scripts remain in the repo at `scripts/debug/` for optional re-enablement but are inactive by default.

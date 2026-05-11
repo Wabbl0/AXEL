@@ -3,15 +3,31 @@ extends Node2D
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
 @onready var _door_interact_area: Area2D = get_node("1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea")
+@onready var _noir_filter_rect: ColorRect = $NoirPaletteOverlay/FilterRect
 
 const _NEXT_SCENE_PATH := "res://scenes/Arc_1/1.2_Corridor.tscn"
+const _USE_LOCAL_NOIR_TUNING := true
 
 var _is_transitioning := false
 
 
 func _ready() -> void:
 	set_process_unhandled_input(true)
+	if _USE_LOCAL_NOIR_TUNING:
+		_apply_local_noir_tuning()
 	_run_intro_dialogue()
+
+
+func _apply_local_noir_tuning() -> void:
+	var shader_material := _noir_filter_rect.material as ShaderMaterial
+	if shader_material == null:
+		return
+	shader_material.set_shader_parameter("t0", 0.05)
+	shader_material.set_shader_parameter("t1", 0.22)
+	shader_material.set_shader_parameter("t2", 0.62)
+	shader_material.set_shader_parameter("dark_blood_color", Color(0.30, 0.0, 0.0, 1.0))
+	shader_material.set_shader_parameter("blood_red_color", Color(0.92, 0.0, 0.0, 1.0))
+	shader_material.set_shader_parameter("white_color", Color(0.0, 0.0, 0.0, 1.0))
 
 
 func _run_intro_dialogue() -> void:
