@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://c7wake2sd6m4d"]
+[gd_scene load_steps=12 format=3 uid="uid://c7wake2sd6m4d"]
 
 [ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
@@ -89,6 +89,7 @@ corner_radius_top_left = 14
 corner_radius_top_right = 14
 corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.6)
 shadow_size = 12
 
 [node name="CombatTest" type="Control" unique_id=161757197]
@@ -101,7 +102,7 @@ grow_vertical = 2
 theme = ExtResource("3_theme")
 script = ExtResource("1_combat_test")
 
-[node name="BlackBackground" type="ColorRect" parent="." unique_id=232267701]
+[node name="BlackBackground" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -114,9 +115,9 @@ color = Color(0, 0, 0, 1)
 unique_name_in_owner = true
 position = Vector2(482, 260)
 
-[node name="TopCenterInfo" type="VBoxContainer" parent="." unique_id=1946100084]
+[node name="TopCenterInfo" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 5
+anchors_preset = 10
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -220.0
@@ -127,11 +128,11 @@ grow_horizontal = 2
 theme_override_constants/separation = 2
 alignment = 1
 
-[node name="BankrollLabel" type="Label" parent="TopCenterInfo" unique_id=1441860414]
+[node name="BankrollLabel" type="Label" parent="TopCenterInfo"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "BANKROLL  10000.00"
 horizontal_alignment = 1
+text = "BANKROLL  10000.00"
 
 [node name="BetRow" type="HBoxContainer" parent="TopCenterInfo" unique_id=458772786]
 layout_mode = 2
@@ -155,7 +156,7 @@ custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
 text = "+"
 
-[node name="GoalLabel" type="Label" parent="." unique_id=430077137]
+[node name="GoalLabel" type="Label" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 1
@@ -166,10 +167,10 @@ offset_top = 16.0
 offset_right = -14.0
 offset_bottom = 54.0
 grow_horizontal = 0
-text = "0 / 0"
 horizontal_alignment = 2
+text = "0 / 0"
 
-[node name="TopLeftSeed" type="HBoxContainer" parent="." unique_id=1292551424]
+[node name="TopLeftSeed" type="HBoxContainer" parent="."]
 layout_mode = 1
 offset_left = 12.0
 offset_top = 12.0
@@ -188,7 +189,7 @@ size_flags_horizontal = 3
 max_value = 4294967295.0
 value = 12345.0
 
-[node name="RightMeterStack" type="VBoxContainer" parent="." unique_id=131385751]
+[node name="RightMeterStack" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -201,35 +202,33 @@ grow_horizontal = 0
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="PremiumMeterCircle" type="Control" parent="RightMeterStack" unique_id=856376828]
+[node name="PremiumMeterCircle" type="Control" parent="RightMeterStack"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 size_flags_horizontal = 4
 script = ExtResource("4_meter")
 
-[node name="MeterSpacer" type="Control" parent="RightMeterStack" unique_id=2008182920]
-custom_minimum_size = Vector2(0, 16)
+[node name="MeterSpacer" type="Control" parent="RightMeterStack"]
 layout_mode = 2
+custom_minimum_size = Vector2(0, 16)
 
-[node name="MultiplierReadout" type="Label" parent="RightMeterStack" unique_id=300141295]
+[node name="MultiplierReadout" type="Label" parent="RightMeterStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "AMPLIFIER  1X"
 horizontal_alignment = 1
+text = "AMPLIFIER  1X"
 
 [node name="BudgetLabel" type="Label" parent="." unique_id=516365597]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
-anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 12.0
 offset_top = -34.0
 offset_right = 280.0
 offset_bottom = -8.0
-grow_horizontal = 2
 grow_vertical = 0
 theme_override_font_sizes/font_size = 20
 text = "SPIN LOG  0"
@@ -237,7 +236,7 @@ text = "SPIN LOG  0"
 [node name="SpinButton" type="Button" parent="." unique_id=1986715139]
 unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 7
+anchors_preset = 14
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
@@ -259,7 +258,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_spin_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_spin_disabled")
 text = "EXECUTE"
 
-[node name="ScanlineOverlay" type="ColorRect" parent="." unique_id=66713695]
+[node name="ScanlineOverlay" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_scanline")
 layout_mode = 1
 anchors_preset = 15
@@ -270,7 +269,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(1, 1, 1, 0.18)
 
-[node name="EncounterWinOverlay" type="Control" parent="." unique_id=1953737693]
+[node name="EncounterWinOverlay" type="Control" parent="."]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -279,8 +278,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 0
 
-[node name="EncounterWinDimmer" type="ColorRect" parent="EncounterWinOverlay" unique_id=2032393760]
+[node name="EncounterWinDimmer" type="ColorRect" parent="EncounterWinOverlay"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -290,7 +290,7 @@ grow_vertical = 2
 mouse_filter = 1
 color = Color(0, 0, 0, 0.72)
 
-[node name="EncounterWinPanel" type="Panel" parent="EncounterWinOverlay" unique_id=1277085146]
+[node name="EncounterWinPanel" type="Panel" parent="EncounterWinOverlay"]
 custom_minimum_size = Vector2(940, 300)
 layout_mode = 1
 anchors_preset = 8
@@ -304,10 +304,10 @@ offset_right = 470.0
 offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_encounter_win_panel")
+mouse_filter = 2
 
-[node name="EncounterWinLabel" type="Label" parent="EncounterWinOverlay/EncounterWinPanel" unique_id=1519464377]
+[node name="EncounterWinLabel" type="Label" parent="EncounterWinOverlay/EncounterWinPanel"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -319,11 +319,12 @@ theme_override_colors/font_color = Color(1, 0.93, 0.93, 1)
 theme_override_colors/font_outline_color = Color(1, 0.25, 0.25, 0.95)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 88
-text = "Encounter won!"
 horizontal_alignment = 1
 vertical_alignment = 1
+text = "Encounter won!"
+mouse_filter = 2
 
-[node name="SuperFSChoiceOverlay" type="Control" parent="." unique_id=11483691]
+[node name="SuperFSChoiceOverlay" type="Control" parent="."]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -332,8 +333,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 0
 
-[node name="SuperFSChoiceDimmer" type="ColorRect" parent="SuperFSChoiceOverlay" unique_id=1058443862]
+[node name="SuperFSChoiceDimmer" type="ColorRect" parent="SuperFSChoiceOverlay"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -343,7 +345,7 @@ grow_vertical = 2
 mouse_filter = 1
 color = Color(0, 0, 0, 0.74)
 
-[node name="SuperFSChoicePanel" type="Panel" parent="SuperFSChoiceOverlay" unique_id=1109254585]
+[node name="SuperFSChoicePanel" type="Panel" parent="SuperFSChoiceOverlay"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -356,10 +358,10 @@ offset_right = 430.0
 offset_bottom = 210.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_super_fs_choice_panel")
+mouse_filter = 2
 
-[node name="SuperFSChoiceVBox" type="VBoxContainer" parent="SuperFSChoiceOverlay/SuperFSChoicePanel" unique_id=1345960459]
+[node name="SuperFSChoiceVBox" type="VBoxContainer" parent="SuperFSChoiceOverlay/SuperFSChoicePanel"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -372,57 +374,45 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 14
 
-[node name="SuperFSChoiceTitle" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=1108547191]
+[node name="SuperFSChoiceTitle" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 44
-text = "Choose SUPER Free Spins Power"
 horizontal_alignment = 1
+text = "Choose SUPER Free Spins Power"
 
-[node name="SuperFSChoiceHint" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=428089608]
+[node name="SuperFSChoiceHint" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Fewer spins, higher potential"
 horizontal_alignment = 1
+text = "Fewer spins, higher potential"
 
-[node name="SuperFSChoiceButtons" type="HBoxContainer" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=975919897]
+[node name="SuperFSChoiceButtons" type="HBoxContainer" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="ChooseLoveButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1378230592]
+[node name="ChooseLoveButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
-text = "BLOODY HANDS
-LOVE POWER
+text = "BLOODY HANDS\nLOVE POWER\n\n4 SPINS\n+4 on meter fill"
 
-4 SPINS
-+4 on meter fill"
-
-[node name="ChooseStarButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1821044435]
+[node name="ChooseStarButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
-text = "ALCOHOL
-STAR POWER
+text = "ALCOHOL\nSTAR POWER\n\n5 SPINS\n+3 on meter fill"
 
-5 SPINS
-+3 on meter fill"
-
-[node name="ChooseStormButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=435294811]
+[node name="ChooseStormButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
-text = "CIGARETTES
-STORM POWER
-
-8 SPINS
-+2 on meter fill"
+text = "CIGARETTES\nSTORM POWER\n\n8 SPINS\n+2 on meter fill"
