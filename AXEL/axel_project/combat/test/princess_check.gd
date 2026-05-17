@@ -23,12 +23,17 @@ func _main() -> void:
 	await _assert_premium_meter_updates_on_wild_assisted_booze_line()
 	await _assert_paid_spin_resets_meter_before_next_spin()
 	await _assert_trinity_transition_completes_without_freeze()
+	await _assert_paid_spin_cascade_has_gravity_but_no_spawned_symbols()
 	await _assert_trinity_round_has_gravity_but_no_spawned_symbols()
+	await _assert_trinity_cascade_settles_floating_without_wins()
+	await _assert_begin_next_encounter_applies_seed()
 	await _assert_free_spins_does_not_refill_from_top()
-	await _assert_free_spins_spin_preserves_existing_grid()
+	await _assert_trinity_entry_repopulates_grid()
+	await _assert_super_fs_entry_repopulates_grid()
+	await _assert_super_fs_spin_does_not_repopulate_at_start()
 	await _assert_free_spins_non_wild_clear_counts_as_grid_clear()
 	await _assert_free_spins_forces_all_three_powers_once()
-	await _assert_goal_budget_win_or_fail()
+	await _assert_bankroll_empty_encounter_fail()
 	print("Princess check OK.")
 	quit(0)
 
@@ -421,6 +426,54 @@ func _assert_trinity_transition_completes_without_freeze() -> void:
 	await process_frame
 
 
+func _assert_paid_spin_cascade_has_gravity_but_no_spawned_symbols() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(2488)
+	_set_checkerboard_no_clusters(cr)
+	var a := _symbol_by_id(cr, &"sym_green_circle")
+	if a == null:
+		push_error("Missing symbol for paid-spin gravity/no-spawn test.")
+		quit(1)
+		return
+	# Seed one 3-line with empty cells below; after clear, gravity must run but no top spawns.
+	cr.grid.set_cell(Vector2i(0, 2), a)
+	cr.grid.set_cell(Vector2i(1, 2), a)
+	cr.grid.set_cell(Vector2i(2, 2), a)
+	for y in range(3, GridManagerScript.ROWS):
+		cr.grid.set_cell(Vector2i(0, y), null)
+		cr.grid.set_cell(Vector2i(1, y), null)
+		cr.grid.set_cell(Vector2i(2, y), null)
+	var fell_events := {"count": 0}
+	var spawn_events := {"count": 0}
+	cr.grid.symbols_fell.connect(func(_moves: Array) -> void:
+		fell_events["count"] = int(fell_events["count"]) + 1
+	)
+	cr.grid.symbols_spawned.connect(func(_spawns: Array) -> void:
+		spawn_events["count"] = int(spawn_events["count"]) + 1
+	)
+	cr._resolve_cascade_loop_sync()
+	if int(fell_events["count"]) <= 0:
+		push_error("Paid spin cascade should allow symbols to fall via gravity.")
+		quit(1)
+		return
+	if int(spawn_events["count"]) != 0:
+		push_error("Paid spin cascade should not spawn new symbols from the top.")
+		quit(1)
+		return
+	var empties_after := 0
+	for y in GridManagerScript.ROWS:
+		for x in GridManagerScript.COLS:
+			if cr.grid.get_cell(Vector2i(x, y)) == null:
+				empties_after += 1
+	if empties_after <= 0:
+		push_error("Paid spin cascade should leave empty cells after gravity-only settle.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
 func _assert_trinity_round_has_gravity_but_no_spawned_symbols() -> void:
 	var cr := _spawn_root()
 	await _await_combat_ready(cr)
@@ -456,14 +509,77 @@ func _assert_trinity_round_has_gravity_but_no_spawned_symbols() -> void:
 		quit(1)
 		return
 	if int(spawn_events["count"]) != 0:
-		push_error("Regular Free Spins (Trinity Run) should not spawn new symbols.")
+		push_error("Trinity Run cascade should not spawn new symbols from the top.")
 		quit(1)
 		return
 	cr.queue_free()
 	await process_frame
 
 
-func _assert_goal_budget_win_or_fail() -> void:
+func _assert_trinity_cascade_settles_floating_without_wins() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(7777)
+	_set_checkerboard_no_clusters(cr)
+	var lines: Array = LineDetectorScript.find_lines(cr.grid.cells)
+	if not lines.is_empty():
+		push_error("Trinity floating-symbol test setup should not contain winning lines.")
+		quit(1)
+		return
+	# Leave a symbol in row 0 and empty cells below so gravity must collapse it.
+	cr.grid.set_cell(Vector2i(0, 0), _symbol_by_id(cr, &"sym_green_circle"))
+	for y in range(1, GridManagerScript.ROWS):
+		cr.grid.set_cell(Vector2i(0, y), null)
+	if not cr._grid_has_floating_symbols():
+		push_error("Trinity floating-symbol test setup should contain floating symbols.")
+		quit(1)
+		return
+	var fell_events := {"count": 0}
+	var spawn_events := {"count": 0}
+	cr.grid.symbols_fell.connect(func(_moves: Array) -> void:
+		fell_events["count"] = int(fell_events["count"]) + 1
+	)
+	cr.grid.symbols_spawned.connect(func(_spawns: Array) -> void:
+		spawn_events["count"] = int(spawn_events["count"]) + 1
+	)
+	cr._resolve_trinity_cascade_loop_sync()
+	if int(fell_events["count"]) <= 0:
+		push_error("Trinity cascade should settle floating symbols even without winning lines.")
+		quit(1)
+		return
+	if int(spawn_events["count"]) != 0:
+		push_error("Trinity cascade gravity-only settle should not spawn symbols from the top.")
+		quit(1)
+		return
+	if cr._grid_has_floating_symbols():
+		push_error("Trinity cascade should leave no floating symbols after gravity settle.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_begin_next_encounter_applies_seed() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(100)
+	var grid_a := _snapshot_ids(cr)
+	cr.end_encounter(true)
+	cr.begin_next_playtest_encounter(200)
+	if cr.get_current_seed() != 200:
+		push_error("begin_next_playtest_encounter should apply the requested seed.")
+		quit(1)
+		return
+	var grid_b := _snapshot_ids(cr)
+	if grid_a == grid_b:
+		push_error("Different encounter seeds should produce different starting grids.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_bankroll_empty_encounter_fail() -> void:
 	var cr := _spawn_root()
 	await _await_combat_ready(cr)
 	var goal: Resource = load("res://combat/scripts/goal_payout_threshold.gd").new()
@@ -471,14 +587,13 @@ func _assert_goal_budget_win_or_fail() -> void:
 	goal.set("target_payout", 9999)
 	var enc: Resource = load("res://combat/scripts/encounter.gd").new()
 	enc.set("goal", goal)
-	enc.set("spin_budget", 1)
 	cr.encounter_def = enc
 	cr.setup_new_grid(2001)
-	_set_checkerboard_no_clusters(cr)
+	cr._bankroll_cents = 0
 	cr.girl_power_chance = 0.0
 	cr.spin_sync()
 	if not cr.is_encounter_complete():
-		push_error("Encounter should complete after hitting spin budget.")
+		push_error("Encounter should complete when bankroll cannot afford another paid spin.")
 		quit(1)
 		return
 	if cr.did_win_encounter():
@@ -533,27 +648,83 @@ func _assert_free_spins_does_not_refill_from_top() -> void:
 			if cr.grid.get_cell(Vector2i(x, y)) == null:
 				empties_after += 1
 	if empties_after <= 0:
-		push_error("Free Spins should not refill from top; expected empty cells after resolve.")
+		push_error("SUPER Free Spins cascade should not refill from top; expected empty cells after resolve.")
 		quit(1)
 		return
 	cr.queue_free()
 	await process_frame
 
 
-func _assert_free_spins_spin_preserves_existing_grid() -> void:
+func _assert_trinity_entry_repopulates_grid() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(3658)
+	_set_checkerboard_no_clusters(cr)
+	cr.girl_power_chance = 0.0
+	cr.meter.sections_filled = 3
+	for y in GridManagerScript.ROWS:
+		for x in GridManagerScript.COLS:
+			if (x + y) % 3 == 0:
+				cr.grid.set_cell(Vector2i(x, y), _symbol_by_id(cr, &"sym_green_circle"))
+	var before_trinity := _snapshot_ids(cr)
+	cr._run_trinity_round_sync()
+	var after_trinity := _snapshot_ids(cr)
+	if before_trinity == after_trinity:
+		push_error("Trinity entry should repopulate a fresh grid after meter-full handoff.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_super_fs_entry_repopulates_grid() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(3021)
+	_set_checkerboard_no_clusters(cr)
+	for y in GridManagerScript.ROWS:
+		for x in GridManagerScript.COLS:
+			cr.grid.set_cell(Vector2i(x, y), null)
+	var before_choice := _snapshot_ids(cr)
+	cr._pending_free_spins = true
+	cr._awaiting_free_spin_choice = true
+	cr._state = cr.State.FREE_SPINS_CHOOSE
+	cr.choose_free_spins_princess(&"star")
+	var after_choice := _snapshot_ids(cr)
+	if before_choice == after_choice:
+		push_error("Super Free Spins entry should repopulate a fresh grid after princess choice.")
+		quit(1)
+		return
+	var filled := 0
+	for id in after_choice:
+		if id != ".":
+			filled += 1
+	if filled < GridManagerScript.COLS * GridManagerScript.ROWS:
+		push_error("Super Free Spins entry repopulate should fill the full grid.")
+		quit(1)
+		return
+	if not cr.free_spins.active:
+		push_error("Super Free Spins should be active after princess choice.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_super_fs_spin_does_not_repopulate_at_start() -> void:
 	var cr := _spawn_root()
 	await _await_combat_ready(cr)
 	cr.setup_new_grid(3020)
 	_set_checkerboard_no_clusters(cr)
-	cr.free_spins.start_with_princess(&"love")
-	cr.free_spins.mark_power_used_once(&"love")
-	cr.free_spins.mark_power_used_once(&"star")
-	cr.free_spins.mark_power_used_once(&"storm")
+	cr._pending_free_spins = true
+	cr._awaiting_free_spin_choice = true
+	cr._state = cr.State.FREE_SPINS_CHOOSE
+	cr.choose_free_spins_princess(&"love")
 	var before := _snapshot_ids(cr)
-	cr.spin_sync()
+	cr._begin_spin_round()
 	var after := _snapshot_ids(cr)
 	if before != after:
-		push_error("Free Spins should not repopulate a fresh grid at spin start.")
+		push_error("Super Free Spins spin start should not repopulate; only handoff entry does.")
 		quit(1)
 		return
 	cr.queue_free()

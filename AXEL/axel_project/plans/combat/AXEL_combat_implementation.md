@@ -189,7 +189,7 @@ func spin() -> void:
             break
         produced_any_win = true
         await _resolve_lines(lines)         # removes winning cells, drops wilds only from 3-lines
-        await _apply_gravity_and_refill()   # cascade + spawn new symbols
+        await _apply_gravity_and_refill()   # gravity-only cascade (no top refill)
         cascade_drops += 1
         multiplier.add(1)                   # +1 per drop event
         await _item_hooks_post_cascade()
@@ -248,29 +248,15 @@ Pure-wild runs are valid and pay as wild (wild has explicit x3/x4/x5 pay values)
 
 ---
 
-## 5. Cascade + refill
+## 5. Cascade (gravity-only)
 
 1. Mark winning-line cells as `null`.
 2. For each column, pull non-null entries downward (gravity).
-3. Fill empties from the top using a weighted draw from the encounter's symbol weights.
+3. **Do not** fill empties from the top during a spin round. Mid-round resolution is depletion-only in all modes (normal, Trinity Run, SUPER Free Spins).
 
-Draw weights are a simple roulette:
+Initial spin setup still populates a fresh 5x5 via `grid.populate()` at paid-spin start and encounter setup. `GridManager.refill()` remains available for future item hooks but is not called from cascade resolution.
 
-```gdscript
-func _draw_symbol() -> SymbolDef:
-    var total := 0.0
-    for s in available_symbols:
-        total += _weight_for(s)
-    var pick = rng.randf() * total
-    var acc := 0.0
-    for s in available_symbols:
-        acc += _weight_for(s)
-        if pick <= acc:
-            return s
-    return available_symbols.back()
-```
-
-Item hooks like `Rotted notebook` peek at the *next N* draws by pre-computing and buffering them.
+Item hooks like `Rotted notebook` may later peek at buffered draws if a separate preview/refill feature is added; cascade resolution itself does not consume the drop queue.
 
 ---
 
@@ -340,9 +326,11 @@ Items can swap, amplify, or suppress these via hooks (see §9).
 - Meter caps at 3 sections.
 - When meter is full and the current cascade chain reaches a non-winning drop, enter one Trinity round:
   1. Save current active princess id.
-  2. Reset multiplier to x1.
-  3. On each non-winning drop, trigger Girl Power in fixed order Love -> Star -> Storm.
-  4. Exit after all three powers have triggered, restore saved active princess.
+  2. Play meter-full transition FX.
+  3. Repopulate a fresh 5×5 grid (same encounter RNG stream; no reseed).
+  4. Reset multiplier to x1.
+  5. On each non-winning drop, trigger Girl Power in fixed order Love -> Star -> Storm.
+  6. Exit after all three powers have triggered, restore saved active princess.
 - If grid clears during Trinity, transition to Free Spins (no instant clear-grid payout).
 
 ---
@@ -356,9 +344,10 @@ Create a dedicated `free_spins.gd` controller.
   - Love: 4 starting spins
   - Star: 5 starting spins
   - Storm: 8 starting spins
+- On princess choice: repopulate a fresh 5×5 grid (same encounter RNG stream; no reseed) before the first Super Free Spin.
 - During Free Spins:
   - chosen Girl Power triggers on every non-winning spin
-  - spin start does not repopulate a fresh 5x5 grid; each spin continues from the previous grid state
+  - spin start does not repopulate; each spin continues from the entry grid state and depletes it
   - cascade resolve is gravity-only (no top refill / no new symbol spawns)
   - free-spin depletion/clear checks are based on non-wild symbols; wild-only board states count as cleared
   - Trinity cannot trigger
@@ -460,7 +449,7 @@ Ship those before filling out the full table from design doc §6.
 
 Write headless tests (no scene tree) for:
 1. **Line detector** — canned grids with known row/column runs (x3/x4/x5), gap rejection, wild substitution, pure-wild runs, and cells participating in both horizontal and vertical wins.
-2. **Cascade** — column pull correctness and refill ordering.
+2. **Cascade** — column pull correctness; no top refill during cascade loops.
 3. **Wild placement** — 3-line spawns in middle cell only; no spawns for 4/5 lines; overlap-spawn dedupe.
 4. **Princess powers** — mocked grid before/after for Love, Star, Storm and rotation changes only on activation.
 5. **Trinity meter** — princess-line meter increments (x3/x4/x5), cap at 3, save/restore active princess behavior.
@@ -477,7 +466,7 @@ For visual iteration, keep `combat_test.tscn` bound to F5 with a dropdown to pic
 ## 13. Phased build order
 
 **Phase 1 — Silent grid (no theme, no polish).**
-Goal: spin, resolve line wins, cascade/refill, place wilds from 3-lines only, read multiplier-per-drop. No princesses, no goals, no items. Must be deterministic under a fixed seed.
+Goal: spin, resolve line wins, gravity-only cascade, place wilds from 3-lines only, read multiplier-per-drop. No princesses, no goals, no items. Must be deterministic under a fixed seed.
 
 **Phase 2a — Princess rotation (base game).**
 Add the three powers. Hook them to random Girl Power on non-winning spins. Verify rotation advances only after activation.

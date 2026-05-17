@@ -6,6 +6,22 @@
 [ext_resource type="Script" uid="uid://c0ok3xo41wror" path="res://combat/scripts/premium_meter_circle.gd" id="4_meter"]
 [ext_resource type="Shader" uid="uid://c0q3vq1cvevaa" path="res://combat/shaders/scanline_overlay.gdshader" id="5_scanline"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_box"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.06, 0, 0, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.03, 0.03, 0.95)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_normal"]
 bg_color = Color(0.14, 0, 0, 0.95)
 border_width_left = 2
@@ -91,7 +107,7 @@ corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
 shadow_size = 12
 
-[node name="CombatTest" type="Control" unique_id=161757197]
+[node name="CombatTest2" type="Control" unique_id=161757197]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -112,113 +128,154 @@ color = Color(0, 0, 0, 1)
 
 [node name="CombatRoot" parent="." unique_id=952603979 instance=ExtResource("2_combat_root")]
 unique_name_in_owner = true
-position = Vector2(482, 260)
+visible = false
 
-[node name="TopCenterInfo" type="VBoxContainer" parent="." unique_id=1946100084]
+[node name="TopBar" type="Control" parent="." unique_id=1946100084]
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -220.0
-offset_top = 12.0
-offset_right = 220.0
-offset_bottom = 150.0
+anchor_right = 1.0
+anchor_bottom = 0.15
 grow_horizontal = 2
-theme_override_constants/separation = 2
-alignment = 1
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="BankrollLabel" type="Label" parent="TopCenterInfo" unique_id=1441860414]
+[node name="MetaBox" type="PanelContainer" parent="TopBar" unique_id=1292551424]
 unique_name_in_owner = true
+layout_mode = 1
+offset_left = 24.0
+offset_top = 12.0
+offset_right = 264.0
+offset_bottom = 88.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_box")
+
+[node name="MetaContent" type="VBoxContainer" parent="TopBar/MetaBox" unique_id=493484402]
 layout_mode = 2
-text = "BANKROLL  10000.00"
+theme_override_constants/separation = 4
+
+[node name="MetaIconsRow" type="HBoxContainer" parent="TopBar/MetaBox/MetaContent" unique_id=458772786]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GearIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=733162889]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "⬡"
 horizontal_alignment = 1
 
-[node name="BetRow" type="HBoxContainer" parent="TopCenterInfo" unique_id=458772786]
+[node name="HomeIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=1366203816]
 layout_mode = 2
-theme_override_constants/separation = 2
-alignment = 1
+size_flags_horizontal = 0
+text = "⌂"
+horizontal_alignment = 1
 
-[node name="BetMinusButton" type="Button" parent="TopCenterInfo/BetRow" unique_id=733162889]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(34, 34)
+[node name="ThirdIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=1571091976]
 layout_mode = 2
-text = "-"
+size_flags_horizontal = 0
+text = "?"
+horizontal_alignment = 1
 
-[node name="BetLabel" type="Label" parent="TopCenterInfo/BetRow" unique_id=1366203816]
-unique_name_in_owner = true
+[node name="SeedRow" type="HBoxContainer" parent="TopBar/MetaBox/MetaContent" unique_id=306691761]
 layout_mode = 2
-text = "STAKE  1.00"
+theme_override_constants/separation = 4
 
-[node name="BetPlusButton" type="Button" parent="TopCenterInfo/BetRow" unique_id=1571091976]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(34, 34)
-layout_mode = 2
-text = "+"
-
-[node name="GoalLabel" type="Label" parent="." unique_id=430077137]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -262.0
-offset_top = 16.0
-offset_right = -14.0
-offset_bottom = 54.0
-grow_horizontal = 0
-text = "0 / 0"
-horizontal_alignment = 2
-
-[node name="TopLeftSeed" type="HBoxContainer" parent="." unique_id=1292551424]
-layout_mode = 1
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 362.0
-offset_bottom = 54.0
-theme_override_constants/separation = 6
-
-[node name="SeedLabel" type="Label" parent="TopLeftSeed" unique_id=493484402]
+[node name="SeedLabel" type="Label" parent="TopBar/MetaBox/MetaContent/SeedRow" unique_id=430077137]
 layout_mode = 2
 text = "SEED"
 
-[node name="SeedSpinBox" type="SpinBox" parent="TopLeftSeed" unique_id=306691761]
+[node name="SeedSpinBox" type="SpinBox" parent="TopBar/MetaBox/MetaContent/SeedRow" unique_id=516365597]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 4294967295.0
 value = 12345.0
 
-[node name="RightMeterStack" type="VBoxContainer" parent="." unique_id=131385751]
+[node name="BankrollLabel" type="Label" parent="TopBar" unique_id=1441860414]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -24.0
+offset_right = 120.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 36
+text = "100/100"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="GoalBox" type="PanelContainer" parent="TopBar" unique_id=131385751]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -200.0
-offset_top = 154.0
-offset_right = -14.0
-offset_bottom = 370.0
+offset_left = -264.0
+offset_top = 12.0
+offset_right = -24.0
+offset_bottom = 88.0
 grow_horizontal = 0
-theme_override_constants/separation = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_box")
+
+[node name="GoalLabel" type="Label" parent="TopBar/GoalBox" unique_id=300141295]
+unique_name_in_owner = true
+layout_mode = 2
+text = "GOAL
+0 / 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StakeSelector" type="HBoxContainer" parent="." unique_id=66713695]
+layout_mode = 0
+offset_right = 360.0
+offset_bottom = 48.0
+theme_override_constants/separation = 12
 alignment = 1
+
+[node name="BetRow" type="HBoxContainer" parent="StakeSelector" unique_id=1953737693]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="BetMinusButton" type="Button" parent="StakeSelector/BetRow" unique_id=2032393760]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+
+[node name="BetLabel" type="Label" parent="StakeSelector/BetRow" unique_id=1277085146]
+unique_name_in_owner = true
+layout_mode = 2
+text = "1"
+
+[node name="BetPlusButton" type="Button" parent="StakeSelector/BetRow" unique_id=1519464377]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "+"
+
+[node name="RightMeterStack" type="VBoxContainer" parent="." unique_id=133420764]
+visible = false
+layout_mode = 0
 
 [node name="PremiumMeterCircle" type="Control" parent="RightMeterStack" unique_id=856376828]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 120)
+visible = false
 layout_mode = 2
-size_flags_horizontal = 4
 script = ExtResource("4_meter")
 
-[node name="MeterSpacer" type="Control" parent="RightMeterStack" unique_id=2008182920]
-custom_minimum_size = Vector2(0, 16)
-layout_mode = 2
-
-[node name="MultiplierReadout" type="Label" parent="RightMeterStack" unique_id=300141295]
+[node name="MultiplierReadout" type="Label" parent="." unique_id=1004755644]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
-text = "AMPLIFIER  1X"
+text = "0"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="BudgetLabel" type="Label" parent="." unique_id=516365597]
+[node name="BudgetLabel" type="Label" parent="." unique_id=11483691]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 12
@@ -236,18 +293,11 @@ text = "SPIN LOG  0"
 
 [node name="SpinButton" type="Button" parent="." unique_id=1986715139]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -310.0
-offset_top = -96.0
-offset_right = 310.0
-offset_bottom = -10.0
-grow_horizontal = 2
-grow_vertical = 0
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(0, 72)
+size_flags_horizontal = 4
+size_flags_vertical = 4
 theme_override_colors/font_color = Color(1, 0.73, 0.73, 1)
 theme_override_colors/font_pressed_color = Color(0.02, 0, 0, 1)
 theme_override_colors/font_hover_color = Color(0.02, 0, 0, 1)
@@ -259,7 +309,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_spin_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_spin_disabled")
 text = "EXECUTE"
 
-[node name="ScanlineOverlay" type="ColorRect" parent="." unique_id=66713695]
+[node name="ScanlineOverlay" type="ColorRect" parent="." unique_id=636258756]
 material = SubResource("ShaderMaterial_scanline")
 layout_mode = 1
 anchors_preset = 15
@@ -270,7 +320,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(1, 1, 1, 0.18)
 
-[node name="EncounterWinOverlay" type="Control" parent="." unique_id=1953737693]
+[node name="EncounterWinOverlay" type="Control" parent="." unique_id=1271932688]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -280,7 +330,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="EncounterWinDimmer" type="ColorRect" parent="EncounterWinOverlay" unique_id=2032393760]
+[node name="EncounterWinDimmer" type="ColorRect" parent="EncounterWinOverlay" unique_id=1471573962]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -290,7 +340,7 @@ grow_vertical = 2
 mouse_filter = 1
 color = Color(0, 0, 0, 0.72)
 
-[node name="EncounterWinPanel" type="Panel" parent="EncounterWinOverlay" unique_id=1277085146]
+[node name="EncounterWinPanel" type="Panel" parent="EncounterWinOverlay" unique_id=793325258]
 custom_minimum_size = Vector2(940, 300)
 layout_mode = 1
 anchors_preset = 8
@@ -307,7 +357,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_encounter_win_panel")
 
-[node name="EncounterWinLabel" type="Label" parent="EncounterWinOverlay/EncounterWinPanel" unique_id=1519464377]
+[node name="EncounterWinLabel" type="Label" parent="EncounterWinOverlay/EncounterWinPanel" unique_id=44119311]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -323,7 +373,7 @@ text = "Encounter won!"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="SuperFSChoiceOverlay" type="Control" parent="." unique_id=11483691]
+[node name="SuperFSChoiceOverlay" type="Control" parent="." unique_id=434583410]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1

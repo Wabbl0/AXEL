@@ -23,9 +23,22 @@ var _visual_sections: float = 0.0:
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(120, 120)
+	if size.x < 1.0 or size.y < 1.0:
+		size = custom_minimum_size
 	set_process(true)
-	pivot_offset = custom_minimum_size * 0.5
+	resized.connect(_on_resized)
+	_sync_pivot()
 	_visual_sections = float(filled_sections)
+	queue_redraw()
+
+
+func _on_resized() -> void:
+	_sync_pivot()
+	queue_redraw()
+
+
+func _sync_pivot() -> void:
+	pivot_offset = size * 0.5
 
 
 func set_sections(value: int) -> void:

@@ -19,6 +19,7 @@ Combat is framed narratively as a dream/memory/intrusion space the protagonist f
 ## 2. Areas
 
 ### 2.1 Structure
+
 - The school is divided into **6 areas**.
 - Each area has its own **seed-locked item pool of approximately 10 items**.
 - Per run, **1–3 active items** are randomly drawn from that pool and physically placed inside the area.
@@ -27,15 +28,19 @@ Combat is framed narratively as a dream/memory/intrusion space the protagonist f
 - The player is **not told** how many items exist inside each area.
 
 ### 2.2 Area-specific item themes
+
 Each area's items share a mechanical theme tied to the room's narrative identity. Examples:
+
 - **Cafeteria** — items that increase the chance of specific symbols appearing on the grid.
 - **Teachers' Lounge** — items affecting multiplier, payout requirements, or bet amount.
 - Other areas (Backyard, Classroom, Basement, Corridor/Locker hub) — themes TBD, each distinct.
 
 ### 2.3 Rarity tiers
+
 Tiers, ascending: **Common → Uncommon → Rare → Epic** (exact names placeholder).
 
 Rules:
+
 - All items in a starting run begin at **Common**.
 - The moment a player picks up **at least 1 active item from an area** (mid-clear counts), all items in **not-yet-entered or not-yet-cleared areas** upgrade by one rarity tier. Visible if the player has previously previewed those areas.
 - When an area is **fully cleared** (all 1–3 active items collected), the same upgrade triggers — areas already upgraded once now upgrade again.
@@ -44,11 +49,13 @@ Rules:
 - A player **cannot stack 6 Rare items simultaneously**. Realistic ceiling is roughly 3 same-rarity items from larger areas, with the next area's items at Epic.
 
 ### 2.4 Difficulty scaling
+
 - Each area cleared raises the **base difficulty** of all subsequent encounters in the run. The player feels this directly in payout requirements and symbol weighting (handled in `../combat/AXEL_combat_design.md` §5).
 - This means there is no "skipping" difficulty by avoiding items — clearing areas is the difficulty driver, not item count alone.
 - The player can choose to skip individual items inside an area to enter encounters underequipped. This makes the run "much harder but not impossible" — explicitly **not the intended path**.
 
 ### 2.5 Re-entering areas
+
 - Areas can be re-entered freely.
 - Re-entering does not change which items spawn — items are seed-locked from the start of the run.
 - **Exception:** items sold to The Hole return to the area pool and may reappear on later visits to other areas.
@@ -61,10 +68,12 @@ Rules:
 Combat phase is triggered by specific actions in exploration. There is no fixed "encounter meter" exposed to the player; instead, encounters fire on discrete events plus a low passive step-chance.
 
 ### 3.1 Guaranteed triggers
+
 - **Picking up an item** — every active item pickup triggers an encounter immediately. The newly picked-up item **can be used in that encounter**.
 - **Picking up a passive item** — also triggers an encounter on pickup (passive item is equipped going into the fight).
 
 ### 3.2 Step-based random encounters
+
 - Each step has a small chance to trigger an encounter.
 - Starting chance: **0.1% per step**.
 - Endgame chance: **~1% per step** (after most areas cleared).
@@ -72,10 +81,12 @@ Combat phase is triggered by specific actions in exploration. There is no fixed 
 - Step-based encounters use the **same encounter pool** as item-pickup encounters (no separate "ambush" type) unless later design proves otherwise (Question 2).
 
 ### 3.3 Farming protection
+
 - Step-encounter chance has a soft cap; players cannot grind encounters past a certain point in the run.
 - Exact cap rule TBD (Question 3) — based either on total encounters fired, total steps taken, or a combined cooldown.
 
 ### 3.4 Memory pickup
+
 - Memories **do not trigger combat encounters**. Picking them up is free of immediate cost.
 - Memories instead carry a permanent payout-requirement penalty (§7.1).
 
@@ -84,11 +95,13 @@ Combat phase is triggered by specific actions in exploration. There is no fixed 
 ## 4. Items
 
 ### 4.1 Active items
+
 - Up to **6 active items** can be held in the locker at a time.
 - Active items modify combat at one or more of the hook points listed in `../combat/AXEL_combat_design.md` §6 (encounter start, spin start, cluster resolve, princess power, encounter end).
 - Active items can be sold in The Hole.
 
 ### 4.2 Passive items
+
 - **Always labeled "passive"** in the item description so players can identify them on sight.
 - **Cannot be sold.**
 - **Do not count toward the 6-item locker limit.**
@@ -98,15 +111,18 @@ Combat phase is triggered by specific actions in exploration. There is no fixed 
 - Offer small passive bonuses but their main role is **story progression and True Ending eligibility**.
 
 ### 4.3 Locker overflow handling
+
 - If the player picks up a 7th active item with a full locker:
   - The player is offered a **swap**: exchange an existing item for the new one.
   - On swap, the player gains **the sell value of the higher-rarity item** of the two as currency.
 - Overflow forces a Hole visit (§6.2).
 
 ### 4.4 Item reappearance
+
 - Sold items return to their original area's pool and may reappear in later areas via the random 1–3 draw.
 
 ### 4.5 Item example: reroll-multiplier
+
 A specific passive item: while equipped, every reroll ticket currently held in inventory grants **+0.1× to the spin multiplier**. This makes hoarding tickets a viable build axis (instead of always spending them).
 
 ---
@@ -114,16 +130,19 @@ A specific passive item: while equipped, every reroll ticket currently held in i
 ## 5. Currency (Bet / Smokes)
 
 ### 5.1 Default starting amount
+
 - Every run starts the player with **10 currency** (default starting bet).
 - Only **winnings carry over** between encounters and areas. There is no carry-over of base currency.
 
 ### 5.2 Spin / bet behavior
+
 - Bet is a fixed amount per spin in the encounter (constant within an encounter).
 - Items modify spin behavior — variety comes from items, not from manual bet adjustment mid-encounter.
 - Possible bet amounts per encounter: **0.1, 0.4, 1, 5** (and the default 10). Player chooses ante before the encounter starts.
 - Items can affect bet, payout, spin amount, and other parameters depending on the item.
 
 ### 5.3 Losing currency
+
 - Reaching 0 currency in an encounter = loss.
 - On loss: **full restart of the current run**, Slay the Spire style.
 - **Story progress (memories collected, dialogue seen) is preserved** across restarts so the player doesn't re-read dialogue.
@@ -131,6 +150,7 @@ A specific passive item: while equipped, every reroll ticket currently held in i
 - After one loss, the **True Ending becomes locked for that save file** (§9.1).
 
 ### 5.4 50/50 gamble
+
 - Voluntary at any safe moment (between encounters, in The Hole, etc. — exact location TBD, Question 4).
 - **Double-or-nothing** on surplus winnings only.
 - Repeatable — the player can chain 50/50s as many times as they want.
@@ -138,7 +158,9 @@ A specific passive item: while equipped, every reroll ticket currently held in i
 - Worked example: player has 10 base + 40 surplus = 50 total. Wins 50/50 → 10 base + 80 surplus = 90 total. Wins again → 10 + 160 = 170. Loses next 50/50 → drops to 10. The full surplus is wiped, base is preserved.
 
 ### 5.5 Spending overflow winnings
+
 Surplus currency above 10 can be spent on:
+
 - **Raising default starting bet** (e.g., 10 → 20). **Does not survive restarts.** Resets to 10 on death.
 - **Reroll tickets** (§6.4).
 - Other shop purchases (§6).
@@ -151,19 +173,23 @@ Pricing for these upgrades should be calculated against the system's RTP (§8).
 ## 6. The Hole (Shop)
 
 ### 6.1 Identity
+
 "The Hole" is the shop scene. It is the only place where the player can sell items, buy reroll tickets, and use overflow winnings on upgrades.
 
 ### 6.2 When The Hole is available
+
 - **Forced** when the player picks up a 7th item with a full locker (overflow).
 - **Optional** anytime the player is at the locker hub.
 
 ### 6.3 What The Hole sells / does
+
 - **Buys back unwanted items** from the player (sell value scales with rarity).
 - **Sells reroll tickets** (currency-priced, see Question 4 about pricing vs RTP).
 - **Sells default-bet upgrades** (10 → 20, etc., resets on death).
 - **Does not affect the combat encounter chance.** Visiting The Hole is not a safety valve to reset step-encounter risk.
 
 ### 6.4 Reroll tickets
+
 - Granted: **1 ticket per area** the player progresses through.
 - **Carry over across areas** — a ticket can be saved for a later area.
 - Used to **reroll the active 1–3 item draw inside a specific area**, hunting for synergy items in that area's pool of ~10.
@@ -175,16 +201,19 @@ Pricing for these upgrades should be calculated against the system's RTP (§8).
 ## 7. Memories
 
 ### 7.1 Mechanical effect
+
 - Each memory collected raises the **payout requirement of all subsequent encounters by approximately 5%**.
 - Effect is **forward-only** — a memory picked up does not retroactively raise the difficulty of an encounter the player is currently inside (encounters are atomic; memories cannot be picked up during one).
 - Memories are required for the True Ending (§9.1), so the player must accept this difficulty curse to qualify.
 
 ### 7.2 Communication
+
 - Memories are **clearly visible** in their areas as collectibles.
 - A **vague tutorial hint** plays the first time a memory is collected and on **every subsequent memory pickup**, in language like *"the memory of guilt weighs you down."*
 - The exact 5% number is never shown to the player.
 
 ### 7.3 No combat trigger
+
 - Memory pickup does **not** trigger an encounter. Pickup is the only "free" exploration action in the late game.
 
 ---
@@ -192,17 +221,20 @@ Pricing for these upgrades should be calculated against the system's RTP (§8).
 ## 8. RTP & Economy Tuning
 
 ### 8.1 RTP target
+
 - **Intentionally well below average online slot RTP** (real online slots are typically 95–97%; AXEL combat should sit lower — exact number TBD, Question 5).
 - Reasoning: items are the intended winning strategy. Bare runs (no items) are designed to be **almost impossible** but not strictly impossible.
 - Without items, base spin economics will bleed the player out within a few encounters.
 
 ### 8.2 What this implies for shop pricing
+
 - Reroll tickets, default-bet upgrades, and any other purchasable advantage must be priced against the low RTP so that:
   - A player who plays well and collects items can earn enough surplus to afford meaningful upgrades.
   - A player who plays without items cannot reach significant surplus.
 - Concrete numbers (cost of raising default bet 10→20, cost of one reroll ticket) are not yet set — must come from RTP simulation.
 
 ### 8.3 No mercy mechanic
+
 - No floor on losing streaks. No guaranteed cascade after dry spins. No minimum payout safety net.
 - A full wipeout (run → 0 currency → restart) is always on the table.
 - This is **the central tension of the game** — it justifies the value of items and the importance of synergy hunting.
@@ -212,17 +244,21 @@ Pricing for these upgrades should be calculated against the system's RTP (§8).
 ## 9. Endings
 
 ### 9.1 True Ending requirements
+
 All three required, no exceptions:
+
 1. **No deaths in the current run.** A single full-currency wipeout permanently locks True Ending for that save.
 2. **All memories collected** (raising final-encounter payout requirement substantially — see Question 6).
 3. **All correct passive items found and equipped** at the final encounter. The "correct" passive items are always findable in any seed (their location varies per seed but they always exist somewhere across the 6 areas).
 
 ### 9.2 Not guaranteed per seed
+
 - Even meeting the three conditions above, the True Ending is **not guaranteed.**
 - Combat RNG during the final encounter must also resolve favorably.
 - This is **intentional design** — the True Ending is meant to feel earned, including by luck.
 
 ### 9.3 Other endings
+
 - The five existing endings from the prototype (`../scenes/AXEL_SCENES_BLUEPRINT.md`) remain. Their integration with the loss/restart system is open (Question 7).
 
 ---
@@ -251,27 +287,20 @@ A typical run plays out as:
 These questions have not yet been answered and are required before full implementation. Numbered for direct reference.
 
 1. **Step-encounter chance curve shape.** The chance increases from 0.1% to ~1% per step as areas are cleared. Is this a smooth curve (interpolated each step), or does it jump in discrete tiers per area cleared (e.g., area 1 cleared = 0.25%, area 2 = 0.4%, etc.)? Affects implementation directly.
-
 2. **Step-encounter pool identity.** Are step-triggered encounters drawn from the same pool as item-triggered encounters, or is there a separate "ambush" type with different rules (shorter duration, different rewards, weaker enemies)? If the same pool, no extra design needed. If separate, ambush encounters need their own definition.
-
 3. **Step-encounter farming cap.** The chance is capped past a certain point so players can't grind encounters. Is the cap based on:
-   - Total encounters fired in the run?
-   - Total steps taken since the last encounter?
-   - A flat cooldown timer after each encounter?
-   - Combination?
-
+  - Total encounters fired in the run?
+  - Total steps taken since the last encounter?
+  - A flat cooldown timer after each encounter?
+  - Combination?
 4. **The reroll-ticket multiplier interaction (item from §4.5).** When a player spends a ticket mid-run for a reroll, the multiplier bonus drops by 0.1× immediately. Is this loss permanent for the ongoing encounter, or does picking up another ticket later restore the bonus? Also: does the ticket count check happen at encounter start (snapshot) or every spin (live)?
-
 5. **RTP target number.** "Much lower than average net casino slots" needs a concrete percentage to target during economy simulation. Suggested starting range: **75–85%**, but needs decision before tuning shop prices.
-
 6. **Total memory penalty across all 6 areas.** With ~5% payout requirement increase per memory and an unknown total memory count across the 6 areas, what is the ceiling? Has it been stress-tested whether a fully synergized item build can clear the final encounter at maximum penalty, or is the final fight intentionally out of reach without ideal RNG on top of items?
-
 7. **Persistent stat upgrades (future feature).** A future idea was floated: stat upgrades that persist between runs based on high single-run scores. This must be designed carefully because it interacts with:
-   - The True Ending's no-death requirement (could let players "buy" their way past difficulty).
-   - The intentionally low RTP (persistent upgrades risk inflating the economy).
-   - The Slay the Spire-style full restart.
+  - The True Ending's no-death requirement (could let players "buy" their way past difficulty).
+  - The intentionally low RTP (persistent upgrades risk inflating the economy).
+  - The Slay the Spire-style full restart.
    When this feature is implemented, it should not undermine the core run-restart loop or trivialize True Ending requirements.
-
 8. **Existing endings integration.** The five existing endings from `../scenes/AXEL_SCENES_BLUEPRINT.md` (Fear, Darkness, Wrong Answer, No Name, True) need explicit mapping to the new combat-loss / area-clear / memory-count system. For example: does losing a run still let you reach Ending 1 (Fear)? Or does the loss-restart loop replace the fear-based ending entirely? This needs reconciliation between exploration outcomes and combat outcomes.
 
 ---
@@ -299,6 +328,6 @@ To avoid future confusion in chats, reviews, and implementation notes, use these
 Gameplay rules tied to those names:
 
 - During **Regular Free Spins (Trinity Run)**, there should be **no cascading symbols** (no new symbol drops/refill behavior).
-- During **SUPER Free Spins**, cascading symbols **should** be allowed.
+- During **SUPER Free Spins**, there should be **no cascading symbols** (no new symbol drops BUT new grid after no more matches are done)
 
 If any doc or task says only "Free Spins" without qualifier, treat it as ambiguous and restate which mode is intended before implementation.

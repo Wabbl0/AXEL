@@ -277,3 +277,42 @@ Copy the template block, fill values, paste **below** the last entry.
 <!-- QA_ANALYTICS_JSON_BEGIN -->
 {"timestamp":"2026-05-11T18:25:00+03:00","run_title":"Post low-maintenance workflow fixes QA","mode":"playtest","scope":"Full combined run after workflow hygiene changes","trigger":"user request","scores":{"S":4,"N":4,"I":4,"E":3,"C":4,"R":4,"Total":3.85,"Band":"B"},"findings_count":{"blocker":0,"major":0,"minor":1,"nit":1},"by_category":{"STYLE":0,"LORE":0,"IMMERSION":0,"TENSION":0,"CLARITY":0,"COMBAT":0,"ARCH":0,"REGRESSION":0,"BUG":0,"TOOL":2},"playtest_commands":{"princess_check":"pass","determinism":"pass","rtp_audit":"captured","scene_smoke":"pass","bot_arc1_exterior":"pass","bot_dialogue_loop":"pass","item_balance_audit":"captured"},"bugs_or_regressions":["Pre-existing TileSetAtlasSource coord errors in SchoolExterior tilemap"],"rtp_snapshot":{"mean":0.79293,"ci95":[0.60944,0.97642],"target_band":[0.75,0.80],"target_position":"within","paid_hit_rate":0.417,"encounter_success_rate":0.00833,"trinity_entries":0},"item_balance":{"schema_version":1,"items_tested":2,"items_overpowered":[],"items_underpowered":[],"items_neutral":["C1_ash_reroll_token","L3_void_satchel"],"items_insufficient_data":[]},"item_metrics":[{"item_id":"C1_ash_reroll_token","label":"neutral","baseline_rtp":0.79293,"item_rtp":1.06928,"delta_rtp":0.27635,"delta_rtp_ci95":[-0.03199,0.58469],"baseline_hit_rate":0.417,"item_hit_rate":0.417,"delta_hit_rate":0.0,"baseline_encounter_success":0.01667,"item_encounter_success":0.03333,"delta_encounter_success":0.01667,"seeds_used":20},{"item_id":"L3_void_satchel","label":"neutral","baseline_rtp":0.79293,"item_rtp":0.79293,"delta_rtp":0.0,"delta_rtp_ci95":[-0.25949,0.25949],"baseline_hit_rate":0.417,"item_hit_rate":0.417,"delta_hit_rate":0.0,"baseline_encounter_success":0.01667,"item_encounter_success":0.01667,"delta_encounter_success":0.0,"seeds_used":20}]}
 <!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-17 — Combat seed / Trinity gravity fix QA
+
+- **Mode:** playtest
+- **Scope:** Post-fix QA for combat seed queue, HUD spin context, Trinity gravity-after-delete; full default command set + item audit + synergy smoke
+- **Trigger:** user request (`run qa`)
+- **Playtest commands:** princess_check=pass determinism=pass rtp_audit=captured scene_smoke=pass bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=captured item_synergy_smoke=pass
+- **Scores:** S=4 N=4 I=4 E=3 C=4 R=4 **Total=3.85** Band=B
+- **Findings count:** blocker=0 major=0 minor=2 nit=1
+- **By category:** STYLE=0 LORE=0 IMMERSION=0 TENSION=0 CLARITY=1 COMBAT=1 ARCH=0 REGRESSION=0 BUG=1 TOOL=0
+- **Recommendations (logged):**
+  - Guard or restore `NoirPaletteOverlay/FilterRect` in `1.1_SchoolExterior` to stop headless script errors on scene load
+  - Re-check baseline RTP (mean 0.8126) if economy tuning is in scope — currently above 75–80% target band
+  - Manual spot-check Trinity Storm collapse with symbol FX enabled in `combat_test.tscn`
+  - Append `AI_CHANGELOG.md` entry for 2026-05-17 combat fix if not already present
+- **Bug / regression notes:** New princess_check tests pass; determinism holds; pre-existing 1.1 noir overlay node path errors during smoke/bots (non-fatal)
+- **Trend vs previous run:** flat — Total=3.85; all gates pass; combat fix regressions not detected
+- **Link / notes:** Validates seed/gravity patch in `combat_test.gd`, `combat_root.gd`, `princess_check.gd`
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-17T13:10:00+03:00",
+  "run_title": "Combat seed / Trinity gravity fix QA",
+  "mode": "playtest",
+  "scope": "Post-fix QA for combat seed queue, HUD spin context, Trinity gravity-after-delete",
+  "trigger": "user request",
+  "scores": {"S": 4, "N": 4, "I": 4, "E": 3, "C": 4, "R": 4, "Total": 3.85, "Band": "B"},
+  "findings_count": {"blocker": 0, "major": 0, "minor": 2, "nit": 1},
+  "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 0, "TENSION": 0, "CLARITY": 1, "COMBAT": 1, "ARCH": 0, "REGRESSION": 0, "BUG": 1, "TOOL": 0},
+  "playtest_commands": {"princess_check": "pass", "determinism": "pass", "rtp_audit": "captured", "scene_smoke": "pass", "bot_arc1_exterior": "pass", "bot_dialogue_loop": "pass", "item_balance_audit": "captured", "item_synergy_smoke": "pass"},
+  "bugs_or_regressions": ["1.1_SchoolExterior NoirPaletteOverlay/FilterRect missing — script errors on load (pre-existing)"],
+  "rtp_snapshot": {"mean": 0.81259, "ci95": [0.62389, 1.00129], "target_band": [0.75, 0.80], "target_position": "above", "paid_hit_rate": 0.417, "encounter_success_rate": 0.00833, "trinity_entries": 0},
+  "item_balance": {"schema_version": 1, "items_tested": 2, "items_overpowered": [], "items_underpowered": [], "items_neutral": ["C1_ash_reroll_token", "L3_void_satchel"], "items_insufficient_data": []},
+  "item_metrics": [
+    {"item_id": "C1_ash_reroll_token", "label": "neutral", "baseline_rtp": 0.81259, "item_rtp": 1.09567, "delta_rtp": 0.28308, "delta_rtp_ci95": [-0.03396, 0.60012], "baseline_hit_rate": 0.417, "item_hit_rate": 0.417, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.03333, "delta_encounter_success": 0.01667, "seeds_used": 20},
+    {"item_id": "L3_void_satchel", "label": "neutral", "baseline_rtp": 0.81259, "item_rtp": 0.81259, "delta_rtp": 0.0, "delta_rtp_ci95": [-0.26686, 0.26686], "baseline_hit_rate": 0.417, "item_hit_rate": 0.417, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20}
+  ]
+}
+<!-- QA_ANALYTICS_JSON_END -->

@@ -54,9 +54,9 @@ func _run_baseline_no_item() -> Dictionary:
 				forced_choice_count += 1
 				trinity_entry_count += 1
 			var was_free_spin := cr.free_spins.active
-			var bankroll_before_cents := int(round(cr.get_bankroll() * 100.0))
+			var bankroll_before_cents := int(round(cr.get_bankroll()))
 			cr.spin_sync()
-			var bankroll_after_cents := int(round(cr.get_bankroll() * 100.0))
+			var bankroll_after_cents := int(round(cr.get_bankroll()))
 			var summary := cr.get_last_spin_summary()
 			var payout_cents := int(summary.get("payout", 0))
 			var line_payout_cents := int(summary.get("line_payout", 0))

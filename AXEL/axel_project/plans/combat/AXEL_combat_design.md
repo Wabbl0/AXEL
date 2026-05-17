@@ -38,16 +38,16 @@ Kept verbatim as the mechanical spine so we know what we're reskinning.
 
 - **Grid:** 5 columns × 5 rows.
 - **Win rule:** line pays — 3+ matching symbols connected horizontally or vertically in a single row/column, with no gaps. A symbol may contribute to one horizontal and one vertical win at the same time.
-- **Cascade:** winning symbols are removed, remaining symbols fall, and new symbols drop in from the top.
+- **Cascade:** winning symbols are removed and remaining symbols fall (gravity-only). No new symbols spawn from the top during a spin round (normal, Trinity Run, or SUPER Free Spins).
 - **Wild drop:** when a winning line of exactly 3 symbols resolves, a **wild** appears in the middle cell of that line. 4-symbol and 5-symbol wins do not create a wild.
 - **Multiplier:** starts at x1 and increases by +1 for each new drop (each cascade step). During Free Spins, the multiplier can grow up to **100×**.
 - **Three princesses (rotating):** exactly one princess is active on-screen. Girl Power triggers at random on non-winning spins. The active princess changes only after a Girl Power activation, in fixed order **Love → Star → Storm**. The opening active princess is random.
   - **Love:** converts one set of symbols into another symbol type.
   - **Star:** adds 1–2 wilds with intelligent placement.
   - **Storm:** removes two sets of symbols from the grid.
-- **Trinity meter:** princess-symbol wins fill a 3-section meter (x3 fills 1 section, x4 fills 2 sections, x5 fills 3 sections). Wilds can contribute to princess wins. When the meter is full and no further wins are achieved, a Trinity round starts: multiplier resets, then Love/Star/Storm Girl Powers are performed in fixed order on non-winning drops.
+- **Trinity meter:** princess-symbol wins fill a 3-section meter (x3 fills 1 section, x4 fills 2 sections, x5 fills 3 sections). Wilds can contribute to princess wins. When the meter is full and no further wins are achieved, a Trinity round starts: meter-full transition, then a **fresh 5×5 grid**, then multiplier resets and Love/Star/Storm Girl Powers are performed in fixed order on non-winning drops.
 - **Clear the Grid:** fully emptying the grid pays `50 × total bet × active multiplier` (except during Trinity, where grid clear triggers Free Spins instead of paying the instant prize).
-- **Free Spins:** triggered by clearing the grid during Trinity. Player chooses Love (4 spins), Star (5), or Storm (8). Chosen Girl Power triggers on every non-winning spin. During Free Spins, winning symbols are removed and gravity collapses remaining symbols, but no new symbols are spawned from the top (depletion mode). The progression target is to clear all non-wild symbols from the grid; wild-only leftovers still count as cleared for this purpose. Trinity cannot retrigger. Meter fills grant extra spins (Love +4, Star +3, Storm +2), up to 100 total.
+- **Free Spins (Super Free Spins):** triggered by clearing the grid during Trinity (non-wild symbols gone). Player chooses Love (4 spins), Star (5), or Storm (8), then receives a **fresh 5×5 grid** before the first Super Free Spin round. Chosen Girl Power triggers on every non-winning spin. Each subsequent Super Free Spin continues from the depleted entry grid (no per-spin repopulate). Winning symbols are removed and gravity collapses remaining symbols, but no new symbols are spawned from the top (depletion mode). The progression target is to clear all non-wild symbols from the grid; wild-only leftovers still count as cleared for this purpose. Trinity cannot retrigger. Meter fills grant extra spins (Love +4, Star +3, Storm +2), up to 100 total.
 - **RTP:** 94.20%, high volatility. **Max win:** 15,000× stake.
 
 Source references are listed at the bottom of this doc.

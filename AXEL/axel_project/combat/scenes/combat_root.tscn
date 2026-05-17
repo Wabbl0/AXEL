@@ -86,31 +86,6 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="WinningsOverlayBar" type="ColorRect" parent="."]
-visible = false
-offset_left = 8.0
-offset_top = 136.0
-offset_right = 200.0
-offset_bottom = 176.0
-mouse_filter = 2
-color = Color(0, 0, 0, 0.74)
-
-[node name="WinningsOverlayLabel" type="Label" parent="."]
-visible = false
-offset_left = 8.0
-offset_top = 128.0
-offset_right = 200.0
-offset_bottom = 184.0
-theme = ExtResource("12_theme")
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(1, 0.33, 0.33, 0.45)
-theme_override_constants/outline_size = 1
-theme_override_font_sizes/font_size = 34
-horizontal_alignment = 1
-vertical_alignment = 1
-text = "ROUND WINNINGS  0.00"
-mouse_filter = 2
-
 [node name="RoundWinningsLabel" type="Label" parent="."]
 offset_left = 8.0
 offset_top = 256.0

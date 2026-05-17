@@ -2,12 +2,10 @@
 
 [ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_elx0u"]
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_p5syx"]
-[ext_resource type="PackedScene" path="res://scenes/fx/NoirPaletteOverlay.tscn" id="10_noir_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="11_top_dialogue"]
 [ext_resource type="Script" uid="uid://bj16cjcb4p1kx" path="res://scenes/Arc_1/1.1_SchoolExterior.gd" id="12_school_ext"]
 [ext_resource type="Texture2D" uid="uid://cwowj33yu3igx" path="res://exports/Drawings/1.1_SchoolExterior.png" id="13_bg_drawing"]
-[ext_resource type="Script" path="res://scenes/Arc_1/camera_follow_vertical.gd" id="14_camera_script"]
-[ext_resource type="PackedScene" path="res://scenes/fx/ScanlineOverlay.tscn" id="15_scanline_overlay"]
+[ext_resource type="Script" uid="uid://buxd5usryyset" path="res://scenes/Arc_1/camera_follow_vertical.gd" id="14_camera_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(1280, 32)
@@ -23,48 +21,41 @@ script = ExtResource("12_school_ext")
 
 [node name="Background_1_1" type="Sprite2D" parent="." unique_id=1347460712]
 z_index = -100
-position = Vector2(2, -298.99997)
-scale = Vector2(0.3627841, 0.3320122)
+position = Vector2(32, -297)
+scale = Vector2(0.33494318, 0.32130682)
 texture = ExtResource("13_bg_drawing")
 centered = false
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=448339485]
 position = Vector2(640, 400)
+limit_left = -60
+limit_top = -300
+limit_right = 1340
+limit_bottom = 870
 script = ExtResource("14_camera_script")
 target_path = NodePath("../PlayerLayer/Player")
-fixed_x = 640.0
-vertical_smoothing = 5.0
-limit_top = -300
-limit_bottom = 870
-limit_left = -60
-limit_right = 1340
 
-[node name="EnvironmentColliders" type="Node2D" parent="."]
+[node name="EnvironmentColliders" type="Node2D" parent="." unique_id=1768690352]
 
-[node name="TreeLine_Left" type="StaticBody2D" parent="EnvironmentColliders"]
+[node name="TreeLine_Left" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1629329365]
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Left"]
-polygon = PackedVector2Array()
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Left" unique_id=369581141]
 
-[node name="TreeLine_Right" type="StaticBody2D" parent="EnvironmentColliders"]
+[node name="TreeLine_Right" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1014041490]
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Right"]
-polygon = PackedVector2Array()
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Right" unique_id=303433852]
 
-[node name="Rocks_Left" type="StaticBody2D" parent="EnvironmentColliders"]
+[node name="Rocks_Left" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1796740676]
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left"]
-polygon = PackedVector2Array()
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left" unique_id=1199693288]
 
-[node name="Rocks_Right" type="StaticBody2D" parent="EnvironmentColliders"]
+[node name="Rocks_Right" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1101637411]
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Right"]
-polygon = PackedVector2Array()
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Right" unique_id=1459243302]
 
-[node name="Building_Front" type="StaticBody2D" parent="EnvironmentColliders"]
+[node name="Building_Front" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1325363810]
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Building_Front"]
-polygon = PackedVector2Array()
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Building_Front" unique_id=131446952]
 
 [node name="1.1_EnvironmentPlaceholders" type="Node2D" parent="." unique_id=1975434927]
 
@@ -72,26 +63,28 @@ polygon = PackedVector2Array()
 position = Vector2(-66, 13)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_Collision" unique_id=123314690]
-position = Vector2(-12, 59)
+position = Vector2(-71, 50)
 polygon = PackedVector2Array(1035, 305, 1115, 305, 1115, 430, 1035, 430)
 
 [node name="1.1_School_Building_Doors_01_InteractArea" type="Area2D" parent="1.1_EnvironmentPlaceholders" unique_id=799181332]
 position = Vector2(-66, 13)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea" unique_id=1990327212]
-position = Vector2(-11, 58)
+position = Vector2(-80, 49)
 polygon = PackedVector2Array(1035, 305, 1115, 305, 1115, 430, 1035, 430)
 
 [node name="TopWall" type="StaticBody2D" parent="." unique_id=1058376895]
 position = Vector2(640, 16)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TopWall" unique_id=1627696374]
+position = Vector2(0, -300)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="BottomWall" type="StaticBody2D" parent="." unique_id=1196423384]
 position = Vector2(640, 704)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="BottomWall" unique_id=324826100]
+position = Vector2(0, 119)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="LeftWall" type="StaticBody2D" parent="." unique_id=1418059198]
@@ -104,12 +97,8 @@ shape = SubResource("RectangleShape2D_wall_vertical")
 position = Vector2(1264, 360)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall" unique_id=455161837]
-position = Vector2(-289, 0)
+position = Vector2(-328, 75)
 shape = SubResource("RectangleShape2D_wall_vertical")
-
-[node name="NoirPaletteOverlay" parent="." unique_id=123790785 instance=ExtResource("10_noir_overlay")]
-scale = Vector2(1.12, 1.12)
-transform = Transform2D(1.12, 0, 0, 1.12, 0, 0)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=1984527034]
 layer = 100
@@ -141,5 +130,3 @@ polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 shape = SubResource("CircleShape2D_player")
 
 [node name="TopDialogueOverlay" parent="." unique_id=875088782 instance=ExtResource("11_top_dialogue")]
-
-[node name="ScanlineOverlay" parent="." instance=ExtResource("15_scanline_overlay")]

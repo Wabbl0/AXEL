@@ -1202,3 +1202,325 @@ Copy and fill:
 - New files:
   - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
 - Behavior impact: Player renders guaranteed white in Scene 1.1 at +20% size. Noise overlay is now barely perceptible. Black ink lines in hand-drawn background survive the noir filter at lower viewport resolutions (1152x648) due to nearest-neighbor sampling and contrast pre-boost.
+
+## 2026-05-17 - Fix Combat Seed, Spin Log, and Trinity Gravity
+
+- Request: Fix inability to enter/apply a specific combat seed, perceived spin-loop repetition in the test HUD spin log, and missing symbol fall after delete-style powers (especially final Trinity Storm step) during free-game flow.
+- Implementation: Allowed seed edits when an encounter is complete (`ENDED`), synced queued seed from the SpinBox before starting the next encounter, widened seed input range, clarified HUD readout (`ENC x/y  SEED n  LIFE n`), and made Trinity cascade loops settle floating symbols via gravity even when no winning lines are present (gravity-only, no refill).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/test/princess_check.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Custom seeds typed after encounter completion apply to the next encounter; large audit seeds are enterable; Trinity/Storm deletions collapse remaining symbols; test HUD no longer mislabels lifetime spin count as the only spin context.
+- Verification: `princess_check.gd` (OK); `determinism_check.gd` (OK); full QA playtest 2026-05-17 (all gates pass).
+- Notes: Perceived “same spins every 6–7 rounds” was partly stale `_queued_seed` at encounter boundaries plus HUD ambiguity; intentional deterministic reseed per encounter seed is unchanged.
+
+## 2026-05-17 - Remove In-Round Symbol Refills (Universal Gravity-Only Cascades)
+
+- Request: Per MP100 rules, no new symbols should appear on the grid during a spin round — normal paid spins, Trinity Run, or SUPER Free Spins.
+- Implementation: Removed `grid.refill()` from `_apply_gravity_and_refill` / `_apply_gravity_and_refill_sync` in `combat_root.gd` so all cascade resolution is gravity-only. Initial spin setup via `grid.populate()` is unchanged. Added paid-spin no-spawn test; updated Trinity/Free Spins test messages. Aligned `AXEL_combat_design.md` and `AXEL_combat_implementation.md` cascade sections to universal no-refill depletion.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/test/princess_check.gd`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Winning cascades leave empty cells after gravity; no top-spawned symbols mid-round in any mode. Wild placement (3-lines) and princess power mutations still apply. RTP/cascade depth will differ from prior base-game refill behavior.
+- Verification: `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd`
+- Notes: Resolved doc hierarchy conflict by updating combat design/implementation to match the new rule (overrides prior base-game “new symbols from top” cascade wording).
+
+## 2026-05-17 - Bankroll Encounter Cap + Readout Cleanup
+
+- Request: End encounters when bankroll is empty (not spin budget); remove encounter counter and bottom seed from HUD; rename LIFE readout to SPIN LOG.
+- Implementation: Replaced `_finalize_encounter_if_needed()` spin-budget fail with bankroll-depletion fail (`not _can_afford_spin()` outside free spins). Early-return paths in `spin()` / `spin_sync()` now finalize encounter on unaffordable paid spin. Bottom HUD readout shows only `SPIN LOG <n>`. Renamed princess_check assertion to bankroll-empty fail.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/princess_check.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Encounters no longer auto-fail at `spin_budget` (e.g. 8 spins); they fail when the player cannot afford another paid spin. Goal completion still wins. Seed remains visible in top-right SpinBox only.
+- Verification: `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd` (OK).
+- Notes: Intentional override of spin-budget fail behavior in `AXEL_combat_implementation.md`; `spin_budget` field remains on encounter resources for future tuning but is not used for encounter end.
+
+## 2026-05-17 - Trinity/Super FS Fresh-Grid Handoff Override
+
+- Request: Enforce flow: Execute → fresh grid → paid spins → meter full → fresh grid → Trinity powers → if cleared choose princess → fresh grid → Super Free Spins; treat Free Spins and Super Free Spins as the same feature.
+- Implementation: Added `_repopulate_grid_handoff` / `_repopulate_grid_handoff_async` in `combat_root.gd` (deterministic RNG stream, no reseed). Trinity repopulates after meter-full transition, before Love→Star→Storm sequence. Super Free Spins repopulate on `choose_free_spins_princess()` after princess selection; per-spin `_begin_spin_round` still skips repopulate during the feature. Updated combat design/implementation docs and princess_check tests.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/test/princess_check.gd`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Players see a full new board entering Trinity and again entering Super Free Spins; mid-feature spins remain depletion-only (no top refill, no per-spin repopulate).
+- Verification: `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd`
+- Notes: User-approved override of prior canon (Trinity/Free Spins continued from depleted grid without handoff repopulate). Hierarchy resolution recorded here per `AI_DOCS.md` §3.
+
+## 2026-05-17 - Surreal Combat UI + Chip-Bar Win Logic
+
+- Request: Replace bankroll/numeric HUD with surreal chip-bar combat UI (matched log, items mirror, premium progress proxy, per-spin win multiple readout) and 10× full chip-bar encounter win condition; remove per-symbol payout popups.
+- Implementation: Rebuilt `combat_test` shell as centered combat frame with 10-segment chip bar, MATCHED/ITEMS side panels, round SPIN button, ×N spin readout, and premium-meter `ProgressBar`. `combat_root` now uses chip-bar economy (`CHIP_BAR_FULL_CENTS=1000`, 10 sections), tracks encounter goal winnings toward `10×` bar value, emits `matched_symbols_resolved`, removes `play_win_popup` calls, and finalizes encounters on chip-bar goal or broke chip health. Added `chip_bar_segment.gd` and `matched_log_tile.gd`.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/chip_bar_segment.gd`
+  - `AXEL/axel_project/combat/scripts/matched_log_tile.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Combat screen no longer shows bankroll/budget/stake numerics; bet is chosen via chip segments; bottom readout shows per-spin win×bet; encounter wins at 10× chip-bar accumulated payout; matched symbols log on the left without floating currency popups on cells.
+- Verification: `Godot_v4.6.2-stable_win64_console.exe --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd` (OK); `... -s res://combat/test/determinism_check.gd` (OK).
+- Notes: User-approved override of implementation HUD checklist (§10) bankroll/stake display; legacy `goal_tracker` resources remain wired but encounter end uses chip-bar goal first.
+
+## 2026-05-17 - Combat Test v1/v2 Version Split
+
+- Request: Preserve old numbered combat test UI as a revertible backup; name versions `combat_test_v1` (old) and `combat_test_v2` (surreal), keep v2 as default entry.
+- Implementation: Restored v1 scene+script from git snapshot `0ba177e` as `combat_test_v1.tscn` / `combat_test_v1.gd`. Copied current surreal shell to `combat_test_v2.tscn` / `combat_test_v2.gd`. Default `combat_test.tscn` now references v2 script; `combat_test.gd` extends v2 as alias. Added `combat/README_COMBAT_TEST_VERSIONS.md` with launch and rollback instructions.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test_v1.tscn`
+  - `AXEL/axel_project/combat/combat_test_v2.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test_v2.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/README.md`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 on `combat_test.tscn` runs v2; v1 remains launchable for HUD rollback. Shared `combat_root` logic is unchanged (chip-bar goal still applies when using v1 shell).
+- Verification: `Godot_v4.6.2-stable_win64_console.exe --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd` (OK); `... determinism_check.gd` (OK).
+- Notes: v1 is a UI-layout backup, not a full pre-surreal mechanics fork.
+
+## 2026-05-17 - Default Combat Test v1 + Remove v2 Shell
+
+- Request: Make v1 numeric HUD the default combat test entry; delete v2 surreal chip-bar shell; fix `combat_test_v1.tscn` parse failure.
+- Implementation: Fixed SUPER FS choice button `text` properties in `combat_test_v1.tscn` (multiline strings → `\n`-escaped single lines). Replaced `combat_test.tscn` with v1 node tree bound to `combat_test.gd` (alias extends `combat_test_v1.gd`). Removed `combat_test_v2.tscn`, `combat_test_v2.gd`, and v2-only `chip_bar_segment.gd` / `matched_log_tile.gd`. Updated combat README/version docs.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/combat_test_v1.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/README.md`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Files removed:
+  - `AXEL/axel_project/combat/combat_test_v2.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test_v2.gd`
+  - `AXEL/axel_project/combat/scripts/chip_bar_segment.gd`
+  - `AXEL/axel_project/combat/scripts/matched_log_tile.gd`
+- Behavior impact: F6 on `combat_test.tscn` runs numeric HUD (v1). v2 chip-bar/MATCHED panels UI no longer available. `combat_root` mechanics unchanged.
+- Verification: `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd` (OK, 6 scenes including `combat_test.tscn`).
+- Notes: `combat_test_v1.tscn` kept as explicit named backup identical to default shell.
+
+## 2026-05-17 - Combat Test v1 Layout + Premium Meter Fix
+
+- Request: Center combat grid in v1 test shell; restore premium meter circle visibility.
+- Implementation: Restored HUD-aware `fit_to_viewport()` in `combat_root.gd` (top/bottom safe zones, single `position` offset; `grid_ui` at local `(0, 48)`). Fixed `fit_to_panel()` to avoid double-offset when embedded. Hardened `premium_meter_circle.gd` sizing/redraw; set explicit 120×120 size on meter node in scenes; deferred initial layout in `combat_test_v1.gd`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/premium_meter_circle.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/combat_test_v1.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Grid centers in play area between HUD chrome; premium ring draws at full size on the right stack.
+- Verification: `scene_smoke_check.gd` (OK).
+
+## 2026-05-17 - Combat Cohesion + Canon Alignment (mirrored shell, integer economy)
+
+- Request: Mirror combat HUD on invisible grid; left spin-history placeholder, right items; premium meter as bottom grid bar; 100× integer payouts; win numbers on matched symbols; persist clarification-first rule for AXEL agents.
+- Implementation: Rebuilt `combat_test_v1.gd` with centered `CombatFrame` (spin-history | grid + premium `ProgressBar` | items). Full economy rescale (`ECONOMY_DISPLAY_SCALE`, bet ladder ×100, symbol paytable ×100, integer formatting). Restored per-symbol `play_win_popup` during line resolve. Added clarification-first to `AI_DOCS.md` §9 and governance rule.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/combat_test_v1.tscn`
+  - `AXEL/axel_project/combat/data/symbols/*.tres` (8 files)
+  - `AXEL/axel_project/combat/test/item_balance_audit.gd`
+  - `AXEL/axel_project/combat/test/rtp_audit.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Playtest shell is symmetric; premium meter is a 3-section bar flush under grid; payouts/bankroll/stake show whole numbers; matched cells flash payout totals. Spin-history panel is placeholder-only (logic deferred).
+- Verification: Pending headless `princess_check` / `scene_smoke_check` after edit.
+
+## 2026-05-17 - Combat Test Frame Layout Fix
+
+- Request: Fix misaligned combat grid and side rectangles clustered/overlapping EXECUTE in play window.
+- Implementation: CombatFrame now uses top-left positioning with top/bottom safe margins (HUD + EXECUTE), deferred layout after first frame, expanded play-row size flags, centered `fit_to_panel` with bottom inset for premium bar, shrink-locked side panels.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mirrored shell should center in viewport; grid and ITEMS/SPIN HISTORY panels align; EXECUTE no longer covers play area.
+- Verification: Manual F6 on `combat_test.tscn` recommended.
+- Notes: Legacy `PremiumMeterCircle` nodes kept hidden in scenes for UID stability.
+
+## 2026-05-17 - Playtest Economy And Main Scene Layout Spec
+
+- Request: Playtest bankroll cap 100, stake ladder `1,2,3,4,5,10,20,30,40,50,100`, remove shared rounded wrapper around SPINS/items/grid, enforce mirrored main-game layout with matching top meta/GOAL boxes.
+- Implementation: Rescaled playtest economy in `combat_root.gd` (bankroll cap 100, full 11-step bet ladder, `_clamp_bankroll()` after payouts/encounter carry). Refactored `combat_test_v1.gd` to percentage-anchored layout without outer `CombatFrame`; independent side panels (`SPINS` vertical label | grid + charge bar | `ITEMS`); centered stake pill, multiplier, and EXECUTE in center column. Updated `combat_test.tscn` with mirrored `MetaBox`/`GoalBox`, floating `100/100` bankroll readout, and dedicated `StakeSelector` row.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Default combat test starts at `100/100` bankroll with min stake `1`; stakes step through the specified ladder; bankroll cannot exceed 100; HUD follows spec symmetry without a single rounded rectangle wrapping all three play columns.
+- Verification: Linter pass on touched scripts; headless `princess_check` not run (Godot CLI not on PATH). Manual F6 on `combat_test.tscn` recommended for layout and stake/bankroll UX.
+- Notes: `combat_test_v2` unchanged in this pass.
+
+## 2026-05-17 - Playtest HUD Corner Box And Bankroll Spacing Fix
+
+- Request: Top-left/right meta and GOAL boxes were clipped off-screen; bankroll should sit directly above stake with less gap.
+- Implementation: Reparented corner boxes to the root viewport (they were sized as fractions of the 15%-tall `TopBar`, which collapsed them). Stacked bankroll + stake in a tight `CenterTopHud` `VBoxContainer` (`separation` 2px) with shared center anchoring.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Meta/GOAL boxes use full viewport insets (2%–22% / 78%–98%, ~11% height); `100/100` readout sits immediately above the stake row; main play area starts at 18% height.
+- Verification: Linter pass on `combat_test_v1.gd`; manual F6 recommended.
+
+## 2026-05-17 - Combat Test HUD Layout Cleanup
+
+- Request: Remove top-corner panel rectangles; tighten top-left icons (50% spacing, closer to corner, third icon `?`); horizontal centered SPINS title; larger side-panel fonts; thin red outline on premium progress bar; center `1X` between grid and EXECUTE; match EXECUTE width to grid; delete unused `combat_test_v2`.
+- Implementation: Stripped `MetaBox`/`GoalBox` panel styles at runtime; tightened corner anchors and icon row separation; switched spin-history panel to horizontal `_make_side_panel("SPINS")`; bumped side-panel font constants; added 1px red border on premium bar background; added `MultiplierZone` expand spacers for centered multiplier readout; synced EXECUTE `custom_minimum_size.x` to `combat.grid_ui.size.x` after layout; updated `combat_test.tscn` icon defaults; removed `combat_test_v2.tscn` (v2 script already absent).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/combat_test_v2.tscn` (deleted)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Corner HUD boxes no longer draw red bordered rectangles; icons and goal text float in corners; SPINS/ITEMS panels use larger type with horizontal SPINS header; premium bar has red outline; multiplier sits between grid and EXECUTE; EXECUTE button width tracks grid width on resize.
+- Verification: Linter pass on `combat_test_v1.gd`; Godot CLI not on PATH — manual F6 on `combat_test.tscn` recommended.
+
+## 2026-05-17 - Combat Test HUD Polish Follow-Up
+
+- Request: Match gear icon to lightweight symbol style (`⬡`); lower top icon row ~1–2%; enlarge GOAL font; show round winnings as amount (no `X`) with +10% font and thin white outline; tighten grid/readout/EXECUTE spacing; shift play area down and grow grid.
+- Implementation: Replaced gear glyph with `⬡` and unified icon font size; shifted corner band (`LAYOUT_CORNER_Y0`/`Y1`); increased `GOAL_LABEL_FONT`; wired `MultiplierReadout` to `combat.get_round_winnings()` with outline styling; removed expand spacers from winnings zone; reduced column/footer separation and EXECUTE height band; extended main play anchors (`LAYOUT_MAIN_Y0`/`END`) for larger grid host.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Top icons sit slightly lower with polygon home/question trio; GOAL text scales with icons; center readout shows integer winnings with white outline; vertical stack is denser and grid area is taller.
+- Verification: Linter pass on `combat_test_v1.gd`; manual F6 on `combat_test.tscn` recommended.
+
+## 2026-05-17 - Combat HUD Spacing And History Panel
+
+- Request: Center total winnings between premium meter and EXECUTE; reduce vertical dead space and grow grid; enlarge top-left icons 20%; replace left history rectangle with `HISTORY` title and empty placeholder.
+- Implementation: Added `WinningsBand` with anchor-centered readout and `_layout_winnings_band()`; tightened main/center HUD vertical fractions and column separations; bumped `META_ICON_FONT` to 31 (+20%); replaced `_build_spin_history_placeholder()` with borderless `_build_history_placeholder()` (`HISTORY` + expand placeholder); `fit_to_panel()` now accepts `align_grid_top` (used by v1 shell) and v1 passes computed max grid height from column budget.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Winnings sit in the band between premium bar and EXECUTE; grid uses more vertical space with less internal letterboxing; left column is title-only history reserve; ITEMS panel unchanged.
+- Verification: Linter pass on touched scripts (IDE may need refresh for new `fit_to_panel` arity); manual F6 on `combat_test.tscn` recommended.
+
+## 2026-05-17 - Combat Grid Bottom Clipping Fix
+
+- Request: Combat grid bottom was cut off after HUD spacing pass.
+- Implementation: `WinningsBand` no longer uses `SIZE_EXPAND_FILL` (it was splitting center column height with `GridHost`); `_layout_combat()` now sizes the grid from actual `_grid_host.size` after VBox layout instead of an overestimated column budget.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Grid host keeps the flexible vertical space; winnings band stays a compact strip; grid + premium bar should fit inside `GridHost` without bottom clipping.
+- Verification: Linter pass; manual F6 on `combat_test.tscn` recommended.
+
+## 2026-05-17 - Combat Test Canonical Cleanup
+
+- Request: Fix `combat_test_v1.gd` scene/script mismatch, remove lingering `combat_test_v2` runtime references, and rename v1 implementation to canonical `combat_test`.
+- Implementation: Moved full playtest UI implementation into `combat_test.gd` (no wrapper). Removed `combat_test_v1.gd`, `combat_test_v1.tscn`, `combat_test_v2.tscn`, and companion `.uid` files; cleared stale `.godot/editor` v2 cache entries. Updated `README_COMBAT_TEST_VERSIONS.md` and `combat/README.md` for single canonical entrypoint.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test_v1.tscn` (deleted)
+  - `AXEL/axel_project/combat/scripts/combat_test_v1.gd` (deleted)
+  - `AXEL/axel_project/combat/combat_test_v2.tscn` (deleted)
+  - `AXEL/axel_project/combat/scripts/combat_test_v2.gd` (deleted, if present)
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/combat/README.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: `combat_test.tscn` + `combat_test.gd` are the sole playtest shell; no broken v1 backup scene with mismatched node paths; editor should stop surfacing missing v2 script/scene errors.
+- Verification: Grep found no `combat_test_v1`/`combat_test_v2` references in `.gd`/`.tscn`/`.godot`; linter pass on `combat_test.gd`.
+- Notes: Prior changelog entries mentioning v1/v2 versions are retained as historical audit trail.
+
+## 2026-05-17 - Re-apply Canonical Combat Test Cleanup
+
+- Request: Re-apply single-canonical combat test entry after stale `combat_test_v1`/`combat_test_v2` artifacts resurfaced post-rename/delete; remove broken versioned shells and v2-only helpers.
+- Implementation: Confirmed `combat_test.tscn` binds `combat_test.gd` only. Verified v1/v2 scenes/scripts and `chip_bar_segment.gd` / `matched_log_tile.gd` are absent on disk (prior cleanup already applied). Updated `README_COMBAT_TEST_VERSIONS.md` HUD bullets to match current mirrored shell and explicit single-entry policy.
+- Files changed:
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No runtime change; documentation and audit trail align with canonical-only playtest entry (`F6` on `combat_test.tscn`).
+- Verification: Grep on `combat/` `.gd`/`.tscn` found no `combat_test_v1`, `combat_test_v2`, `chip_bar_segment`, or `matched_log_tile` references; `.godot` editor cache has no v1/v2 paths; linter pass on `combat_test.gd`.
+- Notes: Resolves conflict with prior 2026-05-17 canonical cleanup entry when versioned files reappeared in workspace index but were not present on disk.
+
+## 2026-05-17 - Combat HUD Layout Polish
+
+- Request: Align items panel bottom with execute button, move bankroll closer to stake, restore history panel rectangle, and enlarge/darken HISTORY/ITEMS section titles.
+- Implementation: Side panel height now ends at execute-line offset (`main_h - BOTTOM_WINDOW_MARGIN`). `CenterTopHud` bankroll band lowered (`LAYOUT_CENTER_HUD_Y0/Y1`). History rebuilt via `_make_side_panel()` with bordered panel. Shared darker title strip style and larger header font (`SIDE_PANEL_HEADER_FONT` 24) for HISTORY/ITEMS headers.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Cosmetic/layout only; combat mechanics unchanged.
+- Verification: Linter pass on `combat_test.gd`; manual F6 on `combat_test.tscn` recommended for alignment at multiple window sizes.
+
+## 2026-05-17 - Winnings Readout Black Background
+
+- Request: Add black background rectangle behind total winnings text.
+- Implementation: Wrapped `MultiplierReadout` in `WinningsReadoutPill` `PanelContainer` with `_winnings_readout_bg_style()` (black fill, subtle red border, padded content margins).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Cosmetic only.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-17 - Combat Stakes Floor And Win Readout UI
+
+- Request: Minimum stake 10; per-symbol match value listing; centered yellow payout text showing correct latest-line payout (not per-tile popups).
+- Implementation: `BET_LADDER` is now `10..100` with default stake 10. Added `line_win_resolved` signal and `get_symbol_paytable_entries()` on `CombatRoot`. Line-win UI events emit after cascade multiplier increment so displayed payout matches awarded cents. `combat_test` HISTORY panel shows stake-scaled x3/x4/x5 paytable plus per-spin win rows; centered yellow `LinePayoutLabel` shows latest line `+N`; removed per-symbol `play_win_popup` calls from cascade resolution.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Lowest selectable stake is 10; win feedback is centralized; history documents symbol match length and payout; payout popups align with bankroll credit timing.
+- Verification: Linter pass on `combat_root.gd` and `combat_test.gd`; Godot CLI smoke tests not run ( `godot` not on PATH in agent shell).
+- Notes: First cascade win still uses post-increment multiplier (e.g. base 29 at 2x pays 58) by design; UI now reflects that awarded value.
+
+## 2026-05-17 - History Panel Match-Only Breakdown
+
+- Request: Remove always-visible payout listing; HISTORY panel should activate only for current-spin matches using `Symbol — bet x symbol_value x multiplier` format.
+- Implementation: Removed static paytable from HISTORY; panel hidden until first line win, cleared each spin. `line_win_resolved` now includes `bet`, `symbol_value`, and `cascade_multiplier`; rows render e.g. `Yellow triangle — 10 x 6 x 2`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: HISTORY is inactive between spins / on losing spins; only current-spin match breakdown is shown.
+- Verification: Linter pass on touched scripts.
+
+## 2026-05-17 - First Cascade Win Uses 1x Multiplier
+
+- Request: First match of a spin should pay at 1x, not 2x.
+- Implementation: Reordered cascade resolution so `_emit_line_win_events`, payout estimate, and bankroll credit run before `multiplier.add(1)` in all four cascade loops (async/sync, regular/trinity).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: First line win per spin/multiplier reset pays at 1x; second cascade at 2x, etc. HISTORY and yellow popup now match.
+- Verification: Linter pass on `combat_root.gd`.
+
+## 2026-05-17 - Restore Symbol-Top +Payout Popups
+
+- Request: Show `+payout` directly on top of matched symbols without a bottom-of-grid popup.
+- Implementation: Re-enabled slot-level win popups during line flash in `combat_root.gd` (now rendered as `+N`), including headless/no-fx path. Removed centered `LinePayoutLabel` UI wiring from `combat_test.gd`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: `+payout` appears over each matched symbol; bottom-center transient payout text is no longer shown.
+- Verification: Linter pass on `combat_root.gd` and `combat_test.gd`.
+
+## 2026-05-17 - Single Centered Popup Per Match Line
+
+- Request: Show only one `+payout` indicator centered on the matched symbols instead of one per symbol tile.
+- Implementation: Updated win-popup routing in `combat_root.gd` so each winning line chooses one anchor slot nearest the geometric center of matched cells and renders a single `+N` popup there (FX and no-FX paths).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: One payout indicator appears per winning line, centered over the matched run.
+- Verification: Linter pass on `combat_root.gd`.

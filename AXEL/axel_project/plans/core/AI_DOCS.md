@@ -115,10 +115,11 @@ For substantive AXEL requests:
 4. Progress feed verbosity policy:
    - **Planning, exploration, or blocked states:** use the full structured format (current step, command/tool in use, files being checked/read, result/status so far, next step, stuck/not stuck).
    - **Dense implementation loops** (editing files, fixing lints, iterating on code): a concise one-liner status is sufficient.
-5. Implement changes.
-6. Verify behavior (tests or explicit manual checks).
-7. Append one entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md` if change was implemented.
-8. If a task introduces or updates a reusable workflow/agent pipeline (scripts, specs, rules, runner contracts), record it in this file and in `.cursor/rules/axel-ai-docs-governance.mdc` so future chats can reference it directly.
+5. **Clarification-first (mandatory):** If requirements, scope, or implementation details are ambiguous, ask the user targeted questions before assuming defaults. Do not infer unstated layout, economy, or behavior choices without confirmation.
+6. Implement changes.
+7. Verify behavior (tests or explicit manual checks).
+8. Append one entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md` if change was implemented.
+9. If a task introduces or updates a reusable workflow/agent pipeline (scripts, specs, rules, runner contracts), record it in this file and in `.cursor/rules/axel-ai-docs-governance.mdc` so future chats can reference it directly.
 
 **Governance rule / AI_DOCS responsibility split:** The always-applied rule (`.cursor/rules/axel-ai-docs-governance.mdc`) is intentionally concise — it directs agents to read this file and enforces the hard conflict gate, QA opt-in trigger, and canonical alias stability. All detailed procedures, command sets, invariants, and pipeline specs live here in `AI_DOCS.md` and in the referenced subsystem docs (rubric, skill, specs). Do not re-duplicate detailed content into the governance rule.
 

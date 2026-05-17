@@ -1,6 +1,6 @@
 # AXEL combat (Phase 1 — silent grid)
 
-- **Play test scene:** open `combat/combat_test.tscn` in the Godot editor and press **F6** (Play Scene). Do not change the project main scene.
+- **Play test scene (default):** open `combat/combat_test.tscn` in the Godot editor and press **F6** (Play Scene). Do not change the project main scene. See [`README_COMBAT_TEST_VERSIONS.md`](README_COMBAT_TEST_VERSIONS.md).
 - **Regenerate placeholder PNGs:** `python combat/art/generate_placeholders.py` from the `axel_project` folder.
 - **Determinism check (CLI):** from `axel_project`, run  
   `godot --path . --headless -s res://combat/test/determinism_check.gd`  

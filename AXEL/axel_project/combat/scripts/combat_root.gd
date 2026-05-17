@@ -9,6 +9,12 @@ signal premium_meter_changed(previous_sections: int, next_sections: int)
 ## Emitted when the premium meter has filled and the trinity/free-spin transition
 ## animation begins. UI hosts can use this to glow / pulse the meter readout.
 signal meter_full_transition_started()
+## Fired after line wins resolve with matched symbol entries for the spin log UI.
+## Each entry: { "symbol_id": StringName, "texture": Texture2D }
+signal matched_symbols_resolved(entries: Array)
+## Fired once per winning line when payout is known.
+## Payload: { "symbol_id", "symbol_name", "length", "bet", "symbol_value", "cascade_multiplier", "payout_cents" }
+signal line_win_resolved(event: Dictionary)
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -17,7 +23,7 @@ signal meter_full_transition_started()
 @export var pause_at_spin_start_sec: float = 1.275
 ## Pause after clusters are cleared and wilds are placed (before gravity).
 @export var pause_after_cluster_resolve_sec: float = 0.6
-## Pause after symbols fall and new symbols spawn.
+## Pause after symbols fall (gravity-only cascade; no top refill).
 @export var pause_after_gravity_refill_sec: float = 1.0
 ## Pause after princess power modifies the grid.
 @export var pause_after_power_sec: float = 1.8
@@ -57,14 +63,12 @@ signal meter_full_transition_started()
 @export_range(0.0, 1.0, 0.01) var power_intro_glow_alpha: float = 0.5
 @export var girl_power_chance: float = 0.01
 @export var encounter_def: Resource
-@export var total_bet: float = 1.0
+@export var total_bet: float = 10.0
 
 @onready var grid: GridManager = $GridManager
 @onready var grid_ui: GridContainer = $GridUI
 @onready var multiplier_label: Label = $MultiplierLabel
 @onready var round_winnings_label: Label = $RoundWinningsLabel
-@onready var winnings_overlay_bar: ColorRect = $WinningsOverlayBar
-@onready var winnings_overlay_label: Label = $WinningsOverlayLabel
 @onready var grid_frame: ReferenceRect = $GridFrame
 @onready var grid_flash_overlay: ColorRect = $GridFlashOverlay
 @onready var power_intro_layer: Control = $PowerIntroLayer
@@ -83,20 +87,23 @@ const ItemInventoryScript := preload("res://combat/scripts/item_inventory.gd")
 
 ## Safety cap so pathological grids / RNG cannot infinite-loop cascade resolution.
 const MAX_CASCADE_ITERATIONS := 512
-const STARTING_BANKROLL_CENTS := 100000
+## Chip-bar economy (integer playtest units; bankroll cap = full bar).
+const ECONOMY_DISPLAY_SCALE := 1
+const CHIP_BAR_SECTIONS := 11
+const CHIP_BAR_FULL_CENTS := 100
+const CHIP_BAR_GOAL_MULTIPLE := 10
+const STARTING_BANKROLL_CENTS := CHIP_BAR_FULL_CENTS
 const GRID_VISUAL_SCALE := 1.5
 const GRID_EDGE_MARGIN := 8.0
 const VIEWPORT_TOP_SAFE := 84.0
 const VIEWPORT_BOTTOM_SAFE := 292.0
 const CELL_SIZE_MIN := 48.0
 const CELL_SIZE_MAX := 80.0
+const PANEL_FILL_CELL_MAX := 128.0
 const ROUND_WINNINGS_GAP := 12.0
 const ROUND_WINNINGS_HEIGHT := 36.0
 const BET_LADDER: Array[float] = [
-	0.2, 0.4, 0.6, 0.8, 1.0,
-	1.2, 1.4, 1.6, 1.8, 2.0,
-	3.0, 4.0, 5.0, 6.0, 7.0,
-	8.0, 9.0, 10.0,
+	10.0, 20.0, 30.0, 40.0, 50.0, 100.0,
 ]
 
 var rng := CombatRNG.new()
@@ -110,7 +117,7 @@ var low_symbol_pool: Array[SymbolDef] = []
 var premium_symbol_pool: Array[SymbolDef] = []
 var _premium_symbol_ids: Dictionary = {}
 var _symbols_by_id: Dictionary = {}
-var _current_bet_index: int = 4
+var _current_bet_index: int = 0
 
 var _state: State = State.IDLE
 var _weights: Dictionary = {}
@@ -127,9 +134,8 @@ var _pending_spawns: Array = []
 var _slot_positions_ready: bool = false
 var _round_winnings_cents: int = 0
 var _bankroll_cents: int = STARTING_BANKROLL_CENTS
+var _encounter_goal_winnings_cents: int = 0
 var _round_winnings_default_modulate: Color = Color.WHITE
-var _winnings_overlay_tween: Tween
-var _winnings_overlay_showing: bool = false
 var _grid_width_cached: float = 0.0
 var _grid_height_cached: float = 0.0
 var _grid_flash_tween: Tween
@@ -139,6 +145,7 @@ var _last_spin_summary: Dictionary = {}
 var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
+var _suppress_grid_populated_fx: bool = false
 var inventory := ItemInventoryScript.new()
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
@@ -146,6 +153,8 @@ const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
 const AGENT_DEBUG_LOG_PATH := "res://../../logs/debug/debug-c9d495.log"
 const AGENT_DEBUG_SESSION_ID := "c9d495"
+const SESSION_DEBUG_LOG_PATH := "res://../../debug-d2c366.log"
+const SESSION_DEBUG_SESSION_ID := "d2c366"
 
 
 func _ready() -> void:
@@ -166,13 +175,6 @@ func _ready() -> void:
 		round_winnings_label.add_theme_color_override("font_outline_color", Color(1.0, 0.36, 0.36, 0.22))
 		round_winnings_label.add_theme_constant_override("outline_size", 1)
 		round_winnings_label.visible = false
-	if winnings_overlay_bar != null:
-		winnings_overlay_bar.visible = false
-		winnings_overlay_bar.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	if winnings_overlay_label != null:
-		winnings_overlay_label.visible = false
-		winnings_overlay_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
-		winnings_overlay_label.add_theme_color_override("font_outline_color", Color(1.0, 0.33, 0.33, 0.45))
 	if grid_frame != null:
 		_default_grid_border_color = grid_frame.border_color
 	if grid_flash_overlay != null:
@@ -185,7 +187,6 @@ func _ready() -> void:
 		power_intro_icon.scale = Vector2(0.4, 0.4)
 	if power_intro_glow != null:
 		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
-	set_process_unhandled_input(true)
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
 	_refresh_grid_border_for_state()
@@ -238,7 +239,8 @@ func get_current_bet() -> float:
 func set_bet_index(index: int) -> void:
 	if BET_LADDER.is_empty():
 		return
-	_current_bet_index = clampi(index, 0, BET_LADDER.size() - 1)
+	var max_index := BET_LADDER.size() - 1
+	_current_bet_index = clampi(index, 0, max_index)
 	total_bet = BET_LADDER[_current_bet_index]
 	emit_signal("readouts_progressed")
 
@@ -264,7 +266,50 @@ func get_princess_next_id() -> StringName:
 
 
 func get_goal_label() -> String:
-	return goal_tracker.label()
+	return get_chip_bar_goal_label()
+
+
+func get_chip_bar_section_count() -> int:
+	return CHIP_BAR_SECTIONS
+
+
+func get_chip_bar_full_value() -> float:
+	return float(CHIP_BAR_FULL_CENTS)
+
+
+func get_chip_bar_health_ratio() -> float:
+	return clampf(float(_bankroll_cents) / float(CHIP_BAR_FULL_CENTS), 0.0, 1.0)
+
+
+func get_chip_bar_goal_target_cents() -> int:
+	return CHIP_BAR_FULL_CENTS * CHIP_BAR_GOAL_MULTIPLE
+
+
+func get_chip_bar_goal_progress_cents() -> int:
+	return _encounter_goal_winnings_cents
+
+
+func get_chip_bar_goal_progress_ratio() -> float:
+	var target := get_chip_bar_goal_target_cents()
+	if target <= 0:
+		return 0.0
+	return clampf(float(_encounter_goal_winnings_cents) / float(target), 0.0, 1.0)
+
+
+func get_spin_win_bet_ratio() -> float:
+	if total_bet <= 0.0:
+		return 0.0
+	return get_round_winnings() / total_bet
+
+
+func get_chip_bar_goal_label() -> String:
+	var target_units := get_chip_bar_goal_target_cents()
+	var current_units := _encounter_goal_winnings_cents
+	return "GOAL: WIN 10x CHIP-BAR  (%d / %d)" % [current_units, target_units]
+
+
+func is_chip_bar_goal_complete() -> bool:
+	return _encounter_goal_winnings_cents >= get_chip_bar_goal_target_cents()
 
 
 func get_meter_sections_filled() -> int:
@@ -291,11 +336,19 @@ func get_current_seed() -> int:
 
 
 func get_round_winnings() -> float:
-	return float(_round_winnings_cents) / 100.0
+	return float(_round_winnings_cents)
 
 
 func get_bankroll() -> float:
-	return float(_bankroll_cents) / 100.0
+	return float(_bankroll_cents)
+
+
+func get_bankroll_cap() -> float:
+	return float(CHIP_BAR_FULL_CENTS)
+
+
+func _clamp_bankroll() -> void:
+	_bankroll_cents = clampi(_bankroll_cents, 0, CHIP_BAR_FULL_CENTS)
 
 
 func get_last_spin_summary() -> Dictionary:
@@ -315,6 +368,21 @@ func is_waiting_for_free_spin_choice() -> bool:
 
 
 func setup_new_grid(seed_value: int) -> void:
+	# #region agent log
+	_session_debug_log(
+		"seed-%d" % seed_value,
+		"H1",
+		"combat_root.gd:setup_new_grid",
+		"setup_new_grid entered",
+		{
+			"incoming_seed": seed_value,
+			"previous_seed": _current_seed,
+			"previous_state": _state,
+			"previous_free_spins_active": free_spins.active,
+			"previous_spins_remaining": free_spins.spins_remaining,
+		}
+	)
+	# #endregion
 	_current_seed = seed_value
 	rng.seed(seed_value)
 	princesses.randomize_start(rng)
@@ -330,8 +398,10 @@ func setup_new_grid(seed_value: int) -> void:
 	_pending_free_spins = false
 	_awaiting_free_spin_choice = false
 	_round_winnings_cents = 0
+	_encounter_goal_winnings_cents = 0
 	_last_spin_summary = _empty_spin_summary()
 	_bankroll_cents = STARTING_BANKROLL_CENTS
+	_clamp_bankroll()
 	_lifetime_spins_used = 0
 	var encounter := encounter_def as EncounterScript
 	var goal = encounter.get("goal") if encounter != null else null
@@ -340,6 +410,20 @@ func setup_new_grid(seed_value: int) -> void:
 	_refresh_round_winnings_label()
 	_hide_encounter_won_banner()
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used + 1],
+		"H2",
+		"combat_root.gd:_start_spin_with_new_grid",
+		"paid spin repopulated grid",
+		{
+			"next_spin": _spins_used + 1,
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"grid_snapshot": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
 	# #region agent log
 	_debug_log(
 		"seed-%d-setup" % _current_seed,
@@ -366,6 +450,7 @@ func spin() -> void:
 		return
 	if not _can_afford_spin():
 		_last_spin_summary = _empty_spin_summary()
+		_finalize_encounter_if_needed()
 		emit_signal("readouts_progressed")
 		emit_signal("spin_finished")
 		return
@@ -450,6 +535,8 @@ func spin() -> void:
 	if free_spins.active and goal_tracker.is_complete():
 		_settle_symbols_down_without_refill()
 	_bankroll_cents += int(spin_summary["payout"])
+	_clamp_bankroll()
+	_apply_encounter_goal_from_spin(int(spin_summary["payout"]))
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
@@ -469,6 +556,7 @@ func spin_sync() -> void:
 		return
 	if not _can_afford_spin():
 		_last_spin_summary = _empty_spin_summary()
+		_finalize_encounter_if_needed()
 		emit_signal("readouts_progressed")
 		return
 	_state = State.SPINNING
@@ -516,6 +604,8 @@ func spin_sync() -> void:
 	if free_spins.active and goal_tracker.is_complete():
 		_settle_symbols_down_without_refill()
 	_bankroll_cents += int(spin_summary["payout"])
+	_clamp_bankroll()
+	_apply_encounter_goal_from_spin(int(spin_summary["payout"]))
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
@@ -541,6 +631,21 @@ func choose_free_spins_princess(princess_id: StringName) -> void:
 		return
 	## SUPER Free Spins entry (post-Trinity handoff).
 	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used],
+		"H4",
+		"combat_root.gd:choose_free_spins_princess",
+		"choose_free_spins_princess entered",
+		{
+			"princess_id": String(princess_id),
+			"awaiting_choice": _awaiting_free_spin_choice,
+			"free_spins_active_before_start": free_spins.active,
+			"spins_remaining_before_start": free_spins.spins_remaining,
+			"grid_snapshot_before_start": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
+	# #region agent log
 	_agent_debug_log(
 		"pre-fix",
 		"H6",
@@ -557,12 +662,26 @@ func choose_free_spins_princess(princess_id: StringName) -> void:
 	# #endregion
 	free_spins.start_with_princess(princess_id)
 	princesses.set_current_id(princess_id)
+	_repopulate_grid_handoff("super_fs_entry")
 	_awaiting_free_spin_choice = false
 	multiplier.cap_enabled = true
 	multiplier.cap_value = free_spins.multiplier_cap
 	_state = State.IDLE
 	_refresh_grid_border_for_state()
 	emit_signal("readouts_progressed")
+	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used],
+		"H4",
+		"combat_root.gd:choose_free_spins_princess",
+		"choose_free_spins_princess completed",
+		{
+			"free_spins_active_after_start": free_spins.active,
+			"spins_remaining_after_start": free_spins.spins_remaining,
+			"state_after_start": _state,
+		}
+	)
+	# #endregion
 
 
 func end_encounter(success: bool) -> void:
@@ -604,7 +723,9 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	_pending_free_spins = false
 	_awaiting_free_spin_choice = false
 	_round_winnings_cents = 0
+	_encounter_goal_winnings_cents = 0
 	_bankroll_cents = preserved_bankroll
+	_clamp_bankroll()
 	var encounter := encounter_def as EncounterScript
 	var goal = encounter.get("goal") if encounter != null else null
 	goal_tracker.call("set_goal", goal)
@@ -707,14 +828,15 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		out["produced_any_win"] = true
 		await _resolve_lines(lines)
 		await _apply_gravity_and_refill(not free_spins.active)
-		multiplier.add(1)
-		_refresh_multiplier_label()
+		_emit_line_win_events(lines)
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
+		multiplier.add(1)
+		_refresh_multiplier_label()
 	return out
 
 
@@ -732,13 +854,14 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 		out["produced_any_win"] = true
 		_resolve_lines_sync(lines)
 		_apply_gravity_and_refill_sync(not free_spins.active)
-		multiplier.add(1)
+		_emit_line_win_events(lines)
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
+		multiplier.add(1)
 	return out
 
 
@@ -750,20 +873,23 @@ func _resolve_trinity_cascade_loop_async() -> Dictionary:
 		if guard > MAX_CASCADE_ITERATIONS:
 			push_error("CombatRoot: trinity cascade exceeded MAX_CASCADE_ITERATIONS (async).")
 			break
+		if _grid_has_floating_symbols():
+			await _apply_gravity_and_refill(false)
 		var lines: Array = LineDetectorScript.find_lines(grid.cells)
 		if lines.is_empty():
 			break
 		out["produced_any_win"] = true
 		await _resolve_lines(lines)
 		await _apply_gravity_and_refill(false)
-		multiplier.add(1)
-		_refresh_multiplier_label()
+		_emit_line_win_events(lines)
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
+		multiplier.add(1)
+		_refresh_multiplier_label()
 	return out
 
 
@@ -775,19 +901,22 @@ func _resolve_trinity_cascade_loop_sync() -> Dictionary:
 		if guard > MAX_CASCADE_ITERATIONS:
 			push_error("CombatRoot: trinity cascade exceeded MAX_CASCADE_ITERATIONS (sync).")
 			break
+		if _grid_has_floating_symbols():
+			_settle_symbols_down_without_refill()
 		var lines: Array = LineDetectorScript.find_lines(grid.cells)
 		if lines.is_empty():
 			break
 		out["produced_any_win"] = true
 		_resolve_lines_sync(lines)
 		_apply_gravity_and_refill_sync(false)
-		multiplier.add(1)
+		_emit_line_win_events(lines)
 		out["cascade_drops"] = int(out["cascade_drops"]) + 1
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
+		multiplier.add(1)
 	return out
 
 
@@ -812,6 +941,7 @@ func _resolve_lines(lines: Array) -> void:
 func _resolve_lines_sync(lines: Array) -> void:
 	_resolve_lines_impl(lines)
 	_apply_meter_from_lines(lines)
+	_emit_matched_symbols_from_lines(lines)
 
 
 func _resolve_lines_impl(lines: Array) -> void:
@@ -832,44 +962,19 @@ func _resolve_lines_impl(lines: Array) -> void:
 	_refresh_cells_visual()
 
 
-func _apply_gravity_and_refill(allow_refill: bool = true) -> void:
+## Gravity-only cascade settle. allow_refill is ignored (MP100: no new symbols mid-round).
+func _apply_gravity_and_refill(_allow_refill: bool = true) -> void:
 	_pending_fall_moves.clear()
 	_pending_spawns.clear()
 	grid.apply_gravity()
-	var should_refill := allow_refill and not free_spins.active
-	# #region agent log
-	_agent_debug_log(
-		"pre-fix",
-		"H4",
-		"combat_root.gd:_apply_gravity_and_refill",
-		"apply_gravity_and_refill gate evaluated",
-		{
-			"allow_refill": allow_refill,
-			"free_spins_active": free_spins.active,
-			"spins_remaining": free_spins.spins_remaining,
-			"should_refill": should_refill,
-			"state": _state,
-			"spins_used": _spins_used,
-		}
-	)
-	# #endregion
-	if allow_refill and free_spins.active:
-		push_warning("CombatRoot: blocked refill during Free Spins.")
-	if should_refill:
-		grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	await _play_pending_gravity_refill_fx()
 	await _pause_visual(pause_after_gravity_refill_sec)
 
 
-func _apply_gravity_and_refill_sync(allow_refill: bool = true) -> void:
+func _apply_gravity_and_refill_sync(_allow_refill: bool = true) -> void:
 	_pending_fall_moves.clear()
 	_pending_spawns.clear()
 	grid.apply_gravity()
-	var should_refill := allow_refill and not free_spins.active
-	if allow_refill and free_spins.active:
-		push_warning("CombatRoot: blocked refill during Free Spins (sync).")
-	if should_refill:
-		grid.refill(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	_refresh_cells_visual()
 
 
@@ -885,6 +990,20 @@ func _pause_visual(seconds: float) -> void:
 
 func _on_grid_populated() -> void:
 	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used],
+		"H2",
+		"combat_root.gd:_on_grid_populated",
+		"grid_populated signal",
+		{
+			"state": _state,
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"grid_snapshot": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
+	# #region agent log
 	_agent_debug_log(
 		"pre-fix",
 		"H2",
@@ -898,6 +1017,10 @@ func _on_grid_populated() -> void:
 		}
 	)
 	# #endregion
+	if _suppress_grid_populated_fx:
+		if not enable_symbol_fx:
+			_refresh_cells_visual()
+		return
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 		return
@@ -940,12 +1063,9 @@ func _refresh_multiplier_label() -> void:
 
 
 func _refresh_round_winnings_label() -> void:
-	var has_winnings := _round_winnings_cents > 0
 	if round_winnings_label:
 		round_winnings_label.visible = false
 		round_winnings_label.text = ""
-	if winnings_overlay_label:
-		winnings_overlay_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents) if has_winnings else ""
 
 
 func _ensure_symbol_slots() -> void:
@@ -995,15 +1115,55 @@ func fit_to_viewport(viewport_size: Vector2) -> void:
 	var usable_height: float = usable_bottom - usable_top
 	var grid_y: float = usable_top + max((usable_height - total_height) * 0.5, 0.0)
 	position = Vector2(grid_x, grid_y)
-	multiplier_label.position = Vector2(0.0, 8.0)
-	multiplier_label.size = Vector2(grid_width, 30.0)
+	if multiplier_label != null:
+		multiplier_label.visible = false
 	grid_ui.position = Vector2(0.0, 48.0)
 	grid_ui.size = Vector2(grid_width, grid_height)
 	_apply_slot_min_size(cell_size)
-	round_winnings_label.position = Vector2(0.0, grid_ui.position.y + grid_height + ROUND_WINNINGS_GAP)
-	round_winnings_label.size = Vector2(grid_width, ROUND_WINNINGS_HEIGHT)
+	if round_winnings_label != null:
+		round_winnings_label.visible = false
 	_layout_grid_fx_nodes()
-	_layout_winnings_overlay()
+	_slot_positions_ready = false
+
+
+## Center grid inside a host panel (top-left origin). Used when CombatRoot is reparented into a frame.
+func fit_to_panel(
+	panel_size: Vector2,
+	bottom_inset: float = 12.0,
+	align_grid_top: bool = false,
+	fill_panel: bool = false,
+) -> void:
+	var safe_w: float = max(panel_size.x, 64.0)
+	var safe_h: float = max(panel_size.y - bottom_inset, 64.0)
+	var sep_h := float(grid_ui.get_theme_constant("h_separation"))
+	var sep_v := float(grid_ui.get_theme_constant("v_separation"))
+	var cell_size: float
+	if fill_panel:
+		var inner_w: float = safe_w - GRID_EDGE_MARGIN * 2.0
+		var inner_h: float = safe_h - GRID_EDGE_MARGIN
+		var by_w: float = (inner_w - float(GridManager.COLS - 1) * sep_h) / float(GridManager.COLS)
+		var by_h: float = (inner_h - float(GridManager.ROWS - 1) * sep_v) / float(GridManager.ROWS)
+		cell_size = clampf(minf(by_w, by_h), CELL_SIZE_MIN, PANEL_FILL_CELL_MAX)
+	else:
+		var min_dim: float = min(safe_w, safe_h)
+		cell_size = clamp(min_dim * 0.11 * GRID_VISUAL_SCALE, CELL_SIZE_MIN, CELL_SIZE_MAX)
+	var grid_width: float = float(GridManager.COLS) * cell_size + float(GridManager.COLS - 1) * sep_h
+	var grid_height: float = float(GridManager.ROWS) * cell_size + float(GridManager.ROWS - 1) * sep_v
+	_grid_width_cached = grid_width
+	_grid_height_cached = grid_height
+	var grid_x: float = max((safe_w - grid_width) * 0.5, GRID_EDGE_MARGIN)
+	var grid_y: float = GRID_EDGE_MARGIN
+	if not align_grid_top:
+		grid_y += max((safe_h - grid_height) * 0.5, 0.0)
+	position = Vector2.ZERO
+	if multiplier_label != null:
+		multiplier_label.visible = false
+	grid_ui.position = Vector2(grid_x, grid_y)
+	grid_ui.size = Vector2(grid_width, grid_height)
+	_apply_slot_min_size(cell_size)
+	if round_winnings_label != null:
+		round_winnings_label.visible = false
+	_layout_grid_fx_nodes()
 	_slot_positions_ready = false
 
 
@@ -1035,97 +1195,11 @@ func _hide_encounter_won_banner() -> void:
 
 
 func _play_round_winnings_win_glow() -> void:
-	if winnings_overlay_bar == null or winnings_overlay_label == null:
-		return
-	_kill_winnings_overlay_tween()
-	_layout_winnings_overlay()
-	_winnings_overlay_showing = true
-	winnings_overlay_bar.visible = true
-	winnings_overlay_label.visible = true
-	winnings_overlay_label.text = "ROUND WINNINGS  %s" % _format_currency_from_cents(_round_winnings_cents)
-	winnings_overlay_bar.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	winnings_overlay_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	_set_round_winnings_outline_color(Color(1.0, 0.33, 0.33, 0.45))
-	_set_winnings_overlay_width(0.0)
-	_winnings_overlay_tween = create_tween()
-	_winnings_overlay_tween.tween_method(_set_winnings_overlay_width, 0.0, _grid_width_cached, 0.16)
-	_winnings_overlay_tween.parallel().tween_property(winnings_overlay_bar, "modulate:a", 1.0, 0.16)
-	_winnings_overlay_tween.tween_property(winnings_overlay_label, "modulate:a", 1.0, 0.12)
-	_winnings_overlay_tween.parallel().tween_method(_set_round_winnings_outline_color, Color(1.0, 0.33, 0.33, 0.45), Color(1.0, 0.5, 0.5, 0.92), 0.12)
-	_winnings_overlay_tween.tween_method(_set_round_winnings_outline_color, Color(1.0, 0.5, 0.5, 0.92), Color(1.0, 0.33, 0.33, 0.45), 0.2)
+	pass
 
 
-func _set_round_winnings_outline_color(color: Color) -> void:
-	if winnings_overlay_label == null:
-		return
-	winnings_overlay_label.add_theme_color_override("font_outline_color", color)
-
-
-func _layout_winnings_overlay() -> void:
-	if winnings_overlay_bar == null or winnings_overlay_label == null:
-		return
-	var bar_height := clampf(_grid_height_cached * 0.22, 34.0, 56.0)
-	var bar_y := grid_ui.position.y + (_grid_height_cached - bar_height) * 0.5
-	winnings_overlay_bar.position = Vector2((max(_grid_width_cached, 1.0) - winnings_overlay_bar.size.x) * 0.5, bar_y)
-	winnings_overlay_bar.size = Vector2(winnings_overlay_bar.size.x, bar_height)
-	winnings_overlay_label.position = Vector2(0.0, bar_y - 6.0)
-	winnings_overlay_label.size = Vector2(_grid_width_cached, bar_height + 12.0)
-
-
-func _set_winnings_overlay_width(width: float) -> void:
-	if winnings_overlay_bar == null:
-		return
-	var clamped_width := clampf(width, 0.0, max(_grid_width_cached, 1.0))
-	var bar_height := winnings_overlay_bar.size.y
-	var bar_y := grid_ui.position.y + (_grid_height_cached - bar_height) * 0.5
-	winnings_overlay_bar.position = Vector2((_grid_width_cached - clamped_width) * 0.5, bar_y)
-	winnings_overlay_bar.size = Vector2(clamped_width, bar_height)
-
-
-func _hide_round_winnings_overlay(immediate: bool = false) -> void:
-	if winnings_overlay_bar == null or winnings_overlay_label == null:
-		return
-	if not _winnings_overlay_showing and not winnings_overlay_bar.visible and not winnings_overlay_label.visible:
-		return
-	_winnings_overlay_showing = false
-	_kill_winnings_overlay_tween()
-	if immediate:
-		winnings_overlay_bar.visible = false
-		winnings_overlay_label.visible = false
-		winnings_overlay_bar.modulate = Color(1.0, 1.0, 1.0, 0.0)
-		winnings_overlay_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
-		_set_winnings_overlay_width(0.0)
-		return
-	_winnings_overlay_tween = create_tween()
-	_winnings_overlay_tween.tween_property(winnings_overlay_label, "modulate:a", 0.0, 0.12)
-	_winnings_overlay_tween.parallel().tween_property(winnings_overlay_bar, "modulate:a", 0.0, 0.14)
-	_winnings_overlay_tween.finished.connect(func() -> void:
-		winnings_overlay_bar.visible = false
-		winnings_overlay_label.visible = false
-		_set_winnings_overlay_width(0.0)
-	)
-
-
-func _kill_winnings_overlay_tween() -> void:
-	if _winnings_overlay_tween != null and is_instance_valid(_winnings_overlay_tween):
-		_winnings_overlay_tween.kill()
-	_winnings_overlay_tween = null
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not _winnings_overlay_showing:
-		return
-	if event is InputEventKey:
-		var key_event := event as InputEventKey
-		if key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE:
-			_hide_round_winnings_overlay(false)
-			get_viewport().set_input_as_handled()
-			return
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.pressed:
-			_hide_round_winnings_overlay(false)
-			get_viewport().set_input_as_handled()
+func _hide_round_winnings_overlay(_immediate: bool = false) -> void:
+	pass
 
 
 func _apply_slot_min_size(cell_size: float) -> void:
@@ -1174,40 +1248,95 @@ func _play_initial_grid_drop_fx() -> void:
 
 
 func _play_count_flash_for_lines(lines: Array) -> void:
+	_emit_matched_symbols_from_lines(lines)
 	if not enable_symbol_fx:
+		_show_win_popups_for_lines(lines)
 		emit_signal("readouts_progressed")
 		return
-	var seen: Dictionary = {}
+	var flash_index := 0
 	for line in lines:
 		var cells: Array = line["cells"]
+		var payout_text := _format_currency_from_cents(_line_payout_cents(line))
 		for p in cells:
-			seen[p as Vector2i] = true
-	if seen.is_empty():
-		return
-	var i := 0
-	for coord in seen.keys():
-		var slot := _get_slot(coord)
-		if slot == null:
-			continue
-		if slot.has_method("play_count_flash"):
-			slot.call("play_count_flash", count_flash_duration_sec, 0.55, fx_stagger_sec * i)
-		emit_signal("readouts_progressed")
-		i += 1
+			var coord := p as Vector2i
+			var slot := _get_slot(coord)
+			if slot == null:
+				continue
+			var delay := fx_stagger_sec * flash_index
+			if slot.has_method("play_count_flash"):
+				slot.call("play_count_flash", count_flash_duration_sec, 0.55, delay)
+			emit_signal("readouts_progressed")
+			flash_index += 1
+		if not payout_text.is_empty():
+			var popup_coord := _line_popup_anchor_coord(cells)
+			var popup_slot := _get_slot(popup_coord)
+			if popup_slot != null and popup_slot.has_method("play_win_popup"):
+				var popup_delay: float = fx_stagger_sec * float(max(flash_index - 1, 0))
+				popup_slot.call("play_win_popup", "+%s" % payout_text, count_flash_duration_sec + 0.2, popup_delay)
+	await get_tree().create_timer(count_flash_duration_sec + fx_stagger_sec * max(flash_index - 1, 0)).timeout
+
+
+func _show_win_popups_for_lines(lines: Array) -> void:
 	for line in lines:
-		var line_cells: Array = line.get("cells", [])
-		if line_cells.is_empty():
+		var payout_text := _format_currency_from_cents(_line_payout_cents(line))
+		if payout_text.is_empty():
 			continue
-		var anchor_idx := int(floor(float(line_cells.size()) / 2.0))
-		var anchor := line_cells[anchor_idx] as Vector2i
-		var anchor_slot := _get_slot(anchor)
-		if anchor_slot == null:
-			anchor_slot = _get_slot(line_cells[0] as Vector2i)
-		if anchor_slot == null:
+		var cells: Array = line["cells"]
+		var popup_coord := _line_popup_anchor_coord(cells)
+		var popup_slot := _get_slot(popup_coord)
+		if popup_slot != null and popup_slot.has_method("play_win_popup"):
+			popup_slot.call("play_win_popup", "+%s" % payout_text, 0.01, 0.0)
+
+
+func _line_popup_anchor_coord(cells: Array) -> Vector2i:
+	if cells.is_empty():
+		return Vector2i(-1, -1)
+	var center := Vector2.ZERO
+	for p in cells:
+		var coord := p as Vector2i
+		center += Vector2(float(coord.x), float(coord.y))
+	center /= float(cells.size())
+	var best := cells[0] as Vector2i
+	var best_dist := INF
+	for p in cells:
+		var coord := p as Vector2i
+		var dist := Vector2(float(coord.x), float(coord.y)).distance_squared_to(center)
+		if dist < best_dist:
+			best_dist = dist
+			best = coord
+	return best
+
+
+func _emit_line_win_events(lines: Array) -> void:
+	for line in lines:
+		var payout_cents := _line_payout_cents(line)
+		if payout_cents <= 0:
 			continue
-		var line_amount_cents := _line_payout_cents(line)
-		if anchor_slot.has_method("play_win_popup"):
-			anchor_slot.call("play_win_popup", _format_currency_from_cents(line_amount_cents), count_flash_duration_sec + 0.25, 0.0)
-	await get_tree().create_timer(count_flash_duration_sec + fx_stagger_sec * max(i - 1, 0)).timeout
+		emit_signal("line_win_resolved", _line_win_event_from_line(line, payout_cents))
+
+
+func _line_win_event_from_line(line: Dictionary, payout_cents: int) -> Dictionary:
+	var symbol_id: StringName = line.get("symbol_id", &"")
+	if symbol_id == &"wild" and wild_symbol != null:
+		symbol_id = wild_symbol.id
+	var sd := _symbols_by_id.get(symbol_id, null) as SymbolDef
+	var symbol_name := String(symbol_id)
+	var symbol_value := 0.0
+	if sd != null:
+		var dn := sd.display_name.strip_edges()
+		if not dn.is_empty():
+			symbol_name = dn
+		var line_length: int = int(line.get("length", 0))
+		symbol_value = sd.payout_multiplier_for_length(line_length)
+	return {
+		"symbol_id": symbol_id,
+		"symbol_name": symbol_name,
+		"length": int(line.get("length", 0)),
+		"bet": int(total_bet),
+		"symbol_value": symbol_value,
+		"cascade_multiplier": multiplier.value,
+		"payout_cents": payout_cents,
+	}
 
 
 func _start_spin_with_new_grid() -> void:
@@ -1253,6 +1382,20 @@ func _start_spin_with_new_grid() -> void:
 
 func _begin_spin_round() -> void:
 	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used + 1],
+		"H3",
+		"combat_root.gd:_begin_spin_round",
+		"spin branch decision",
+		{
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"state": _state,
+			"spins_used": _spins_used,
+		}
+	)
+	# #endregion
+	# #region agent log
 	_agent_debug_log(
 		"pre-fix",
 		"H1",
@@ -1267,11 +1410,58 @@ func _begin_spin_round() -> void:
 	)
 	# #endregion
 	if free_spins.active:
-		# Free spins continue from current depleted grid; they should not repopulate.
+		## Super Free Spins: continue from entry grid; repopulate only at handoff (choose princess).
 		emit_signal("spin_started", _current_seed)
 		emit_signal("readouts_progressed")
 		return
 	_start_spin_with_new_grid()
+
+
+## Fresh 5x5 at feature handoff; continues encounter RNG stream (no reseed).
+func _repopulate_grid_handoff(handoff: String) -> void:
+	_suppress_grid_populated_fx = true
+	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	_suppress_grid_populated_fx = false
+	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used],
+		"H2",
+		"combat_root.gd:_repopulate_grid_handoff",
+		"handoff grid repopulated",
+		{
+			"handoff": handoff,
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"grid_snapshot": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+
+
+func _repopulate_grid_handoff_async(handoff: String) -> void:
+	_suppress_grid_populated_fx = true
+	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	_suppress_grid_populated_fx = false
+	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used],
+		"H2",
+		"combat_root.gd:_repopulate_grid_handoff_async",
+		"handoff grid repopulated",
+		{
+			"handoff": handoff,
+			"free_spins_active": free_spins.active,
+			"spins_remaining": free_spins.spins_remaining,
+			"grid_snapshot": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
+	if not enable_symbol_fx:
+		_refresh_cells_visual()
+		return
+	await _play_initial_grid_drop_fx()
 
 
 func _can_afford_spin() -> bool:
@@ -1424,7 +1614,7 @@ func _line_payout_cents(line: Dictionary) -> int:
 
 
 func _to_cents(amount: float) -> int:
-	return int(round(amount * 100.0))
+	return int(round(amount))
 
 
 func _get_item_payout_scalar() -> float:
@@ -1448,7 +1638,9 @@ func _item_payout_contribution(item: Resource) -> float:
 
 
 func _format_currency_from_cents(amount_cents: int) -> String:
-	return "%.2f" % (float(amount_cents) / 100.0)
+	if amount_cents <= 0:
+		return ""
+	return str(amount_cents)
 
 
 func _summarize_lines(lines: Array) -> Array:
@@ -1497,6 +1689,25 @@ func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, m
 	file.seek_end()
 	var payload := {
 		"sessionId": AGENT_DEBUG_SESSION_ID,
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000,
+	}
+	file.store_line(JSON.stringify(payload))
+	file.close()
+
+
+func _session_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(SESSION_DEBUG_LOG_PATH) else FileAccess.WRITE_READ
+	var file := FileAccess.open(SESSION_DEBUG_LOG_PATH, mode)
+	if file == null:
+		return
+	file.seek_end()
+	var payload := {
+		"sessionId": SESSION_DEBUG_SESSION_ID,
 		"runId": run_id,
 		"hypothesisId": hypothesis_id,
 		"location": location,
@@ -1759,14 +1970,28 @@ func _kill_tween(tween: Tween) -> void:
 
 func _run_trinity_round_async() -> Dictionary:
 	var out := _empty_spin_summary()
+	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used],
+		"H5",
+		"combat_root.gd:_run_trinity_round_async",
+		"trinity round entered",
+		{
+			"free_spins_active": free_spins.active,
+			"meter_sections": meter.sections_filled,
+			"state": _state,
+			"grid_snapshot": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
 	meter.saved_active_princess = princesses.current_id()
 	multiplier.reset()
 	_refresh_multiplier_label()
 	_in_trinity_round = true
 	var order: Array[StringName] = [&"love", &"star", &"storm"]
 	await _play_meter_full_transition_async()
-	## Regular Free Spins (Trinity Run): allow gravity-only cascades, but no top refill/new spawns.
-	## Use the existing grid as-is, then resolve with gravity-only.
+	await _repopulate_grid_handoff_async("trinity_entry")
+	## Trinity Run: gravity-only cascades (no top refill in any mode).
 	for id in order:
 		princesses.set_current_id(id)
 		await _play_power_intro_flash_async(id)
@@ -1777,6 +2002,20 @@ func _run_trinity_round_async() -> Dictionary:
 		var post_power := await _resolve_trinity_cascade_loop_async()
 		_merge_spin_summary(out, post_power)
 		if _count_non_wild_symbols() == 0:
+			# #region agent log
+			_session_debug_log(
+				"seed-%d-spin-%d" % [_current_seed, _spins_used],
+				"H5",
+				"combat_root.gd:_run_trinity_round_async",
+				"trinity flagged pending free spins",
+				{
+					"trigger_princess_id": String(id),
+					"non_wild_count": _count_non_wild_symbols(),
+					"state": _state,
+					"grid_snapshot": grid.snapshot_ids(),
+				}
+			)
+			# #endregion
 			# #region agent log
 			_agent_debug_log(
 				"pre-fix",
@@ -1797,6 +2036,20 @@ func _run_trinity_round_async() -> Dictionary:
 	_in_trinity_round = false
 	princesses.set_current_id(meter.saved_active_princess)
 	meter.reset()
+	# #region agent log
+	_session_debug_log(
+		"seed-%d-spin-%d" % [_current_seed, _spins_used],
+		"H5",
+		"combat_root.gd:_run_trinity_round_async",
+		"trinity round exited",
+		{
+			"pending_free_spins": _pending_free_spins,
+			"free_spins_active": free_spins.active,
+			"state": _state,
+			"grid_snapshot": grid.snapshot_ids(),
+		}
+	)
+	# #endregion
 	return out
 
 
@@ -1807,8 +2060,8 @@ func _run_trinity_round_sync() -> Dictionary:
 	_in_trinity_round = true
 	var order: Array[StringName] = [&"love", &"star", &"storm"]
 	_play_meter_full_transition_sync()
-	## Regular Free Spins (Trinity Run): allow gravity-only cascades, but no top refill/new spawns.
-	## Use the existing grid as-is, then resolve with gravity-only.
+	_repopulate_grid_handoff("trinity_entry")
+	## Trinity Run: gravity-only cascades (no top refill in any mode).
 	for id in order:
 		princesses.set_current_id(id)
 		princesses.trigger_power_by_id(id, _make_princess_ctx())
@@ -1825,12 +2078,35 @@ func _run_trinity_round_sync() -> Dictionary:
 	return out
 
 
-func _finalize_encounter_if_needed() -> void:
-	var encounter := encounter_def as EncounterScript
-	if encounter == null:
+func _apply_encounter_goal_from_spin(payout_cents: int) -> void:
+	if payout_cents <= 0:
 		return
-	if goal_tracker.is_complete():
+	_encounter_goal_winnings_cents += payout_cents
+
+
+func _emit_matched_symbols_from_lines(lines: Array) -> void:
+	if lines.is_empty():
+		return
+	var entries: Array = []
+	var seen: Dictionary = {}
+	for line in lines:
+		var symbol_id: StringName = line.get("symbol_id", &"")
+		if symbol_id == &"wild" and wild_symbol != null:
+			symbol_id = wild_symbol.id
+		var key := String(symbol_id)
+		if seen.has(key):
+			continue
+		seen[key] = true
+		var sd := _symbols_by_id.get(symbol_id, null) as SymbolDef
+		var tex: Texture2D = sd.texture if sd != null else null
+		entries.append({"symbol_id": symbol_id, "texture": tex})
+	if not entries.is_empty():
+		emit_signal("matched_symbols_resolved", entries)
+
+
+func _finalize_encounter_if_needed() -> void:
+	if is_chip_bar_goal_complete():
 		end_encounter(true)
 		return
-	if _spins_used >= encounter.spin_budget and not free_spins.active:
+	if not free_spins.active and not _can_afford_spin():
 		end_encounter(false)

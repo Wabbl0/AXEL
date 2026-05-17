@@ -137,9 +137,9 @@ func _run_seed_baseline(seed_value: int) -> Dictionary:
 		if cr.is_waiting_for_free_spin_choice():
 			cr.choose_free_spins_princess(FS_PICK)
 		var was_free := cr.free_spins.active
-		var bankroll_before := int(round(cr.get_bankroll() * 100.0))
+		var bankroll_before := int(round(cr.get_bankroll()))
 		cr.spin_sync()
-		var bankroll_after := int(round(cr.get_bankroll() * 100.0))
+		var bankroll_after := int(round(cr.get_bankroll()))
 		var summary := cr.get_last_spin_summary()
 		var spin_payout := int(summary.get("payout", 0))
 		var spin_wager := spin_payout - (bankroll_after - bankroll_before)
@@ -273,9 +273,9 @@ func _run_seed_with_item(seed_value: int, item_path: String) -> Dictionary:
 		if cr.is_waiting_for_free_spin_choice():
 			cr.choose_free_spins_princess(FS_PICK)
 		var was_free := cr.free_spins.active
-		var bankroll_before := int(round(cr.get_bankroll() * 100.0))
+		var bankroll_before := int(round(cr.get_bankroll()))
 		cr.spin_sync()
-		var bankroll_after := int(round(cr.get_bankroll() * 100.0))
+		var bankroll_after := int(round(cr.get_bankroll()))
 		var summary := cr.get_last_spin_summary()
 		var spin_payout := int(summary.get("payout", 0))
 		var spin_wager := spin_payout - (bankroll_after - bankroll_before)
