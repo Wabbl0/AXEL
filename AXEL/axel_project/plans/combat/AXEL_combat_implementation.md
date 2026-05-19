@@ -10,7 +10,7 @@ Companion to `AXEL_combat_design.md`. This file is the engineering plan: project
 
 1. **Install:** Godot 4.x (LTS) + the `godot-tools` extension for Cursor.
 2. **Repo hygiene:** combat layer lives in `res://combat/` as a self-contained subsystem. It should be runnable in isolation via a test scene (`res://combat/test/combat_test.tscn`) — you want to iterate on combat without launching the whole school.
-3. **Asset plan:** placeholder symbols are flat PNGs (16px or 32px, red-on-black). Make a `res://combat/art/placeholders/` folder. Don't block on final art — all symbols are data-driven by ID, so sprites can be swapped without touching code.
+3. **Asset plan:** symbol sprites are flat PNGs (red-on-black) under `res://combat/art/grid_symbols/`. Regenerate via `python combat/art/generate_placeholders.py`. Don't block on final art — all symbols are data-driven by ID, so sprites can be swapped without touching code.
 4. **Tooling target:** keep combat deterministic when seeded. All randomness goes through a single `RNG` instance on the encounter state — never `randi()` directly. This is essential for bug-repro and for supporting a "daily seed" run later.
 
 ---
@@ -42,7 +42,7 @@ res://combat/
 │   ├── goals/                  # GoalDef resources
 │   ├── items/                  # ItemDef resources
 │   └── encounters/             # EncounterDef resources
-└── art/placeholders/
+└── art/grid_symbols/
 ```
 
 Rule of thumb: if a thing is *content* (a symbol type, a goal type, an item), make it a `Resource`. If it's *behavior*, make it a script on a Node. Content should be editable in the Godot inspector without recompiling logic.

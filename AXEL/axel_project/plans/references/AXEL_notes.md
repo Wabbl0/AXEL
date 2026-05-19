@@ -307,14 +307,14 @@ These questions have not yet been answered and are required before full implemen
 
 ## 12. Combat Symbol Asset Policy
 
-Combat symbol rendering now uses a dual-texture policy for performance and clarity:
+Combat symbol rendering uses a single canonical art folder for runtime:
 
 - **Grid symbol texture (`SymbolDef.texture`)** must point to `res://combat/art/grid_symbols/*.png` and is imported with `process/size_limit=128`.
-- **Power intro texture (`SymbolDef.power_intro_texture`)** must point to the high-resolution source in `res://combat/art/placeholders/*.png` (720 assets).
-- `CombatRoot` power-intro FX must resolve textures via `SymbolDef.texture_for_power_intro()`, so activation moments keep high-definition visuals while normal grid play stays lightweight.
+- **Power intro texture (`SymbolDef.power_intro_texture`)** is optional. When unset, `SymbolDef.texture_for_power_intro()` falls back to `texture` (same `grid_symbols` asset).
+- `CombatRoot` power-intro FX must resolve textures via `SymbolDef.texture_for_power_intro()`.
 - Flat background art direction is preserved. No transparency-only pipeline is required for these symbols.
 
-When adding or replacing symbols, always provide both texture paths so grid memory use remains capped and power activations stay crisp.
+When adding or replacing symbols, add/update the PNG in `grid_symbols` and wire `SymbolDef.texture`. Only set `power_intro_texture` if a distinct intro asset is required later.
 
 ---
 

@@ -1646,3 +1646,195 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Future planning chats must gather enough user-confirmed detail before drafting plans, reducing unilateral revisions and hidden defaults.
 - Verification: Manual doc review confirms matching enforcement language in `AI_DOCS.md` and always-applied governance rule.
+
+## 2026-05-19 - Combat UI Polish (Winnings, History, Power Glow, Execute, Goal)
+
+- Request: Implement ordered combat UI plan phases: larger non-yellow per-symbol winnings popups; two-line spin history with mini symbol logos and white/gray-outlined text; white power-intro glow; execute button vertical nudge for border alignment; goal box font parity with bankroll and right alignment; stake-overlap ideas documented only.
+- Implementation: Applied Concept A winnings popup styling (white text, heavy gray outline/shadow, size bump). Refactored history rows to VBox two-line layout with `TextureRect` mini-icons from line-win event `texture`. Changed `PowerIntroGlow` to white RGB in scene and script. Added `EXECUTE_BUTTON_VERTICAL_NUDGE` spacer above execute button. Goal label uses bankroll responsive font sizing and right alignment. Documented four stake-overlap concepts in `combat_test.gd` comments (no layout change).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scenes/combat_root.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Winnings and history read more clearly; power intros use white wash; execute button sits slightly lower; goal HUD matches bankroll scale and aligns right; grid/symbol placement unchanged.
+- Verification: Linter pass on touched combat scripts.
+
+## 2026-05-19 - Execute Button Vertical Nudge (8px)
+
+- Request: Execute button still misaligned with history/items panel borders; move down by 8px.
+- Implementation: Increased `EXECUTE_BUTTON_VERTICAL_NUDGE` spacer above the execute button from 6px to 8px.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button sits 8px lower in the center footer for border baseline alignment with side panels.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Button Nudge Fix (MarginContainer, 30px test)
+
+- Request: Prior spacer-based nudge had no visible effect; test with 30px downward shift.
+- Implementation: Replaced ineffective `ExecuteTopSpacer` with `MarginContainer` (`margin_top`) around the execute button; footer alignment set to `BEGIN`; nudge constant set to 30px and refreshed in `_layout_execute_button_width()`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button should visibly move down by 30px relative to prior layout.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Button Bottom Alignment (Structural Fix)
+
+- Request: Execute button nudge still had no visible movement; align bottom border with history/items panels.
+- Implementation: Root cause was footer pinned above fixed `BottomWindowMargin` while HBox stretched side panels to full row height. Added `_layout_execute_bottom_inset()` to set bottom spacer from measured gap to side-panel bottom; side panels use `SIZE_SHRINK_END`; removed ineffective `MarginContainer` top-margin approach. `EXECUTE_BUTTON_VERTICAL_NUDGE` subtracts from computed gap (30px test).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button bottom should track history/items panel bottoms; nudge pulls further down when gap allows.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Button Final Border Alignment
+
+- Request: After 30px alignment test, set execute button bottom on same row as history/items panel bottom borders.
+- Implementation: Set `EXECUTE_BUTTON_VERTICAL_NUDGE` to 0; `_layout_execute_bottom_inset()` uses `get_global_rect().end.y` on side panels and execute button for pixel-accurate alignment.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button bottom should line up with side panel bottom borders without extra test offset.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Alignment Without Grid/Panel Reflow
+
+- Request: Previous alignment attempts moved/scaled the combat grid and pushed side panel borders past the game window; keep grid untouched and align execute bottom safely.
+- Implementation: Reverted side-panel/footer sizing changes that caused reflow (`SIZE_SHRINK_END` and footer `ALIGNMENT_BEGIN`), removed bottom-inset spacer mutation, and switched to visual-only execute alignment via `_align_execute_button_bottom_visual()` using global bottom deltas.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Grid sizing/placement and side panel bounds return to stable behavior while execute button is visually aligned to panel bottoms.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Button Nudge Only (+3px)
+
+- Request: Move only the execute button ~3px downward without touching grid or panel layout behavior.
+- Implementation: Simplified `_align_execute_button_bottom_visual()` to apply a fixed button-local Y offset only; set `EXECUTE_BUTTON_VERTICAL_NUDGE` to `3.0`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button is nudged down by 3px; no grid, scale, or panel placement reflow logic involved.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Button Visual Test (+10px)
+
+- Request: 3px nudge still appeared unchanged; test with 10px downward move.
+- Implementation: Set `EXECUTE_BUTTON_VERTICAL_NUDGE` to `10.0` and made execute button `top_level` so container sorting cannot cancel visual offset; `_align_execute_button_bottom_visual()` now positions from center-footer global rect.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button should visibly move down by ~10px without resizing/moving the combat grid or side panels.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Button Final Set (+3px)
+
+- Request: Keep current working method, return near original position, then offset down by 3px.
+- Implementation: Kept top-level visual placement path and changed `EXECUTE_BUTTON_VERTICAL_NUDGE` from `10.0` to `3.0`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button uses original footer anchor logic with a visible +3px downward offset.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Button In-Window Anchor Fix
+
+- Request: Execute button still appeared under the game window bottom border.
+- Implementation: In `_align_execute_button_bottom_visual()`, switched Y anchor from `footer_rect.position.y` to `footer_rect.end.y - btn_size.y`, then applies the same `+3px` nudge.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button stays inside the window while preserving the requested slight downward offset.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Execute Layout Rollback To Original Composition
+
+- Request: Remove all execute-button fixes from this thread and restore original composition.
+- Implementation: Removed `top_level` execute mode, removed visual-position override function/deferred calls, and restored button placement to container-driven layout only.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Execute button returns to original composition behavior (no manual position overrides); grid and side panel layout no longer affected by execute experiments.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Winnings Popup Glow + 50% Activation Pop
+
+- Request: Keep current winnings popup style, add a subtle animated glow, and increase text size by 50% on activation before fade-out.
+- Implementation: In `symbol_slot.gd`, added a glow back-layer label (`WinPopupGlowLabel`) and updated `play_win_popup()` tween flow to pop both labels to `1.5x` scale on entry, drift upward, then fade out.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Per-symbol win amount popup now has a stronger read: brief red glow pulse + 50% scale pop on activation, while preserving the existing white primary text style.
+- Verification: Linter pass on `symbol_slot.gd`.
+
+## 2026-05-19 - Combat Test Editor/Runtime Layout Parity
+
+- Request: Make the combat test 2D editor view match the runtime opening layout (layout-only parity); fix hidden nodes and mispositioned EXECUTE button in editor.
+- Implementation: Converted `combat_test.gd` to `@tool` with an editor-preview path that reuses the same shell/HUD/layout pipeline as runtime without spin gameplay. Added `editor_preview_enabled` and `editor_preview_seed` exports, idempotent play-shell/HUD restoration, and `set_owner(null)` on editor-only dynamic nodes so preview nodes are not saved into the scene. Set `CombatRoot` visible by default in `combat_test.tscn`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 2D editor view now builds the same responsive layout shell as play-mode start (grid, side panels, centered EXECUTE, HUD). Runtime spin flow unchanged; editor preview does not run spins.
+- Verification: Linter pass on `combat_test.gd`; `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd` (OK); `res://combat/test/determinism_check.gd` (OK); `res://combat/test/princess_check.gd` (OK).
+
+## 2026-05-19 - Combat Test Editor Placeholder Guard
+
+- Request: Fix editor errors when `CombatRoot` is a placeholder instance (`setup_new_grid`, `fit_to_panel`, `inventory`, readout/overlay calls) while keeping `combat_root.gd` runtime-only.
+- Implementation: Added `_can_use_combat_api()` / `_can_layout_combat_grid()` gates and safe readout helpers in `combat_test.gd`. Editor preview now uses layout-only fallbacks (static HUD values, host-width button sizing, premium-bar fallback placement) when combat gameplay APIs are unavailable; runtime paths unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 2D editor no longer throws placeholder-instance errors on scene open or `editor_preview_seed` changes; layout shell parity remains. Full combat simulation still runs only at runtime/play.
+- Verification: Linter pass on `combat_test.gd`; scene smoke + determinism + princess headless checks (OK).
+
+## 2026-05-19 - Combat Test Editor Null Onready Refs
+
+- Request: Fix editor `null instance` errors on `seed_spin`, `bet_label`, `spin_btn` and empty 2D preview after `@tool` editor parity work.
+- Implementation: Added `_cache_scene_refs()` to resolve `%UniqueName` nodes manually in editor (`@onready` is unreliable in `@tool`). Deferred editor preview until scene tree is ready (`_run_editor_preview_when_ready` with retry). Added null guards across readout/layout paths; fixed `_build_play_shell` early-return that aborted layout when `mult_label` was missing.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Editor preview should render HUD/side panels/EXECUTE shell without null-instance spam; runtime unchanged.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Combat Test Scene Scaffold Restore
+
+- Request: Restore `combat_test.tscn` to the tracked canonical structure to recover missing preview/runtime UI nodes and unblock editor layout parity.
+- Implementation: Reverted `AXEL/axel_project/combat/combat_test.tscn` to the repository version, restoring required nodes (`CombatRoot`, `MetaBox`, `SeedSpinBox`, `BankrollLabel`, `GoalBox`, `StakeSelector`, `MultiplierReadout`, `SpinButton`) used by `combat_test.gd` caching/layout paths.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Editor preview can resolve required scene refs again and build the full shell instead of rendering only the black background/overlays.
+- Verification: `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd` (OK); `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd` (OK).
+
+## 2026-05-19 - Combat Test Editor Visual Parity (Fallback Layout)
+
+- Request: Fix remaining editor-preview visual drift — EXECUTE bar spanning into side panels, combat grid misplaced/scaled at top-left, and stray `Multiplier: 1×` from `CombatRoot`.
+- Implementation: In `combat_test.gd`, added editor-placeholder fallback grid layout mirroring `combat_root.fit_to_panel` fill-panel math (`_layout_combat_grid_fallback`), centered premium bar + EXECUTE width tied to computed grid width (not full host), and `_suppress_combat_root_legacy_labels()` to hide `MultiplierLabel` / `RoundWinningsLabel` / `EncounterWonLabel` in composed view.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 2D editor preview should match runtime opening composition for grid scale/position and EXECUTE width; runtime `fit_to_panel` path unchanged.
+- Verification: Linter pass on `combat_test.gd`; scene smoke + determinism headless checks (OK).
+
+## 2026-05-19 - Combat Symbol Art Dedup (`grid_symbols` canonical)
+
+- Request: Remove duplicate combat symbol art in `combat/art/placeholders/` (same symbols as `grid_symbols/`) and audit `res://` for other strict-unused duplicates.
+- Conflict resolution: Prior notes required dual-texture (`grid_symbols` + 720px `placeholders`). User chose migrate-to-`grid_symbols` and delete `placeholders`.
+- Implementation: Removed `power_intro_texture` ext-resources from all eight `combat/data/symbols/sym_*.tres` files so intros use `texture_for_power_intro()` fallback to `texture`. Pointed `generate_placeholders.py` output at `combat/art/grid_symbols/`. Deleted `combat/art/placeholders/` (8 PNG + `.import` sidecars).
+- Audit (strict-unused-only): eight name-matched pairs were **likely duplicates** (128px grid vs 720px intro), not byte-identical. No other proven-unused runtime assets deleted. Retained: `exports/screenshots/*` (reference, unreferenced by scenes), `tools/scene_builder/output/layout_previews/*` (tool output; four PNGs share one hash but are individually referenced by imports/tooling).
+- Files changed:
+  - `AXEL/axel_project/combat/data/symbols/*.tres` (8)
+  - `AXEL/axel_project/combat/art/generate_placeholders.py`
+  - `AXEL/axel_project/plans/references/AXEL_notes.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/combat/README.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Deleted: `AXEL/axel_project/combat/art/placeholders/**`
+- Behavior impact: Grid and power-intro FX now share `grid_symbols` textures (128px import limit). Power intros may look softer than the removed 720px assets until dedicated intro art is added.
+- Verification: `rg` shows no `res://combat/art/placeholders/` references outside changelog history; orphan `.import`/`.uid` scan clean.

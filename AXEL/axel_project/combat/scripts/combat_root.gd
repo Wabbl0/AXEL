@@ -188,7 +188,7 @@ func _ready() -> void:
 		power_intro_icon.modulate = Color(1.0, 1.0, 1.0, 0.0)
 		power_intro_icon.scale = Vector2(0.4, 0.4)
 	if power_intro_glow != null:
-		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
+		power_intro_glow.color = Color(1.0, 1.0, 1.0, 0.0)
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
 	_refresh_grid_border_for_state()
@@ -1345,9 +1345,11 @@ func _line_win_event_from_line(line: Dictionary, payout_cents: int) -> Dictionar
 			symbol_name = dn
 		var line_length: int = int(line.get("length", 0))
 		symbol_value = sd.payout_multiplier_for_length(line_length)
+	var tex: Texture2D = sd.texture if sd != null else null
 	return {
 		"symbol_id": symbol_id,
 		"symbol_name": symbol_name,
+		"texture": tex,
 		"length": int(line.get("length", 0)),
 		"bet": int(total_bet),
 		"symbol_value": symbol_value,
@@ -1935,7 +1937,7 @@ func _play_power_intro_flash_async(power_id: StringName) -> void:
 	target.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	target.scale = Vector2(0.4, 0.4)
 	if power_intro_glow != null:
-		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
+		power_intro_glow.color = Color(1.0, 1.0, 1.0, 0.0)
 	var scale_in: float = max(power_intro_scale_in_sec, 0.05)
 	var hold: float = max(power_intro_hold_sec, 0.0)
 	var scale_out: float = max(power_intro_scale_out_sec, 0.05)
