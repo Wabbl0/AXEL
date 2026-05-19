@@ -369,3 +369,50 @@ Copy the template block, fill values, paste **below** the last entry.
   ]
 }
 <!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-19 — Retimed winnings popup (5-phase lob) QA
+
+- **Mode:** playtest
+- **Scope:** `symbol_slot.gd` retimed win popup (appear/scale/glow/lob/fade, 1.24s), `combat_root`/`combat_test` lob target wiring to `MultiplierReadout`
+- **Trigger:** user request (`qa`)
+- **Playtest commands:** princess_check=pass determinism=pass rtp_audit=captured scene_smoke=pass bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=captured item_synergy_smoke=pass
+- **Scores:** S=4 N=4 I=3 E=4 C=3 R=3 **Total=3.57** Band=C
+- **Findings count:** blocker=0 major=0 minor=1 nit=2
+- **By category:** STYLE=0 LORE=0 IMMERSION=1 TENSION=0 CLARITY=1 COMBAT=0 ARCH=0 REGRESSION=0 BUG=0 TOOL=1
+- **Recommendations (logged):**
+  - Extend `_play_count_flash_for_lines` await to `popup_delay + WIN_POPUP_TOTAL_DURATION` so cascade does not start before lob/fade finish
+  - Remove or wire unused `_duration` arg in `play_win_popup` to avoid caller/tween drift
+  - Manual F6: multi-line win — confirm five phases read distinctly before gravity settle
+- **Bug / regression notes:** All playtest gates pass; determinism 100 spins OK; RTP mean 0.75 within band
+- **Trend vs previous run:** flat on gates; new minor pacing coupling between popup length and cascade wait
+- **Link / notes:** Post retimed-winnings-popup-steps implementation
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-19T20:30:00+03:00",
+  "run_title": "Retimed winnings popup (5-phase lob) QA",
+  "mode": "playtest",
+  "scope": "symbol_slot.gd retimed win popup; combat_root/combat_test lob target wiring",
+  "trigger": "user request",
+  "scores": {"S": 4, "N": 4, "I": 3, "E": 4, "C": 3, "R": 3, "Total": 3.57, "Band": "C"},
+  "findings_count": {"blocker": 0, "major": 0, "minor": 1, "nit": 2},
+  "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 1, "TENSION": 0, "CLARITY": 1, "COMBAT": 0, "ARCH": 0, "REGRESSION": 0, "BUG": 0, "TOOL": 1},
+  "playtest_commands": {"princess_check": "pass", "determinism": "pass", "rtp_audit": "captured", "scene_smoke": "pass", "bot_arc1_exterior": "pass", "bot_dialogue_loop": "pass", "item_balance_audit": "captured", "item_synergy_smoke": "pass"},
+  "bugs_or_regressions": [],
+  "rtp_snapshot": {
+    "mean": 0.75019,
+    "ci95": [0.37743, 0.94218],
+    "target_band": [0.75, 0.80],
+    "target_position": "within",
+    "paid_hit_rate": 0.365,
+    "encounter_success_rate": 0.00833,
+    "encounter_wins": 1,
+    "encounter_count": 120
+  },
+  "item_balance": {"schema_version": 1, "items_tested": 2, "items_overpowered": [], "items_underpowered": [], "items_neutral": ["C1_ash_reroll_token", "L3_void_satchel"], "items_insufficient_data": []},
+  "item_metrics": [
+    {"item_id": "C1_ash_reroll_token", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.41466, "delta_rtp": 0.00583, "delta_rtp_ci95": [-0.15697, 0.16862], "baseline_hit_rate": 0.365, "item_hit_rate": 0.322, "delta_hit_rate": -0.043, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20},
+    {"item_id": "L3_void_satchel", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.40883, "delta_rtp": 0.0, "delta_rtp_ci95": [-0.16347, 0.16347], "baseline_hit_rate": 0.365, "item_hit_rate": 0.365, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20}
+  ]
+}
+<!-- QA_ANALYTICS_JSON_END -->
