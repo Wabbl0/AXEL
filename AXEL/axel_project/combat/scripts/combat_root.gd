@@ -148,6 +148,7 @@ var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
 var _suppress_grid_populated_fx: bool = false
 var _cached_multiplier_emit_value: int = -1
+var _winnings_popup_target: Control = null
 var inventory := ItemInventoryScript.new()
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
@@ -347,6 +348,10 @@ func get_current_seed() -> int:
 
 func get_round_winnings() -> float:
 	return float(_round_winnings_cents)
+
+
+func set_winnings_popup_target(target: Control) -> void:
+	_winnings_popup_target = target
 
 
 func get_bankroll() -> float:
@@ -1289,7 +1294,14 @@ func _play_count_flash_for_lines(lines: Array) -> void:
 			var popup_slot := _get_slot(popup_coord)
 			if popup_slot != null and popup_slot.has_method("play_win_popup"):
 				var popup_delay: float = fx_stagger_sec * float(max(flash_index - 1, 0))
-				popup_slot.call("play_win_popup", "+%s" % payout_text, count_flash_duration_sec + 0.2, popup_delay)
+				var throw_target := _get_winnings_popup_target_global()
+				popup_slot.call(
+					"play_win_popup",
+					"+%s" % payout_text,
+					count_flash_duration_sec + 0.2,
+					popup_delay,
+					throw_target
+				)
 	await get_tree().create_timer(count_flash_duration_sec + fx_stagger_sec * max(flash_index - 1, 0)).timeout
 
 
@@ -1302,7 +1314,14 @@ func _show_win_popups_for_lines(lines: Array) -> void:
 		var popup_coord := _line_popup_anchor_coord(cells)
 		var popup_slot := _get_slot(popup_coord)
 		if popup_slot != null and popup_slot.has_method("play_win_popup"):
-			popup_slot.call("play_win_popup", "+%s" % payout_text, 0.01, 0.0)
+			var throw_target := _get_winnings_popup_target_global()
+			popup_slot.call("play_win_popup", "+%s" % payout_text, 0.01, 0.0, throw_target)
+
+
+func _get_winnings_popup_target_global() -> Vector2:
+	if _winnings_popup_target == null or not is_instance_valid(_winnings_popup_target):
+		return Vector2.INF
+	return _winnings_popup_target.get_global_rect().get_center()
 
 
 func _line_popup_anchor_coord(cells: Array) -> Vector2i:

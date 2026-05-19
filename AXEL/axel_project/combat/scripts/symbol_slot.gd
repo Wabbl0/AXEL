@@ -1,12 +1,16 @@
 extends Control
 
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
+const WIN_POPUP_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 
-## Winnings popup — Concept A (white + heavy gray outline, no yellow).
-## Alternates: B = micro red/black pill badge; C = red outer-glow pulse, less drift.
+## Winnings popup — white + heavy gray outline; grows then lobs into total winnings readout.
 const WIN_POPUP_FONT_SIZE := 16
-const WIN_POPUP_DRIFT_PX := -6.0
-const WIN_POPUP_SCALE_PEAK := 1.5
+const WIN_POPUP_SCALE_START := 0.5
+const WIN_POPUP_SCALE_PEAK := 2.0
+const WIN_POPUP_GROW_DURATION := 0.14
+const WIN_POPUP_THROW_DURATION := 0.38
+const WIN_POPUP_ARC_HEIGHT := 52.0
+const WIN_POPUP_FADE_OUT_DURATION := 0.1
 
 var _drop_tween: Tween
 var _flash_tween: Tween
@@ -15,6 +19,9 @@ var _flash_overlay: ColorRect
 var _icon: TextureRect
 var _win_label: Label
 var _win_glow_label: Label
+var _lob_p0: Vector2 = Vector2.ZERO
+var _lob_p1: Vector2 = Vector2.ZERO
+var _lob_p2: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -68,17 +75,127 @@ func cancel_active_fx() -> void:
 	if _flash_overlay != null:
 		_flash_overlay.color.a = 0.0
 		_flash_overlay.visible = false
+	_reset_win_popup_visuals()
+	_icon.position = Vector2.ZERO
+
+
+func play_win_popup(
+	amount_text: String,
+	duration: float = 0.4,
+	delay: float = 0.0,
+	throw_target_global: Vector2 = Vector2.INF,
+) -> void:
+	_ensure_win_label()
+	_ensure_win_glow_label()
+	_cancel_tween(_win_tween)
+	_win_label.text = amount_text
+	_win_glow_label.text = amount_text
+	_reset_win_popup_visuals()
+	_win_label.visible = true
+	_win_glow_label.visible = true
+
+	var pivot := _popup_pivot()
+	_apply_popup_pivot(pivot)
+	var start_pos := _popup_start_position(pivot)
+	var end_pos := _resolve_throw_target_local(throw_target_global, pivot)
+	var use_lob := throw_target_global != Vector2.INF and end_pos.distance_to(start_pos) > 4.0
+
+	_win_label.position = start_pos
+	_win_glow_label.position = start_pos
+	_win_label.scale = Vector2.ONE * WIN_POPUP_SCALE_START
+	_win_glow_label.scale = Vector2.ONE * WIN_POPUP_SCALE_START
+	_win_label.modulate.a = 0.0
+	_win_glow_label.modulate.a = 0.0
+
+	_win_tween = create_tween()
+	if delay > 0.0:
+		_win_tween.tween_interval(delay)
+
+	# Phase A: small -> 2x (100% size increase), fade in.
+	_win_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_win_tween.tween_property(_win_label, "modulate:a", 1.0, WIN_POPUP_GROW_DURATION * 0.45)
+	_win_tween.parallel().tween_property(_win_glow_label, "modulate:a", 0.85, WIN_POPUP_GROW_DURATION * 0.45)
+	_win_tween.parallel().tween_property(_win_label, "scale", Vector2.ONE * WIN_POPUP_SCALE_PEAK, WIN_POPUP_GROW_DURATION)
+	_win_tween.parallel().tween_property(_win_glow_label, "scale", Vector2.ONE * WIN_POPUP_SCALE_PEAK, WIN_POPUP_GROW_DURATION)
+
+	if use_lob:
+		_lob_p0 = start_pos
+		_lob_p2 = end_pos
+		_lob_p1 = (start_pos + end_pos) * 0.5 + Vector2(0.0, -WIN_POPUP_ARC_HEIGHT)
+		var throw_duration := maxf(WIN_POPUP_THROW_DURATION, duration * 0.55)
+		_win_tween.tween_method(_apply_lob_position, 0.0, 1.0, throw_duration)
+		_win_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		_win_tween.parallel().tween_property(_win_label, "scale", Vector2.ONE * 0.85, throw_duration)
+		_win_tween.parallel().tween_property(_win_glow_label, "scale", Vector2.ONE * 0.85, throw_duration)
+		_win_tween.set_ease(Tween.EASE_IN)
+		_win_tween.tween_property(_win_label, "modulate:a", 0.0, WIN_POPUP_FADE_OUT_DURATION)
+		_win_tween.parallel().tween_property(_win_glow_label, "modulate:a", 0.0, WIN_POPUP_FADE_OUT_DURATION)
+	else:
+		# Fallback when no UI target is wired: brief hold then fade at origin.
+		_win_tween.tween_interval(maxf(duration - WIN_POPUP_GROW_DURATION, 0.04))
+		_win_tween.set_ease(Tween.EASE_IN)
+		_win_tween.tween_property(_win_label, "modulate:a", 0.0, WIN_POPUP_FADE_OUT_DURATION)
+		_win_tween.parallel().tween_property(_win_glow_label, "modulate:a", 0.0, WIN_POPUP_FADE_OUT_DURATION)
+
+	_win_tween.finished.connect(_on_win_popup_finished)
+
+
+func _apply_lob_position(t: float) -> void:
+	var pos := _bezier_quad(_lob_p0, _lob_p1, _lob_p2, t)
+	if is_instance_valid(_win_label):
+		_win_label.position = pos
+	if is_instance_valid(_win_glow_label):
+		_win_glow_label.position = pos
+
+
+func _bezier_quad(p0: Vector2, p1: Vector2, p2: Vector2, t: float) -> Vector2:
+	var u := 1.0 - t
+	return u * u * p0 + 2.0 * u * t * p1 + t * t * p2
+
+
+func _popup_pivot() -> Vector2:
+	return size * 0.5
+
+
+func _popup_position_for_center(local_center: Vector2, pivot: Vector2) -> Vector2:
+	return local_center - pivot
+
+
+func _popup_start_position(pivot: Vector2) -> Vector2:
+	return _popup_position_for_center(size * 0.5, pivot)
+
+
+func _resolve_throw_target_local(throw_target_global: Vector2, pivot: Vector2) -> Vector2:
+	if throw_target_global == Vector2.INF:
+		return _popup_start_position(pivot)
+	var local_center := get_global_transform_with_canvas().affine_inverse() * throw_target_global
+	return _popup_position_for_center(local_center, pivot)
+
+
+func _apply_popup_pivot(pivot: Vector2) -> void:
+	_win_label.pivot_offset = pivot
+	_win_glow_label.pivot_offset = pivot
+
+
+func _reset_win_popup_visuals() -> void:
+	var pivot := _popup_pivot()
+	var origin := _popup_start_position(pivot)
 	if _win_label != null:
+		_apply_popup_pivot(pivot)
 		_win_label.visible = false
 		_win_label.modulate.a = 0.0
-		_win_label.position = Vector2.ZERO
+		_win_label.position = origin
 		_win_label.scale = Vector2.ONE
 	if _win_glow_label != null:
+		_apply_popup_pivot(pivot)
 		_win_glow_label.visible = false
 		_win_glow_label.modulate.a = 0.0
-		_win_glow_label.position = Vector2.ZERO
+		_win_glow_label.position = origin
 		_win_glow_label.scale = Vector2.ONE
-	_icon.position = Vector2.ZERO
+
+
+func _on_win_popup_finished() -> void:
+	_reset_win_popup_visuals()
 
 
 func _ensure_flash_overlay() -> void:
@@ -119,49 +236,6 @@ func _ensure_icon() -> void:
 	move_child(_icon, 0)
 
 
-func play_win_popup(amount_text: String, duration: float = 0.4, delay: float = 0.0) -> void:
-	_ensure_win_label()
-	_ensure_win_glow_label()
-	_cancel_tween(_win_tween)
-	_win_label.text = amount_text
-	_win_glow_label.text = amount_text
-	_win_label.visible = true
-	_win_glow_label.visible = true
-	_win_label.modulate.a = 0.0
-	_win_glow_label.modulate.a = 0.0
-	_win_label.position = Vector2.ZERO
-	_win_glow_label.position = Vector2.ZERO
-	_win_label.scale = Vector2.ONE
-	_win_glow_label.scale = Vector2.ONE
-	_win_tween = create_tween()
-	if delay > 0.0:
-		_win_tween.tween_interval(delay)
-	_win_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_win_tween.tween_property(_win_label, "modulate:a", 1.0, 0.06)
-	_win_tween.parallel().tween_property(_win_glow_label, "modulate:a", 0.85, 0.06)
-	_win_tween.parallel().tween_property(_win_label, "scale", Vector2.ONE * WIN_POPUP_SCALE_PEAK, 0.08)
-	_win_tween.parallel().tween_property(_win_glow_label, "scale", Vector2.ONE * WIN_POPUP_SCALE_PEAK, 0.08)
-	_win_tween.parallel().tween_property(_win_label, "position:y", WIN_POPUP_DRIFT_PX, max(duration, 0.12))
-	_win_tween.parallel().tween_property(_win_glow_label, "position:y", WIN_POPUP_DRIFT_PX, max(duration, 0.12))
-	_win_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_win_tween.tween_property(_win_label, "scale", Vector2.ONE, 0.12)
-	_win_tween.parallel().tween_property(_win_glow_label, "scale", Vector2.ONE, 0.12)
-	_win_tween.tween_interval(max(duration - 0.12, 0.02))
-	_win_tween.set_ease(Tween.EASE_IN)
-	_win_tween.tween_property(_win_label, "modulate:a", 0.0, 0.08)
-	_win_tween.parallel().tween_property(_win_glow_label, "modulate:a", 0.0, 0.08)
-	_win_tween.finished.connect(func() -> void:
-		if is_instance_valid(_win_label):
-			_win_label.visible = false
-			_win_label.position = Vector2.ZERO
-			_win_label.scale = Vector2.ONE
-		if is_instance_valid(_win_glow_label):
-			_win_glow_label.visible = false
-			_win_glow_label.position = Vector2.ZERO
-			_win_glow_label.scale = Vector2.ONE
-	)
-
-
 func _ensure_win_label() -> void:
 	if _win_label != null and is_instance_valid(_win_label):
 		return
@@ -176,13 +250,13 @@ func _ensure_win_label() -> void:
 	_win_label.offset_top = 0.0
 	_win_label.offset_right = 0.0
 	_win_label.offset_bottom = 0.0
+	_apply_win_popup_font(_win_label)
 	_win_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
 	_win_label.add_theme_color_override("font_outline_color", Color(0.22, 0.22, 0.22, 1.0))
 	_win_label.add_theme_constant_override("outline_size", 4)
 	_win_label.add_theme_color_override("font_shadow_color", Color(0.12, 0.12, 0.12, 0.85))
 	_win_label.add_theme_constant_override("shadow_offset_x", 1)
 	_win_label.add_theme_constant_override("shadow_offset_y", 1)
-	_win_label.add_theme_font_size_override("font_size", WIN_POPUP_FONT_SIZE)
 	_win_label.visible = false
 	_win_label.modulate.a = 0.0
 	add_child(_win_label)
@@ -202,15 +276,20 @@ func _ensure_win_glow_label() -> void:
 	_win_glow_label.offset_top = 0.0
 	_win_glow_label.offset_right = 0.0
 	_win_glow_label.offset_bottom = 0.0
+	_apply_win_popup_font(_win_glow_label)
 	_win_glow_label.add_theme_color_override("font_color", Color(1.0, 0.24, 0.24, 0.95))
 	_win_glow_label.add_theme_color_override("font_outline_color", Color(0.45, 0.0, 0.0, 0.95))
 	_win_glow_label.add_theme_constant_override("outline_size", 6)
-	_win_glow_label.add_theme_font_size_override("font_size", WIN_POPUP_FONT_SIZE)
 	_win_glow_label.visible = false
 	_win_glow_label.modulate.a = 0.0
 	add_child(_win_glow_label)
 	if _win_label != null and is_instance_valid(_win_label):
 		move_child(_win_glow_label, _win_label.get_index())
+
+
+func _apply_win_popup_font(label: Label) -> void:
+	label.add_theme_font_override("font", WIN_POPUP_FONT)
+	label.add_theme_font_size_override("font_size", WIN_POPUP_FONT_SIZE)
 
 
 func _cancel_tween(tween: Tween) -> void:

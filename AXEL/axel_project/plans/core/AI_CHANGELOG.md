@@ -1838,3 +1838,15 @@ Copy and fill:
 - Deleted: `AXEL/axel_project/combat/art/placeholders/**`
 - Behavior impact: Grid and power-intro FX now share `grid_symbols` textures (128px import limit). Power intros may look softer than the removed 720px assets until dedicated intro art is added.
 - Verification: `rg` shows no `res://combat/art/placeholders/` references outside changelog history; orphan `.import`/`.uid` scan clean.
+
+## 2026-05-19 - Winnings Popup Lob + Vector Font
+
+- Request: Per-line winnings popup should start small, scale up 100%, then lob into the total winnings readout; use vector font for crisp scaling.
+- Implementation: `combat_test` wires `MultiplierReadout` to `CombatRoot.set_winnings_popup_target()`. `combat_root` passes target global center into `play_win_popup`. `symbol_slot` uses VT323 `FontFile` on popup labels, grow phase (0.5→2.0 scale), then quadratic-bezier lob toward the readout with fade on impact.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Line-win amount popups arc into the center winnings value instead of drifting upward only; text stays vector-sharp while scaling.
+- Verification: Linter pass on touched scripts; `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd` (OK).

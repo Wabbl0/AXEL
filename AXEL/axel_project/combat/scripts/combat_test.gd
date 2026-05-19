@@ -7,6 +7,7 @@ const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
+const AGENT_DEBUG_LOG_PATH := "C:/Users/valtt/OneDrive/Godot/debug-75c122.log"
 const PRINCESS_LOVE: StringName = &"love"
 const PRINCESS_STAR: StringName = &"star"
 const PRINCESS_STORM: StringName = &"storm"
@@ -350,6 +351,18 @@ func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: 
 
 
 func _ready() -> void:
+	#region agent log
+	_agent_debug_log(
+		"run1",
+		"H1",
+		"combat_test.gd:_ready",
+		"ready_enter",
+		{
+			"is_editor_hint": Engine.is_editor_hint(),
+			"editor_preview_enabled": editor_preview_enabled,
+		}
+	)
+	#endregion
 	if Engine.is_editor_hint():
 		if editor_preview_enabled:
 			call_deferred("_run_editor_preview_when_ready")
@@ -359,6 +372,9 @@ func _ready() -> void:
 
 func _cache_scene_refs() -> bool:
 	if not is_inside_tree():
+		#region agent log
+		_agent_debug_log("run1", "H2", "combat_test.gd:_cache_scene_refs", "not_inside_tree", {})
+		#endregion
 		return false
 	if seed_spin == null or not is_instance_valid(seed_spin):
 		seed_spin = get_node_or_null("%SeedSpinBox") as SpinBox
@@ -400,7 +416,24 @@ func _cache_scene_refs() -> bool:
 		goal_box = get_node_or_null("%GoalBox") as PanelContainer
 	if stake_selector == null or not is_instance_valid(stake_selector):
 		stake_selector = get_node_or_null("StakeSelector") as Control
-	return spin_btn != null and bankroll_label != null and meta_box != null
+	var ok := spin_btn != null and bankroll_label != null and meta_box != null
+	#region agent log
+	_agent_debug_log(
+		"run1",
+		"H2",
+		"combat_test.gd:_cache_scene_refs",
+		"cache_scene_refs_result",
+		{
+			"ok": ok,
+			"spin_btn": spin_btn != null,
+			"bankroll_label": bankroll_label != null,
+			"meta_box": meta_box != null,
+			"combat": combat != null,
+			"combat_root_node_exists": get_node_or_null("%CombatRoot") != null,
+		}
+	)
+	#endregion
+	return ok
 
 
 func _run_editor_preview_when_ready() -> void:
@@ -437,12 +470,31 @@ func _run_queued_editor_preview_refresh() -> void:
 
 func _initialize_runtime() -> void:
 	if _runtime_initialized:
+		#region agent log
+		_agent_debug_log("run1", "H3", "combat_test.gd:_initialize_runtime", "already_initialized", {})
+		#endregion
 		return
 	if not _cache_scene_refs():
+		#region agent log
+		_agent_debug_log("run1", "H3", "combat_test.gd:_initialize_runtime", "cache_scene_refs_failed", {})
+		#endregion
 		return
+	#region agent log
+	_agent_debug_log(
+		"run1",
+		"H3",
+		"combat_test.gd:_initialize_runtime",
+		"init_runtime_continue",
+		{
+			"seed_spin_value": int(seed_spin.value) if seed_spin != null else -1,
+			"combat_exists": combat != null,
+		}
+	)
+	#endregion
 	_runtime_initialized = true
 	_initialize_shared_layout(false)
 	_connect_runtime_signals()
+	_wire_winnings_popup_target()
 	_queued_seed = int(seed_spin.value)
 	combat.setup_new_grid(int(seed_spin.value))
 	_debug_log(
@@ -500,6 +552,13 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 	_build_item_picker()
 	if not resized.is_connected(_on_size_changed):
 		resized.connect(_on_size_changed)
+
+
+func _wire_winnings_popup_target() -> void:
+	if not _can_use_combat_api() or mult_label == null:
+		return
+	if combat.has_method("set_winnings_popup_target"):
+		combat.set_winnings_popup_target(mult_label)
 
 
 func _connect_runtime_signals() -> void:
@@ -591,10 +650,41 @@ func _hide_legacy_meter_nodes() -> void:
 
 
 func _ensure_play_shell() -> void:
+	#region agent log
+	_agent_debug_log(
+		"run1",
+		"H4",
+		"combat_test.gd:_ensure_play_shell",
+		"ensure_play_shell_enter",
+		{
+			"restored": _restore_play_shell_from_scene(),
+			"play_area_exists": get_node_or_null("PlayArea") != null,
+		}
+	)
+	#endregion
 	if _restore_play_shell_from_scene():
 		_finalize_play_shell_layout()
 		return
 	_build_play_shell()
+
+
+func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
+	var payload := {
+		"sessionId": "75c122",
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000,
+	}
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(AGENT_DEBUG_LOG_PATH) else FileAccess.WRITE_READ
+	var file := FileAccess.open(AGENT_DEBUG_LOG_PATH, mode)
+	if file == null:
+		return
+	file.seek_end()
+	file.store_line(JSON.stringify(payload))
+	file.close()
 
 
 func _restore_play_shell_from_scene() -> bool:
@@ -644,6 +734,7 @@ func _finalize_play_shell_layout() -> void:
 		_center_footer.add_child(spin_btn)
 	if mult_label != null and mult_label.visible:
 		mult_label.visible = true
+	_wire_winnings_popup_target()
 
 
 func _build_play_shell() -> void:
