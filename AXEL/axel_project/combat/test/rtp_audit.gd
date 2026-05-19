@@ -55,15 +55,17 @@ func _run_baseline_no_item() -> Dictionary:
 				trinity_entry_count += 1
 			var was_free_spin := cr.free_spins.active
 			var bankroll_before_cents := int(round(cr.get_bankroll()))
+			var bet_cents := int(round(cr.total_bet))
 			cr.spin_sync()
-			var bankroll_after_cents := int(round(cr.get_bankroll()))
 			var summary := cr.get_last_spin_summary()
 			var payout_cents := int(summary.get("payout", 0))
 			var line_payout_cents := int(summary.get("line_payout", 0))
 			var clear_bonus_cents := int(summary.get("clear_bonus_payout", 0))
-			var wager_cents := payout_cents - (bankroll_after_cents - bankroll_before_cents)
-			if wager_cents < 0:
-				wager_cents = 0
+			## Use explicit stake for paid spins so bankroll-cap clamping does not
+			## inflate wager and distort RTP when the bar stays full.
+			var wager_cents := 0
+			if not was_free_spin and bankroll_before_cents >= bet_cents:
+				wager_cents = bet_cents
 
 			total_payout_cents += payout_cents
 			total_line_payout_cents += line_payout_cents

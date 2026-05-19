@@ -203,7 +203,7 @@ offset_bottom = 24.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 36
-text = "100/100"
+text = "1000/1000"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -270,7 +270,7 @@ script = ExtResource("4_meter")
 [node name="MultiplierReadout" type="Label" parent="." unique_id=1004755644]
 unique_name_in_owner = true
 visible = false
-layout_mode = 2
+layout_mode = 0
 text = "0"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -294,8 +294,8 @@ text = "SPIN LOG  0"
 [node name="SpinButton" type="Button" parent="." unique_id=1986715139]
 unique_name_in_owner = true
 visible = false
-layout_mode = 2
 custom_minimum_size = Vector2(0, 72)
+layout_mode = 0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(1, 0.73, 0.73, 1)

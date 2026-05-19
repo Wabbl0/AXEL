@@ -63,7 +63,7 @@ signal line_win_resolved(event: Dictionary)
 @export_range(0.0, 1.0, 0.01) var power_intro_glow_alpha: float = 0.5
 @export var girl_power_chance: float = 0.01
 @export var encounter_def: Resource
-@export var total_bet: float = 10.0
+@export var total_bet: float = 100.0
 
 @onready var grid: GridManager = $GridManager
 @onready var grid_ui: GridContainer = $GridUI
@@ -90,7 +90,7 @@ const MAX_CASCADE_ITERATIONS := 512
 ## Chip-bar economy (integer playtest units; bankroll cap = full bar).
 const ECONOMY_DISPLAY_SCALE := 1
 const CHIP_BAR_SECTIONS := 11
-const CHIP_BAR_FULL_CENTS := 100
+const CHIP_BAR_FULL_CENTS := 1000
 const CHIP_BAR_GOAL_MULTIPLE := 10
 const STARTING_BANKROLL_CENTS := CHIP_BAR_FULL_CENTS
 const GRID_VISUAL_SCALE := 1.5
@@ -103,8 +103,9 @@ const PANEL_FILL_CELL_MAX := 128.0
 const ROUND_WINNINGS_GAP := 12.0
 const ROUND_WINNINGS_HEIGHT := 36.0
 const BET_LADDER: Array[float] = [
-	10.0, 20.0, 30.0, 40.0, 50.0, 100.0,
+	100.0, 200.0, 300.0, 400.0, 500.0, 1000.0,
 ]
+const BASELINE_PAYOUT_SCALAR := 0.431
 
 var rng := CombatRNG.new()
 var multiplier := CombatMultiplier.new()
@@ -487,7 +488,9 @@ func spin() -> void:
 	spin_summary["grid_cleared"] = _is_grid_cleared_for_current_mode()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_item_scalar := 1.0 + _get_item_payout_scalar()
-		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value) * clear_item_scalar)
+		var clear_bonus := _to_cents(
+			50.0 * total_bet * float(multiplier.value) * clear_item_scalar * BASELINE_PAYOUT_SCALAR
+		)
 		spin_summary["payout"] += clear_bonus
 		spin_summary["clear_bonus_payout"] = int(spin_summary["clear_bonus_payout"]) + clear_bonus
 		_add_round_winnings(clear_bonus)
@@ -587,7 +590,9 @@ func spin_sync() -> void:
 	spin_summary["grid_cleared"] = _is_grid_cleared_for_current_mode()
 	if spin_summary["grid_cleared"] and not _in_trinity_round:
 		var clear_item_scalar := 1.0 + _get_item_payout_scalar()
-		var clear_bonus := _to_cents(50.0 * total_bet * float(multiplier.value) * clear_item_scalar)
+		var clear_bonus := _to_cents(
+			50.0 * total_bet * float(multiplier.value) * clear_item_scalar * BASELINE_PAYOUT_SCALAR
+		)
 		spin_summary["payout"] += clear_bonus
 		spin_summary["clear_bonus_payout"] = int(spin_summary["clear_bonus_payout"]) + clear_bonus
 		_add_round_winnings(clear_bonus)
@@ -1610,7 +1615,9 @@ func _line_payout_cents(line: Dictionary) -> int:
 	if payout_multiplier <= 0.0:
 		return 0
 	var item_scalar := 1.0 + _get_item_payout_scalar()
-	return _to_cents(total_bet * payout_multiplier * float(multiplier.value) * item_scalar)
+	return _to_cents(
+		total_bet * payout_multiplier * float(multiplier.value) * item_scalar * BASELINE_PAYOUT_SCALAR
+	)
 
 
 func _to_cents(amount: float) -> int:

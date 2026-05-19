@@ -604,7 +604,7 @@ func _on_bet_plus_pressed() -> void:
 
 func _set_default_bet() -> void:
 	var ladder: Array[float] = combat.get_bet_ladder()
-	var default_index := ladder.find(10.0)
+	var default_index := ladder.find(100.0)
 	if default_index == -1:
 		default_index = 0
 	combat.set_bet_index(default_index)

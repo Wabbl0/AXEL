@@ -1524,3 +1524,63 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: One payout indicator appears per winning line, centered over the matched run.
 - Verification: Linter pass on `combat_root.gd`.
+
+## 2026-05-19 - Fixed 2D Window Framing (1280x720)
+
+- Request: Make the game window in 2D scenes look the same as when opening the scene in the editor (whole-project fixed framing per plan).
+- Implementation: Canonical design resolution **1280×720** in `project.godot` with viewport content scaling (`content_scale_mode=2`), keep aspect (`content_scale_aspect=1`), and `size/resizable=false`. `camera_follow_vertical.gd` derives `fixed_x` from `design_width`. Arc 1 cameras on `1.1_SchoolExterior` and `1.2_Corridor` both export `design_width=1280`. Corridor overlay alignment: removed erroneous `1.12` scale on `NoirPaletteOverlay`; sized background `ColorRect` to 1280×720.
+- Files changed:
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scenes/Arc_1/camera_follow_vertical.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Runtime launches at fixed 1280×720 with stable Arc 1 composition; window resize cannot change in-game framing. Combat/UI inherit viewport scaling.
+- Verification: Headless `res://test/scene_smoke_check.gd` — `Scene smoke check OK (6 scenes).` (pre-existing `1.1_SchoolExterior` noir node path warning on instantiate; not introduced by this change). Manual F5/F6: confirm editor vs runtime framing parity on Arc 1 scenes.
+
+## 2026-05-19 - Rollback Fixed 2D Window Framing (1280x720)
+
+- Request: Roll back window-framing changes; scene `1.1_SchoolExterior` would not start.
+- Implementation: Restored `project.godot` to 1400×900 with canvas-item scaling and expand aspect. Reverted `camera_follow_vertical.gd` to pre-change version. Removed corridor `Camera2D` and `design_width` exports; restored corridor noir overlay scale and background rect layout.
+- Files changed:
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scenes/Arc_1/camera_follow_vertical.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Project window/viewport behavior matches pre-2026-05-19 framing experiment.
+- Verification: User to confirm `1.1_SchoolExterior` starts via F5/F6.
+
+## 2026-05-19 - Fix 1.1 SchoolExterior Noir Overlay Startup Crash
+
+- Request: Fix `1.1_SchoolExterior` crash on start (`Node not found: NoirPaletteOverlay/FilterRect` and null `material` access in `_apply_local_noir_tuning`).
+- Implementation: Re-instanced `res://scenes/fx/NoirPaletteOverlay.tscn` in `1.1_SchoolExterior.tscn` (after `PlayerLayer`, before `TopDialogueOverlay`, no extra scale). Hardened `1.1_SchoolExterior.gd` to resolve `FilterRect` via `get_node_or_null` in `_ready()` and skip tuning with a warning if the overlay is missing.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Scene loads without startup errors; exterior noir palette tuning applies again when overlay is present.
+- Verification: Headless `res://test/scene_smoke_check.gd` — `Scene smoke check OK (6 scenes).` with no `NoirPaletteOverlay/FilterRect` or `_apply_local_noir_tuning` errors on `1.1_SchoolExterior`.
+
+## 2026-05-19 - Disable Noir Overlay on 1.1 (Temporary)
+
+- Request: Disable the noir overlay for now on school exterior.
+- Implementation: Added `_NOIR_OVERLAY_ENABLED := false` in `1.1_SchoolExterior.gd`; hides `NoirPaletteOverlay` at runtime and skips local shader tuning until re-enabled.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: `1.1_SchoolExterior` runs unfiltered full-color background; overlay node remains in scene for easy re-enable (`_NOIR_OVERLAY_ENABLED = true`).
+- Verification: Scene still loads without noir path errors; overlay hidden at runtime.
+
+## 2026-05-19 - Combat RTP Unit Rescale (100/1000 Economy)
+
+- Request: Rescale playtest economy so minimum bet is 100 and bankroll cap/start is 1000 (integer-friendly line payouts at min stake) while keeping baseline no-item RTP in the 75–80% band.
+- Implementation: Rescaled chip-bar economy and bet ladder 10× (`CHIP_BAR_FULL_CENTS` 100→1000, `BET_LADDER` 100–1000, default `total_bet` 100). Synced `combat_test` default stake lookup and bankroll placeholder. Post-rescale `rtp_audit` measured ~180% RTP (also ~184% at pre-rescale 100/10 constants), so applied centralized `BASELINE_PAYOUT_SCALAR := 0.431` to line wins and clear-grid bonus in `combat_root.gd` (Choice B from plan: unit rescale + guardrail).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Min stake 100, bankroll 1000/1000 start, encounter win goal 10000 (10× cap). At min bet, typical low-tier line pays are whole numbers (e.g. 0.2×100=20). Baseline RTP re-centered via scalar; symbol `.tres` multipliers unchanged.
+- Verification: `rtp_audit.gd` — `rtp_mean=0.7502`, `target_position=within` `[0.75,0.80]`, `paid_hit_rate=0.365`, encounter success `1/120`. `item_balance_audit.gd` — C1/L3 both `neutral` (baseline_rtp ~0.409 by bankroll-inferred wager; deltas within ±0.02 CI).
+- Notes: Pure unit rescale alone does not change RTP ratio; elevated return traced to current cascade/payout stack vs older QA snapshot (~0.81). Scalar is the single knob for future band nudges without per-symbol edits.

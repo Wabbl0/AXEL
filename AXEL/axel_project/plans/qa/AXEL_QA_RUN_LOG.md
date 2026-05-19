@@ -316,3 +316,56 @@ Copy the template block, fill values, paste **below** the last entry.
   ]
 }
 <!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-19 — Combat 100/1000 economy RTP QA (win/loss amounts)
+
+- **Mode:** playtest
+- **Scope:** Post-rescale combat economy (`min bet 100`, `bankroll 1000`, `BASELINE_PAYOUT_SCALAR 0.431`); emphasis on encounter win/loss counts and wager/payout totals
+- **Trigger:** user request (`run qa` — wins/losses and how much)
+- **Playtest commands:** princess_check=pass determinism=pass rtp_audit=captured scene_smoke=pass bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=captured item_synergy_smoke=pass
+- **Scores:** S=4 N=4 I=3 E=3 C=4 R=4 **Total=3.67** Band=B
+- **Findings count:** blocker=0 major=0 minor=1 nit=1
+- **By category:** STYLE=0 LORE=0 IMMERSION=0 TENSION=1 CLARITY=0 COMBAT=1 ARCH=0 REGRESSION=0 BUG=0 TOOL=1
+- **Recommendations (logged):**
+  - Report encounter win/loss and chip totals in `rtp_audit.gd` stdout summary (not only JSON) for faster human QA scans
+  - If encounter feel should be >1% win rate, lower `CHIP_BAR_GOAL_MULTIPLE` or raise starting bankroll — current 1/120 wins at 10× goal
+  - Align `item_balance_audit.gd` wager accounting with `rtp_audit` explicit-stake method so item RTP deltas match baseline RTP scale
+  - Manual F6 spot-check: min-stake line pays show integers (e.g. 20, 35) at bet 100
+- **Bug / regression notes:** All gates pass; determinism 100 spins OK; RTP within band after scalar
+- **Trend vs previous run:** up on RTP compliance (0.75 vs prior 0.81 above band); encounter win rate flat (~1/120)
+- **Link / notes:** User-requested win/loss + amount focus; see report for chip breakdown
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-19T12:10:00+03:00",
+  "run_title": "Combat 100/1000 economy RTP QA (win/loss amounts)",
+  "mode": "playtest",
+  "scope": "Post-rescale combat economy; win/loss and wager/payout totals",
+  "trigger": "user request",
+  "scores": {"S": 4, "N": 4, "I": 3, "E": 3, "C": 4, "R": 4, "Total": 3.67, "Band": "B"},
+  "findings_count": {"blocker": 0, "major": 0, "minor": 1, "nit": 1},
+  "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 0, "TENSION": 1, "CLARITY": 0, "COMBAT": 1, "ARCH": 0, "REGRESSION": 0, "BUG": 0, "TOOL": 1},
+  "playtest_commands": {"princess_check": "pass", "determinism": "pass", "rtp_audit": "captured", "scene_smoke": "pass", "bot_arc1_exterior": "pass", "bot_dialogue_loop": "pass", "item_balance_audit": "captured", "item_synergy_smoke": "pass"},
+  "bugs_or_regressions": [],
+  "rtp_snapshot": {
+    "mean": 0.75019,
+    "ci95": [0.37743, 0.94218],
+    "target_band": [0.75, 0.80],
+    "target_position": "within",
+    "paid_hit_rate": 0.365,
+    "encounter_success_rate": 0.00833,
+    "encounter_wins": 1,
+    "encounter_losses": 119,
+    "encounter_count": 120,
+    "total_wager_cents": 30800,
+    "total_payout_cents": 23106,
+    "net_house_cents": 7694,
+    "trinity_entries": 0
+  },
+  "item_balance": {"schema_version": 1, "items_tested": 2, "items_overpowered": [], "items_underpowered": [], "items_neutral": ["C1_ash_reroll_token", "L3_void_satchel"], "items_insufficient_data": []},
+  "item_metrics": [
+    {"item_id": "C1_ash_reroll_token", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.41466, "delta_rtp": 0.00583, "delta_rtp_ci95": [-0.15697, 0.16862], "baseline_hit_rate": 0.365, "item_hit_rate": 0.322, "delta_hit_rate": -0.043, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20},
+    {"item_id": "L3_void_satchel", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.40883, "delta_rtp": 0.0, "delta_rtp_ci95": [-0.16347, 0.16347], "baseline_hit_rate": 0.365, "item_hit_rate": 0.365, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20}
+  ]
+}
+<!-- QA_ANALYTICS_JSON_END -->
