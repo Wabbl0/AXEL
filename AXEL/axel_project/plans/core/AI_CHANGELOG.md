@@ -1839,6 +1839,16 @@ Copy and fill:
 - Behavior impact: Grid and power-intro FX now share `grid_symbols` textures (128px import limit). Power intros may look softer than the removed 720px assets until dedicated intro art is added.
 - Verification: `rg` shows no `res://combat/art/placeholders/` references outside changelog history; orphan `.import`/`.uid` scan clean.
 
+## 2026-05-19 - Winnings Popup Retimed (5-Phase, 2x Slower)
+
+- Request: Slow default popup animation by 100% (2x total duration) with distinct steps: small appear, scale up, glow, lob to total winnings value, fade.
+- Implementation: Refactored `symbol_slot.gd` `play_win_popup()` into five sequential chained phases with centralized duration shares (12/22/18/36/12%) over `WIN_POPUP_TOTAL_DURATION` 1.24s. Glow hold pulses glow layer before lob; fade only runs after lob/hold completes.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Line-win popups read more deliberately; lob target unchanged (total winnings value).
+- Verification: Linter pass; `determinism_check.gd` headless (OK).
+
 ## 2026-05-19 - Winnings Popup Lob + Vector Font
 
 - Request: Per-line winnings popup should start small, scale up 100%, then lob into the total winnings readout; use vector font for crisp scaling.
