@@ -147,6 +147,7 @@ var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
 var _suppress_grid_populated_fx: bool = false
+var _cached_multiplier_emit_value: int = -1
 var inventory := ItemInventoryScript.new()
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
@@ -256,6 +257,14 @@ func get_state() -> int:
 
 func get_multiplier_value() -> int:
 	return multiplier.value
+
+
+func is_multiplier_cap_active() -> bool:
+	return multiplier.cap_enabled
+
+
+func get_multiplier_cap_value() -> int:
+	return multiplier.cap_value
 
 
 func get_princess_current_id() -> StringName:
@@ -1065,6 +1074,9 @@ func _refresh_multiplier_label() -> void:
 		if free_spins.active:
 			suffix = " (FS %d left)" % free_spins.spins_remaining
 		multiplier_label.text = "Multiplier: %d×%s" % [multiplier.value, suffix]
+	if _cached_multiplier_emit_value != multiplier.value:
+		_cached_multiplier_emit_value = multiplier.value
+		emit_signal("readouts_progressed")
 
 
 func _refresh_round_winnings_label() -> void:

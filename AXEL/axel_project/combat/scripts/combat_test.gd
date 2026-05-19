@@ -19,14 +19,17 @@ const RESPONSIVE_NARROW_W := 900.0
 ## Vertical rhythm (fractions of viewport height; all root-anchored).
 const LAYOUT_CORNER_Y0 := 0.025
 const LAYOUT_CORNER_Y1 := 0.135
-const LAYOUT_CENTER_HUD_Y0 := 0.095
-const LAYOUT_CENTER_HUD_Y1 := 0.138
+const LAYOUT_CENTER_HUD_Y0 := 0.03
+const LAYOUT_CENTER_HUD_Y1 := 0.14
 const LAYOUT_MAIN_Y0 := 0.145
 const LAYOUT_MAIN_END := 0.99
-const CENTER_COLUMN_SEPARATION := 12
-const WINNINGS_BAND_MIN_HEIGHT := 36.0
+const CENTER_COLUMN_SEPARATION := 10
+const WINNINGS_BAND_MIN_HEIGHT := 40.0
+const WINNINGS_ROW_SEPARATION := 8
 const CENTER_FOOTER_SEPARATION := 12
-const CENTER_HUD_SEPARATION := 2
+const ECONOMICS_STACK_SEPARATION := 4
+const BANKROLL_READOUT_FONT := 36
+const BANKROLL_READOUT_FONT_NARROW := 28
 const EXECUTE_BUTTON_MIN_HEIGHT := 72.0
 const BOTTOM_WINDOW_MARGIN := 18.0
 
@@ -39,6 +42,8 @@ const LAYOUT_SIDE_RIGHT_START := 0.78
 const LAYOUT_SIDE_RIGHT_END := 0.98
 const LAYOUT_TOP_BOX_START := 0.008
 const LAYOUT_TOP_BOX_END := 0.14
+const LAYOUT_CENTER_HUD_START := 0.36
+const LAYOUT_CENTER_HUD_END := 0.64
 const LAYOUT_META_ICONS_SEPARATION := 4
 const META_ICON_GLYPH := "⬡"
 const META_ICON_FONT := 31
@@ -47,10 +52,10 @@ const SIDE_PANEL_BODY_FONT := 16
 const SIDE_PANEL_HINT_FONT := 14
 const GOAL_LABEL_FONT := 26
 const WINNINGS_READOUT_FONT := 31
+const CASCADE_MULT_READOUT_FONT := 24
 const WINNINGS_READOUT_OUTLINE := 1
+const CASCADE_MULT_READOUT_OUTLINE := 1
 const HISTORY_BODY_FONT := 13
-const LAYOUT_BANKROLL_START := 0.40
-const LAYOUT_BANKROLL_END := 0.60
 const LAYOUT_GOAL_BOX_START := 0.86
 const LAYOUT_GOAL_BOX_END := 0.992
 
@@ -98,7 +103,11 @@ var _item_picker_panel: PanelContainer
 var _item_picker_title: Label
 var _item_entries: Array = []
 var _stake_pill: PanelContainer
-var _center_hud: VBoxContainer
+var _economics_center: CenterContainer
+var _economics_stack: VBoxContainer
+var _cascade_mult_label: Label
+var _cascade_mult_pill: PanelContainer
+var _last_displayed_cascade_mult: int = 1
 
 
 func _ready() -> void:
@@ -153,23 +162,11 @@ func _organize_top_hud() -> void:
 		top_bar.visible = false
 		top_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	_center_hud = VBoxContainer.new()
-	_center_hud.name = "CenterTopHud"
-	_center_hud.alignment = BoxContainer.ALIGNMENT_CENTER
-	_center_hud.add_theme_constant_override("separation", CENTER_HUD_SEPARATION)
-	add_child(_center_hud)
-	move_child(_center_hud, 2)
-
 	_reparent_hud_to_root(meta_box)
 	_reparent_hud_to_root(goal_box)
 	_strip_corner_panel_boxes()
 	_configure_top_corner_hud()
-
-	if bankroll_label.get_parent() != _center_hud:
-		bankroll_label.get_parent().remove_child(bankroll_label)
-	_center_hud.add_child(bankroll_label)
-	bankroll_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	bankroll_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_integrate_economics_into_center_hud()
 
 func _reparent_hud_to_root(node: Control) -> void:
 	if node == null:
@@ -218,8 +215,6 @@ func _build_play_shell() -> void:
 	_center_column.add_theme_constant_override("separation", CENTER_COLUMN_SEPARATION)
 	_play_row.add_child(_center_column)
 
-	_integrate_stake_into_center_column()
-
 	_grid_host = Control.new()
 	_grid_host.name = "GridHost"
 	_grid_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -254,13 +249,13 @@ func _build_play_shell() -> void:
 	_winnings_center.custom_minimum_size = Vector2(0.0, WINNINGS_BAND_MIN_HEIGHT)
 	_center_column.add_child(_winnings_center)
 
-	var winnings_stack := VBoxContainer.new()
-	winnings_stack.name = "WinningsStack"
-	winnings_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	winnings_stack.add_theme_constant_override("separation", 4)
-	winnings_stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	winnings_stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_winnings_center.add_child(winnings_stack)
+	var winnings_row := HBoxContainer.new()
+	winnings_row.name = "WinningsRow"
+	winnings_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	winnings_row.add_theme_constant_override("separation", WINNINGS_ROW_SEPARATION)
+	winnings_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	winnings_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_winnings_center.add_child(winnings_row)
 
 	if mult_label.get_parent() != null:
 		mult_label.get_parent().remove_child(mult_label)
@@ -275,7 +270,23 @@ func _build_play_shell() -> void:
 	winnings_pill.name = "WinningsReadoutPill"
 	winnings_pill.add_theme_stylebox_override("panel", _winnings_readout_bg_style())
 	winnings_pill.add_child(mult_label)
-	winnings_stack.add_child(winnings_pill)
+	winnings_row.add_child(winnings_pill)
+
+	_cascade_mult_label = Label.new()
+	_cascade_mult_label.name = "CascadeMultiplierReadout"
+	_cascade_mult_label.text = "1×"
+	_cascade_mult_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cascade_mult_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_configure_cascade_multiplier_readout()
+	_reset_container_child_layout(_cascade_mult_label)
+	_cascade_mult_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_cascade_mult_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_cascade_mult_pill = PanelContainer.new()
+	_cascade_mult_pill.name = "CascadeMultiplierPill"
+	_cascade_mult_pill.pivot_offset = Vector2.ZERO
+	_cascade_mult_pill.add_theme_stylebox_override("panel", _winnings_readout_bg_style())
+	_cascade_mult_pill.add_child(_cascade_mult_label)
+	winnings_row.add_child(_cascade_mult_pill)
 
 	_center_footer = VBoxContainer.new()
 	_center_footer.name = "CenterFooter"
@@ -303,16 +314,46 @@ func _build_play_shell() -> void:
 	_center_column.add_child(_bottom_window_margin)
 
 
-func _integrate_stake_into_center_column() -> void:
-	if stake_selector == null or _center_column == null:
+func _integrate_economics_into_center_hud() -> void:
+	if bankroll_label == null or stake_selector == null:
 		return
+	if _economics_center == null:
+		_economics_center = CenterContainer.new()
+		_economics_center.name = "EconomicsCenter"
+		_economics_center.mouse_filter = Control.MOUSE_FILTER_PASS
+		add_child(_economics_center)
+		move_child(_economics_center, 2)
+	else:
+		if _economics_center.get_parent() != self:
+			_economics_center.get_parent().remove_child(_economics_center)
+			add_child(_economics_center)
+			move_child(_economics_center, 2)
+
+	if _economics_stack == null:
+		_economics_stack = VBoxContainer.new()
+		_economics_stack.name = "EconomicsStack"
+		_economics_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+		_economics_stack.add_theme_constant_override("separation", ECONOMICS_STACK_SEPARATION)
+		_economics_stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_economics_stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_economics_center.add_child(_economics_stack)
+
+	if bankroll_label.get_parent() != null:
+		bankroll_label.get_parent().remove_child(bankroll_label)
+	bankroll_label.visible = true
+	bankroll_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_reset_container_child_layout(bankroll_label)
+	bankroll_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	bankroll_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_economics_stack.add_child(bankroll_label)
+
 	if stake_selector.get_parent() != null:
 		stake_selector.get_parent().remove_child(stake_selector)
 	_reset_container_child_layout(stake_selector)
+	stake_selector.visible = true
 	stake_selector.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stake_selector.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_center_column.add_child(stake_selector)
-	_center_column.move_child(stake_selector, 0)
+	_economics_stack.add_child(stake_selector)
 
 
 func _reset_container_child_layout(control_node: Control) -> void:
@@ -374,6 +415,15 @@ func _configure_winnings_readout() -> void:
 	mult_label.add_theme_font_size_override("font_size", WINNINGS_READOUT_FONT)
 	mult_label.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.95))
 	mult_label.add_theme_constant_override("outline_size", WINNINGS_READOUT_OUTLINE)
+
+
+func _configure_cascade_multiplier_readout() -> void:
+	if _cascade_mult_label == null:
+		return
+	_cascade_mult_label.add_theme_font_size_override("font_size", CASCADE_MULT_READOUT_FONT)
+	_cascade_mult_label.add_theme_color_override("font_color", Color(0.98, 0.35, 0.35, 1.0))
+	_cascade_mult_label.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.95))
+	_cascade_mult_label.add_theme_constant_override("outline_size", CASCADE_MULT_READOUT_OUTLINE)
 
 
 func _build_history_placeholder() -> PanelContainer:
@@ -534,6 +584,7 @@ func _refresh_readouts() -> void:
 	var stake_value := int(combat.get_current_bet())
 	bet_label.text = "%d" % stake_value
 	mult_label.text = "%d" % int(combat.get_round_winnings())
+	_refresh_cascade_multiplier_readout()
 	if _premium_progress != null:
 		_premium_progress.value = float(combat.get_meter_sections_filled())
 	var cap_units := int(combat.get_bankroll_cap())
@@ -544,10 +595,43 @@ func _refresh_readouts() -> void:
 	_refresh_super_fs_choice_overlay()
 
 
+func _refresh_cascade_multiplier_readout() -> void:
+	if _cascade_mult_label == null:
+		return
+	var mult := int(combat.get_multiplier_value())
+	_cascade_mult_label.text = _format_cascade_multiplier_text(mult)
+	if mult > _last_displayed_cascade_mult:
+		_pulse_cascade_multiplier()
+	_last_displayed_cascade_mult = mult
+
+
+func _format_cascade_multiplier_text(mult: int) -> String:
+	var text := "%d×" % mult
+	if combat.is_multiplier_cap_active():
+		text += " / %d" % combat.get_multiplier_cap_value()
+	return text
+
+
+func _pulse_cascade_multiplier() -> void:
+	if _cascade_mult_pill == null:
+		return
+	_cascade_mult_pill.scale = Vector2.ONE
+	_cascade_mult_pill.modulate = Color.WHITE
+	var peak := create_tween()
+	peak.set_parallel(true)
+	peak.tween_property(_cascade_mult_pill, "modulate", Color(1.45, 0.4, 0.4, 1.0), 0.1)
+	peak.tween_property(_cascade_mult_pill, "scale", Vector2(1.08, 1.08), 0.1)
+	var settle := peak.chain()
+	settle.set_parallel(true)
+	settle.tween_property(_cascade_mult_pill, "modulate", Color.WHITE, 0.18)
+	settle.tween_property(_cascade_mult_pill, "scale", Vector2.ONE, 0.18)
+
+
 func _on_spin_started(seed_value: int) -> void:
 	_queued_seed = seed_value
 	_set_seed_spin_value_no_signal(seed_value)
 	_clear_history_spin_list()
+	_last_displayed_cascade_mult = int(combat.get_multiplier_value())
 
 
 func _on_spin_finished() -> void:
@@ -652,13 +736,11 @@ func _clear_history_spin_list() -> void:
 
 func _configure_hud_layers() -> void:
 	var hud_z := 20
-	for node_path in ["CenterTopHud", "BudgetLabel"]:
+	for node_path in ["BudgetLabel", "EconomicsCenter"]:
 		var hud := get_node_or_null(node_path) as Control
 		if hud != null:
 			hud.z_index = hud_z
 			hud.mouse_filter = Control.MOUSE_FILTER_PASS
-	if _center_hud != null:
-		_center_hud.z_index = hud_z
 	if meta_box != null:
 		meta_box.z_index = hud_z
 		meta_box.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -727,9 +809,8 @@ func _apply_responsive_layout() -> void:
 		return
 	_place_control_rect(meta_box, LAYOUT_TOP_BOX_START, LAYOUT_CORNER_Y0, LAYOUT_TOP_BOX_END, LAYOUT_CORNER_Y1)
 	_place_control_rect(goal_box, LAYOUT_GOAL_BOX_START, LAYOUT_CORNER_Y0, LAYOUT_GOAL_BOX_END, LAYOUT_CORNER_Y1)
-	if _center_hud != null:
-		_place_control_rect(_center_hud, LAYOUT_BANKROLL_START, LAYOUT_CENTER_HUD_Y0, LAYOUT_BANKROLL_END, LAYOUT_CENTER_HUD_Y1)
-	bankroll_label.add_theme_font_size_override("font_size", 36)
+	_place_control_rect(_economics_center, LAYOUT_CENTER_HUD_START, LAYOUT_CENTER_HUD_Y0, LAYOUT_CENTER_HUD_END, LAYOUT_CENTER_HUD_Y1)
+	_apply_economics_typography()
 
 	var main_y0 := LAYOUT_MAIN_Y0
 	var main_y1 := LAYOUT_MAIN_END
@@ -746,6 +827,22 @@ func _apply_responsive_layout() -> void:
 	if _item_picker_panel != null:
 		_item_picker_panel.custom_minimum_size = Vector2(side_w, side_panel_h)
 		_item_picker_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+func _apply_economics_typography() -> void:
+	if bankroll_label == null:
+		return
+	var bankroll_font := BANKROLL_READOUT_FONT
+	if size.x < RESPONSIVE_NARROW_W:
+		bankroll_font = BANKROLL_READOUT_FONT_NARROW
+	bankroll_label.add_theme_font_size_override("font_size", bankroll_font)
+	if bet_label != null:
+		var stake_font := 22 if size.x >= RESPONSIVE_NARROW_W else 18
+		bet_label.add_theme_font_size_override("font_size", stake_font)
+	if bet_minus_btn != null and bet_plus_btn != null:
+		var btn_size := 40.0 if size.x >= RESPONSIVE_NARROW_W else 34.0
+		bet_minus_btn.custom_minimum_size = Vector2(btn_size, btn_size)
+		bet_plus_btn.custom_minimum_size = Vector2(btn_size, btn_size)
+
 
 func _place_control_rect(control_node: Control, x0: float, y0: float, x1: float, y1: float) -> void:
 	if control_node == null:

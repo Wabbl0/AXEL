@@ -116,10 +116,15 @@ For substantive AXEL requests:
    - **Planning, exploration, or blocked states:** use the full structured format (current step, command/tool in use, files being checked/read, result/status so far, next step, stuck/not stuck).
    - **Dense implementation loops** (editing files, fixing lints, iterating on code): a concise one-liner status is sufficient.
 5. **Clarification-first (mandatory):** If requirements, scope, or implementation details are ambiguous, ask the user targeted questions before assuming defaults. Do not infer unstated layout, economy, or behavior choices without confirmation.
-6. Implement changes.
-7. Verify behavior (tests or explicit manual checks).
-8. Append one entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md` if change was implemented.
-9. If a task introduces or updates a reusable workflow/agent pipeline (scripts, specs, rules, runner contracts), record it in this file and in `.cursor/rules/axel-ai-docs-governance.mdc` so future chats can reference it directly.
+6. **Planning intake gate (mandatory for new planning requests):**
+   - Ask at least **2 targeted clarifying questions** before drafting/creating a plan.
+   - After the first two answers, continue asking additional targeted questions whenever ambiguity remains.
+   - Do not proceed to plan output until scope, expected behavior, and constraints are clear enough to summarize concisely without assumptions.
+   - Convert potential assumptions into explicit user-confirmed decisions; do not assume hidden defaults.
+7. Implement changes.
+8. Verify behavior (tests or explicit manual checks).
+9. Append one entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md` if change was implemented.
+10. If a task introduces or updates a reusable workflow/agent pipeline (scripts, specs, rules, runner contracts), record it in this file and in `.cursor/rules/axel-ai-docs-governance.mdc` so future chats can reference it directly.
 
 **Governance rule / AI_DOCS responsibility split:** The always-applied rule (`.cursor/rules/axel-ai-docs-governance.mdc`) is intentionally concise — it directs agents to read this file and enforces the hard conflict gate, QA opt-in trigger, and canonical alias stability. All detailed procedures, command sets, invariants, and pipeline specs live here in `AI_DOCS.md` and in the referenced subsystem docs (rubric, skill, specs). Do not re-duplicate detailed content into the governance rule.
 
@@ -185,4 +190,5 @@ Before finishing:
 - [ ] No architecture-layer mixing without intent.
 - [ ] Style/lore choices align with AXEL identity.
 - [ ] Conflicts were resolved using hierarchy and documented.
+- [ ] New planning requests asked at least 2 clarifying questions and continued clarification until assumption-free plan readiness.
 - [ ] Implemented request was appended to `AI_CHANGELOG.md`.

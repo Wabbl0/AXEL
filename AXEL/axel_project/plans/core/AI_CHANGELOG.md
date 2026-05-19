@@ -1584,3 +1584,65 @@ Copy and fill:
 - Behavior impact: Min stake 100, bankroll 1000/1000 start, encounter win goal 10000 (10× cap). At min bet, typical low-tier line pays are whole numbers (e.g. 0.2×100=20). Baseline RTP re-centered via scalar; symbol `.tres` multipliers unchanged.
 - Verification: `rtp_audit.gd` — `rtp_mean=0.7502`, `target_position=within` `[0.75,0.80]`, `paid_hit_rate=0.365`, encounter success `1/120`. `item_balance_audit.gd` — C1/L3 both `neutral` (baseline_rtp ~0.409 by bankroll-inferred wager; deltas within ±0.02 CI).
 - Notes: Pure unit rescale alone does not change RTP ratio; elevated return traced to current cascade/payout stack vs older QA snapshot (~0.81). Scalar is the single knob for future band nudges without per-symbol edits.
+
+## 2026-05-19 - Cascade Multiplier HUD Readout
+
+- Request: Show the increasing cascade multiplier in the combat phase UI (plan: second pill in `WinningsStack`, static readout with pulse on increment, cap context when active).
+- Implementation: Added `CascadeMultiplierPill` above round-winnings pill in `combat_test.gd`; formats as `N×` with ` / cap` when Free Spins cap is enabled; pulses pill on increment. Exposed `is_multiplier_cap_active()` / `get_multiplier_cap_value()` on `combat_root.gd`; `_refresh_multiplier_label()` now emits `readouts_progressed` when multiplier value changes so the shell updates during cascades.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Players see live cascade multiplier under the grid; winnings pill unchanged (`MultiplierReadout` still shows round winnings). During Free Spins, cap suffix appears (e.g. `12× / 100`).
+- Verification: Linter pass on touched scripts; manual F6 playtest recommended for pulse timing and two-pill layout at narrow widths.
+
+## 2026-05-19 - Combat HUD Repack for Grid Space
+
+- Request: Move bankroll and full stake control to top row; place cascade multiplier inline next to round-winnings value to free vertical space for the combat grid.
+- Implementation: Rebuilt `CenterTopHud` as horizontal row (bankroll + full `StakeSelector`); removed stake row from center column. Replaced vertical `WinningsStack` with horizontal `WinningsRow` (winnings pill + cascade multiplier pill inline). Reduced `WINNINGS_BAND_MIN_HEIGHT` and tightened column spacing; widened top HUD anchor band (`0.32–0.68`) with narrow-width typography scaling.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Center column is grid-first (no stake row above grid); economic controls live in top HUD; multiplier still pulses on increment with cap suffix when active.
+- Verification: Linter pass on `combat_test.gd`; manual F6 check recommended for top-row crowding and inline readout clipping at narrow widths.
+
+## 2026-05-19 - Economics Stack Above Grid
+
+- Request: Keep stake at its original vertical slot; place bankroll centered directly above stake (not side-by-side in top row).
+- Implementation: Removed top-row `CenterTopHud` economics layout; added `EconomicsCenter`/`EconomicsStack` as first center-column child with bankroll over stake, both centered. Stake remains above grid; inline winnings row unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Bankroll and bet controls share one centered vertical block above the grid; no separate top HUD band for economy.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Meta Box Economics Layout
+
+- Request: Stake on same row as seed in top-left meta area; bankroll centered above that row (with icons), not in center column.
+- Implementation: Moved economics into `MetaBox`/`MetaContent`: `EconomicsStack` under icon row with centered bankroll, then `SeedStakeRow` (seed controls + full stake selector). Removed center-column economics block; widened meta anchor band slightly (`LAYOUT_TOP_BOX_END` 0.14 → 0.22).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Center column is grid-only at top; seed/stake/bankroll live in top-left HUD stack.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Centered Top Bankroll + Stake Stack
+
+- Request: Restore gear icons and seed to previous top-left positions; place bankroll centered on the top row and stake indicator centered directly below it.
+- Implementation: Reverted meta-box economics injection and restored default `MetaContent` flow (icons + seed row unchanged). Added a dedicated centered `EconomicsCenter` overlay anchored in the top HUD band, with `EconomicsStack` containing bankroll then full stake selector. Restored meta box width to prior anchor (`LAYOUT_TOP_BOX_END` back to `0.14`).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Left top corner returns to icons/seed behavior; bankroll is horizontally centered at top with stake directly under it.
+- Verification: Linter pass on `combat_test.gd`.
+
+## 2026-05-19 - Governance: Clarification-First Planning Gate
+
+- Request: Prevent assumption-driven planning and require clarification before new plan output.
+- Implementation: Updated governance docs to require a mandatory planning intake gate: agents must ask at least 2 targeted clarifying questions for every new planning request, then continue asking follow-ups until intent/scope/constraints are concise and assumption-free. Added explicit "no silent assumptions" language and a consistency-check checklist item for planning compliance.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Future planning chats must gather enough user-confirmed detail before drafting plans, reducing unilateral revisions and hidden defaults.
+- Verification: Manual doc review confirms matching enforcement language in `AI_DOCS.md` and always-applied governance rule.
