@@ -154,9 +154,8 @@ var _fallback_grid_width: float = 0.0
 func _can_use_combat_api() -> bool:
 	if combat == null or not is_instance_valid(combat):
 		return false
-	if not Engine.is_editor_hint():
-		return true
-	if combat.get_script() == null:
+	# Instanced CombatRoot is a placeholder in @tool editor; never call gameplay API there.
+	if Engine.is_editor_hint():
 		return false
 	return combat.has_method("setup_new_grid") and combat.has_method("get_current_seed")
 
@@ -698,26 +697,28 @@ func _finish_editor_preview_layout() -> void:
 	_apply_responsive_layout()
 	await get_tree().process_frame
 	_layout_combat()
-	_hide_editor_symbol_logic_ui()
+	_ensure_editor_grid_shell_visible()
+	_refresh_editor_placeholder_readouts()
 	_reassert_scaffold_ownership()
 
 
-func _hide_editor_symbol_logic_ui() -> void:
-	if not _is_editor_preview():
+func _ensure_editor_grid_shell_visible() -> void:
+	if not _is_editor_preview() or combat == null:
 		return
-	if combat != null:
-		for node_name in [
-			"GridUI", "GridFrame", "GridFlashOverlay", "PowerIntroLayer",
-			"MultiplierLabel", "RoundWinningsLabel", "EncounterWonLabel",
-		]:
-			var combat_node := combat.get_node_or_null(node_name) as CanvasItem
-			if combat_node != null:
-				combat_node.visible = false
+	_suppress_combat_root_legacy_labels()
+	for node_name in ["GridUI", "GridFrame"]:
+		var shell_node := combat.get_node_or_null(node_name) as CanvasItem
+		if shell_node != null:
+			shell_node.visible = true
+	var flash := combat.get_node_or_null("GridFlashOverlay") as CanvasItem
+	if flash != null:
+		flash.visible = false
+	var power_layer := combat.get_node_or_null("PowerIntroLayer") as CanvasItem
+	if power_layer != null:
+		power_layer.visible = false
 	for node in [mult_label, bankroll_label, bet_label, goal_label, seed_spin, _cascade_mult_label, _cascade_mult_pill]:
 		if node is CanvasItem:
-			(node as CanvasItem).visible = false
-	if _history_spin_list != null:
-		_clear_history_spin_list()
+			(node as CanvasItem).visible = true
 
 
 func _organize_top_hud() -> void:
@@ -1509,7 +1510,7 @@ func _layout_combat() -> void:
 		_layout_premium_bar_fallback(grid_w, host_h)
 	_layout_execute_button_to_grid_width(grid_w)
 	if _is_editor_preview():
-		_hide_editor_symbol_logic_ui()
+		_ensure_editor_grid_shell_visible()
 
 
 func _layout_premium_bar() -> void:

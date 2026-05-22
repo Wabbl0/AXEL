@@ -1924,3 +1924,18 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Runtime regains retimed center win popups lobbing to winnings readout, HISTORY shows mini symbols with bet/value/mult lines, and editor preview can be toggled on root node for layout parity without repopulating gameplay grid/numbers. Core gravity/bankroll/economy behavior remains from pre-dedup anchors.
 - Verification: `combat_test_scaffold_check.gd` (OK); `scene_smoke_check.gd` (OK); `determinism_check.gd` (OK); duplicate CombatRoot inline children remain 0.
+
+## 2026-05-22 - Fix Editor Preview + Post-Dedup Pack
+
+- Request: Stop editor placeholder/owner errors; show grid shell + default readouts in 2D editor preview (no symbol simulation); keep post-dedup vector lob popup + mini-symbol HISTORY; include relevant post-dedup fixes except black/scanlines rescue scene variants.
+- Conflict resolution: `_can_use_combat_api()` now always returns false in editor (blocks placeholder `CombatRoot` method calls). Removed `_hide_editor_symbol_logic_ui()` (was hiding grid/readouts). Replaced corrupted `combat_test.tscn` (duplicate inline CombatRoot children from editor save) with clean `2b59ee5` instance-only scene.
+- Implementation:
+  - `combat_test.gd`: editor uses `_layout_combat_grid_fallback()` + `_ensure_editor_grid_shell_visible()` + `_refresh_editor_placeholder_readouts()`; no `setup_new_grid` in editor preview.
+  - Retained post-dedup FX from `aceade4`/`d774b81` (`symbol_slot.gd` VT323 5-phase lob, `combat_root.gd` texture history events + popup target).
+  - `combat_test.tscn` restored from `2b59ee5` (0 duplicate CombatRoot child paths).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Editor preview ON shows layout shell, empty grid frame, and default numbers (1000/1000 bankroll, bet 100, mult 0) without gameplay API calls or load-name clashes. Runtime unchanged: vector floating-number lob + HISTORY mini icons.
+- Verification: `combat_test_scaffold_check.gd` (OK); `scene_smoke_check.gd` (OK); `determinism_check.gd` (OK).
