@@ -1939,3 +1939,23 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Editor preview ON shows layout shell, empty grid frame, and default numbers (1000/1000 bankroll, bet 100, mult 0) without gameplay API calls or load-name clashes. Runtime unchanged: vector floating-number lob + HISTORY mini icons.
 - Verification: `combat_test_scaffold_check.gd` (OK); `scene_smoke_check.gd` (OK); `determinism_check.gd` (OK).
+
+## 2026-05-22 - Preserve Combat Milestone on GitHub
+
+- Request: Preserve recent combat changes across computers so they are logged on GitHub (not only OneDrive); working tree showed no pending commit because changes were already committed.
+- Implementation: Confirmed milestone at `4110c74` on `main` (includes `7144462`..`4110c74` stack). Created and pushed backup branch `backup/2026-05-22-combat-state` and annotated tag `checkpoint-2026-05-22-combat-state`. Documented multi-machine fetch/push/milestone workflow in `AI_DOCS.md` §14.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No runtime change. GitHub now has independently discoverable refs for the combat recovery milestone; agents and humans can restore this state from any machine after `git fetch`.
+- Verification: `git ls-remote` confirms branch `backup/2026-05-22-combat-state` and tag `checkpoint-2026-05-22-combat-state` on `origin`; both point to commit `4110c74`.
+
+## 2026-05-22 - Preserve Combat Milestone on GitHub
+
+- Request: Preserve recent combat changes across computers so they are logged on GitHub (not only OneDrive); working tree showed no pending commit because changes were already committed.
+- Implementation: Confirmed milestone at `4110c74` on `main` (includes `7144462`..`4110c74` stack). Created and pushed backup branch `backup/2026-05-22-combat-state` and annotated tag `checkpoint-2026-05-22-combat-state`. Documented multi-machine fetch/push/milestone workflow in `AI_DOCS.md` §14.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No runtime change. GitHub now has independently discoverable refs for the combat recovery milestone; agents and humans can restore this state from any machine after `git fetch`.
+- Verification: `git ls-remote` confirms branch `backup/2026-05-22-combat-state` and tag `checkpoint-2026-05-22-combat-state` on `origin`; both point to commit `4110c74`.

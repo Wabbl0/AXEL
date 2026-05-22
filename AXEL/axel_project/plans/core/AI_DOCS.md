@@ -193,3 +193,44 @@ Before finishing:
 - [ ] Conflicts were resolved using hierarchy and documented.
 - [ ] New planning requests asked at least 2 clarifying questions and continued clarification until assumption-free plan readiness.
 - [ ] Implemented request was appended to `AI_CHANGELOG.md`.
+
+## 14) Multi-Machine Git Preservation
+
+Use GitHub as the source of truth across computers. OneDrive sync is not a substitute for version control.
+
+### Milestone refs (2026-05-22 combat recovery)
+
+- Branch: `backup/2026-05-22-combat-state` → commit `4110c74`
+- Tag: `checkpoint-2026-05-22-combat-state` → same commit (annotated)
+- Commit range preserved: `7144462` through `4110c74` (pre-dedup feature stack + editor preview guards)
+
+### Before starting work on a new machine
+
+1. `git fetch --all --prune`
+2. `git status -sb` — confirm branch and whether you are ahead/behind `origin`
+3. `git pull --ff-only` on `main` (or your feature branch) when behind
+
+### Before leaving a machine
+
+1. `git status -sb` — ensure intentional changes are committed
+2. `git push` (branch) and `git push --tags` if you created tags locally
+3. For major milestones, create durable refs and push them:
+   - `git branch backup/YYYY-MM-DD-short-name <commit>`
+   - `git tag -a checkpoint-YYYY-MM-DD-short-name <commit> -m "reason"`
+   - `git push origin backup/YYYY-MM-DD-short-name`
+   - `git push origin checkpoint-YYYY-MM-DD-short-name`
+
+### Recovering a milestone on any machine
+
+```bash
+git fetch --all --prune
+git checkout backup/2026-05-22-combat-state
+# or
+git checkout checkpoint-2026-05-22-combat-state
+```
+
+### Why "Changes" may be empty in the IDE
+
+- If edits are already committed and pushed, the working tree is clean — nothing left to stage.
+- Check recent history: `git log --oneline -n 10`
+- Check remote parity: `git status -sb` should not show unpushed commits before switching machines
