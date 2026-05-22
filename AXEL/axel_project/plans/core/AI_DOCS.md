@@ -104,6 +104,7 @@ Keep these narrative anchors coherent across edits:
   - combat goals/economy
   - style/thematic presentation
 - **Editor collision colors:** cyan/teal fill and outlines for 2D collision shapes via `debug/shapes/collision/` project settings — visible in the editor viewport only, invisible at runtime unless Debug > Visible Collision Shapes is manually toggled. This is a readability exception to the AXEL palette. Legacy runtime overlay scripts remain in `scripts/debug/` but the autoload is disabled. See `AXEL/axel_project/plans/core/PLAYTEST_DEBUG_COLLISIONS.md`.
+- **Protected combat test scaffold:** `AXEL/axel_project/combat/combat_test.tscn` is canonical and must keep required nodes (`%CombatRoot`, `%MetaBox`, `%SeedSpinBox`, `%SpinButton`, `%BankrollLabel`, stake row, SUPER FS choice buttons, etc.). Duplicate/cleanup/refactor tasks must **not** delete or “simplify away” this scaffold. Run `res://combat/test/combat_test_scaffold_check.gd` (also gated inside `scene_smoke_check.gd`) before combat changes; pre-commit runs `tools/qa/check_combat_test_scaffold.py --staged`.
 
 ## 9) Agent Workflow Requirements
 

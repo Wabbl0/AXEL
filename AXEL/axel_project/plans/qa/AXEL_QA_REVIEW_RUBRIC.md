@@ -17,20 +17,21 @@ Use this section to set **confidence** and required **evidence**. Default `qa` v
 
 ### Default command set (playtest: combat + scene smoke + bot playthrough)
 
-Plain `qa` / `run qa` / `qa agent` runs **all six** commands below in one pass. Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
+Plain `qa` / `run qa` / `qa agent` runs **all seven** commands below in one pass. Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
 
 ```bat
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_arc1_exterior.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_dialogue_loop.gd
 ```
 
 The two bot scripts are documented in `AXEL/axel_project/test/bots/README.md`.
 
-- **Pass/fail gates:** `princess_check`, `determinism_check`, `scene_smoke_check`, `playthrough_arc1_exterior`, `playthrough_dialogue_loop` — non-zero exit = report as **blocker** / `BUG` or `REGRESSION`.
+- **Pass/fail gates:** `princess_check`, `determinism_check`, `scene_smoke_check`, `combat_test_scaffold_check`, `playthrough_arc1_exterior`, `playthrough_dialogue_loop` — non-zero exit = report as **blocker** / `BUG` or `REGRESSION`.
 - **`rtp_audit.gd`:** always exits 0 — parse stdout for `RTP_AUDIT_JSON` (or printed metrics) and record in analytics; do not fail the run on RTP alone unless thresholds are specified.
 - **`item_balance_audit.gd` (conditional):** run after the six default commands when item definitions exist under `combat/data/items/`. Always exits 0. If no items found or item API not implemented, record `item_balance_audit=skip` in payload. If items are tested, parse `ITEM_BALANCE_JSON` stdout and include `item_balance` + `item_metrics` in the analytics payload.
 - **Skip policy:** if any command cannot run (missing tooling, unavailable Godot binary, etc.), name every skipped command explicitly in the report and downgrade confidence one tier per missing gate (drop bots first → `combat + scene smoke`; drop scene smoke → `combat simulated`; drop combat → `static review`).
@@ -62,7 +63,7 @@ tools\\cmd\\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/i
 
 ### When user says “playtest” or “high confidence”
 
-1. Run the full default command set above (six commands) — same as plain `qa` — and report which (if any) failed or were skipped.
+1. Run the full default command set above (seven commands) — same as plain `qa` — and report which (if any) failed or were skipped.
 2. Run the item balance audit command if item definitions exist.
 3. Set **Confidence:** to `combat + scene smoke + bot playthrough` only if **all** pass/fail gates passed and metrics captured. Otherwise pick the highest tier still satisfied by the evidence (see Skip policy above).
 4. Prioritize **bugs, regressions, and fix recommendations** over subjective feel.

@@ -37,9 +37,12 @@ tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/det
 ```bat
 tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd
 tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd
+tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd
 ```
 
-(`rtp_audit` prints metrics; exit code is always 0 unless the script errors. `scene_smoke_check` exits non-zero on load/instantiate failure.)
+(`rtp_audit` prints metrics; exit code is always 0 unless the script errors. `scene_smoke_check` exits non-zero on load/instantiate failure and validates `combat_test` scaffold nodes. `combat_test_scaffold_check` is a dedicated gate for stripped-scene regressions.)
+
+**Pre-commit (optional, repo hook):** `python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py --staged` blocks commits that remove required `combat_test.tscn` nodes.
 
 **Troubleshooting headless / `class_name` resolution:** If Godot reports missing types like `EncounterDef` or `GoalDef`, ensure [`.godot/global_script_class_cache.cfg`](../.godot/global_script_class_cache.cfg) includes all combat `class_name` entries, or open the project once in the editor to regenerate the cache.
 

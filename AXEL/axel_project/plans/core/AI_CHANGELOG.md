@@ -1812,6 +1812,24 @@ Copy and fill:
 - Behavior impact: Editor preview can resolve required scene refs again and build the full shell instead of rendering only the black background/overlays.
 - Verification: `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd` (OK); `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd` (OK).
 
+## 2026-05-22 - Combat Test Scaffold Overwrite Guardrails
+
+- Request: Stop recurring `combat_test.tscn` regressions to black background + scanlines only (required nodes stripped after reboot/cleanup).
+- Implementation: Restored canonical `combat_test.tscn` from commit `bab7ec5`. Added `combat/test/combat_test_scaffold_check.gd` and integrated scaffold validation into `test/scene_smoke_check.gd`. Added `tools/qa/check_combat_test_scaffold.py` with git pre-commit hook (staged-file check). Expanded `combat_test.gd` `_cache_scene_refs()` to validate full runtime-critical node set with explicit `push_error` diagnostics. Documented protected scaffold policy in `AI_DOCS.md`, `README_COMBAT_TEST_VERSIONS.md`, `VERIFICATION_CHECKLIST.md`, and `AXEL_QA_REVIEW_RUBRIC.md`.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/combat_test_scaffold_check.gd`
+  - `AXEL/axel_project/test/scene_smoke_check.gd`
+  - `AXEL/axel_project/tools/qa/check_combat_test_scaffold.py`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/combat/VERIFICATION_CHECKLIST.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Stripped combat test scenes fail fast in editor/runtime/CI instead of silently showing only overlays; commits that remove scaffold nodes are blocked.
+- Verification: `python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py` (OK); `combat_test_scaffold_check.gd` (OK); `scene_smoke_check.gd` (OK).
+
 ## 2026-05-19 - Combat Test Editor Visual Parity (Fallback Layout)
 
 - Request: Fix remaining editor-preview visual drift — EXECUTE bar spanning into side panels, combat grid misplaced/scaled at top-left, and stray `Multiplier: 1×` from `CombatRoot`.
@@ -1860,3 +1878,17 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Line-win amount popups arc into the center winnings value instead of drifting upward only; text stays vector-sharp while scaling.
 - Verification: Linter pass on touched scripts; `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd` (OK).
+
+## 2026-05-22 - Combat Test Editor Save Stripping Fix
+
+- Request: Fix Play/runtime black screen + `_cache_scene_refs()` missing-node errors after editor preview briefly looked correct.
+- Implementation: Restored full `combat_test.tscn` from `bab7ec5` again (working copy had been stripped to ~21 nodes). Root cause: `@tool` editor layout reparented owned scaffold nodes under `owner = null` parents, so **Ctrl+S dropped them from the scene file**. Fixed by defaulting `editor_preview_enabled` to `false`, replacing `remove_child` reparents with `reparent` + `_reassert_node_ownership()`, and adding `combat_test_scaffold_baseline.tscn` plus runtime `_restore_scaffold_from_baseline()` fallback.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/combat_test_scaffold_baseline.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/combat_test_scaffold_check.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Saving the scene after editor preview should retain `CombatRoot` and HUD nodes; Play should build full UI instead of scanlines-only when the scene file is intact.
+- Verification: `check_combat_test_scaffold.py` (OK); `combat_test_scaffold_check.gd` (OK); `scene_smoke_check.gd` (OK).
