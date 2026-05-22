@@ -1905,3 +1905,22 @@ Copy and fill:
 - Kept from HEAD (not reverted): `combat/test/combat_test_scaffold_check.gd`, `tools/qa/check_combat_test_scaffold.py`, `combat/combat_test_scaffold_baseline.tscn`, `AI_DOCS.md` scaffold policy, non-combat scenes/scripts.
 - Behavior impact: `combat_test.tscn` again instances `combat_root.tscn` without duplicate `GridManager`/`GridUI`/label children (0 clash paths). Dual-folder symbol art restored (`grid_symbols` + `placeholders`); power intros use 720px placeholder textures again.
 - Verification: `combat_test_scaffold_check.gd` (OK, no UID warnings); `scene_smoke_check.gd` (OK, 6 scenes); `determinism_check.gd` (OK). Duplicate-child count in `combat_test.tscn`: 0 (was 8 at `ea90057`).
+
+## 2026-05-22 - Return Pre-Dedup Feature Stack (Visual + Combat)
+
+- Request: Restore pre-`res://` dedup feature set: exact center match cue animation, full HISTORY mini-symbol UI, editor/runtime visual parity (hide symbol-logic UI in editor), plus core combat/economy/Arc1/HUD packs from before dedup chat.
+- Conflict resolution: Used selective restore from `aceade4` (popup FX + `combat_root`), `2b59ee5` (`combat_test` scene shell + `@tool` preview with ownership safeguards), kept `bab7ec5` economy/symbol data and placeholders from prior recovery; explicitly avoided `ea90057` `combat_test.tscn` duplicate CombatRoot children.
+- Implementation:
+  - Restored `symbol_slot.gd` 5-phase center payout cue (`WIN_POPUP_TOTAL_DURATION` 1.24s) and `combat_root.gd` center-line anchor + winnings lob target + history `texture` payload.
+  - Restored `combat_test.gd` mini-icon two-line HISTORY rows (`HISTORY_MINI_ICON_SIZE`, `_append_history_spin_row`).
+  - Restored `combat_test.tscn` PlayArea shell layout from `2b59ee5` (0 duplicate CombatRoot child paths).
+  - Re-enabled `@tool` editor preview (`editor_preview_enabled` default `false`) with `_hide_editor_symbol_logic_ui()` so editor matches runtime shell but hides grid + numeric/symbol-logic readouts.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scenes/combat_root.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Runtime regains retimed center win popups lobbing to winnings readout, HISTORY shows mini symbols with bet/value/mult lines, and editor preview can be toggled on root node for layout parity without repopulating gameplay grid/numbers. Core gravity/bankroll/economy behavior remains from pre-dedup anchors.
+- Verification: `combat_test_scaffold_check.gd` (OK); `scene_smoke_check.gd` (OK); `determinism_check.gd` (OK); duplicate CombatRoot inline children remain 0.

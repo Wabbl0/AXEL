@@ -147,6 +147,8 @@ var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
 var _suppress_grid_populated_fx: bool = false
+var _cached_multiplier_emit_value: int = -1
+var _winnings_popup_target: Control = null
 var inventory := ItemInventoryScript.new()
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
@@ -187,7 +189,7 @@ func _ready() -> void:
 		power_intro_icon.modulate = Color(1.0, 1.0, 1.0, 0.0)
 		power_intro_icon.scale = Vector2(0.4, 0.4)
 	if power_intro_glow != null:
-		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
+		power_intro_glow.color = Color(1.0, 1.0, 1.0, 0.0)
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
 	_refresh_grid_border_for_state()
@@ -256,6 +258,14 @@ func get_state() -> int:
 
 func get_multiplier_value() -> int:
 	return multiplier.value
+
+
+func is_multiplier_cap_active() -> bool:
+	return multiplier.cap_enabled
+
+
+func get_multiplier_cap_value() -> int:
+	return multiplier.cap_value
 
 
 func get_princess_current_id() -> StringName:
@@ -338,6 +348,10 @@ func get_current_seed() -> int:
 
 func get_round_winnings() -> float:
 	return float(_round_winnings_cents)
+
+
+func set_winnings_popup_target(target: Control) -> void:
+	_winnings_popup_target = target
 
 
 func get_bankroll() -> float:
@@ -1065,6 +1079,9 @@ func _refresh_multiplier_label() -> void:
 		if free_spins.active:
 			suffix = " (FS %d left)" % free_spins.spins_remaining
 		multiplier_label.text = "Multiplier: %d×%s" % [multiplier.value, suffix]
+	if _cached_multiplier_emit_value != multiplier.value:
+		_cached_multiplier_emit_value = multiplier.value
+		emit_signal("readouts_progressed")
 
 
 func _refresh_round_winnings_label() -> void:
@@ -1277,7 +1294,14 @@ func _play_count_flash_for_lines(lines: Array) -> void:
 			var popup_slot := _get_slot(popup_coord)
 			if popup_slot != null and popup_slot.has_method("play_win_popup"):
 				var popup_delay: float = fx_stagger_sec * float(max(flash_index - 1, 0))
-				popup_slot.call("play_win_popup", "+%s" % payout_text, count_flash_duration_sec + 0.2, popup_delay)
+				var throw_target := _get_winnings_popup_target_global()
+				popup_slot.call(
+					"play_win_popup",
+					"+%s" % payout_text,
+					count_flash_duration_sec + 0.2,
+					popup_delay,
+					throw_target
+				)
 	await get_tree().create_timer(count_flash_duration_sec + fx_stagger_sec * max(flash_index - 1, 0)).timeout
 
 
@@ -1290,7 +1314,14 @@ func _show_win_popups_for_lines(lines: Array) -> void:
 		var popup_coord := _line_popup_anchor_coord(cells)
 		var popup_slot := _get_slot(popup_coord)
 		if popup_slot != null and popup_slot.has_method("play_win_popup"):
-			popup_slot.call("play_win_popup", "+%s" % payout_text, 0.01, 0.0)
+			var throw_target := _get_winnings_popup_target_global()
+			popup_slot.call("play_win_popup", "+%s" % payout_text, 0.01, 0.0, throw_target)
+
+
+func _get_winnings_popup_target_global() -> Vector2:
+	if _winnings_popup_target == null or not is_instance_valid(_winnings_popup_target):
+		return Vector2.INF
+	return _winnings_popup_target.get_global_rect().get_center()
 
 
 func _line_popup_anchor_coord(cells: Array) -> Vector2i:
@@ -1333,9 +1364,11 @@ func _line_win_event_from_line(line: Dictionary, payout_cents: int) -> Dictionar
 			symbol_name = dn
 		var line_length: int = int(line.get("length", 0))
 		symbol_value = sd.payout_multiplier_for_length(line_length)
+	var tex: Texture2D = sd.texture if sd != null else null
 	return {
 		"symbol_id": symbol_id,
 		"symbol_name": symbol_name,
+		"texture": tex,
 		"length": int(line.get("length", 0)),
 		"bet": int(total_bet),
 		"symbol_value": symbol_value,
@@ -1923,7 +1956,7 @@ func _play_power_intro_flash_async(power_id: StringName) -> void:
 	target.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	target.scale = Vector2(0.4, 0.4)
 	if power_intro_glow != null:
-		power_intro_glow.color = Color(1.0, 0.85, 0.4, 0.0)
+		power_intro_glow.color = Color(1.0, 1.0, 1.0, 0.0)
 	var scale_in: float = max(power_intro_scale_in_sec, 0.05)
 	var hold: float = max(power_intro_hold_sec, 0.0)
 	var scale_out: float = max(power_intro_scale_out_sec, 0.05)
