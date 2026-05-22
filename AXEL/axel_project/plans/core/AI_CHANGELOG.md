@@ -1892,3 +1892,16 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Saving the scene after editor preview should retain `CombatRoot` and HUD nodes; Play should build full UI instead of scanlines-only when the scene file is intact.
 - Verification: `check_combat_test_scaffold.py` (OK); `combat_test_scaffold_check.gd` (OK); `scene_smoke_check.gd` (OK).
+
+## 2026-05-22 - Recover Pre-Dedup Stable Snapshot (`bab7ec5`)
+
+- Request: Fix Godot load errors (duplicate `CombatRoot` child names under `GridHost/CombatRoot`) and black/scanlines-only editor/runtime view after duplication-removal work; restore last known-good state with both `grid_symbols` and `placeholders` asset folders.
+- Conflict resolution: Changelog anchor `bab7ec5` selected as restore commit (last commit before `bee8b49` symbol dedup and before `ea90057` reintroduced duplicate inline CombatRoot children). Post-restore scaffold guardrails from HEAD retained (`combat_test_scaffold_check.gd`, `check_combat_test_scaffold.py`, `combat_test_scaffold_baseline.tscn`).
+- Implementation: Branch `recovery/pre-dedup-stable-bab7ec5`; `git checkout bab7ec5 -- AXEL/axel_project/combat/`; stripped stale `uid://` references on restored `sym_*.tres` placeholder ext-resources so project import resolves by path without warnings.
+- Files changed:
+  - `AXEL/axel_project/combat/**` (restored tree from `bab7ec5`, including `combat/art/placeholders/**`)
+  - `AXEL/axel_project/combat/data/symbols/sym_*.tres` (UID cleanup on placeholder refs)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Kept from HEAD (not reverted): `combat/test/combat_test_scaffold_check.gd`, `tools/qa/check_combat_test_scaffold.py`, `combat/combat_test_scaffold_baseline.tscn`, `AI_DOCS.md` scaffold policy, non-combat scenes/scripts.
+- Behavior impact: `combat_test.tscn` again instances `combat_root.tscn` without duplicate `GridManager`/`GridUI`/label children (0 clash paths). Dual-folder symbol art restored (`grid_symbols` + `placeholders`); power intros use 720px placeholder textures again.
+- Verification: `combat_test_scaffold_check.gd` (OK, no UID warnings); `scene_smoke_check.gd` (OK, 6 scenes); `determinism_check.gd` (OK). Duplicate-child count in `combat_test.tscn`: 0 (was 8 at `ea90057`).

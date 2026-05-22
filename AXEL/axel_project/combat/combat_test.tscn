@@ -3,80 +3,20 @@
 [ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
 [ext_resource type="Theme" path="res://combat/ui/terminal_theme.tres" id="3_theme"]
-[ext_resource type="Script" uid="uid://co0p5c62eeh6q" path="res://combat/scripts/grid_manager.gd" id="4_avfyl"]
 [ext_resource type="Script" uid="uid://c0ok3xo41wror" path="res://combat/scripts/premium_meter_circle.gd" id="4_meter"]
 [ext_resource type="Shader" uid="uid://c0q3vq1cvevaa" path="res://combat/shaders/scanline_overlay.gdshader" id="5_scanline"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xug1b"]
-content_margin_left = 8.0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_box"]
+content_margin_left = 10.0
 content_margin_top = 8.0
-content_margin_right = 8.0
+content_margin_right = 10.0
 content_margin_bottom = 8.0
-bg_color = Color(0.07, 0, 0, 0.88)
+bg_color = Color(0.06, 0, 0, 0.92)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.45, 0.03, 0.03, 0.75)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3smro"]
-content_margin_left = 8.0
-content_margin_top = 6.0
-content_margin_right = 8.0
-content_margin_bottom = 6.0
-bg_color = Color(0.03, 0, 0, 0.98)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.35, 0.02, 0.02, 0.85)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jim0v"]
-bg_color = Color(0.12, 0.02, 0.02, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
 border_color = Color(0.78, 0.03, 0.03, 0.95)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_06m7f"]
-bg_color = Color(0.95, 0.08, 0.08, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qqkc4"]
-content_margin_left = 14.0
-content_margin_top = 6.0
-content_margin_right = 14.0
-content_margin_bottom = 6.0
-bg_color = Color(0, 0, 0, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.35, 0.02, 0.02, 0.7)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toamn"]
-content_margin_left = 14.0
-content_margin_top = 6.0
-content_margin_right = 14.0
-content_margin_bottom = 6.0
-bg_color = Color(0, 0, 0, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.35, 0.02, 0.02, 0.7)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -134,56 +74,6 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3wx3o"]
-content_margin_left = 8.0
-content_margin_top = 8.0
-content_margin_right = 8.0
-content_margin_bottom = 8.0
-bg_color = Color(0.07, 0, 0, 0.88)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.45, 0.03, 0.03, 0.75)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nwpd3"]
-content_margin_left = 8.0
-content_margin_top = 6.0
-content_margin_right = 8.0
-content_margin_bottom = 6.0
-bg_color = Color(0.03, 0, 0, 0.98)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.35, 0.02, 0.02, 0.85)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6qny0"]
-content_margin_left = 16.0
-content_margin_top = 4.0
-content_margin_right = 16.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0, 0, 0.85)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.78, 0.03, 0.03, 0.95)
-corner_radius_top_left = 18
-corner_radius_top_right = 18
-corner_radius_bottom_right = 18
-corner_radius_bottom_left = 18
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2thn1"]
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_scanline"]
 shader = ExtResource("5_scanline")
 shader_parameter/line_color = Color(1, 0, 0, 0.08)
@@ -226,7 +116,6 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("3_theme")
 script = ExtResource("1_combat_test")
-editor_preview_enabled = true
 
 [node name="BlackBackground" type="ColorRect" parent="." unique_id=232267701]
 layout_mode = 1
@@ -237,245 +126,176 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 1)
 
-[node name="PlayArea" type="Control" parent="." unique_id=22561759]
-anchors_preset = 0
-anchor_left = 0.02
-anchor_top = 0.145
-anchor_right = 0.98
-anchor_bottom = 0.99
+[node name="CombatRoot" parent="." unique_id=952603979 instance=ExtResource("2_combat_root")]
+unique_name_in_owner = true
+visible = false
+
+[node name="TopBar" type="Control" parent="." unique_id=1946100084]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 0.15
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="PlayRow" type="HBoxContainer" parent="PlayArea" unique_id=229967506]
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-theme_override_constants/separation = 10
+[node name="MetaBox" type="PanelContainer" parent="TopBar" unique_id=1292551424]
+unique_name_in_owner = true
+layout_mode = 1
+offset_left = 24.0
+offset_top = 12.0
+offset_right = 264.0
+offset_bottom = 88.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_box")
 
-[node name="HistoryPanel" type="PanelContainer" parent="PlayArea/PlayRow" unique_id=1744043997]
-custom_minimum_size = Vector2(230.4, 529.56)
+[node name="MetaContent" type="VBoxContainer" parent="TopBar/MetaBox" unique_id=493484402]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="MetaIconsRow" type="HBoxContainer" parent="TopBar/MetaBox/MetaContent" unique_id=458772786]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GearIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=733162889]
 layout_mode = 2
 size_flags_horizontal = 0
-size_flags_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_xug1b")
-metadata/scroll = Object(ScrollContainer,"unique_name_in_owner":false,"process_mode":0,"process_priority":0,"process_physics_priority":0,"process_thread_group":0,"physics_interpolation_mode":2,"auto_translate_mode":0,"editor_description":"","visible":true,"modulate":Color(1, 1, 1, 1),"self_modulate":Color(1, 1, 1, 1),"show_behind_parent":false,"top_level":false,"clip_children":0,"light_mask":1,"visibility_layer":1,"z_index":0,"z_as_relative":true,"y_sort_enabled":false,"texture_filter":0,"texture_repeat":0,"material":null,"use_parent_material":false,"clip_contents":true,"custom_minimum_size":Vector2(0, 0),"layout_direction":0,"layout_mode":2,"size_flags_horizontal":1,"size_flags_vertical":3,"size_flags_stretch_ratio":1.0,"localize_numeral_system":true,"tooltip_text":"","tooltip_auto_translate_mode":0,"focus_neighbor_left":NodePath(""),"focus_neighbor_top":NodePath(""),"focus_neighbor_right":NodePath(""),"focus_neighbor_bottom":NodePath(""),"focus_next":NodePath(""),"focus_previous":NodePath(""),"focus_mode":0,"focus_behavior_recursive":0,"mouse_filter":1,"mouse_behavior_recursive":0,"mouse_force_pass_scroll_events":true,"mouse_default_cursor_shape":0,"shortcut_context":null,"accessibility_name":"","accessibility_description":"","accessibility_live":0,"accessibility_controls_nodes":Array[NodePath]([]),"accessibility_described_by_nodes":Array[NodePath]([]),"accessibility_labeled_by_nodes":Array[NodePath]([]),"accessibility_flow_to_nodes":Array[NodePath]([]),"theme":null,"theme_type_variation":&"","follow_focus":false,"draw_focus_border":false,"scroll_horizontal":0,"scroll_vertical":0,"scroll_horizontal_custom_step":-1.0,"scroll_vertical_custom_step":-1.0,"horizontal_scroll_mode":0,"vertical_scroll_mode":1,"scroll_deadzone":0,"scroll_hint_mode":0,"tile_scroll_hint":false,"script":null)
-
-metadata/list = Object(VBoxContainer,"unique_name_in_owner":false,"process_mode":0,"process_priority":0,"process_physics_priority":0,"process_thread_group":0,"physics_interpolation_mode":2,"auto_translate_mode":0,"editor_description":"","visible":true,"modulate":Color(1, 1, 1, 1),"self_modulate":Color(1, 1, 1, 1),"show_behind_parent":false,"top_level":false,"clip_children":0,"light_mask":1,"visibility_layer":1,"z_index":0,"z_as_relative":true,"y_sort_enabled":false,"texture_filter":0,"texture_repeat":0,"material":null,"use_parent_material":false,"clip_contents":false,"custom_minimum_size":Vector2(0, 0),"layout_direction":0,"layout_mode":2,"size_flags_horizontal":3,"size_flags_vertical":1,"size_flags_stretch_ratio":1.0,"localize_numeral_system":true,"tooltip_text":"","tooltip_auto_translate_mode":0,"focus_neighbor_left":NodePath(""),"focus_neighbor_top":NodePath(""),"focus_neighbor_right":NodePath(""),"focus_neighbor_bottom":NodePath(""),"focus_next":NodePath(""),"focus_previous":NodePath(""),"focus_mode":0,"focus_behavior_recursive":0,"mouse_filter":1,"mouse_behavior_recursive":0,"mouse_force_pass_scroll_events":true,"mouse_default_cursor_shape":0,"shortcut_context":null,"accessibility_name":"","accessibility_description":"","accessibility_live":0,"accessibility_controls_nodes":Array[NodePath]([]),"accessibility_described_by_nodes":Array[NodePath]([]),"accessibility_labeled_by_nodes":Array[NodePath]([]),"accessibility_flow_to_nodes":Array[NodePath]([]),"theme":null,"theme_type_variation":&"","theme_override_constants/separation":4,"alignment":0,"script":null)
-
-metadata/header = Object(Label,"unique_name_in_owner":false,"process_mode":0,"process_priority":0,"process_physics_priority":0,"process_thread_group":0,"physics_interpolation_mode":2,"auto_translate_mode":0,"editor_description":"","visible":true,"modulate":Color(1, 1, 1, 1),"self_modulate":Color(1, 1, 1, 1),"show_behind_parent":false,"top_level":false,"clip_children":0,"light_mask":1,"visibility_layer":1,"z_index":0,"z_as_relative":true,"y_sort_enabled":false,"texture_filter":0,"texture_repeat":0,"material":null,"use_parent_material":false,"clip_contents":false,"custom_minimum_size":Vector2(0, 0),"layout_direction":0,"layout_mode":2,"size_flags_horizontal":1,"size_flags_vertical":4,"size_flags_stretch_ratio":1.0,"localize_numeral_system":true,"tooltip_text":"","tooltip_auto_translate_mode":0,"focus_neighbor_left":NodePath(""),"focus_neighbor_top":NodePath(""),"focus_neighbor_right":NodePath(""),"focus_neighbor_bottom":NodePath(""),"focus_next":NodePath(""),"focus_previous":NodePath(""),"focus_mode":0,"focus_behavior_recursive":0,"mouse_filter":2,"mouse_behavior_recursive":0,"mouse_force_pass_scroll_events":true,"mouse_default_cursor_shape":0,"shortcut_context":null,"accessibility_name":"","accessibility_description":"","accessibility_live":0,"accessibility_controls_nodes":Array[NodePath]([]),"accessibility_described_by_nodes":Array[NodePath]([]),"accessibility_labeled_by_nodes":Array[NodePath]([]),"accessibility_flow_to_nodes":Array[NodePath]([]),"theme":null,"theme_type_variation":&"","theme_override_colors/font_color":Color(0.88, 0.4, 0.4, 1),"theme_override_font_sizes/font_size":24,"text":"HISTORY","label_settings":null,"horizontal_alignment":1,"vertical_alignment":0,"autowrap_mode":0,"autowrap_trim_flags":192,"justification_flags":163,"paragraph_separator":"\\n","clip_text":false,"text_overrun_behavior":0,"ellipsis_char":"…","uppercase":false,"tab_stops":PackedFloat32Array(),"lines_skipped":0,"max_lines_visible":-1,"visible_characters":-1,"visible_characters_behavior":0,"visible_ratio":1.0,"text_direction":0,"language":"","structured_text_bidi_override":0,"structured_text_bidi_override_options":[],"script":null)
-
-
-[node name="@VBoxContainer@22096" type="VBoxContainer" parent="PlayArea/PlayRow/HistoryPanel" unique_id=1950429600]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="@PanelContainer@22097" type="PanelContainer" parent="PlayArea/PlayRow/HistoryPanel/@VBoxContainer@22096" unique_id=524997569]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_3smro")
-
-[node name="SectionHeader" type="Label" parent="PlayArea/PlayRow/HistoryPanel/@VBoxContainer@22096/@PanelContainer@22097" unique_id=1306012538]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.88, 0.4, 0.4, 1)
-theme_override_font_sizes/font_size = 24
-text = "HISTORY"
+text = "⬡"
 horizontal_alignment = 1
 
-[node name="@ScrollContainer@22100" type="ScrollContainer" parent="PlayArea/PlayRow/HistoryPanel/@VBoxContainer@22096" unique_id=1811095909]
+[node name="HomeIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=1366203816]
 layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
+size_flags_horizontal = 0
+text = "⌂"
+horizontal_alignment = 1
 
-[node name="@VBoxContainer@22101" type="VBoxContainer" parent="PlayArea/PlayRow/HistoryPanel/@VBoxContainer@22096/@ScrollContainer@22100" unique_id=326116796]
+[node name="ThirdIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=1571091976]
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 0
+text = "?"
+horizontal_alignment = 1
+
+[node name="SeedRow" type="HBoxContainer" parent="TopBar/MetaBox/MetaContent" unique_id=306691761]
+layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="HistorySpinList" type="VBoxContainer" parent="PlayArea/PlayRow/HistoryPanel/@VBoxContainer@22096/@ScrollContainer@22100/@VBoxContainer@22101" unique_id=2051563608]
+[node name="SeedLabel" type="Label" parent="TopBar/MetaBox/MetaContent/SeedRow" unique_id=430077137]
 layout_mode = 2
-theme_override_constants/separation = 4
+text = "SEED"
 
-[node name="CenterColumn" type="VBoxContainer" parent="PlayArea/PlayRow" unique_id=349944650]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 10
-
-[node name="GridHost" type="Control" parent="PlayArea/PlayRow/CenterColumn" unique_id=1192642028]
-clip_contents = true
-custom_minimum_size = Vector2(260, 200)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="CombatRoot" parent="PlayArea/PlayRow/CenterColumn/GridHost" unique_id=952603979 instance=ExtResource("2_combat_root")]
+[node name="SeedSpinBox" type="SpinBox" parent="TopBar/MetaBox/MetaContent/SeedRow" unique_id=516365597]
 unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 4294967295.0
+value = 12345.0
 
-[node name="GridManager" type="Node" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot" unique_id=1174572603]
-script = ExtResource("4_avfyl")
-
-[node name="MultiplierLabel" type="Label" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot" unique_id=2086904540]
-visible = false
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 400.0
-offset_bottom = 40.0
-theme_override_font_sizes/font_size = 18
-text = "Multiplier: 1×"
-
-[node name="GridFrame" type="ReferenceRect" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot" unique_id=919642932]
-offset_left = 126.5
-offset_top = 4.0
-offset_right = 498.5
-offset_bottom = 376.0
-mouse_filter = 2
-border_color = Color(0.78, 0.03, 0.03, 0.95)
-border_width = 2.0
-editor_only = false
-
-[node name="GridUI" type="GridContainer" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot" unique_id=475491197]
-offset_left = 130.5
-offset_top = 8.0
-offset_right = 494.5
-offset_bottom = 372.0
-theme_override_constants/h_separation = 2
-theme_override_constants/v_separation = 2
-columns = 5
-
-[node name="GridFlashOverlay" type="ColorRect" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot" unique_id=628462164]
-visible = false
-offset_left = 130.5
-offset_top = 8.0
-offset_right = 494.5
-offset_bottom = 372.0
-mouse_filter = 2
-color = Color(1, 1, 1, 0)
-
-[node name="PowerIntroLayer" type="Control" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot" unique_id=1558746056]
-visible = false
-layout_mode = 3
-anchors_preset = 0
-offset_left = 130.5
-offset_top = 8.0
-offset_right = 494.5
-offset_bottom = 372.0
-mouse_filter = 2
-
-[node name="PowerIntroGlow" type="ColorRect" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot/PowerIntroLayer" unique_id=129703525]
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-color = Color(1, 1, 1, 0)
-
-[node name="PowerIntroIcon" type="TextureRect" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot/PowerIntroLayer" unique_id=1714379751]
-layout_mode = 0
+[node name="BankrollLabel" type="Label" parent="TopBar" unique_id=1441860414]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -48.0
-offset_top = -48.0
-offset_right = 48.0
-offset_bottom = 48.0
-pivot_offset = Vector2(48, 48)
-mouse_filter = 2
-expand_mode = 1
-stretch_mode = 5
-
-[node name="RoundWinningsLabel" type="Label" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot" unique_id=915585420]
-visible = false
-offset_left = 8.0
-offset_top = 256.0
-offset_right = 400.0
-offset_bottom = 288.0
-theme = ExtResource("3_theme")
-theme_override_font_sizes/font_size = 20
-text = "ROUND WINNINGS  0.00"
-
-[node name="EncounterWonLabel" type="Label" parent="PlayArea/PlayRow/CenterColumn/GridHost/CombatRoot" unique_id=1954111851]
-visible = false
-offset_left = 8.0
-offset_top = -8.0
-offset_right = 200.0
-offset_bottom = 40.0
-theme = ExtResource("3_theme")
-theme_override_colors/font_color = Color(1, 0.9, 0.9, 1)
-theme_override_colors/font_outline_color = Color(1, 0.2, 0.2, 0.85)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 42
-text = "Encounter won!"
+offset_left = -120.0
+offset_top = -24.0
+offset_right = 120.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 36
+text = "1000/1000"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="PremiumProgressBar" type="ProgressBar" parent="PlayArea/PlayRow/CenterColumn/GridHost" unique_id=1157592633]
-z_index = 6
-layout_mode = 0
-offset_left = 130.5
-offset_top = 372.0
-offset_right = 494.5
-offset_bottom = 382.0
-mouse_filter = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_jim0v")
-theme_override_styles/fill = SubResource("StyleBoxFlat_06m7f")
-max_value = 3.0
-show_percentage = false
+[node name="GoalBox" type="PanelContainer" parent="TopBar" unique_id=131385751]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -264.0
+offset_top = 12.0
+offset_right = -24.0
+offset_bottom = 88.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_box")
 
-[node name="WinningsCenter" type="CenterContainer" parent="PlayArea/PlayRow/CenterColumn" unique_id=1537019518]
-custom_minimum_size = Vector2(0, 40)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-
-[node name="WinningsRow" type="HBoxContainer" parent="PlayArea/PlayRow/CenterColumn/WinningsCenter" unique_id=1403603209]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="WinningsReadoutPill" type="PanelContainer" parent="PlayArea/PlayRow/CenterColumn/WinningsCenter/WinningsRow" unique_id=397973225]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_qqkc4")
-
-[node name="MultiplierReadout" type="Label" parent="PlayArea/PlayRow/CenterColumn/WinningsCenter/WinningsRow/WinningsReadoutPill" unique_id=1004755644]
+[node name="GoalLabel" type="Label" parent="TopBar/GoalBox" unique_id=300141295]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
-theme_override_colors/font_outline_color = Color(1, 1, 1, 0.95)
-theme_override_constants/outline_size = 1
-theme_override_font_sizes/font_size = 31
+text = "GOAL
+0 / 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StakeSelector" type="HBoxContainer" parent="." unique_id=66713695]
+layout_mode = 0
+offset_right = 360.0
+offset_bottom = 48.0
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="BetRow" type="HBoxContainer" parent="StakeSelector" unique_id=1953737693]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="BetMinusButton" type="Button" parent="StakeSelector/BetRow" unique_id=2032393760]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+
+[node name="BetLabel" type="Label" parent="StakeSelector/BetRow" unique_id=1277085146]
+unique_name_in_owner = true
+layout_mode = 2
+text = "1"
+
+[node name="BetPlusButton" type="Button" parent="StakeSelector/BetRow" unique_id=1519464377]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "+"
+
+[node name="RightMeterStack" type="VBoxContainer" parent="." unique_id=133420764]
+visible = false
+layout_mode = 0
+
+[node name="PremiumMeterCircle" type="Control" parent="RightMeterStack" unique_id=856376828]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+script = ExtResource("4_meter")
+
+[node name="MultiplierReadout" type="Label" parent="." unique_id=1004755644]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
 text = "0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="CascadeMultiplierPill" type="PanelContainer" parent="PlayArea/PlayRow/CenterColumn/WinningsCenter/WinningsRow" unique_id=1447198111]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_toamn")
-
-[node name="CascadeMultiplierReadout" type="Label" parent="PlayArea/PlayRow/CenterColumn/WinningsCenter/WinningsRow/CascadeMultiplierPill" unique_id=1745014956]
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_colors/font_color = Color(0.98, 0.35, 0.35, 1)
-theme_override_colors/font_outline_color = Color(1, 1, 1, 0.95)
-theme_override_constants/outline_size = 1
-theme_override_font_sizes/font_size = 24
-text = "0×"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="CenterFooter" type="VBoxContainer" parent="PlayArea/PlayRow/CenterColumn" unique_id=1562340747]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-theme_override_constants/separation = 12
-alignment = 1
-
-[node name="SpinButton" type="Button" parent="PlayArea/PlayRow/CenterColumn/CenterFooter" unique_id=1986715139]
+[node name="BudgetLabel" type="Label" parent="." unique_id=11483691]
 unique_name_in_owner = true
-z_index = 30
-custom_minimum_size = Vector2(364, 72)
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -34.0
+offset_right = 280.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 20
+text = "SPIN LOG  0"
+
+[node name="SpinButton" type="Button" parent="." unique_id=1986715139]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(1, 0.73, 0.73, 1)
@@ -488,246 +308,6 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_spin_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_spin_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_spin_disabled")
 text = "EXECUTE"
-
-[node name="BottomWindowMargin" type="Control" parent="PlayArea/PlayRow/CenterColumn" unique_id=208574963]
-custom_minimum_size = Vector2(0, 18)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 8
-mouse_filter = 2
-
-[node name="ItemPickerPanel" type="PanelContainer" parent="PlayArea/PlayRow" unique_id=1039225289]
-custom_minimum_size = Vector2(230.4, 529.56)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_3wx3o")
-metadata/scroll = Object(ScrollContainer,"unique_name_in_owner":false,"process_mode":0,"process_priority":0,"process_physics_priority":0,"process_thread_group":0,"physics_interpolation_mode":2,"auto_translate_mode":0,"editor_description":"","visible":true,"modulate":Color(1, 1, 1, 1),"self_modulate":Color(1, 1, 1, 1),"show_behind_parent":false,"top_level":false,"clip_children":0,"light_mask":1,"visibility_layer":1,"z_index":0,"z_as_relative":true,"y_sort_enabled":false,"texture_filter":0,"texture_repeat":0,"material":null,"use_parent_material":false,"clip_contents":true,"custom_minimum_size":Vector2(0, 0),"layout_direction":0,"layout_mode":2,"size_flags_horizontal":1,"size_flags_vertical":3,"size_flags_stretch_ratio":1.0,"localize_numeral_system":true,"tooltip_text":"","tooltip_auto_translate_mode":0,"focus_neighbor_left":NodePath(""),"focus_neighbor_top":NodePath(""),"focus_neighbor_right":NodePath(""),"focus_neighbor_bottom":NodePath(""),"focus_next":NodePath(""),"focus_previous":NodePath(""),"focus_mode":0,"focus_behavior_recursive":0,"mouse_filter":1,"mouse_behavior_recursive":0,"mouse_force_pass_scroll_events":true,"mouse_default_cursor_shape":0,"shortcut_context":null,"accessibility_name":"","accessibility_description":"","accessibility_live":0,"accessibility_controls_nodes":Array[NodePath]([]),"accessibility_described_by_nodes":Array[NodePath]([]),"accessibility_labeled_by_nodes":Array[NodePath]([]),"accessibility_flow_to_nodes":Array[NodePath]([]),"theme":null,"theme_type_variation":&"","follow_focus":false,"draw_focus_border":false,"scroll_horizontal":0,"scroll_vertical":0,"scroll_horizontal_custom_step":-1.0,"scroll_vertical_custom_step":-1.0,"horizontal_scroll_mode":0,"vertical_scroll_mode":1,"scroll_deadzone":0,"scroll_hint_mode":0,"tile_scroll_hint":false,"script":null)
-
-metadata/list = Object(VBoxContainer,"unique_name_in_owner":false,"process_mode":0,"process_priority":0,"process_physics_priority":0,"process_thread_group":0,"physics_interpolation_mode":2,"auto_translate_mode":0,"editor_description":"","visible":true,"modulate":Color(1, 1, 1, 1),"self_modulate":Color(1, 1, 1, 1),"show_behind_parent":false,"top_level":false,"clip_children":0,"light_mask":1,"visibility_layer":1,"z_index":0,"z_as_relative":true,"y_sort_enabled":false,"texture_filter":0,"texture_repeat":0,"material":null,"use_parent_material":false,"clip_contents":false,"custom_minimum_size":Vector2(0, 0),"layout_direction":0,"layout_mode":2,"size_flags_horizontal":3,"size_flags_vertical":1,"size_flags_stretch_ratio":1.0,"localize_numeral_system":true,"tooltip_text":"","tooltip_auto_translate_mode":0,"focus_neighbor_left":NodePath(""),"focus_neighbor_top":NodePath(""),"focus_neighbor_right":NodePath(""),"focus_neighbor_bottom":NodePath(""),"focus_next":NodePath(""),"focus_previous":NodePath(""),"focus_mode":0,"focus_behavior_recursive":0,"mouse_filter":1,"mouse_behavior_recursive":0,"mouse_force_pass_scroll_events":true,"mouse_default_cursor_shape":0,"shortcut_context":null,"accessibility_name":"","accessibility_description":"","accessibility_live":0,"accessibility_controls_nodes":Array[NodePath]([]),"accessibility_described_by_nodes":Array[NodePath]([]),"accessibility_labeled_by_nodes":Array[NodePath]([]),"accessibility_flow_to_nodes":Array[NodePath]([]),"theme":null,"theme_type_variation":&"","theme_override_constants/separation":4,"alignment":0,"script":null)
-
-metadata/header = Object(Label,"unique_name_in_owner":false,"process_mode":0,"process_priority":0,"process_physics_priority":0,"process_thread_group":0,"physics_interpolation_mode":2,"auto_translate_mode":0,"editor_description":"","visible":true,"modulate":Color(1, 1, 1, 1),"self_modulate":Color(1, 1, 1, 1),"show_behind_parent":false,"top_level":false,"clip_children":0,"light_mask":1,"visibility_layer":1,"z_index":0,"z_as_relative":true,"y_sort_enabled":false,"texture_filter":0,"texture_repeat":0,"material":null,"use_parent_material":false,"clip_contents":false,"custom_minimum_size":Vector2(0, 0),"layout_direction":0,"layout_mode":2,"size_flags_horizontal":1,"size_flags_vertical":4,"size_flags_stretch_ratio":1.0,"localize_numeral_system":true,"tooltip_text":"","tooltip_auto_translate_mode":0,"focus_neighbor_left":NodePath(""),"focus_neighbor_top":NodePath(""),"focus_neighbor_right":NodePath(""),"focus_neighbor_bottom":NodePath(""),"focus_next":NodePath(""),"focus_previous":NodePath(""),"focus_mode":0,"focus_behavior_recursive":0,"mouse_filter":2,"mouse_behavior_recursive":0,"mouse_force_pass_scroll_events":true,"mouse_default_cursor_shape":0,"shortcut_context":null,"accessibility_name":"","accessibility_description":"","accessibility_live":0,"accessibility_controls_nodes":Array[NodePath]([]),"accessibility_described_by_nodes":Array[NodePath]([]),"accessibility_labeled_by_nodes":Array[NodePath]([]),"accessibility_flow_to_nodes":Array[NodePath]([]),"theme":null,"theme_type_variation":&"","theme_override_colors/font_color":Color(0.88, 0.4, 0.4, 1),"theme_override_font_sizes/font_size":24,"text":"ITEMS (0/7)","label_settings":null,"horizontal_alignment":1,"vertical_alignment":0,"autowrap_mode":0,"autowrap_trim_flags":192,"justification_flags":163,"paragraph_separator":"\\n","clip_text":false,"text_overrun_behavior":0,"ellipsis_char":"…","uppercase":false,"tab_stops":PackedFloat32Array(),"lines_skipped":0,"max_lines_visible":-1,"visible_characters":-1,"visible_characters_behavior":0,"visible_ratio":1.0,"text_direction":0,"language":"","structured_text_bidi_override":0,"structured_text_bidi_override_options":[],"script":null)
-
-
-[node name="@VBoxContainer@22102" type="VBoxContainer" parent="PlayArea/PlayRow/ItemPickerPanel" unique_id=2094767791]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="@PanelContainer@22103" type="PanelContainer" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@22102" unique_id=826309574]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_nwpd3")
-
-[node name="SectionHeader" type="Label" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@22102/@PanelContainer@22103" unique_id=329390540]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.88, 0.4, 0.4, 1)
-theme_override_font_sizes/font_size = 24
-text = "ITEMS (0/7)"
-horizontal_alignment = 1
-
-[node name="@ScrollContainer@22106" type="ScrollContainer" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@22102" unique_id=992099560]
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="@VBoxContainer@22107" type="VBoxContainer" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@22102/@ScrollContainer@22106" unique_id=582192006]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="@CheckBox@22108" type="CheckBox" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@22102/@ScrollContainer@22106/@VBoxContainer@22107" unique_id=879080435]
-layout_mode = 2
-tooltip_text = "Common | Each reroll adds +0.06x encounter payout scalar (cap +0.36x)"
-theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
-theme_override_font_sizes/font_size = 16
-text = "◇ Ash Reroll Token"
-
-[node name="@CheckBox@22109" type="CheckBox" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@22102/@ScrollContainer@22106/@VBoxContainer@22107" unique_id=1054000826]
-layout_mode = 2
-tooltip_text = "Legendary | Expands loadout capacity by +2 slots (max 9). Legendary only."
-theme_override_colors/font_color = Color(0.95, 0.75, 0.2, 1)
-theme_override_font_sizes/font_size = 16
-text = "✦ Void Satchel"
-
-[node name="EconomicsCenter" type="CenterContainer" parent="." unique_id=1293789111]
-z_index = 20
-layout_mode = 0
-anchor_left = 0.36
-anchor_top = 0.03
-anchor_right = 0.64
-anchor_bottom = 0.14
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="EconomicsStack" type="VBoxContainer" parent="EconomicsCenter" unique_id=1248000082]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="BankrollLabel" type="Label" parent="EconomicsCenter/EconomicsStack" unique_id=1441860414]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 36
-text = "0/0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="StakeSelector" type="HBoxContainer" parent="EconomicsCenter/EconomicsStack" unique_id=66713695]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 12
-alignment = 1
-
-[node name="BetRow" type="HBoxContainer" parent="EconomicsCenter/EconomicsStack/StakeSelector" unique_id=1953737693]
-layout_mode = 2
-theme_override_constants/separation = 12
-alignment = 1
-
-[node name="BetMinusButton" type="Button" parent="EconomicsCenter/EconomicsStack/StakeSelector/BetRow" unique_id=2032393760]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
-layout_mode = 2
-text = "-"
-
-[node name="StakePill" type="PanelContainer" parent="EconomicsCenter/EconomicsStack/StakeSelector/BetRow" unique_id=1416743467]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_6qny0")
-
-[node name="BetLabel" type="Label" parent="EconomicsCenter/EconomicsStack/StakeSelector/BetRow/StakePill" unique_id=1277085146]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "0"
-horizontal_alignment = 1
-
-[node name="BetPlusButton" type="Button" parent="EconomicsCenter/EconomicsStack/StakeSelector/BetRow" unique_id=1519464377]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
-layout_mode = 2
-text = "+"
-
-[node name="GoalBox" type="PanelContainer" parent="." unique_id=131385751]
-unique_name_in_owner = true
-z_index = 20
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.86
-anchor_top = 0.025
-anchor_right = 0.992
-anchor_bottom = 0.135
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxEmpty_2thn1")
-
-[node name="GoalLabel" type="Label" parent="GoalBox" unique_id=300141295]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 36
-text = "GOAL
-0 / 0"
-horizontal_alignment = 2
-vertical_alignment = 1
-
-[node name="MetaBox" type="PanelContainer" parent="." unique_id=1292551424]
-unique_name_in_owner = true
-z_index = 20
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.008
-anchor_top = 0.025
-anchor_right = 0.14
-anchor_bottom = 0.135
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxEmpty_2thn1")
-
-[node name="MetaContent" type="VBoxContainer" parent="MetaBox" unique_id=493484402]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="MetaIconsRow" type="HBoxContainer" parent="MetaBox/MetaContent" unique_id=458772786]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="GearIcon" type="Label" parent="MetaBox/MetaContent/MetaIconsRow" unique_id=733162889]
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 31
-text = "⬡"
-horizontal_alignment = 1
-
-[node name="HomeIcon" type="Label" parent="MetaBox/MetaContent/MetaIconsRow" unique_id=1366203816]
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 31
-text = "⌂"
-horizontal_alignment = 1
-
-[node name="ThirdIcon" type="Label" parent="MetaBox/MetaContent/MetaIconsRow" unique_id=1571091976]
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 31
-text = "?"
-horizontal_alignment = 1
-
-[node name="SeedRow" type="HBoxContainer" parent="MetaBox/MetaContent" unique_id=306691761]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="SeedLabel" type="Label" parent="MetaBox/MetaContent/SeedRow" unique_id=430077137]
-layout_mode = 2
-text = "SEED"
-
-[node name="SeedSpinBox" type="SpinBox" parent="MetaBox/MetaContent/SeedRow" unique_id=516365597]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 2147483647.0
-value = 12345.0
-
-[node name="TopBar" type="Control" parent="." unique_id=1946100084]
-visible = false
-layout_mode = 1
-anchor_right = 1.0
-anchor_bottom = 0.15
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="RightMeterStack" type="VBoxContainer" parent="." unique_id=133420764]
-visible = false
-layout_mode = 0
-
-[node name="PremiumMeterCircle" type="Control" parent="RightMeterStack" unique_id=856376828]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-script = ExtResource("4_meter")
-
-[node name="BudgetLabel" type="Label" parent="." unique_id=11483691]
-unique_name_in_owner = true
-visible = false
-z_index = 20
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = -34.0
-offset_right = 280.0
-offset_bottom = -8.0
-grow_horizontal = 2
-grow_vertical = 0
-mouse_filter = 1
-theme_override_font_sizes/font_size = 20
-text = "SPIN LOG  0"
 
 [node name="ScanlineOverlay" type="ColorRect" parent="." unique_id=636258756]
 material = SubResource("ShaderMaterial_scanline")
@@ -867,7 +447,6 @@ custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
-disabled = true
 text = "BLOODY HANDS
 LOVE POWER
 
@@ -880,7 +459,6 @@ custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
-disabled = true
 text = "ALCOHOL
 STAR POWER
 
@@ -893,7 +471,6 @@ custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
-disabled = true
 text = "CIGARETTES
 STORM POWER
 

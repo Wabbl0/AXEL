@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://t0t5ktmc40o6" path="res://combat/scripts/symbol_def.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://315fdnx1b56y" path="res://combat/art/grid_symbols/booze.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://combat/art/placeholders/booze.png" id="3_tex"]
 
 [resource]
 script = ExtResource("1_script")
@@ -9,6 +10,7 @@ id = &"booze"
 display_name = "Star Power (Booze/Alcohol)"
 tier = 1
 texture = ExtResource("2_tex")
+power_intro_texture = ExtResource("3_tex")
 princess_id = &"star"
 payout_x3 = 0.5
 payout_x4 = 1.2
