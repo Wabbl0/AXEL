@@ -1,0 +1,478 @@
+[gd_scene format=3 uid="uid://combat_test_scaffold_baseline"]
+
+[ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
+[ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
+[ext_resource type="Theme" path="res://combat/ui/terminal_theme.tres" id="3_theme"]
+[ext_resource type="Script" uid="uid://c0ok3xo41wror" path="res://combat/scripts/premium_meter_circle.gd" id="4_meter"]
+[ext_resource type="Shader" uid="uid://c0q3vq1cvevaa" path="res://combat/shaders/scanline_overlay.gdshader" id="5_scanline"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_box"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.06, 0, 0, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.03, 0.03, 0.95)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_normal"]
+bg_color = Color(0.14, 0, 0, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.03, 0.03, 0.95)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(1, 0, 0, 0.25)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_pressed"]
+bg_color = Color(0.55, 0.02, 0.02, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.35, 0.35, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_hover"]
+bg_color = Color(0.98, 0.06, 0.06, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.65, 0.65, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(1, 0, 0, 0.45)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spin_disabled"]
+bg_color = Color(0.08, 0.01, 0.01, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.22, 0.05, 0.05, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_scanline"]
+shader = ExtResource("5_scanline")
+shader_parameter/line_color = Color(1, 0, 0, 0.08)
+shader_parameter/line_density = 420.0
+shader_parameter/chroma_strength = 0.025
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_encounter_win_panel"]
+bg_color = Color(0.09, 0, 0, 0.94)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.25, 0.25, 0.95)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_super_fs_choice_panel"]
+bg_color = Color(0.09, 0, 0, 0.95)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.25, 0.25, 0.95)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_size = 12
+
+[node name="CombatTest2" type="Control" unique_id=161757197]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+script = ExtResource("1_combat_test")
+
+[node name="BlackBackground" type="ColorRect" parent="." unique_id=232267701]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="CombatRoot" parent="." unique_id=952603979 instance=ExtResource("2_combat_root")]
+unique_name_in_owner = true
+visible = false
+
+[node name="TopBar" type="Control" parent="." unique_id=1946100084]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 0.15
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MetaBox" type="PanelContainer" parent="TopBar" unique_id=1292551424]
+unique_name_in_owner = true
+layout_mode = 1
+offset_left = 24.0
+offset_top = 12.0
+offset_right = 264.0
+offset_bottom = 88.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_box")
+
+[node name="MetaContent" type="VBoxContainer" parent="TopBar/MetaBox" unique_id=493484402]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="MetaIconsRow" type="HBoxContainer" parent="TopBar/MetaBox/MetaContent" unique_id=458772786]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GearIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=733162889]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "⬡"
+horizontal_alignment = 1
+
+[node name="HomeIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=1366203816]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "⌂"
+horizontal_alignment = 1
+
+[node name="ThirdIcon" type="Label" parent="TopBar/MetaBox/MetaContent/MetaIconsRow" unique_id=1571091976]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "?"
+horizontal_alignment = 1
+
+[node name="SeedRow" type="HBoxContainer" parent="TopBar/MetaBox/MetaContent" unique_id=306691761]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SeedLabel" type="Label" parent="TopBar/MetaBox/MetaContent/SeedRow" unique_id=430077137]
+layout_mode = 2
+text = "SEED"
+
+[node name="SeedSpinBox" type="SpinBox" parent="TopBar/MetaBox/MetaContent/SeedRow" unique_id=516365597]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 4294967295.0
+value = 12345.0
+
+[node name="BankrollLabel" type="Label" parent="TopBar" unique_id=1441860414]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -24.0
+offset_right = 120.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 36
+text = "1000/1000"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="GoalBox" type="PanelContainer" parent="TopBar" unique_id=131385751]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -264.0
+offset_top = 12.0
+offset_right = -24.0
+offset_bottom = 88.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_box")
+
+[node name="GoalLabel" type="Label" parent="TopBar/GoalBox" unique_id=300141295]
+unique_name_in_owner = true
+layout_mode = 2
+text = "GOAL
+0 / 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StakeSelector" type="HBoxContainer" parent="." unique_id=66713695]
+layout_mode = 0
+offset_right = 360.0
+offset_bottom = 48.0
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="BetRow" type="HBoxContainer" parent="StakeSelector" unique_id=1953737693]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="BetMinusButton" type="Button" parent="StakeSelector/BetRow" unique_id=2032393760]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+
+[node name="BetLabel" type="Label" parent="StakeSelector/BetRow" unique_id=1277085146]
+unique_name_in_owner = true
+layout_mode = 2
+text = "1"
+
+[node name="BetPlusButton" type="Button" parent="StakeSelector/BetRow" unique_id=1519464377]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "+"
+
+[node name="RightMeterStack" type="VBoxContainer" parent="." unique_id=133420764]
+visible = false
+layout_mode = 0
+
+[node name="PremiumMeterCircle" type="Control" parent="RightMeterStack" unique_id=856376828]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+script = ExtResource("4_meter")
+
+[node name="MultiplierReadout" type="Label" parent="." unique_id=1004755644]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BudgetLabel" type="Label" parent="." unique_id=11483691]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -34.0
+offset_right = 280.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 20
+text = "SPIN LOG  0"
+
+[node name="SpinButton" type="Button" parent="." unique_id=1986715139]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 0
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(1, 0.73, 0.73, 1)
+theme_override_colors/font_pressed_color = Color(0.02, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(0.02, 0, 0, 1)
+theme_override_colors/font_disabled_color = Color(0.35, 0.1, 0.1, 1)
+theme_override_font_sizes/font_size = 60
+theme_override_styles/normal = SubResource("StyleBoxFlat_spin_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_spin_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_spin_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_spin_disabled")
+text = "EXECUTE"
+
+[node name="ScanlineOverlay" type="ColorRect" parent="." unique_id=636258756]
+material = SubResource("ShaderMaterial_scanline")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0.18)
+
+[node name="EncounterWinOverlay" type="Control" parent="." unique_id=1271932688]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EncounterWinDimmer" type="ColorRect" parent="EncounterWinOverlay" unique_id=1471573962]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.72)
+
+[node name="EncounterWinPanel" type="Panel" parent="EncounterWinOverlay" unique_id=793325258]
+custom_minimum_size = Vector2(940, 300)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -470.0
+offset_top = -150.0
+offset_right = 470.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_encounter_win_panel")
+
+[node name="EncounterWinLabel" type="Label" parent="EncounterWinOverlay/EncounterWinPanel" unique_id=44119311]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.93, 0.93, 1)
+theme_override_colors/font_outline_color = Color(1, 0.25, 0.25, 0.95)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 88
+text = "Encounter won!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SuperFSChoiceOverlay" type="Control" parent="." unique_id=434583410]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SuperFSChoiceDimmer" type="ColorRect" parent="SuperFSChoiceOverlay" unique_id=1058443862]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.74)
+
+[node name="SuperFSChoicePanel" type="Panel" parent="SuperFSChoiceOverlay" unique_id=1109254585]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -430.0
+offset_top = -210.0
+offset_right = 430.0
+offset_bottom = 210.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_super_fs_choice_panel")
+
+[node name="SuperFSChoiceVBox" type="VBoxContainer" parent="SuperFSChoiceOverlay/SuperFSChoicePanel" unique_id=1345960459]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 22.0
+offset_right = -28.0
+offset_bottom = -22.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="SuperFSChoiceTitle" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=1108547191]
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+text = "Choose SUPER Free Spins Power"
+horizontal_alignment = 1
+
+[node name="SuperFSChoiceHint" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=428089608]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Fewer spins, higher potential"
+horizontal_alignment = 1
+
+[node name="SuperFSChoiceButtons" type="HBoxContainer" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=975919897]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ChooseLoveButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1378230592]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "BLOODY HANDS
+LOVE POWER
+
+4 SPINS
++4 on meter fill"
+
+[node name="ChooseStarButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1821044435]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "ALCOHOL
+STAR POWER
+
+5 SPINS
++3 on meter fill"
+
+[node name="ChooseStormButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=435294811]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "CIGARETTES
+STORM POWER
+
+8 SPINS
++2 on meter fill"

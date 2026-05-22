@@ -4,10 +4,10 @@
 extends Control
 
 const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
+const SCAFFOLD_BASELINE_SCENE := "res://combat/combat_test_scaffold_baseline.tscn"
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
-const AGENT_DEBUG_LOG_PATH := "C:/Users/valtt/OneDrive/Godot/debug-75c122.log"
 const PRINCESS_LOVE: StringName = &"love"
 const PRINCESS_STAR: StringName = &"star"
 const PRINCESS_STORM: StringName = &"storm"
@@ -74,7 +74,7 @@ var RARITY_COLORS: Dictionary = {
 
 @export_group("Editor Preview")
 ## When enabled, the 2D editor runs the same layout shell as runtime (no spin gameplay).
-@export var editor_preview_enabled: bool = true:
+@export var editor_preview_enabled: bool = false:
 	set(value):
 		if editor_preview_enabled == value:
 			return
@@ -133,6 +133,7 @@ var _last_displayed_cascade_mult: int = 1
 var _runtime_initialized: bool = false
 var _editor_preview_refresh_queued: bool = false
 var _editor_tree_ready_attempts: int = 0
+var _runtime_tree_ready_attempts: int = 0
 
 ## Layout-only editor fallbacks when %CombatRoot is a placeholder (no script instance).
 const EDITOR_FALLBACK_BANKROLL := 1000
@@ -351,89 +352,152 @@ func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: 
 
 
 func _ready() -> void:
-	#region agent log
-	_agent_debug_log(
-		"run1",
-		"H1",
-		"combat_test.gd:_ready",
-		"ready_enter",
-		{
-			"is_editor_hint": Engine.is_editor_hint(),
-			"editor_preview_enabled": editor_preview_enabled,
-		}
-	)
-	#endregion
 	if Engine.is_editor_hint():
 		if editor_preview_enabled:
 			call_deferred("_run_editor_preview_when_ready")
 		return
+	call_deferred("_run_runtime_when_ready")
+
+
+func _resolve_scaffold_node(unique_name: String) -> Node:
+	var node_path := NodePath("%" + unique_name)
+	if has_node(node_path):
+		return get_node(node_path)
+	return find_child(unique_name, true, false)
+
+
+func _missing_scaffold_refs() -> PackedStringArray:
+	var missing: PackedStringArray = PackedStringArray()
+	if seed_spin == null:
+		missing.append("%SeedSpinBox")
+	if spin_btn == null:
+		missing.append("%SpinButton")
+	if bet_minus_btn == null:
+		missing.append("%BetMinusButton")
+	if bet_plus_btn == null:
+		missing.append("%BetPlusButton")
+	if bet_label == null:
+		missing.append("%BetLabel")
+	if mult_label == null:
+		missing.append("%MultiplierReadout")
+	if goal_label == null:
+		missing.append("%GoalLabel")
+	if bankroll_label == null:
+		missing.append("%BankrollLabel")
+	if combat == null:
+		missing.append("%CombatRoot")
+	if meta_box == null:
+		missing.append("%MetaBox")
+	if goal_box == null:
+		missing.append("%GoalBox")
+	if stake_selector == null and _resolve_scaffold_node("BetMinusButton") == null:
+		missing.append("StakeSelector/BetMinusButton")
+	if choose_love_button == null:
+		missing.append("%ChooseLoveButton")
+	if choose_star_button == null:
+		missing.append("%ChooseStarButton")
+	if choose_storm_button == null:
+		missing.append("%ChooseStormButton")
+	return missing
+
+
+func _run_runtime_when_ready() -> void:
+	if Engine.is_editor_hint():
+		return
+	if not _cache_scene_refs():
+		if _restore_scaffold_from_baseline():
+			if _cache_scene_refs():
+				_runtime_tree_ready_attempts = 0
+				_initialize_runtime()
+				return
+		_runtime_tree_ready_attempts += 1
+		if _runtime_tree_ready_attempts < 12:
+			call_deferred("_run_runtime_when_ready")
+		return
+	_runtime_tree_ready_attempts = 0
 	_initialize_runtime()
+
+
+func _restore_scaffold_from_baseline() -> bool:
+	if find_child("CombatRoot", true, false) != null:
+		return false
+	if not ResourceLoader.exists(SCAFFOLD_BASELINE_SCENE):
+		push_error("CombatTest baseline scaffold missing: %s" % SCAFFOLD_BASELINE_SCENE)
+		return false
+	var packed: PackedScene = load(SCAFFOLD_BASELINE_SCENE) as PackedScene
+	if packed == null:
+		return false
+	var baseline: Node = packed.instantiate()
+	if baseline == null:
+		return false
+	var restored := 0
+	for child in baseline.get_children():
+		if child.name == "BlackBackground" or child.name == "ScanlineOverlay":
+			continue
+		if find_child(child.name, true, false) != null:
+			continue
+		var dup := child.duplicate() as Node
+		if dup == null:
+			continue
+		add_child(dup)
+		restored += 1
+	baseline.queue_free()
+	if restored > 0:
+		push_warning("CombatTest restored %d scaffold nodes from baseline scene." % restored)
+	return restored > 0
 
 
 func _cache_scene_refs() -> bool:
 	if not is_inside_tree():
-		#region agent log
-		_agent_debug_log("run1", "H2", "combat_test.gd:_cache_scene_refs", "not_inside_tree", {})
-		#endregion
 		return false
 	if seed_spin == null or not is_instance_valid(seed_spin):
-		seed_spin = get_node_or_null("%SeedSpinBox") as SpinBox
+		seed_spin = _resolve_scaffold_node("SeedSpinBox") as SpinBox
 	if spin_btn == null or not is_instance_valid(spin_btn):
-		spin_btn = get_node_or_null("%SpinButton") as Button
+		spin_btn = _resolve_scaffold_node("SpinButton") as Button
 	if bet_minus_btn == null or not is_instance_valid(bet_minus_btn):
-		bet_minus_btn = get_node_or_null("%BetMinusButton") as Button
+		bet_minus_btn = _resolve_scaffold_node("BetMinusButton") as Button
 	if bet_plus_btn == null or not is_instance_valid(bet_plus_btn):
-		bet_plus_btn = get_node_or_null("%BetPlusButton") as Button
+		bet_plus_btn = _resolve_scaffold_node("BetPlusButton") as Button
 	if bet_label == null or not is_instance_valid(bet_label):
-		bet_label = get_node_or_null("%BetLabel") as Label
+		bet_label = _resolve_scaffold_node("BetLabel") as Label
 	if mult_label == null or not is_instance_valid(mult_label):
-		mult_label = get_node_or_null("%MultiplierReadout") as Label
+		mult_label = _resolve_scaffold_node("MultiplierReadout") as Label
 	if goal_label == null or not is_instance_valid(goal_label):
-		goal_label = get_node_or_null("%GoalLabel") as Label
+		goal_label = _resolve_scaffold_node("GoalLabel") as Label
 	if budget_label == null or not is_instance_valid(budget_label):
-		budget_label = get_node_or_null("%BudgetLabel") as Label
+		budget_label = _resolve_scaffold_node("BudgetLabel") as Label
 	if bankroll_label == null or not is_instance_valid(bankroll_label):
-		bankroll_label = get_node_or_null("%BankrollLabel") as Label
+		bankroll_label = _resolve_scaffold_node("BankrollLabel") as Label
 	if combat == null or not is_instance_valid(combat):
-		combat = get_node_or_null("%CombatRoot") as CombatRootScript
+		combat = _resolve_scaffold_node("CombatRoot") as CombatRootScript
 	if encounter_win_overlay == null or not is_instance_valid(encounter_win_overlay):
-		encounter_win_overlay = get_node_or_null("%EncounterWinOverlay") as Control
+		encounter_win_overlay = _resolve_scaffold_node("EncounterWinOverlay") as Control
 	if encounter_win_label == null or not is_instance_valid(encounter_win_label):
-		encounter_win_label = get_node_or_null("%EncounterWinLabel") as Label
+		encounter_win_label = _resolve_scaffold_node("EncounterWinLabel") as Label
 	if super_fs_choice_overlay == null or not is_instance_valid(super_fs_choice_overlay):
-		super_fs_choice_overlay = get_node_or_null("%SuperFSChoiceOverlay") as Control
+		super_fs_choice_overlay = _resolve_scaffold_node("SuperFSChoiceOverlay") as Control
 	if choose_love_button == null or not is_instance_valid(choose_love_button):
-		choose_love_button = get_node_or_null("%ChooseLoveButton") as Button
+		choose_love_button = _resolve_scaffold_node("ChooseLoveButton") as Button
 	if choose_star_button == null or not is_instance_valid(choose_star_button):
-		choose_star_button = get_node_or_null("%ChooseStarButton") as Button
+		choose_star_button = _resolve_scaffold_node("ChooseStarButton") as Button
 	if choose_storm_button == null or not is_instance_valid(choose_storm_button):
-		choose_storm_button = get_node_or_null("%ChooseStormButton") as Button
+		choose_storm_button = _resolve_scaffold_node("ChooseStormButton") as Button
 	if top_bar == null or not is_instance_valid(top_bar):
 		top_bar = get_node_or_null("TopBar") as Control
 	if meta_box == null or not is_instance_valid(meta_box):
-		meta_box = get_node_or_null("%MetaBox") as PanelContainer
+		meta_box = _resolve_scaffold_node("MetaBox") as PanelContainer
 	if goal_box == null or not is_instance_valid(goal_box):
-		goal_box = get_node_or_null("%GoalBox") as PanelContainer
+		goal_box = _resolve_scaffold_node("GoalBox") as PanelContainer
 	if stake_selector == null or not is_instance_valid(stake_selector):
-		stake_selector = get_node_or_null("StakeSelector") as Control
-	var ok := spin_btn != null and bankroll_label != null and meta_box != null
-	#region agent log
-	_agent_debug_log(
-		"run1",
-		"H2",
-		"combat_test.gd:_cache_scene_refs",
-		"cache_scene_refs_result",
-		{
-			"ok": ok,
-			"spin_btn": spin_btn != null,
-			"bankroll_label": bankroll_label != null,
-			"meta_box": meta_box != null,
-			"combat": combat != null,
-			"combat_root_node_exists": get_node_or_null("%CombatRoot") != null,
-		}
-	)
-	#endregion
-	return ok
+		stake_selector = find_child("StakeSelector", true, false) as Control
+	var missing := _missing_scaffold_refs()
+	if not missing.is_empty():
+		push_error(
+			"CombatTest scaffold missing required nodes: %s. Restore combat_test.tscn from git (bab7ec5) or run combat_test_scaffold_check.gd."
+			% ", ".join(missing)
+		)
+		return false
+	return true
 
 
 func _run_editor_preview_when_ready() -> void:
@@ -470,27 +534,9 @@ func _run_queued_editor_preview_refresh() -> void:
 
 func _initialize_runtime() -> void:
 	if _runtime_initialized:
-		#region agent log
-		_agent_debug_log("run1", "H3", "combat_test.gd:_initialize_runtime", "already_initialized", {})
-		#endregion
 		return
 	if not _cache_scene_refs():
-		#region agent log
-		_agent_debug_log("run1", "H3", "combat_test.gd:_initialize_runtime", "cache_scene_refs_failed", {})
-		#endregion
 		return
-	#region agent log
-	_agent_debug_log(
-		"run1",
-		"H3",
-		"combat_test.gd:_initialize_runtime",
-		"init_runtime_continue",
-		{
-			"seed_spin_value": int(seed_spin.value) if seed_spin != null else -1,
-			"combat_exists": combat != null,
-		}
-	)
-	#endregion
 	_runtime_initialized = true
 	_initialize_shared_layout(false)
 	_connect_runtime_signals()
@@ -602,10 +648,49 @@ func _apply_editor_combat_preview() -> void:
 		_set_default_bet()
 
 
+func _edited_scene_root() -> Node:
+	var tree := get_tree()
+	if tree == null:
+		return self
+	var edited := tree.edited_scene_root
+	return edited if edited != null else self
+
+
+func _reparent_for_layout(node: Node, new_parent: Node) -> void:
+	if node == null or new_parent == null:
+		return
+	if node.get_parent() == new_parent:
+		_reassert_node_ownership(node)
+		return
+	node.reparent(new_parent)
+	_reassert_node_ownership(node)
+
+
+func _reassert_node_ownership(node: Node) -> void:
+	if not Engine.is_editor_hint() or node == null:
+		return
+	var scene_root := _edited_scene_root()
+	node.set_owner(scene_root)
+	for child in node.get_children():
+		_reassert_node_ownership(child)
+
+
+func _reassert_scaffold_ownership() -> void:
+	if not Engine.is_editor_hint():
+		return
+	for node_name in [
+		"CombatRoot", "MetaBox", "GoalBox", "SeedSpinBox", "SpinButton",
+		"BankrollLabel", "StakeSelector", "MultiplierReadout", "GoalLabel",
+		"BetMinusButton", "BetPlusButton", "BetLabel", "PlayArea", "EconomicsCenter",
+	]:
+		var node := find_child(node_name, true, false)
+		if node != null:
+			_reassert_node_ownership(node)
+
+
 func _add_preview_child(node: Node, parent: Node = self) -> void:
 	parent.add_child(node)
-	if Engine.is_editor_hint():
-		node.set_owner(null)
+	_reassert_node_ownership(node)
 
 
 func _finish_editor_preview_layout() -> void:
@@ -615,6 +700,7 @@ func _finish_editor_preview_layout() -> void:
 	_apply_responsive_layout()
 	await get_tree().process_frame
 	_layout_combat()
+	_reassert_scaffold_ownership()
 
 
 func _organize_top_hud() -> void:
@@ -632,9 +718,9 @@ func _reparent_hud_to_root(node: Control) -> void:
 	if node == null:
 		return
 	if node.get_parent() == self:
+		_reassert_node_ownership(node)
 		return
-	node.get_parent().remove_child(node)
-	add_child(node)
+	_reparent_for_layout(node, self)
 	move_child(node, 2)
 
 
@@ -650,41 +736,10 @@ func _hide_legacy_meter_nodes() -> void:
 
 
 func _ensure_play_shell() -> void:
-	#region agent log
-	_agent_debug_log(
-		"run1",
-		"H4",
-		"combat_test.gd:_ensure_play_shell",
-		"ensure_play_shell_enter",
-		{
-			"restored": _restore_play_shell_from_scene(),
-			"play_area_exists": get_node_or_null("PlayArea") != null,
-		}
-	)
-	#endregion
 	if _restore_play_shell_from_scene():
 		_finalize_play_shell_layout()
 		return
 	_build_play_shell()
-
-
-func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
-	var payload := {
-		"sessionId": "75c122",
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000,
-	}
-	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(AGENT_DEBUG_LOG_PATH) else FileAccess.WRITE_READ
-	var file := FileAccess.open(AGENT_DEBUG_LOG_PATH, mode)
-	if file == null:
-		return
-	file.seek_end()
-	file.store_line(JSON.stringify(payload))
-	file.close()
 
 
 func _restore_play_shell_from_scene() -> bool:
@@ -724,14 +779,12 @@ func _finalize_play_shell_layout() -> void:
 	combat.visible = true
 	_suppress_combat_root_legacy_labels()
 	if spin_btn != null and _center_footer != null and spin_btn.get_parent() != _center_footer:
-		if spin_btn.get_parent() != null:
-			spin_btn.get_parent().remove_child(spin_btn)
 		spin_btn.visible = true
 		_reset_container_child_layout(spin_btn)
 		spin_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		spin_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		spin_btn.custom_minimum_size = Vector2(0.0, EXECUTE_BUTTON_MIN_HEIGHT)
-		_center_footer.add_child(spin_btn)
+		_reparent_for_layout(spin_btn, _center_footer)
 	if mult_label != null and mult_label.visible:
 		mult_label.visible = true
 	_wire_winnings_popup_target()
@@ -750,15 +803,13 @@ func _build_play_shell() -> void:
 	_play_row.add_theme_constant_override("separation", int(GRID_COLUMN_GAP))
 	_play_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_play_area.add_child(_play_row)
-	if Engine.is_editor_hint():
-		_play_row.set_owner(null)
+	_reassert_node_ownership(_play_row)
 
 	_spin_history_panel = _build_history_placeholder()
 	_spin_history_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_spin_history_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_play_row.add_child(_spin_history_panel)
-	if Engine.is_editor_hint():
-		_spin_history_panel.set_owner(null)
+	_reassert_node_ownership(_spin_history_panel)
 
 	_center_column = VBoxContainer.new()
 	_center_column.name = "CenterColumn"
@@ -766,8 +817,7 @@ func _build_play_shell() -> void:
 	_center_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_center_column.add_theme_constant_override("separation", CENTER_COLUMN_SEPARATION)
 	_play_row.add_child(_center_column)
-	if Engine.is_editor_hint():
-		_center_column.set_owner(null)
+	_reassert_node_ownership(_center_column)
 
 	_grid_host = Control.new()
 	_grid_host.name = "GridHost"
@@ -776,10 +826,10 @@ func _build_play_shell() -> void:
 	_grid_host.custom_minimum_size = Vector2(260, 200)
 	_grid_host.clip_contents = true
 	_center_column.add_child(_grid_host)
-	if Engine.is_editor_hint():
-		_grid_host.set_owner(null)
+	_reassert_node_ownership(_grid_host)
 	if combat.get_parent() != _grid_host:
 		combat.reparent(_grid_host)
+		_reassert_node_ownership(combat)
 	combat.visible = true
 	_suppress_combat_root_legacy_labels()
 
@@ -798,8 +848,7 @@ func _build_play_shell() -> void:
 	pb_fill.bg_color = Color(0.95, 0.08, 0.08, 1.0)
 	_premium_progress.add_theme_stylebox_override("fill", pb_fill)
 	_grid_host.add_child(_premium_progress)
-	if Engine.is_editor_hint():
-		_premium_progress.set_owner(null)
+	_reassert_node_ownership(_premium_progress)
 
 	_winnings_center = CenterContainer.new()
 	_winnings_center.name = "WinningsCenter"
@@ -807,8 +856,7 @@ func _build_play_shell() -> void:
 	_winnings_center.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_winnings_center.custom_minimum_size = Vector2(0.0, WINNINGS_BAND_MIN_HEIGHT)
 	_center_column.add_child(_winnings_center)
-	if Engine.is_editor_hint():
-		_winnings_center.set_owner(null)
+	_reassert_node_ownership(_winnings_center)
 
 	var winnings_row := HBoxContainer.new()
 	winnings_row.name = "WinningsRow"
@@ -817,12 +865,9 @@ func _build_play_shell() -> void:
 	winnings_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	winnings_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_winnings_center.add_child(winnings_row)
-	if Engine.is_editor_hint():
-		winnings_row.set_owner(null)
+	_reassert_node_ownership(winnings_row)
 
 	if mult_label != null:
-		if mult_label.get_parent() != null:
-			mult_label.get_parent().remove_child(mult_label)
 		mult_label.visible = true
 		mult_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		mult_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -833,10 +878,9 @@ func _build_play_shell() -> void:
 		var winnings_pill := PanelContainer.new()
 		winnings_pill.name = "WinningsReadoutPill"
 		winnings_pill.add_theme_stylebox_override("panel", _winnings_readout_bg_style())
-		winnings_pill.add_child(mult_label)
+		_reparent_for_layout(mult_label, winnings_pill)
 		winnings_row.add_child(winnings_pill)
-		if Engine.is_editor_hint():
-			winnings_pill.set_owner(null)
+		_reassert_node_ownership(winnings_pill)
 
 	_cascade_mult_label = Label.new()
 	_cascade_mult_label.name = "CascadeMultiplierReadout"
@@ -853,8 +897,7 @@ func _build_play_shell() -> void:
 	_cascade_mult_pill.add_theme_stylebox_override("panel", _winnings_readout_bg_style())
 	_cascade_mult_pill.add_child(_cascade_mult_label)
 	winnings_row.add_child(_cascade_mult_pill)
-	if Engine.is_editor_hint():
-		_cascade_mult_pill.set_owner(null)
+	_reassert_node_ownership(_cascade_mult_pill)
 
 	_center_footer = VBoxContainer.new()
 	_center_footer.name = "CenterFooter"
@@ -863,18 +906,15 @@ func _build_play_shell() -> void:
 	_center_footer.alignment = BoxContainer.ALIGNMENT_CENTER
 	_center_footer.add_theme_constant_override("separation", CENTER_FOOTER_SEPARATION)
 	_center_column.add_child(_center_footer)
-	if Engine.is_editor_hint():
-		_center_footer.set_owner(null)
+	_reassert_node_ownership(_center_footer)
 
 	if spin_btn != null:
-		if spin_btn.get_parent() != null:
-			spin_btn.get_parent().remove_child(spin_btn)
 		spin_btn.visible = true
 		_reset_container_child_layout(spin_btn)
 		spin_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		spin_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		spin_btn.custom_minimum_size = Vector2(0.0, EXECUTE_BUTTON_MIN_HEIGHT)
-		_center_footer.add_child(spin_btn)
+		_reparent_for_layout(spin_btn, _center_footer)
 
 	_bottom_window_margin = Control.new()
 	_bottom_window_margin.name = "BottomWindowMargin"
@@ -883,8 +923,8 @@ func _build_play_shell() -> void:
 	_bottom_window_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bottom_window_margin.size_flags_vertical = Control.SIZE_SHRINK_END
 	_center_column.add_child(_bottom_window_margin)
-	if Engine.is_editor_hint():
-		_bottom_window_margin.set_owner(null)
+	_reassert_node_ownership(_bottom_window_margin)
+	_reassert_scaffold_ownership()
 
 
 ## Stake-overlap ideas (grid/symbol size fixed; stake stays off bankroll):
@@ -909,8 +949,7 @@ func _integrate_economics_into_center_hud() -> void:
 			move_child(_economics_center, 2)
 	else:
 		if _economics_center.get_parent() != self:
-			_economics_center.get_parent().remove_child(_economics_center)
-			add_child(_economics_center)
+			_reparent_for_layout(_economics_center, self)
 			move_child(_economics_center, 2)
 
 	if _economics_stack == null:
@@ -923,23 +962,19 @@ func _integrate_economics_into_center_hud() -> void:
 		_economics_center.add_child(_economics_stack)
 
 	if bankroll_label != null:
-		if bankroll_label.get_parent() != null:
-			bankroll_label.get_parent().remove_child(bankroll_label)
 		bankroll_label.visible = true
 		bankroll_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_reset_container_child_layout(bankroll_label)
 		bankroll_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		bankroll_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_economics_stack.add_child(bankroll_label)
+		_reparent_for_layout(bankroll_label, _economics_stack)
 
 	if stake_selector != null:
-		if stake_selector.get_parent() != null:
-			stake_selector.get_parent().remove_child(stake_selector)
 		_reset_container_child_layout(stake_selector)
 		stake_selector.visible = true
 		stake_selector.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		stake_selector.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_economics_stack.add_child(stake_selector)
+		_reparent_for_layout(stake_selector, _economics_stack)
 
 
 func _reset_container_child_layout(control_node: Control) -> void:
@@ -1131,7 +1166,6 @@ func _style_stake_pill() -> void:
 	if bet_row == null:
 		return
 	var idx := bet_label.get_index()
-	bet_row.remove_child(bet_label)
 	_stake_pill = PanelContainer.new()
 	_stake_pill.name = "StakePill"
 	var pill_style := StyleBoxFlat.new()
@@ -1144,11 +1178,12 @@ func _style_stake_pill() -> void:
 	pill_style.content_margin_top = 4
 	pill_style.content_margin_bottom = 4
 	_stake_pill.add_theme_stylebox_override("panel", pill_style)
-	_stake_pill.add_child(bet_label)
+	_reparent_for_layout(bet_label, _stake_pill)
 	bet_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bet_label.add_theme_font_size_override("font_size", 22)
 	bet_row.add_child(_stake_pill)
 	bet_row.move_child(_stake_pill, idx)
+	_reassert_node_ownership(_stake_pill)
 
 
 func _on_spin_pressed() -> void:
@@ -1699,8 +1734,7 @@ func _build_item_picker() -> void:
 	_item_picker_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	if _play_row != null:
 		_play_row.add_child(_item_picker_panel)
-		if Engine.is_editor_hint():
-			_item_picker_panel.set_owner(null)
+		_reassert_node_ownership(_item_picker_panel)
 	else:
 		_add_preview_child(_item_picker_panel)
 
