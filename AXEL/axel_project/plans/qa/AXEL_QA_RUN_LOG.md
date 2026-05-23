@@ -624,3 +624,61 @@ Copy the template block, fill values, paste **below** the last entry.
   ]
 }
 <!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-23 — QA recommendations implementation verification
+
+- **Mode:** playtest
+- **Scope:** QA recommendations batch (Corridor profile, post-FX detach, HUD anchor smoke, manual checklist)
+- **Trigger:** post-implementation verification
+- **Playtest commands:** princess_check=pass determinism=pass scene_smoke=pass combat_test_scaffold=pass canon_consistency_audit=captured bot_arc1_exterior=pass bot_dialogue_loop=pass item_synergy_smoke=pass
+- **Progress:** **0.60** (gate 0 cap 1.5; checklist 12%; coverage 1.0; defect penalty 1.0)
+- **Quality:** S=4 N=4 I=4 E=3 C=4 R=5 **Total=3.95** Band=B
+- **Findings count:** blocker=0 major=0 minor=0 nit=0
+- **Manual HUD checklist:** operator pass pending (see rubric §Manual combat HUD verification)
+- **Trend vs previous run:** up — all prior QA recommendation targets closed in automation; canon audit clean
+- **Link / notes:** Post-FX TypedArray errors resolved; HUD anchors gated at 1280×720 and 800×600
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-24T00:05:00+03:00",
+  "run_title": "QA recommendations implementation verification",
+  "mode": "playtest",
+  "scope": "QA recommendations batch verification",
+  "trigger": "post-implementation",
+  "scores": {"S": 4, "N": 4, "I": 4, "E": 3, "C": 4, "R": 5, "Total": 3.95, "Band": "B"},
+  "quality": {"S": 4, "N": 4, "I": 4, "E": 3, "C": 4, "R": 5, "Total": 3.95, "Band": "B"},
+  "progress": {
+    "score": 0.60,
+    "scoring_mode": "option2",
+    "progress_raw": 0.6,
+    "gate_cap": 1.5,
+    "gate_state": 0,
+    "checklist_completion": 0.12,
+    "checklist_completed_weight": 24,
+    "checklist_total_weight": 200,
+    "coverage_factor": 1.0,
+    "defect_penalty": 1.0,
+    "milestones_completed": []
+  },
+  "findings_count": {"blocker": 0, "major": 0, "minor": 0, "nit": 0},
+  "by_category": {},
+  "playtest_commands": {
+    "princess_check": "pass",
+    "determinism": "pass",
+    "rtp_audit": "skip",
+    "scene_smoke": "pass",
+    "combat_test_scaffold": "pass",
+    "canon_consistency_audit": "captured",
+    "bot_arc1_exterior": "pass",
+    "bot_dialogue_loop": "pass",
+    "item_balance_audit": "skip",
+    "item_synergy_smoke": "pass"
+  },
+  "canon_audit": {
+    "schema_version": 1,
+    "findings_count": {"blocker": 0, "major": 0, "minor": 0, "nit": 0},
+    "findings": []
+  },
+  "bugs_or_regressions": []
+}
+<!-- QA_ANALYTICS_JSON_END -->

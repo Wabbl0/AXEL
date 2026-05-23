@@ -2449,3 +2449,19 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Symbol resources no longer depend on deleted placeholder files; generated symbol PNGs now go directly to the canonical `grid_symbols` folder.
 - Verification: `rg "res://combat/art/placeholders/" AXEL/axel_project/combat` returns no matches after update.
+
+## 2026-05-23 - QA Recommendations Batch Implementation
+
+- Request: Implement all four QA recommendations from combat HUD polish follow-up (Corridor profile, post-FX detach, HUD anchor smoke, manual HUD checklist).
+- Implementation: Tuned `1.2_Corridor` Player to speed 150 / scale 0.82. Hardened `AxelPostFxStack` detach/attach with untyped freed-ref-safe overlay cleanup. Added HUD anchor validators in `qa_canon_validators.gd`, wired into `combat_test_scaffold_check.gd` (1280×720 + 800×600 hard gate) and post-layout `canon_consistency_audit.gd`. Added manual combat HUD verification checklist to QA rubric.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/combat/test/combat_test_scaffold_check.gd`
+  - `AXEL/axel_project/tools/qa/canon_consistency_audit.gd`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Corridor movement matches layout profile; scene transitions no longer log post-FX TypedArray errors; combat HUD anchor drift is caught automatically at two viewport breakpoints.
+- Verification: canon audit 0 findings; scaffold check pass (wide+narrow); bot playthroughs pass without post-FX script errors; princess/determinism/scene smoke/item synergy pass.
+- Notes: Manual HUD typography checklist remains operator step per rubric (not automatable).

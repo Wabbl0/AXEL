@@ -5,6 +5,10 @@ class_name QaCanonValidators
 
 const COMBAT_TEST_SCENE := "res://combat/combat_test.tscn"
 
+const CombatTestScript := preload("res://combat/scripts/combat_test.gd")
+
+const ANCHOR_EPS := 0.001
+
 const REQUIRED_COMBAT_TEST_UNIQUE: Array[String] = [
 	"CombatRoot",
 	"MetaBox",
@@ -128,7 +132,11 @@ static func make_finding(
 	}
 
 
-static func collect_combat_test_findings(root_ui: Node, scene_path: String = COMBAT_TEST_SCENE) -> Array:
+static func collect_combat_test_findings(
+	root_ui: Node,
+	scene_path: String = COMBAT_TEST_SCENE,
+	viewport_size: Vector2 = Vector2.ZERO
+) -> Array:
 	var findings: Array = []
 	if root_ui == null:
 		findings.append(make_finding(
@@ -186,6 +194,134 @@ static func collect_combat_test_findings(root_ui: Node, scene_path: String = COM
 			"Add scanline/CRT overlay to combat test to match AXEL style canon (AI_DOCS §6)."
 		))
 
+	if viewport_size != Vector2.ZERO:
+		findings.append_array(collect_combat_hud_layout_findings(root_ui, scene_path, viewport_size))
+
+	return findings
+
+
+static func expected_economics_hud_x(viewport_w: float) -> Vector2:
+	var x0 := CombatTestScript.LAYOUT_CENTER_HUD_START
+	var x1 := CombatTestScript.LAYOUT_CENTER_HUD_END
+	if viewport_w >= CombatTestScript.RESPONSIVE_NARROW_W:
+		x0 = maxf(
+			CombatTestScript.LAYOUT_CENTER_HUD_START,
+			CombatTestScript.LAYOUT_CENTER_START + 0.02
+		)
+		x1 = minf(
+			CombatTestScript.LAYOUT_CENTER_HUD_END,
+			CombatTestScript.LAYOUT_CENTER_END - 0.02
+		)
+	return Vector2(x0, x1)
+
+
+static func check_combat_hud_anchors(root_ui: Node, viewport_size: Vector2) -> PackedStringArray:
+	var violations: PackedStringArray = PackedStringArray()
+	if root_ui == null:
+		return PackedStringArray(["combat_test root is null"])
+	var viewport_w := viewport_size.x
+	var viewport_h := viewport_size.y
+	if viewport_w <= 0.0 or viewport_h <= 0.0:
+		return PackedStringArray(["viewport size must be positive"])
+
+	var economics_x := expected_economics_hud_x(viewport_w)
+	var expected_rects: Array = [
+		{
+			"name": "MetaBox",
+			"x0": CombatTestScript.LAYOUT_SIDE_START,
+			"y0": CombatTestScript.LAYOUT_CORNER_Y0,
+			"x1": CombatTestScript.LAYOUT_TOP_BOX_END,
+			"y1": CombatTestScript.LAYOUT_CORNER_Y1,
+		},
+		{
+			"name": "GoalBox",
+			"x0": CombatTestScript.LAYOUT_GOAL_BOX_START,
+			"y0": CombatTestScript.LAYOUT_CORNER_Y0,
+			"x1": CombatTestScript.LAYOUT_GOAL_BOX_END,
+			"y1": CombatTestScript.LAYOUT_CORNER_Y1,
+		},
+		{
+			"name": "EconomicsCenter",
+			"x0": economics_x.x,
+			"y0": CombatTestScript.LAYOUT_CENTER_HUD_Y0,
+			"x1": economics_x.y,
+			"y1": CombatTestScript.LAYOUT_CENTER_HUD_Y1,
+		},
+		{
+			"name": "PlayArea",
+			"x0": CombatTestScript.LAYOUT_SIDE_START,
+			"y0": CombatTestScript.LAYOUT_MAIN_Y0,
+			"x1": CombatTestScript.LAYOUT_SIDE_RIGHT_END,
+			"y1": CombatTestScript.LAYOUT_MAIN_END,
+		},
+	]
+
+	for spec in expected_rects:
+		var node_name: String = spec["name"]
+		var control := root_ui.find_child(node_name, true, false) as Control
+		if control == null:
+			violations.append("%s missing" % node_name)
+			continue
+		_append_anchor_violations(violations, node_name, control, spec, viewport_size)
+
+	return violations
+
+
+static func _append_anchor_violations(
+	violations: PackedStringArray,
+	node_name: String,
+	control: Control,
+	spec: Dictionary,
+	viewport_size: Vector2
+) -> void:
+	var x0: float = spec["x0"]
+	var y0: float = spec["y0"]
+	var x1: float = spec["x1"]
+	var y1: float = spec["y1"]
+	if absf(control.anchor_left - x0) > ANCHOR_EPS:
+		violations.append(
+			"%s anchor_left=%.4f expected %.4f (viewport %.0fx%.0f)"
+			% [node_name, control.anchor_left, x0, viewport_size.x, viewport_size.y]
+		)
+	if absf(control.anchor_top - y0) > ANCHOR_EPS:
+		violations.append(
+			"%s anchor_top=%.4f expected %.4f (viewport %.0fx%.0f)"
+			% [node_name, control.anchor_top, y0, viewport_size.x, viewport_size.y]
+		)
+	if absf(control.anchor_right - x1) > ANCHOR_EPS:
+		violations.append(
+			"%s anchor_right=%.4f expected %.4f (viewport %.0fx%.0f)"
+			% [node_name, control.anchor_right, x1, viewport_size.x, viewport_size.y]
+		)
+	if absf(control.anchor_bottom - y1) > ANCHOR_EPS:
+		violations.append(
+			"%s anchor_bottom=%.4f expected %.4f (viewport %.0fx%.0f)"
+			% [node_name, control.anchor_bottom, y1, viewport_size.x, viewport_size.y]
+		)
+	for offset_name in ["offset_left", "offset_top", "offset_right", "offset_bottom"]:
+		var offset_val: float = control.get(offset_name)
+		if absf(offset_val) > ANCHOR_EPS:
+			violations.append(
+				"%s %s=%.2f expected 0 (viewport %.0fx%.0f)"
+				% [node_name, offset_name, offset_val, viewport_size.x, viewport_size.y]
+			)
+
+
+static func collect_combat_hud_layout_findings(
+	root_ui: Node,
+	scene_path: String,
+	viewport_size: Vector2
+) -> Array:
+	var findings: Array = []
+	for violation in check_combat_hud_anchors(root_ui, viewport_size):
+		findings.append(make_finding(
+			"combat.hud_anchor_drift",
+			"major",
+			"REGRESSION",
+			scene_path,
+			violation,
+			"Restore combat HUD anchors via _apply_responsive_layout constants in combat_test.gd."
+		))
 	return findings
 
 

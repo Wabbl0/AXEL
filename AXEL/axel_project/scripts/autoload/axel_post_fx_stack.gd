@@ -54,16 +54,25 @@ static func is_combat_scene(scene: Node) -> bool:
 
 
 func _detach() -> void:
-	for layer: CanvasLayer in [_noir, _scanline, _crt]:
-		if layer != null and is_instance_valid(layer) and not layer.is_queued_for_deletion():
-			var parent := layer.get_parent()
-			if parent != null:
-				parent.remove_child(layer)
-			layer.queue_free()
+	_free_overlay(_noir)
+	_free_overlay(_scanline)
+	_free_overlay(_crt)
 	_noir = null
 	_scanline = null
 	_crt = null
 	_attached_scene = null
+
+
+func _free_overlay(layer) -> void:
+	if layer == null or not is_instance_valid(layer) or layer.is_queued_for_deletion():
+		return
+	var canvas_layer := layer as CanvasLayer
+	if canvas_layer == null:
+		return
+	var parent := canvas_layer.get_parent()
+	if parent != null and is_instance_valid(parent):
+		parent.remove_child(canvas_layer)
+	canvas_layer.queue_free()
 
 
 func _attach_to_scene(scene: Node) -> void:
@@ -75,9 +84,14 @@ func _attach_to_scene(scene: Node) -> void:
 		push_warning("AxelPostFxStack: failed to instantiate one or more overlay scenes.")
 		_detach()
 		return
-	for layer: CanvasLayer in [_noir, _scanline, _crt]:
-		layer.add_to_group(MANAGED_GROUP)
-		scene.add_child(layer)
+	for layer in [_noir, _scanline, _crt]:
+		if not is_instance_valid(layer):
+			continue
+		var canvas_layer := layer as CanvasLayer
+		if canvas_layer == null:
+			continue
+		canvas_layer.add_to_group(MANAGED_GROUP)
+		scene.add_child(canvas_layer)
 	_attached_scene = scene
 
 

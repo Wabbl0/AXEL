@@ -7,6 +7,11 @@ const ValidatorsScript := preload("res://tools/qa/qa_canon_validators.gd")
 
 const SCENE_PATH := ValidatorsScript.COMBAT_TEST_SCENE
 
+const VIEWPORT_BREAKPOINTS: Array[Vector2] = [
+	Vector2(1280, 720),
+	Vector2(800, 600),
+]
+
 
 func _init() -> void:
 	call_deferred("_main")
@@ -27,7 +32,7 @@ func _main() -> void:
 		push_error("Scaffold FAIL: not a PackedScene: %s" % SCENE_PATH)
 		quit(1)
 		return
-	var root_ui: Node = ps.instantiate() as Node
+	var root_ui: Control = ps.instantiate() as Control
 	if root_ui == null:
 		push_error("Scaffold FAIL: instantiate() returned null: %s" % SCENE_PATH)
 		quit(1)
@@ -35,7 +40,6 @@ func _main() -> void:
 	root.add_child(root_ui)
 	if not root_ui.is_node_ready():
 		await root_ui.ready
-	await process_frame
 
 	var missing := ValidatorsScript.missing_combat_test_unique(root_ui)
 	var combat := root_ui.find_child("CombatRoot", true, false)
@@ -51,5 +55,25 @@ func _main() -> void:
 		quit(1)
 		return
 
+	for viewport_size in VIEWPORT_BREAKPOINTS:
+		await _apply_viewport_and_wait_layout(root_ui, viewport_size)
+		var anchor_violations := ValidatorsScript.check_combat_hud_anchors(root_ui, viewport_size)
+		if not anchor_violations.is_empty():
+			push_error(
+				"Scaffold FAIL (%s): HUD anchor drift at %.0fx%.0f: %s"
+				% [SCENE_PATH, viewport_size.x, viewport_size.y, ", ".join(anchor_violations)]
+			)
+			quit(1)
+			return
+
 	print("Combat test scaffold check OK.")
 	quit(0)
+
+
+func _apply_viewport_and_wait_layout(root_ui: Control, viewport_size: Vector2) -> void:
+	root_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root_ui.size = viewport_size
+	root_ui.custom_minimum_size = viewport_size
+	await process_frame
+	await process_frame
+	await process_frame

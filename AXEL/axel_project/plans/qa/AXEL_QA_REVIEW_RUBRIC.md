@@ -38,6 +38,20 @@ The two bot scripts are documented in `AXEL/axel_project/tools/bots/README.md`.
 - **`item_balance_audit.gd` (conditional):** run after the eight default commands when item definitions exist under `combat/data/items/`. Always exits 0. If no items found or item API not implemented, record `item_balance_audit=skip` in payload. If items are tested, parse `ITEM_BALANCE_JSON` stdout and include `item_balance` + `item_metrics` in the analytics payload.
 - **Skip policy:** if any command cannot run (missing tooling, unavailable Godot binary, etc.), name every skipped command explicitly in the report and downgrade confidence one tier per missing gate (drop bots first → `combat + scene smoke`; drop scene smoke → `combat simulated`; drop combat → `static review`).
 
+### Manual combat HUD verification (operator checklist)
+
+When combat HUD layout changes (or after `combat_test_scaffold_check` passes but visual polish is requested), complete this quick F6 pass and note results in the QA run log **Recommendations / notes**:
+
+| Check | Wide (1280×720) | Narrow (800×600) |
+|-------|-----------------|------------------|
+| History rows stay single-line with ellipsis | [ ] | [ ] |
+| Goal title + value right-align to ITEMS panel right edge | [ ] | [ ] |
+| Seed + meta icons left-align with HISTORY panel left edge | [ ] | [ ] |
+| Stake +/- backgrounds do not overlap combat grid top | [ ] | [ ] |
+| Winnings + cascade multiplier have no white halo/outline | [ ] | [ ] |
+
+Automated anchor coverage lives in `combat_test_scaffold_check.gd` (hard gate) and `canon_consistency_audit.gd` (warn+recommend). This checklist covers typography/overflow cases anchors cannot detect.
+
 ### Item combat simulation command (conditional)
 
 When item definitions exist under `combat/data/items/`, playtest and high-confidence runs also execute:

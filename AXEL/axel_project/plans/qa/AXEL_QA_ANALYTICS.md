@@ -2,8 +2,8 @@
 
 Auto-generated from `AXEL_QA_RUN_LOG.md` by `tools/qa/update_qa_analytics.py`.
 
-- Last generated (UTC): `2026-05-23T20:43:40.428137+00:00`
-- Runs parsed: `13`
+- Last generated (UTC): `2026-05-23T20:57:57.260181+00:00`
+- Runs parsed: `14`
 
 ## Score interpretation
 
@@ -16,36 +16,31 @@ Auto-generated from `AXEL_QA_RUN_LOG.md` by `tools/qa/update_qa_analytics.py`.
 ## Latest snapshot
 
 - Mode: `playtest`
-- Scope: `Combat HUD polish pass; full default playtest + item audits`
-- Trigger: `user request`
+- Scope: `QA recommendations batch verification`
+- Trigger: `post-implementation`
 - **Progress:** `24/200 pts (12%) gate=0 cap=1.5 score=0.6`
-- **Quality:** `Total=3.85` Band=`B`
-- Findings: `blocker=0 major=0 minor=3 nit=1`
-- Categories: `STYLE=1 LORE=0 IMMERSION=0 TENSION=0 CLARITY=1 COMBAT=0 ARCH=0 REGRESSION=1 BUG=0 TOOL=1`
-- Bugs/problems: `AxelPostFxStack TypedArray invalid object on scene change during bot playthroughs`
-- Item balance audit: `captured`
+- **Quality:** `Total=3.95` Band=`B`
+- Findings: `blocker=0 major=0 minor=0 nit=0`
+- Categories: `STYLE=0 LORE=0 IMMERSION=0 TENSION=0 CLARITY=0 COMBAT=0 ARCH=0 REGRESSION=0 BUG=0 TOOL=0`
+- Bugs/problems: `none`
+- Item balance audit: `skip`
 - Canon consistency audit: `captured`
 
 ## Canon Consistency Audit (latest)
 
-- Findings: blocker=`0` major=`0` minor=`2` nit=`0`
-
-### Top findings
-
-- `minor` | `CLARITY` | `movement.speed_profile` — Player.speed=371.0 outside profile [130,175] corridor_large
-- `minor` | `STYLE` | `movement.scale_profile` — Player scale avg=2.06 outside profile [0.75,0.95] corridor_large
+- Findings: blocker=`0` major=`0` minor=`0` nit=`0`
 ## Latest deltas vs previous run
 
 - `ProgressPoints`: `24.00` (`+0.00` vs previous)
 - `ScopeCeiling`: `200.00` (`+0.00` vs previous)
-- `Quality`: `3.85` (`+0.75` vs previous)
-- `Total`: `3.85` (`+0.75` vs previous)
-- `S`: `4.00` (`+1.00` vs previous)
+- `Quality`: `3.95` (`+0.10` vs previous)
+- `Total`: `3.95` (`+0.10` vs previous)
+- `S`: `4.00` (`+0.00` vs previous)
 - `N`: `4.00` (`+0.00` vs previous)
-- `I`: `4.00` (`+1.00` vs previous)
+- `I`: `4.00` (`+0.00` vs previous)
 - `E`: `3.00` (`+0.00` vs previous)
-- `C`: `4.00` (`+1.00` vs previous)
-- `R`: `4.00` (`+2.00` vs previous)
+- `C`: `4.00` (`+0.00` vs previous)
+- `R`: `5.00` (`+1.00` vs previous)
 
 ## Trend chart (project points + quality)
 
@@ -66,6 +61,7 @@ Auto-generated from `AXEL_QA_RUN_LOG.md` by `tools/qa/update_qa_analytics.py`.
 | `R11` | `2026-05-23` | Default playtest + canon audit |
 | `R12` | `2026-05-23` | Combat scaffold dedup guards; default playtest; … |
 | `R13` | `2026-05-23` | Combat HUD polish pass; full default playtest + … |
+| `R14` | `2026-05-24` | QA recommendations batch verification |
 ![AXEL QA Analytics](AXEL_QA_ANALYTICS.svg)
 
 Chart x-axis: `R1`, `R2`, … with `MM-DD` below; full dates and scopes in the run index table.
@@ -75,10 +71,10 @@ Fallback Mermaid view:
 ```mermaid
 xychart-beta
   title "AXEL QA — Project points (auto scale)"
-  x-axis ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13"]
+  x-axis ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R14"]
   y-axis "Points" 0 --> 250
-  line [null, null, null, null, null, null, null, null, null, null, 48, 24, 24]
-  line [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
+  line [null, null, null, null, null, null, null, null, null, null, 48, 24, 24, 24]
+  line [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
 ```
 
 - SVG: left = project points (0–250+); right = Quality + S/N/I/E/C/R (0–5). Mermaid fallback shows points lines only.

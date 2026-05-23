@@ -92,11 +92,24 @@ func _audit_combat_test() -> Array:
 	root.add_child(root_ui)
 	if not root_ui.is_node_ready():
 		await root_ui.ready
-	await process_frame
-	var result: Array = ValidatorsScript.collect_combat_test_findings(root_ui, path)
+	await _apply_viewport_and_wait_layout(root_ui, Vector2(1280, 720))
+	var result: Array = ValidatorsScript.collect_combat_test_findings(
+		root_ui,
+		path,
+		Vector2(1280, 720)
+	)
 	root_ui.queue_free()
 	await process_frame
 	return result
+
+
+func _apply_viewport_and_wait_layout(root_ui: Control, viewport_size: Vector2) -> void:
+	root_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root_ui.size = viewport_size
+	root_ui.custom_minimum_size = viewport_size
+	await process_frame
+	await process_frame
+	await process_frame
 
 
 func _audit_movement_scene(scene_path: String) -> Array:
