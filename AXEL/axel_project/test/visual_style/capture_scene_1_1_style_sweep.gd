@@ -10,17 +10,12 @@ extends SceneTree
 ##
 ## Exit 0 when all requested PNGs are written; 1 on failure.
 
-const VariantMatrix := preload("res://test/visual_style/variant_matrix.gd")
-const StyleOverlayApplier := preload("res://test/visual_style/style_overlay_applier.gd")
-const InputEventDriverScript := preload("res://test/bots/input_event_driver.gd")
-const BotScenarioRunnerScript := preload("res://test/bots/scenario_runner.gd")
-
-const _SCENE := VariantMatrix.SCENE_PATH
 const _INTRO_WAIT_SEC := 0.15
 const _WALK_FRAMES := 120
 const _SETTLE_FRAMES := 6
 const _RENDER_WARMUP_FRAMES := 4
 
+var _scene_path: String = VisualStyleVariantMatrix.SCENE_PATH
 var _output_dir := ""
 
 
@@ -35,12 +30,12 @@ func _init() -> void:
 func _resolve_output_dir() -> String:
 	if OS.has_environment("AXEL_STYLE_OUTPUT") and not OS.get_environment("AXEL_STYLE_OUTPUT").is_empty():
 		return OS.get_environment("AXEL_STYLE_OUTPUT")
-	return VariantMatrix.OUTPUT_DIR
+	return VisualStyleVariantMatrix.OUTPUT_DIR
 
 
 func _ensure_output_dir() -> void:
-	var abs := ProjectSettings.globalize_path(_output_dir)
-	DirAccess.make_dir_recursive_absolute(abs)
+	var abs_path := ProjectSettings.globalize_path(_output_dir)
+	DirAccess.make_dir_recursive_absolute(abs_path)
 
 
 func _main() -> void:
@@ -49,7 +44,7 @@ func _main() -> void:
 		only_id = OS.get_environment("AXEL_STYLE_VARIANT").strip_edges()
 
 	var specs: Array[Dictionary] = []
-	for v in VariantMatrix.VARIANTS:
+	for v in VisualStyleVariantMatrix.VARIANTS:
 		if only_id.is_empty() or String(v["id"]) == only_id:
 			specs.append(v)
 
@@ -60,7 +55,7 @@ func _main() -> void:
 
 	var failures: Array[String] = []
 	for spec in specs:
-		var ok := await _capture_one(spec)
+		var ok: bool = await _capture_one(spec)
 		if not ok:
 			failures.append(String(spec["id"]))
 
@@ -77,9 +72,9 @@ func _capture_one(spec: Dictionary) -> bool:
 	var variant_id := String(spec["id"])
 	print("--- Capturing variant: %s (%s) ---" % [variant_id, spec["label"]])
 
-	var err := change_scene_to_file(_SCENE)
+	var err := change_scene_to_file(_scene_path)
 	if err != OK:
-		push_error("change_scene_to_file failed (%d) for %s" % [err, _SCENE])
+		push_error("change_scene_to_file failed (%d) for %s" % [err, _scene_path])
 		return false
 
 	for _i in 4:
@@ -95,13 +90,13 @@ func _capture_one(spec: Dictionary) -> bool:
 
 	await create_timer(_INTRO_WAIT_SEC).timeout
 
-	var driver := InputEventDriverScript.new(self, false)
-	var runner := BotScenarioRunnerScript.new(self, driver, false)
+	var driver := InputEventDriver.new(self, false)
+	var runner := BotScenarioRunner.new(self, driver, false)
 	var commands: Array = [
 		{"op": "hold", "key": KEY_D, "frames": _WALK_FRAMES},
 		{"op": "wait_frames", "frames": _SETTLE_FRAMES},
 	]
-	var movement_ok := await runner.run(commands)
+	var movement_ok: bool = await runner.run(commands)
 	driver.release_all()
 	if not movement_ok:
 		push_error("Movement failed for %s: %s" % [variant_id, runner.failure_summary()])
@@ -145,13 +140,13 @@ func _save_viewport_png(user_path: String) -> bool:
 
 func _print_manifest() -> void:
 	var payload := {
-		"scene": _SCENE,
+		"scene": _scene_path,
 		"output_dir": ProjectSettings.globalize_path(_output_dir),
 		"viewport": Vector2i(
 			ProjectSettings.get_setting("display/window/size/viewport_width"),
 			ProjectSettings.get_setting("display/window/size/viewport_height")
 		),
 		"walk_frames": _WALK_FRAMES,
-		"variants": VariantMatrix.variant_ids(),
+		"variants": VisualStyleVariantMatrix.variant_ids(),
 	}
 	print("STYLE_SWEEP_MANIFEST %s" % JSON.stringify(payload))

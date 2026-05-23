@@ -2226,3 +2226,33 @@ Copy and fill:
   - `AXEL/axel_project/tools/visual_style/run_scene_1_1_style_sweep.ps1`
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: No committed comparison PNGs in-repo; opt-in sweep tooling unchanged.
+
+## 2026-05-23 - Remove duplicate CombatRoot grid overrides in combat test scene
+
+- Request: Fix pre-commit block reporting duplicate `CombatRoot` grid nodes in `combat_test.tscn`.
+- Implementation: Kept `CombatRoot` as an instance of `combat_root.tscn` only; removed inline duplicate nodes under `CombatRoot` (`GridManager`, `GridFrame`, `GridUI`, `GridFlashOverlay`, `PowerIntroLayer` (+ children), `RoundWinningsLabel`, `EncounterWonLabel`) and removed now-unused grid manager ext resource from the scene file.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Prevents runtime duplicate grid hierarchy in combat test scaffold while preserving the required scaffold host/UI nodes.
+
+## 2026-05-23 - Clear scoped Godot `.gd` diagnostics (style sweep mirrors + capture script)
+
+- Request: Fix the 40 listed Godot Problems diagnostics across style-sweep mirror test scripts and the canonical style-sweep capture runner.
+- Implementation: Removed stale `style_sweep_1_1/test/` mirror scripts (orphaned duplicates of `res://test/*` after `style_sweep_1_1` output cleanup); refactored canonical `capture_scene_1_1_style_sweep.gd` to use global `class_name` helpers (`VisualStyleVariantMatrix`, `StyleOverlayApplier`, `InputEventDriver`, `BotScenarioRunner`), replaced non-constant `const _SCENE` with typed runtime `_scene_path`, and renamed shadowing `abs` local to `abs_path`.
+- Files changed:
+  - `AXEL/axel_project/test/visual_style/capture_scene_1_1_style_sweep.gd`
+  - `AXEL/axel_project/style_sweep_1_1/test/` (removed stale mirror tree recreated during triage)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Style-sweep runner behavior unchanged; no duplicate test harness under deleted output folder. Close/reload any stale editor tabs pointing at `style_sweep_1_1/test/*.gd` so Problems clears the 38 mirror-path entries.
+- Verification: IDE lints clean on canonical capture script; mirror paths removed from disk.
+
+## 2026-05-23 - Combat test editor placement + duplicate class collision cleanup
+
+- Request: Fix recurring CombatRoot rename warning (`MultiplierLabel2`), combat grid editor placement drift, and duplicate `class_name` hiding diagnostics under `style_sweep_1_1/test/*`.
+- Implementation: Removed injected duplicate `MultiplierLabel2` child from `combat_test.tscn` so `CombatRoot` uses only labels from `combat_root.tscn` instance; confirmed `editor_preview_enabled = true` for deterministic editor layout; verified `style_sweep_1_1/test/` mirror tree is absent on disk (close any stale editor tabs still pointing at mirror paths).
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Eliminates incoming-node rename churn on combat test load/save; editor preview layout remains centered by default via existing `combat_test.gd` layout path. Runtime combat behavior unchanged.
+- Verification: `scene_smoke_check.gd` OK (6 scenes); no duplicate `MultiplierLabel*` nodes under `CombatRoot` in `combat_test.tscn`.
