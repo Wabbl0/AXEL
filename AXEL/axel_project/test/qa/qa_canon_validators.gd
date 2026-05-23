@@ -26,6 +26,8 @@ const REQUIRED_COMBAT_TEST_UNIQUE: Array[String] = [
 ]
 
 ## Direct CombatRoot children that must exist exactly once (duplicate-grid guard).
+## combat_test.tscn must instance combat_root.tscn — do not add these as sibling inline nodes.
+## Pre-commit: tools/qa/check_combat_test_scaffold.py (sanitize_duplicate_combat_root_grid).
 const COMBAT_ROOT_GRID_UNIQUE: Array[String] = [
 	"GridManager",
 	"GridFrame",

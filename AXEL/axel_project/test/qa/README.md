@@ -20,6 +20,8 @@ tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/qa/canon_c
 - `res://combat/test/combat_test_scaffold_check.gd` (hard gate on scaffold + duplicate grid)
 - `res://test/scene_smoke_check.gd` (combat_test scaffold subset)
 
+Pre-commit (`tools/qa/check_combat_test_scaffold.py --staged`): if staged `combat_test.tscn` has inline `Grid*` nodes under `CombatRoot` while instancing `combat_root.tscn`, the hook auto-removes those node blocks, restages the file, and re-runs validation (blocks only if still invalid).
+
 ## Audited scenes
 
 - `res://combat/combat_test.tscn` — scaffold nodes, duplicate CombatRoot grid stack, grid cell count

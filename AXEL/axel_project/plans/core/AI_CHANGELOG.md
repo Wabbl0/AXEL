@@ -2256,3 +2256,95 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Eliminates incoming-node rename churn on combat test load/save; editor preview layout remains centered by default via existing `combat_test.gd` layout path. Runtime combat behavior unchanged.
 - Verification: `scene_smoke_check.gd` OK (6 scenes); no duplicate `MultiplierLabel*` nodes under `CombatRoot` in `combat_test.tscn`.
+
+## 2026-05-23 - Resolve style-sweep mirror class_name shadowing diagnostics
+
+- Request: Fix Godot diagnostics reporting `Class "... " hides a global script class` for mirror scripts under `style_sweep_1_1/test/`.
+- Implementation: Removed `class_name` declarations from mirror-only helper scripts in `style_sweep_1_1/test/` so they no longer register duplicate global script classes that collide with canonical `res://test/*` helpers.
+- Files changed:
+  - `AXEL/axel_project/style_sweep_1_1/test/visual_style/style_overlay_applier.gd`
+  - `AXEL/axel_project/style_sweep_1_1/test/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/style_sweep_1_1/test/visual_style/variant_matrix.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mirror scripts remain usable via direct script references, but no longer pollute global class registry or shadow canonical classes.
+- Verification: Targeted diagnostics source removed (`class_name` collisions).
+
+## 2026-05-23 - Remove regenerated mirror scripts causing stale duplicate-class diagnostics
+
+- Request: Duplicate-class diagnostics persisted for files under `style_sweep_1_1/test/*` after `class_name` removal.
+- Implementation: Removed regenerated mirror helper scripts and their `.uid` files from `style_sweep_1_1/test/` to eliminate duplicate test-script copies outside canonical `res://test/*`.
+- Files changed:
+  - `AXEL/axel_project/style_sweep_1_1/test/visual_style/style_overlay_applier.gd` (deleted)
+  - `AXEL/axel_project/style_sweep_1_1/test/qa/qa_canon_validators.gd` (deleted)
+  - `AXEL/axel_project/style_sweep_1_1/test/visual_style/variant_matrix.gd` (deleted)
+  - `AXEL/axel_project/style_sweep_1_1/test/visual_style/style_overlay_applier.gd.uid` (deleted)
+  - `AXEL/axel_project/style_sweep_1_1/test/qa/qa_canon_validators.gd.uid` (deleted)
+  - `AXEL/axel_project/style_sweep_1_1/test/visual_style/variant_matrix.gd.uid` (deleted)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Only canonical test helpers under `AXEL/axel_project/test/*` remain for these classes; mirror-path diagnostics should not recur from duplicate script copies.
+- Verification: Mirror files absent from disk.
+
+## 2026-05-23 - Delete style_sweep_1_1 folder per request
+
+- Request: Remove `AXEL/axel_project/style_sweep_1_1` from the repository tree.
+- Implementation: Deleted the full `style_sweep_1_1` directory tree (including the recreated empty `test/` subtree).
+- Files changed:
+  - `AXEL/axel_project/style_sweep_1_1/` (removed)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No in-repo style-sweep output/mirror folder remains at `style_sweep_1_1`.
+- Verification: `Test-Path AXEL/axel_project/style_sweep_1_1` returned `False`.
+
+## 2026-05-23 - Clear stale Godot cache references after style_sweep deletion
+
+- Request: Duplicate-class diagnostic for deleted `style_sweep_1_1/test/visual_style/variant_matrix.gd` still persisted.
+- Implementation: Cleared stale Godot editor/class index caches that still tracked removed project paths by deleting:
+  - `.godot/editor/filesystem_cache10`
+  - `.godot/editor/filesystem_update4`
+  - `.godot/global_script_class_cache.cfg`
+- Files changed:
+  - `AXEL/axel_project/.godot/editor/filesystem_cache10` (deleted)
+  - `AXEL/axel_project/.godot/editor/filesystem_update4` (deleted)
+  - `AXEL/axel_project/.godot/global_script_class_cache.cfg` (deleted)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Godot rebuilds filesystem/class caches on next project refresh; stale references to removed `res://style_sweep_1_1/*` paths are dropped.
+- Verification: `Test-Path` confirms deleted cache files are absent and `style_sweep_1_1/test/visual_style/variant_matrix.gd` remains absent.
+
+## 2026-05-23 - Pre-commit auto-fix for recurring CombatRoot duplicate-grid commits
+
+- Request: Stop recurring git pre-commit blocks on `combat_test.tscn` duplicate `CombatRoot` grid overrides.
+- Root cause: `combat_test.tscn` instances `combat_root.tscn` (which already owns `GridManager`/`GridUI`/overlay stack) but editor saves sometimes write the same nodes again as inline children under `CombatRoot`, creating duplicate runtime grid nodes.
+- Implementation: Added `sanitize_duplicate_combat_root_grid()` in `tools/qa/canon_validators_shared.py` to strip inline guarded node blocks (and descendants) from staged scene text. Upgraded `check_combat_test_scaffold.py --staged` to auto-fix, `git add`, and re-validate before blocking. Added editor-only `_validate_editor_combat_root_structure()` in `combat_test.gd` (preview-on) using `QaCanonValidators`. Cleaned current `combat_test.tscn` to instance-only `CombatRoot`.
+- Files changed:
+  - `AXEL/axel_project/tools/qa/canon_validators_shared.py`
+  - `AXEL/axel_project/tools/qa/check_combat_test_scaffold.py`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/qa/AXEL_CANON_CONSISTENCY_AUDIT.md`
+  - `AXEL/axel_project/test/qa/README.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Commits with accidental inline CombatRoot grid duplicates are auto-healed when the scene is staged; commit still blocks if scaffold markers are missing or duplicates remain after sanitize. Editor preview stays enabled and surfaces structure drift via `push_error` before save/commit.
+- Verification: `python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py` (OK); `check_combat_test_scaffold.py --staged` (OK); `combat_test_scaffold_check.gd` (OK).
+
+## 2026-05-23 - Combat scaffold dedup persistence (runtime guard + validation)
+
+- Request: Implement Combat Scaffold Dedup + Persistence Fix Plan — remove duplicate `CombatRoot` grid children, prevent reintroduction, validate scaffold + smoke.
+- Root cause: `combat_test.tscn` instances `combat_root.tscn`; inline sibling nodes under `CombatRoot` duplicate `GridManager`/`GridUI`/overlay stack at runtime (`CombatRoot has 2× …` scaffold FAIL).
+- Implementation: Confirmed scene uses instanced `CombatRoot` only (no inline grid stack blocks). Removed stale unused `grid_manager.gd` `ext_resource` from `combat_test.tscn`. Added `_warn_duplicate_combat_root_children()` in `combat_test.gd` (runtime + editor preview) mirroring `QaCanonValidators.COMBAT_ROOT_GRID_UNIQUE`. Documented pre-commit sanitizer cross-ref in `qa_canon_validators.gd`.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/test/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Duplicate grid nodes under `CombatRoot` log `push_error` on playtest load/preview; pre-commit Python guard continues to strip accidental inline overrides on staged commits.
+- Verification: `python tools/qa/check_combat_test_scaffold.py` (OK); `combat_test_scaffold_check.gd` (OK); `scene_smoke_check.gd` (OK, 6 scenes). Prior `2× GridManager` failure cleared.
+
+## 2026-05-23 - QA re-sanitize combat_test grid duplicates (regression)
+
+- Request: Simulated QA after scaffold dedup plan (`qa` / user yes).
+- Implementation: QA playtest found inline `CombatRoot` grid stack had regressed in `combat_test.tscn` (editor re-save). Re-ran `sanitize_duplicate_combat_root_grid()`, removed `MultiplierLabel`/`MultiplierLabel2` inline overrides, extended sanitizer + runtime guard to include `MultiplierLabel`. Post-fix: scaffold + canon combat findings cleared.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/tools/qa/canon_validators_shared.py`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Verification: `check_combat_test_scaffold.py` OK; `combat_test_scaffold_check.gd` OK; `canon_consistency_audit.gd` — 2 minor movement findings only (Corridor speed/scale).

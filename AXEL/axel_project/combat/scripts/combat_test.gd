@@ -4,7 +4,13 @@
 extends Control
 
 const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
+const QaCanonValidatorsScript := preload("res://test/qa/qa_canon_validators.gd")
 const SCAFFOLD_BASELINE_SCENE := "res://combat/combat_test_scaffold_baseline.tscn"
+## Must not be re-added as local children under instanced %CombatRoot (see combat_root.tscn).
+const COMBAT_ROOT_INSTANCED_CHILDREN := [
+	"GridManager", "GridFrame", "GridUI", "GridFlashOverlay", "PowerIntroLayer",
+	"RoundWinningsLabel", "EncounterWonLabel", "MultiplierLabel",
+]
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
 const DEBUG_SESSION_ID := "1d1bdd"
@@ -295,6 +301,30 @@ func _safe_get_grid_ui_width() -> float:
 	return _get_center_column_interior_width(260.0)
 
 
+func _warn_duplicate_combat_root_children() -> void:
+	if combat == null:
+		return
+	var dupes: PackedStringArray = PackedStringArray()
+	for base_name in COMBAT_ROOT_INSTANCED_CHILDREN:
+		var count := 0
+		for child in combat.get_children():
+			if child.name == base_name:
+				count += 1
+		if count > 1:
+			dupes.append("%s (%d×)" % [base_name, count])
+	for base_name in COMBAT_ROOT_INSTANCED_CHILDREN:
+		if combat.get_node_or_null(NodePath("%s2" % base_name)) != null:
+			dupes.append("%s2" % base_name)
+	if not dupes.is_empty():
+		push_error(
+			(
+				"CombatTest: duplicate CombatRoot children: %s. "
+				+ "Remove inline grid nodes from combat_test.tscn; use instanced combat_root.tscn only "
+				+ "(pre-commit: tools/qa/check_combat_test_scaffold.py)."
+			) % ", ".join(dupes)
+		)
+
+
 func _suppress_combat_root_legacy_labels() -> void:
 	if combat == null:
 		return
@@ -544,6 +574,7 @@ func _initialize_runtime() -> void:
 	if not _cache_scene_refs():
 		return
 	_runtime_initialized = true
+	_warn_duplicate_combat_root_children()
 	_initialize_shared_layout(false)
 	_connect_runtime_signals()
 	_wire_winnings_popup_target()
@@ -570,6 +601,7 @@ func _initialize_runtime() -> void:
 func _initialize_editor_preview() -> void:
 	if not _cache_scene_refs():
 		return
+	_warn_duplicate_combat_root_children()
 	_initialize_shared_layout(true)
 	_apply_editor_combat_preview()
 	call_deferred("_finish_editor_preview_layout")
@@ -709,6 +741,21 @@ func _finish_editor_preview_layout() -> void:
 	_ensure_editor_grid_shell_visible()
 	_refresh_editor_placeholder_readouts()
 	_reassert_scaffold_ownership()
+	_validate_editor_combat_root_structure()
+
+
+func _validate_editor_combat_root_structure() -> void:
+	if not Engine.is_editor_hint() or combat == null:
+		return
+	var violations := QaCanonValidatorsScript.check_combat_root_grid_uniqueness(combat)
+	if violations.is_empty():
+		return
+	push_error(
+		"CombatTest CombatRoot structure drift: %s. "
+		% ", ".join(violations)
+		+ " Keep combat_root.tscn instance only; remove inline Grid* nodes under CombatRoot. "
+		+ "Pre-commit auto-fix: python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py --staged"
+	)
 
 
 func _ensure_editor_grid_shell_visible() -> void:

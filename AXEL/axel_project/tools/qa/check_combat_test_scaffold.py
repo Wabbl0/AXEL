@@ -2,6 +2,7 @@
 """Pre-commit guard: block stripped combat_test.tscn (missing required scaffold nodes)."""
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -9,7 +10,10 @@ _TOOLS_QA_DIR = Path(__file__).resolve().parent
 if str(_TOOLS_QA_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_QA_DIR))
 
-from canon_validators_shared import check_duplicate_grid_overrides  # noqa: E402
+from canon_validators_shared import (  # noqa: E402
+    check_duplicate_grid_overrides,
+    sanitize_duplicate_combat_root_grid,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCENE_REL = "AXEL/axel_project/combat/combat_test.tscn"
@@ -44,8 +48,6 @@ def check_scene_text(text: str) -> list[str]:
 
 
 def _staged_scene_text() -> str | None:
-    import subprocess
-
     listed = subprocess.run(
         ["git", "diff", "--cached", "--name-only", "--", SCENE_REL],
         capture_output=True,
@@ -65,19 +67,32 @@ def _staged_scene_text() -> str | None:
     return blob.stdout
 
 
-def main() -> int:
-    use_staged = "--staged" in sys.argv
-    text: str | None = None
-    if use_staged:
-        text = _staged_scene_text()
-        if text is None:
-            print("combat_test scaffold check: skipped (scene not staged).")
-            return 0
-    elif SCENE_PATH.is_file():
-        text = SCENE_PATH.read_text(encoding="utf-8")
-    else:
-        print(f"combat_test scaffold check: scene not found at {SCENE_PATH}", file=sys.stderr)
-        return 1
+def _git_add_scene() -> None:
+    subprocess.run(
+        ["git", "add", "--", SCENE_REL],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+
+def _try_autofix_staged_grid_duplicates(text: str) -> tuple[str, list[str]]:
+    """Sanitize staged text; write working tree + restage when fixes apply."""
+    cleaned, removed = sanitize_duplicate_combat_root_grid(text)
+    if not removed:
+        return text, removed
+    SCENE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SCENE_PATH.write_text(cleaned, encoding="utf-8", newline="\n")
+    _git_add_scene()
+    print(
+        "combat_test scaffold check: auto-fixed duplicate CombatRoot grid overrides "
+        f"({len(removed)} node block(s) removed)."
+    )
+    for name in removed:
+        print(f"  - removed inline node: {name}")
+    return cleaned, removed
+
+
+def _validate_scene_text(text: str) -> int:
     missing = check_scene_text(text)
     grid_violations = check_duplicate_grid_overrides(text)
     if grid_violations:
@@ -100,8 +115,34 @@ def main() -> int:
         for item in missing:
             print(f"  - {item}", file=sys.stderr)
         return 1
-    print("combat_test scaffold check OK.")
     return 0
+
+
+def main() -> int:
+    use_staged = "--staged" in sys.argv
+    text: str | None = None
+    if use_staged:
+        text = _staged_scene_text()
+        if text is None:
+            print("combat_test scaffold check: skipped (scene not staged).")
+            return 0
+    elif SCENE_PATH.is_file():
+        text = SCENE_PATH.read_text(encoding="utf-8")
+    else:
+        print(f"combat_test scaffold check: scene not found at {SCENE_PATH}", file=sys.stderr)
+        return 1
+
+    grid_violations = check_duplicate_grid_overrides(text)
+    if grid_violations and use_staged:
+        text, _removed = _try_autofix_staged_grid_duplicates(text)
+        restaged = _staged_scene_text()
+        if restaged is not None:
+            text = restaged
+
+    result = _validate_scene_text(text)
+    if result == 0:
+        print("combat_test scaffold check OK.")
+    return result
 
 
 if __name__ == "__main__":

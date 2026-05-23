@@ -450,3 +450,91 @@ Copy the template block, fill values, paste **below** the last entry.
 <!-- QA_ANALYTICS_JSON_BEGIN -->
 {"timestamp":"2026-05-23T16:45:00+03:00","run_title":"QA agent readiness smoke","mode":"playtest","scope":"Default playtest + canon audit","trigger":"user request","scores":{"S":3,"N":4,"I":3,"E":3,"C":3,"R":2,"Total":3.10,"Band":"C"},"quality":{"S":3,"N":4,"I":3,"E":3,"C":3,"R":2,"Total":3.10,"Band":"C"},"progress":{"score":1.2,"gate_cap":1.5,"gate_state":0,"checklist_completion":0.12},"findings_count":{"blocker":1,"major":7,"minor":2,"nit":0},"by_category":{"STYLE":1,"CLARITY":1,"COMBAT":7,"REGRESSION":1,"BUG":1},"playtest_commands":{"princess_check":"pass","determinism":"pass","rtp_audit":"captured","scene_smoke":"pass","combat_test_scaffold":"fail","canon_consistency_audit":"pass","bot_arc1_exterior":"pass","bot_dialogue_loop":"pass","item_balance_audit":"skip","item_synergy_smoke":"skip"},"canon_audit":{"schema_version":1,"findings_count":{"major":7,"minor":2},"findings":[{"id":"combat.grid_duplicate","severity":"major","category":"COMBAT","evidence":"CombatRoot has 2x GridUI"}]},"bugs_or_regressions":["combat_test_scaffold_check duplicate grid"]}
 <!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-23 — Combat scaffold dedup post-fix QA
+
+- **Mode:** playtest
+- **Scope:** Combat scaffold dedup + persistence guards; full default playtest; in-session re-sanitize when duplicates regressed
+- **Trigger:** user request (`qa` after dedup plan)
+- **Playtest commands:** princess_check=pass determinism=pass rtp_audit=captured scene_smoke=pass combat_test_scaffold=fail→pass (remediated) canon_consistency_audit=captured bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=captured item_synergy_smoke=pass
+- **Progress:** **0.39** (gate 0 cap 1.5; checklist 12%; coverage 1.0; defect penalty 0.65)
+- **Quality:** S=3 N=4 I=3 E=3 C=3 R=2 **Total=3.10** Band=C
+- **Findings count:** blocker=1 major=8 minor=2 nit=0
+- **By category:** STYLE=1 LORE=0 IMMERSION=0 TENSION=0 CLARITY=1 COMBAT=8 REGRESSION=1 BUG=1 ARCH=0 TOOL=0
+- **Recommendations (logged):** Re-sanitize after Godot saves combat_test; extend pre-commit to MultiplierLabel; tune Corridor speed/scale; fix AxelPostFxStack TypedArray detach on scene change
+- **Bug / regression notes:** Inline CombatRoot grid stack reappeared in combat_test.tscn; sanitized + MultiplierLabel2 removed; post-fix scaffold/canon combat clear
+- **Trend vs previous run:** up on combat canon — scaffold remediated in-session; movement minors unchanged
+- **Link / notes:** `sanitize_duplicate_combat_root_grid` + MultiplierLabel in sanitizer list
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-23T22:20:00+03:00",
+  "run_title": "Combat scaffold dedup post-fix QA",
+  "mode": "playtest",
+  "scope": "Combat scaffold dedup guards; default playtest; in-session sanitize on regression",
+  "trigger": "user request",
+  "scores": {"S": 3, "N": 4, "I": 3, "E": 3, "C": 3, "R": 2, "Total": 3.10, "Band": "C"},
+  "quality": {"S": 3, "N": 4, "I": 3, "E": 3, "C": 3, "R": 2, "Total": 3.10, "Band": "C"},
+  "progress": {
+    "score": 0.39,
+    "scoring_mode": "option2",
+    "progress_raw": 0.6,
+    "gate_cap": 1.5,
+    "gate_state": 0,
+    "checklist_completion": 0.12,
+    "checklist_completed_weight": 24,
+    "checklist_total_weight": 200,
+    "coverage_factor": 1.0,
+    "defect_penalty": 0.65,
+    "milestones_completed": []
+  },
+  "findings_count": {"blocker": 1, "major": 8, "minor": 2, "nit": 0},
+  "by_category": {"STYLE": 1, "LORE": 0, "IMMERSION": 0, "TENSION": 0, "CLARITY": 1, "COMBAT": 8, "ARCH": 0, "REGRESSION": 1, "BUG": 1, "TOOL": 0},
+  "playtest_commands": {
+    "princess_check": "pass",
+    "determinism": "pass",
+    "rtp_audit": "captured",
+    "scene_smoke": "pass",
+    "combat_test_scaffold": "fail_then_pass",
+    "canon_consistency_audit": "captured",
+    "bot_arc1_exterior": "pass",
+    "bot_dialogue_loop": "pass",
+    "item_balance_audit": "captured",
+    "item_synergy_smoke": "pass"
+  },
+  "canon_audit": {
+    "schema_version": 1,
+    "findings_count": {"blocker": 0, "major": 0, "minor": 2, "nit": 0},
+    "findings": [
+      {"id": "movement.speed_profile", "severity": "minor", "category": "CLARITY", "evidence": "Player.speed=371.0 outside profile [130,175] corridor"},
+      {"id": "movement.scale_profile", "severity": "minor", "category": "STYLE", "evidence": "Player scale avg=2.06 outside profile [0.75,0.95] corridor"}
+    ]
+  },
+  "rtp_snapshot": {
+    "mean": 0.75019,
+    "ci95": [0.37743, 0.94218],
+    "target_band": [0.75, 0.8],
+    "target_position": "within",
+    "paid_hit_rate": 0.365,
+    "encounter_success_rate": 0.00833,
+    "encounter_wins": 1,
+    "encounter_count": 120
+  },
+  "item_balance": {
+    "schema_version": 1,
+    "items_tested": 2,
+    "items_overpowered": [],
+    "items_underpowered": [],
+    "items_neutral": ["C1_ash_reroll_token", "L3_void_satchel"],
+    "items_insufficient_data": []
+  },
+  "item_metrics": [
+    {"item_id": "C1_ash_reroll_token", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.41466, "delta_rtp": 0.00583, "delta_rtp_ci95": [-0.15697, 0.16862], "baseline_hit_rate": 0.365, "item_hit_rate": 0.322, "delta_hit_rate": -0.043, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20},
+    {"item_id": "L3_void_satchel", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.40883, "delta_rtp": 0.0, "delta_rtp_ci95": [-0.16347, 0.16347], "baseline_hit_rate": 0.365, "item_hit_rate": 0.365, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20}
+  ],
+  "bugs_or_regressions": [
+    "combat_test_scaffold_check duplicate CombatRoot grid (remediated in-session)",
+    "AxelPostFxStack TypedArray invalid object on scene change (bot runs)"
+  ]
+}
+<!-- QA_ANALYTICS_JSON_END -->

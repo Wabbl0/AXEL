@@ -26,7 +26,7 @@ tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/qa/canon_c
 | ----- | -------- |
 | `canon_consistency_audit.gd` | Reports findings; never blocks QA by itself |
 | `combat_test_scaffold_check.gd` | Hard gate: duplicate grid + missing scaffold → exit 1 |
-| `check_combat_test_scaffold.py` | Pre-commit: missing markers + instance+override duplicate grid in `.tscn` text |
+| `check_combat_test_scaffold.py` | Pre-commit: missing markers + duplicate grid in `.tscn` text; `--staged` auto-strips inline CombatRoot grid overrides then re-validates |
 
 ## `CANON_AUDIT_JSON` schema (v1)
 
