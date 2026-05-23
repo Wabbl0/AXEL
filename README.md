@@ -43,14 +43,14 @@ tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/det
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
 
 :: Overworld bot playthroughs
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_arc1_exterior.gd
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_dialogue_loop.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_arc1_exterior.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_dialogue_loop.gd
 ```
 
 ## Documentation Pointers
 
 - Combat notes: `AXEL/axel_project/combat/README.md`
-- Bot playthrough docs: `AXEL/axel_project/test/bots/README.md`
+- Bot playthrough docs: `AXEL/axel_project/tools/bots/README.md`
 - Structure conventions: `AXEL/axel_project/plans/README_STRUCTURE.md`
 
 ## Repository Status

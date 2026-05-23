@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write 32x32 RGBA PNG placeholders (red-on-black) for combat symbols. Stdlib only."""
+"""Write 32x32 RGBA PNG grid symbols (red-on-black). Stdlib only."""
 from __future__ import annotations
 
 import math
@@ -147,7 +147,7 @@ def draw_polyline(buf: bytearray, w: int, h: int, pts: list[tuple[int, int]], rg
 
 
 def main() -> None:
-    out_dir = Path(__file__).resolve().parent / "placeholders"
+    out_dir = Path(__file__).resolve().parent / "grid_symbols"
     out_dir.mkdir(parents=True, exist_ok=True)
     w = h = 32
     buf = bytearray(solid_rgba(w, h, BLACK))

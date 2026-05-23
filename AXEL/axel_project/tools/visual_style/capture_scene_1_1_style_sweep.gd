@@ -2,7 +2,7 @@ extends SceneTree
 ## Scene 1.1 visual style sweep: baseline + 3 scanline/glitch comparison options.
 ##
 ## Run from repo root:
-##   tools\cmd\godot.cmd --path AXEL/axel_project -s res://test/visual_style/capture_scene_1_1_style_sweep.gd
+##   tools\cmd\godot.cmd --path AXEL/axel_project -s res://tools/visual_style/capture_scene_1_1_style_sweep.gd
 ##
 ## Optional env:
 ##   AXEL_STYLE_VARIANT=baseline   (single variant; default = all)

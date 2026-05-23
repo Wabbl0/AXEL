@@ -5,6 +5,7 @@ class_name VisualStyleVariantMatrix
 
 const SCENE_PATH := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const OUTPUT_DIR := "user://style_sweep_1_1"
+const SHADER_ROOT := "res://tools/visual_style/shaders/"
 
 ## theme_mode shader uniform: 0=axel pass-through, 1=green phosphor, 2=mono white
 const THEME_AXEL := 0
@@ -26,7 +27,7 @@ const VARIANTS: Array[Dictionary] = [
 		"label": "Option 1 — CRT TV (Asset Library / nofacer style)",
 		"png": "02_option_1_crt_tv.png",
 		"stack": "stack",
-		"shader": "res://test/visual_style/shaders/option_1_crt_tv.gdshader",
+		"shader": SHADER_ROOT + "option_1_crt_tv.gdshader",
 		"theme_mode": THEME_AXEL,
 		"theme_strength": 1.0,
 	},
@@ -35,7 +36,7 @@ const VARIANTS: Array[Dictionary] = [
 		"label": "Option 2 — VHS Glitch Burst (godotshaders MIT)",
 		"png": "03_option_2_vhs_glitch.png",
 		"stack": "stack",
-		"shader": "res://test/visual_style/shaders/option_2_vhs_glitch.gdshader",
+		"shader": SHADER_ROOT + "option_2_vhs_glitch.gdshader",
 		"theme_mode": THEME_AXEL,
 		"theme_strength": 1.0,
 	},
@@ -44,7 +45,7 @@ const VARIANTS: Array[Dictionary] = [
 		"label": "Option 3 — Terminal CRT (luminance-preserving)",
 		"png": "04_option_3_terminal_crt.png",
 		"stack": "stack",
-		"shader": "res://test/visual_style/shaders/option_3_terminal_crt.gdshader",
+		"shader": SHADER_ROOT + "option_3_terminal_crt.gdshader",
 		"theme_mode": THEME_AXEL,
 		"theme_strength": 1.0,
 	},

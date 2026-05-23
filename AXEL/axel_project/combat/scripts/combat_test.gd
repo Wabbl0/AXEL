@@ -4,7 +4,7 @@
 extends Control
 
 const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
-const QaCanonValidatorsScript := preload("res://test/qa/qa_canon_validators.gd")
+const QaCanonValidatorsScript := preload("res://tools/qa/qa_canon_validators.gd")
 const SCAFFOLD_BASELINE_SCENE := "res://combat/combat_test_scaffold_baseline.tscn"
 ## Must not be re-added as local children under instanced %CombatRoot (see combat_root.tscn).
 const COMBAT_ROOT_INSTANCED_CHILDREN := [

@@ -11,11 +11,11 @@ $commands = @(
     @{ key = "princess_check"; script = "res://combat/test/princess_check.gd" },
     @{ key = "determinism"; script = "res://combat/test/determinism_check.gd" },
     @{ key = "rtp_audit"; script = "res://combat/test/rtp_audit.gd"; metrics_only = $true },
-    @{ key = "scene_smoke"; script = "res://test/scene_smoke_check.gd" },
+    @{ key = "scene_smoke"; script = "res://tools/scene_smoke_check.gd" },
     @{ key = "combat_test_scaffold"; script = "res://combat/test/combat_test_scaffold_check.gd" },
-    @{ key = "canon_consistency_audit"; script = "res://test/qa/canon_consistency_audit.gd"; metrics_only = $true },
-    @{ key = "bot_arc1_exterior"; script = "res://test/bots/playthrough_arc1_exterior.gd" },
-    @{ key = "bot_dialogue_loop"; script = "res://test/bots/playthrough_dialogue_loop.gd" }
+    @{ key = "canon_consistency_audit"; script = "res://tools/qa/canon_consistency_audit.gd"; metrics_only = $true },
+    @{ key = "bot_arc1_exterior"; script = "res://tools/bots/playthrough_arc1_exterior.gd" },
+    @{ key = "bot_dialogue_loop"; script = "res://tools/bots/playthrough_dialogue_loop.gd" }
 )
 
 foreach ($cmd in $commands) {

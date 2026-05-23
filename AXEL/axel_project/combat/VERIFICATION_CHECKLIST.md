@@ -36,7 +36,7 @@ tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/det
 
 ```bat
 tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd
-tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd
+tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://tools/scene_smoke_check.gd
 ```
 
 (`rtp_audit` prints metrics; exit code is always 0 unless the script errors. `scene_smoke_check` exits non-zero on load/instantiate failure.)

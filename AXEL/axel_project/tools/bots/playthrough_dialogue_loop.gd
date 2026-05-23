@@ -20,15 +20,15 @@ extends SceneTree
 ##     alternate-key branch of `_is_interaction_event` (E/SPACE/ENTER/KP_ENTER)
 ##
 ## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_dialogue_loop.gd
+##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_dialogue_loop.gd
 ##
 ## Exit codes:
 ##   0 = dialogue overlay accepted Tab skips, walk + Space interaction
 ##       triggered transition to corridor.
 ##   1 = any phase failed.
 
-const InputEventDriverScript := preload("res://test/bots/input_event_driver.gd")
-const BotScenarioRunnerScript := preload("res://test/bots/scenario_runner.gd")
+const InputEventDriverScript := preload("res://tools/bots/input_event_driver.gd")
+const BotScenarioRunnerScript := preload("res://tools/bots/scenario_runner.gd")
 
 const _SCENE_EXTERIOR := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const _SCENE_CORRIDOR := "res://scenes/Arc_1/1.2_Corridor.tscn"

@@ -41,10 +41,10 @@ From repo root (Windows uses `tools\cmd\godot.cmd`):
 
 ```bat
 :: Bot 1: walk + interact (KEY_E)
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_arc1_exterior.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_arc1_exterior.gd
 
 :: Bot 2: dialogue Tab-skip + walk + interact (KEY_SPACE)
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_dialogue_loop.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_dialogue_loop.gd
 ```
 
 Both bots:
@@ -73,8 +73,8 @@ Both bots:
 Scenarios are arrays of dictionaries. Minimum example:
 
 ```gdscript
-const InputEventDriverScript := preload("res://test/bots/input_event_driver.gd")
-const BotScenarioRunnerScript := preload("res://test/bots/scenario_runner.gd")
+const InputEventDriverScript := preload("res://tools/bots/input_event_driver.gd")
+const BotScenarioRunnerScript := preload("res://tools/bots/scenario_runner.gd")
 
 var driver := InputEventDriverScript.new(self, true)
 var runner := BotScenarioRunnerScript.new(self, driver, true)

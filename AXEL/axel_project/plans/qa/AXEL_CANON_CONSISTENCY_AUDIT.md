@@ -5,12 +5,12 @@ Machine-readable visual/gameplay drift checks for default `qa agent` runs. Canon
 ## Command
 
 ```bat
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/qa/canon_consistency_audit.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/canon_consistency_audit.gd
 ```
 
 - **Exit code:** always `0` (warn + recommend).
 - **Stdout marker:** single line `CANON_AUDIT_JSON <json>` (parse after prefix).
-- **Implementation:** `test/qa/canon_consistency_audit.gd` + `test/qa/qa_canon_validators.gd`.
+- **Implementation:** `tools/qa/canon_consistency_audit.gd` + `tools/qa/qa_canon_validators.gd`.
 
 ## Scope (default)
 

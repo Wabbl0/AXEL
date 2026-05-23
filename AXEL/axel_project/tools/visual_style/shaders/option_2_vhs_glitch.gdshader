@@ -2,7 +2,7 @@ shader_type canvas_item;
 // Option 2 — VHS glitch burst (Retro VHS Glitch for Godot 4 inspired, MIT).
 // Animated scanlines, white noise static, RGB split, slice/wave glitches.
 
-#include "res://test/visual_style/shaders/theme_post_fx.gdshaderinc"
+#include "res://tools/visual_style/shaders/theme_post_fx.gdshaderinc"
 
 uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
 uniform int theme_mode = 0;

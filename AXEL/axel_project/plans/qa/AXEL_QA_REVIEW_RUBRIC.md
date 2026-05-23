@@ -17,20 +17,20 @@ Use this section to set **confidence** and required **evidence**. Default `qa` v
 
 ### Default command set (playtest: combat + scene smoke + bot playthrough)
 
-Plain `qa` / `run qa` / `qa agent` runs **all eight** commands below in one pass. Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
+Plain `qa` / `run qa` / `qa agent` runs **all eight** commands below in one pass. Prefer the canonical runner `AXEL/axel_project/tools/qa/run_default_playtest.ps1` (same script paths). Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
 
 ```bat
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/scene_smoke_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/qa/canon_consistency_audit.gd
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_arc1_exterior.gd
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_dialogue_loop.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/canon_consistency_audit.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_arc1_exterior.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_dialogue_loop.gd
 ```
 
-The two bot scripts are documented in `AXEL/axel_project/test/bots/README.md`.
+The two bot scripts are documented in `AXEL/axel_project/tools/bots/README.md`.
 
 - **Pass/fail gates:** `princess_check`, `determinism_check`, `scene_smoke_check`, `combat_test_scaffold_check`, `playthrough_arc1_exterior`, `playthrough_dialogue_loop` — non-zero exit = report as **blocker** / `BUG` or `REGRESSION`.
 - **`canon_consistency_audit.gd`:** always exits 0 — parse stdout for `CANON_AUDIT_JSON`. Full schema and severity mapping: `AXEL_CANON_CONSISTENCY_AUDIT.md`. Report each finding in **Technical findings** (severity/category/evidence) and fold into **Recommendations** (evidence → impact → fix). Duplicate combat grid nodes, missing movement contracts, and profile drift (speed/scale) are typical signals. Do not block the QA run on audit findings alone unless a separate gate command failed.

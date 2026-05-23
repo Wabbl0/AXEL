@@ -2393,6 +2393,32 @@ Copy and fill:
 - Verification: `run_scene_1_1_style_sweep.ps1` exit 0; 4 PNGs written to `%APPDATA%/Godot/app_userdata/AXEL/style_sweep_1_1` and copied to `tools/visual_style/output/scanline_glitch_comparison/`.
 - Notes: Option 2 screenshot captured during an active glitch burst (RGB split visible); re-run with `$env:AXEL_STYLE_THEME="green"` to preview Pip-Boy phosphor on any option.
 
+## 2026-05-23 - Test Folder To Tools Migration
+
+- Request: Move all `AXEL/axel_project/test/*` into `AXEL/axel_project/tools/*` while preserving subfolder structure; update runtime references and active docs; optimize repeated shader paths.
+- Implementation: Git-moved `scene_smoke_check.gd`, `bots/`, `qa/` GDScript harness, and `visual_style/` (scripts + shaders) into `tools/` beside existing Python/PS1 tooling and style-sweep output. Updated all `res://test/` preloads, `#include` paths, and QA/style launchers to `res://tools/`. Added `SHADER_ROOT` constant in `variant_matrix.gd`. Refreshed active docs/rubrics (`AI_DOCS.md`, QA rubric, README, verification checklist). Removed OneDrive-resurrected duplicate `test/` tree from disk and repointed Godot `global_script_class_cache.cfg` entries for moved `class_name` scripts.
+- Files changed:
+  - `AXEL/axel_project/tools/scene_smoke_check.gd`
+  - `AXEL/axel_project/tools/bots/*`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/tools/qa/canon_consistency_audit.gd`
+  - `AXEL/axel_project/tools/qa/run_default_playtest.ps1`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/tools/visual_style/*`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/combat_test_scaffold_check.gd`
+  - `README.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/qa/AXEL_CANON_CONSISTENCY_AUDIT.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/combat/VERIFICATION_CHECKLIST.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay changes. QA bots, scene smoke, canon audit, and visual-style sweep now resolve under `res://tools/...`. Historical changelog entries retain prior `test/` paths.
+- Verification: `res://tools/scene_smoke_check.gd` → `Scene smoke check OK (6 scenes).`; `res://combat/test/combat_test_scaffold_check.gd` → OK; `res://tools/qa/canon_consistency_audit.gd` → `CANON_AUDIT_JSON` emitted; both bot playthrough scripts exit 0; no `res://test/` references remain in active GDScript/PS1/Python.
+- Notes: If Godot reports duplicate `class_name` after pull, delete any resurrected `test/` folder and reopen project so class cache rescans (or update `.godot/global_script_class_cache.cfg` paths to `res://tools/...`).
+
 ## 2026-05-23 - Combat HUD Polish Pass
 
 - Request: Polish combat HUD typography/alignment — single-row history log with larger fonts and ellipsis, items font parity, goal/meta alignment to side panels, stake indicator cleanup (no circle, bankroll-sized value, non-overlapping +/-), and remove white highlight/glow from winnings/multiplier readouts.
@@ -2404,3 +2430,22 @@ Copy and fill:
 - Behavior impact: Combat test HUD reads cleaner at multiple resolutions; history never wraps to a second line; corner HUD columns share vertical alignment guides with side panels; stake controls stay in header band without pill chrome.
 - Verification: `python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py` exit 0; lints clean on `combat_test.gd`.
 - Notes: User confirmed history overflow should truncate with ellipsis and goal alignment reference is items panel right edge.
+
+## 2026-05-23 - Remove Deleted Placeholder/Data Path References
+
+- Request: User deleted `axel_project/data/` and `combat/art/placeholders/`; update references to the canonical symbol folder `combat/art/grid_symbols`.
+- Implementation: Updated all `combat/data/symbols/sym_*.tres` files to remove `res://combat/art/placeholders/*` ext-resources and point `power_intro_texture` to the canonical grid texture ext-resource. Updated `combat/art/generate_placeholders.py` output folder to `grid_symbols` and refreshed combat README wording.
+- Files changed:
+  - `AXEL/axel_project/combat/data/symbols/sym_bloody_hand.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_blue_star.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_booze.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_cigarette.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_green_circle.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_red_heart.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_satanic.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_yellow_triangle.tres`
+  - `AXEL/axel_project/combat/art/generate_placeholders.py`
+  - `AXEL/axel_project/combat/README.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Symbol resources no longer depend on deleted placeholder files; generated symbol PNGs now go directly to the canonical `grid_symbols` folder.
+- Verification: `rg "res://combat/art/placeholders/" AXEL/axel_project/combat` returns no matches after update.

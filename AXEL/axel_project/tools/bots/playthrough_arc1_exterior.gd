@@ -7,15 +7,15 @@ extends SceneTree
 ## `1.1_SchoolExterior.gd::_unhandled_input` interaction handler) are driven.
 ##
 ## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_arc1_exterior.gd
+##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_arc1_exterior.gd
 ##
 ## Exit codes:
 ##   0 = scene loaded, player walked to door, interaction key triggered
 ##       transition to 1.2_Corridor.tscn within timeout.
 ##   1 = any phase failed (load, traversal, interaction, transition assertion).
 
-const InputEventDriverScript := preload("res://test/bots/input_event_driver.gd")
-const BotScenarioRunnerScript := preload("res://test/bots/scenario_runner.gd")
+const InputEventDriverScript := preload("res://tools/bots/input_event_driver.gd")
+const BotScenarioRunnerScript := preload("res://tools/bots/scenario_runner.gd")
 
 const _SCENE_EXTERIOR := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const _SCENE_CORRIDOR := "res://scenes/Arc_1/1.2_Corridor.tscn"

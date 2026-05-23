@@ -2,14 +2,13 @@
 
 [ext_resource type="Script" uid="uid://t0t5ktmc40o6" path="res://combat/scripts/symbol_def.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://citv0nv4h73rr" path="res://combat/art/grid_symbols/red_heart.png" id="2_tex"]
-[ext_resource type="Texture2D" uid="uid://piqbelxc5sww" path="res://combat/art/placeholders/red_heart.png" id="3_tex"]
 
 [resource]
 script = ExtResource("1_script")
 id = &"sym_red_heart"
 display_name = "Red heart"
 texture = ExtResource("2_tex")
-power_intro_texture = ExtResource("3_tex")
+power_intro_texture = ExtResource("2_tex")
 payout_x3 = 0.25
 payout_x4 = 0.45
 payout_x5 = 2.0

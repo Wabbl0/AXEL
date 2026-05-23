@@ -2,7 +2,7 @@ shader_type canvas_item;
 // Option 3 — Terminal CRT (luminance-preserving scanlines + phosphor + static).
 // Best dark-scene readability; occasional tracking-line glitches.
 
-#include "res://test/visual_style/shaders/theme_post_fx.gdshaderinc"
+#include "res://tools/visual_style/shaders/theme_post_fx.gdshaderinc"
 
 uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
 uniform int theme_mode = 0;

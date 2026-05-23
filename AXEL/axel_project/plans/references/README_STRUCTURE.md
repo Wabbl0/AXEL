@@ -31,7 +31,7 @@ Use this structure for all new content:
   - `gameplay/` (player movement, interaction, exploration systems)
   - `ui/` (HUD/menu/panel controllers)
 - `combat/` (self-contained combat subsystem)
-  - `scripts/`, `scenes/`, `art/`, `test/`
+  - `scripts/`, `scenes/`, `art/`, `tools/` (QA bots, visual-style sweep, scene builder)
 - `tools/` (local utility scripts and build helpers)
 - `plans/` (design and AI governance docs)
 - `exports/` (reference exports and migration assets)

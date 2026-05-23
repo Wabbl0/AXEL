@@ -180,12 +180,12 @@ For all substantive AXEL tasks, planning outputs must be implementation-ready fo
   - **Persistence invariant (mandatory):** every run appends a payload to the run log and refreshes analytics via the generator script. See rubric §Persistent-analytics-payload for required keys.
   - **Static-only override:** `qa static` skips all headless commands.
   - **Output:** concise, **technical-first**; **Recommendations** required every run (minimum 3).
-- `bot playthrough` = headless overworld input bots. Architecture and authoring guide: `AXEL/axel_project/test/bots/README.md`. Included by default in the `combat + scene smoke + bot playthrough` confidence tier (see rubric §Playtest-mode).
+- `bot playthrough` = headless overworld input bots. Architecture and authoring guide: `AXEL/axel_project/tools/bots/README.md`. Included by default in the `combat + scene smoke + bot playthrough` confidence tier (see rubric §Playtest-mode).
 - If this agent is updated, refresh `AI_DOCS.md`, `.cursor/rules/axel-ai-docs-governance.mdc`, and `AI_CHANGELOG.md` together.
 
 ## 12) Simulated QA Reviewer
 
-- **Purpose:** Opt-in simulated QA with concise **technical-first** reports and **mandatory recommendations** (≥3). Default run is combined static + full playtest, including canon consistency audit (`res://test/qa/canon_consistency_audit.gd`) for combat test + movement scenes; see rubric §Playtest-mode for details.
+- **Purpose:** Opt-in simulated QA with concise **technical-first** reports and **mandatory recommendations** (≥3). Default run is combined static + full playtest, including canon consistency audit (`res://tools/qa/canon_consistency_audit.gd`) for combat test + movement scenes; see rubric §Playtest-mode for details.
 - **Invocation:** On `qa agent`, `qa`, `run qa`, `qa playtest`, or user agreement after a substantive change, read and apply `.cursor/skills/axel-simulated-qa/SKILL.md`.
 - **Artifacts:** listed under `qa agent` in §11 above.
 - **Governance:** Agents should **ask** after substantial AXEL edits whether to run QA; see `.cursor/rules/axel-ai-docs-governance.mdc`.

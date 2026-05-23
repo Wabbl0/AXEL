@@ -3,9 +3,9 @@ extends SceneTree
 ## Warn+recommend mode: always exits 0; findings are printed as CANON_AUDIT_JSON.
 ##
 ## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/qa/canon_consistency_audit.gd
+##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/canon_consistency_audit.gd
 
-const ValidatorsScript := preload("res://test/qa/qa_canon_validators.gd")
+const ValidatorsScript := preload("res://tools/qa/qa_canon_validators.gd")
 
 const _MOVEMENT_SCENES: Array[String] = [
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",

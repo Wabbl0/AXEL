@@ -3,7 +3,7 @@ extends SceneTree
 ## Run from repo root:
 ##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd
 
-const ValidatorsScript := preload("res://test/qa/qa_canon_validators.gd")
+const ValidatorsScript := preload("res://tools/qa/qa_canon_validators.gd")
 
 const SCENE_PATH := ValidatorsScript.COMBAT_TEST_SCENE
 

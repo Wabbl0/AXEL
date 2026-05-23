@@ -2,14 +2,13 @@
 
 [ext_resource type="Script" uid="uid://t0t5ktmc40o6" path="res://combat/scripts/symbol_def.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://ycgrs5mdo4b7" path="res://combat/art/grid_symbols/yellow_triangle.png" id="2_tex"]
-[ext_resource type="Texture2D" uid="uid://b5m0h7a3iuiqm" path="res://combat/art/placeholders/yellow_triangle.png" id="3_tex"]
 
 [resource]
 script = ExtResource("1_script")
 id = &"sym_yellow_triangle"
 display_name = "Yellow triangle"
 texture = ExtResource("2_tex")
-power_intro_texture = ExtResource("3_tex")
+power_intro_texture = ExtResource("2_tex")
 payout_x3 = 0.2
 payout_x4 = 0.35
 payout_x5 = 1.5

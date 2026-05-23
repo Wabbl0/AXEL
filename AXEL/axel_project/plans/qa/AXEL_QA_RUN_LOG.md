@@ -75,7 +75,7 @@ Copy the template block, fill values, paste **below** the last entry.
 - **Recommendations (logged):**
   - Add a contextual prompt near the door (`E / Space / Enter`) while inside interact range to improve affordance clarity.
   - Optionally migrate interaction keys into an InputMap action (for example `interact`) to keep future remapping centralized.
-  - Add a headless scene smoke pass (`res://test/scene_smoke_check.gd`) after future scene-transition edits for faster regression detection.
+  - Add a headless scene smoke pass (`res://tools/scene_smoke_check.gd`) after future scene-transition edits for faster regression detection.
 - **Bug / regression notes:** none observed in static review; user-confirmed manual interaction flow works after interact-area reposition
 - **Trend vs previous run:** up — progression gate in Arc 1.1 is now implemented and no blockers remain in reviewed paths
 - **Link / notes:** follow-up QA after door trigger placement adjustment
@@ -535,6 +535,92 @@ Copy the template block, fill values, paste **below** the last entry.
   "bugs_or_regressions": [
     "combat_test_scaffold_check duplicate CombatRoot grid (remediated in-session)",
     "AxelPostFxStack TypedArray invalid object on scene change (bot runs)"
+  ]
+}
+<!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-23 — Combat HUD polish QA
+
+- **Mode:** playtest
+- **Scope:** Post HUD polish (`combat_test.gd` / `combat_test.tscn`); full default playtest + item audits
+- **Trigger:** user request (`run qa`)
+- **Playtest commands:** princess_check=pass determinism=pass rtp_audit=captured scene_smoke=pass combat_test_scaffold=pass canon_consistency_audit=captured bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=captured item_synergy_smoke=pass
+- **Progress:** **0.60** (gate 0 cap 1.5; checklist 12%; coverage 1.0; defect penalty 1.0)
+- **Quality:** S=4 N=4 I=4 E=3 C=4 R=4 **Total=3.85** Band=B
+- **Findings count:** blocker=0 major=0 minor=3 nit=1
+- **By category:** STYLE=1 CLARITY=1 REGRESSION=1 TOOL=1
+- **Recommendations (logged):** Tune Corridor player profile; fix AxelPostFxStack detach; manual HUD resize pass; optional layout anchor smoke test
+- **Trend vs previous run:** up — scaffold gate clean; combat canon audit clear; Quality +0.75 vs prior dedup run
+- **Link / notes:** Combat HUD typography/alignment/stake/winnings polish; no combat canon audit findings on `combat_test.tscn`
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{
+  "timestamp": "2026-05-23T23:45:00+03:00",
+  "run_title": "Combat HUD polish QA",
+  "mode": "playtest",
+  "scope": "Combat HUD polish pass; full default playtest + item audits",
+  "trigger": "user request",
+  "scores": {"S": 4, "N": 4, "I": 4, "E": 3, "C": 4, "R": 4, "Total": 3.85, "Band": "B"},
+  "quality": {"S": 4, "N": 4, "I": 4, "E": 3, "C": 4, "R": 4, "Total": 3.85, "Band": "B"},
+  "progress": {
+    "score": 0.60,
+    "scoring_mode": "option2",
+    "progress_raw": 0.6,
+    "gate_cap": 1.5,
+    "gate_state": 0,
+    "checklist_completion": 0.12,
+    "checklist_completed_weight": 24,
+    "checklist_total_weight": 200,
+    "coverage_factor": 1.0,
+    "defect_penalty": 1.0,
+    "milestones_completed": []
+  },
+  "findings_count": {"blocker": 0, "major": 0, "minor": 3, "nit": 1},
+  "by_category": {"STYLE": 1, "LORE": 0, "IMMERSION": 0, "TENSION": 0, "CLARITY": 1, "COMBAT": 0, "ARCH": 0, "REGRESSION": 1, "BUG": 0, "TOOL": 1},
+  "playtest_commands": {
+    "princess_check": "pass",
+    "determinism": "pass",
+    "rtp_audit": "captured",
+    "scene_smoke": "pass",
+    "combat_test_scaffold": "pass",
+    "canon_consistency_audit": "captured",
+    "bot_arc1_exterior": "pass",
+    "bot_dialogue_loop": "pass",
+    "item_balance_audit": "captured",
+    "item_synergy_smoke": "pass"
+  },
+  "canon_audit": {
+    "schema_version": 1,
+    "findings_count": {"blocker": 0, "major": 0, "minor": 2, "nit": 0},
+    "findings": [
+      {"id": "movement.speed_profile", "severity": "minor", "category": "CLARITY", "evidence": "Player.speed=371.0 outside profile [130,175] corridor_large"},
+      {"id": "movement.scale_profile", "severity": "minor", "category": "STYLE", "evidence": "Player scale avg=2.06 outside profile [0.75,0.95] corridor_large"}
+    ]
+  },
+  "rtp_snapshot": {
+    "mean": 0.75019,
+    "ci95": [0.37743, 0.94218],
+    "target_band": [0.75, 0.8],
+    "target_position": "within",
+    "paid_hit_rate": 0.365,
+    "encounter_success_rate": 0.00833,
+    "encounter_wins": 1,
+    "encounter_count": 120
+  },
+  "item_balance": {
+    "schema_version": 1,
+    "items_tested": 2,
+    "items_overpowered": [],
+    "items_underpowered": [],
+    "items_neutral": ["C1_ash_reroll_token", "L3_void_satchel"],
+    "items_insufficient_data": []
+  },
+  "item_metrics": [
+    {"item_id": "C1_ash_reroll_token", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.41466, "delta_rtp": 0.00583, "delta_rtp_ci95": [-0.15697, 0.16862], "baseline_hit_rate": 0.365, "item_hit_rate": 0.322, "delta_hit_rate": -0.043, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20},
+    {"item_id": "L3_void_satchel", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.40883, "delta_rtp": 0.0, "delta_rtp_ci95": [-0.16347, 0.16347], "baseline_hit_rate": 0.365, "item_hit_rate": 0.365, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20}
+  ],
+  "bugs_or_regressions": [
+    "AxelPostFxStack TypedArray invalid object on scene change during bot playthroughs"
   ]
 }
 <!-- QA_ANALYTICS_JSON_END -->
