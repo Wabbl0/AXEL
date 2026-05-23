@@ -1950,12 +1950,279 @@ Copy and fill:
 - Behavior impact: No runtime change. GitHub now has independently discoverable refs for the combat recovery milestone; agents and humans can restore this state from any machine after `git fetch`.
 - Verification: `git ls-remote` confirms branch `backup/2026-05-22-combat-state` and tag `checkpoint-2026-05-22-combat-state` on `origin`; both point to commit `4110c74`.
 
-## 2026-05-22 - Preserve Combat Milestone on GitHub
+## 2026-05-23 - HD Winnings Popup + Border-Touch Counter
 
-- Request: Preserve recent combat changes across computers so they are logged on GitHub (not only OneDrive); working tree showed no pending commit because changes were already committed.
-- Implementation: Confirmed milestone at `4110c74` on `main` (includes `7144462`..`4110c74` stack). Created and pushed backup branch `backup/2026-05-22-combat-state` and annotated tag `checkpoint-2026-05-22-combat-state`. Documented multi-machine fetch/push/milestone workflow in `AI_DOCS.md` §14.
+- Request: Sharpen individual winnings popup font (keep VT323) and start total winnings readout count-up the moment the flying popup overlaps the readout border, stepping through every integer quickly with adaptive cap (~250ms).
+- Implementation: Added geometric first-overlap detection in `symbol_slot.gd` (`win_popup_border_touched`), bridged via `combat_root.gd` (`winnings_popup_border_touched`), and implemented queued integer-by-integer counter in `combat_test.gd` tied to `MultiplierReadout`. Tuned popup scale/font/outline and VT323 import (no AA, oversampling 2.0) for crisper motion.
 - Files changed:
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/ui/fonts/VT323-Regular.ttf.import`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Line-win popups read sharper during flight; total winnings pill stays at 0 until popup touches its border, then rapidly counts 0→N per line win (coalesced for bursts) and snaps to combat truth at spin end.
+- Verification: Linter clean on touched scripts; Godot CLI not in PATH for headless playtest — manual F6 `combat_test.tscn` check recommended (single line win, multi-line burst, large payout).
+- Notes: Option A (geometric border-touch event + queue counter) from approved plan.
+
+## 2026-05-23 - Fix Nested Combat Grid Overlay
+
+- Request: Fix grid-within-grid visual in combat test scene.
+- Implementation: Removed duplicate `*2` CombatRoot children and the full inline duplicate of `combat_root.tscn` subtree in `combat_test.tscn` (instance-only, matching scaffold baseline). Extended `combat_test_scaffold_check.gd` to require exactly one grid/readout node set under CombatRoot and fail on `*2` suffix duplicates.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/test/combat_test_scaffold_check.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Combat test shows a single red grid frame and one 5×5 symbol grid; layout still driven by `fit_to_panel()` at runtime.
+- Verification: `combat_test_scaffold_check.gd` (OK).
+
+## 2026-05-23 - QA Agent Canon Consistency Extension (Default)
+
+- Request: Extend default `qa agent` to detect visual/gameplay inconsistencies in combat test and player movement scenes (e.g. duplicate combat grid), and recommend improvements without blocking on audit findings alone.
+- Implementation: Added `test/qa/qa_canon_validators.gd` (shared assertions) and `test/qa/canon_consistency_audit.gd` (`CANON_AUDIT_JSON`, always exit 0). Refactored `combat_test_scaffold_check.gd` and `scene_smoke_check.gd` to use shared validators. Wired audit into default QA command set (skill + rubric + `AI_DOCS.md`). Bots emit `BOT_METRICS_JSON` on success for QA evidence.
+- Files changed:
+  - `AXEL/axel_project/test/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/test/qa/canon_consistency_audit.gd`
+  - `AXEL/axel_project/test/qa/README.md`
+  - `AXEL/axel_project/plans/qa/AXEL_CANON_CONSISTENCY_AUDIT.md`
+  - `AXEL/axel_project/combat/test/combat_test_scaffold_check.gd`
+  - `AXEL/axel_project/test/scene_smoke_check.gd`
+  - `AXEL/axel_project/test/bots/playthrough_arc1_exterior.gd`
+  - `AXEL/axel_project/test/bots/playthrough_dialogue_loop.gd`
+  - `AXEL/axel_project/test/bots/README.md`
+  - `AXEL/axel_project/tools/qa/canon_validators_shared.py`
+  - `AXEL/axel_project/tools/qa/check_combat_test_scaffold.py`
+  - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
   - `AXEL/axel_project/plans/core/AI_DOCS.md`
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
-- Behavior impact: No runtime change. GitHub now has independently discoverable refs for the combat recovery milestone; agents and humans can restore this state from any machine after `git fetch`.
-- Verification: `git ls-remote` confirms branch `backup/2026-05-22-combat-state` and tag `checkpoint-2026-05-22-combat-state` on `origin`; both point to commit `4110c74`.
+- Behavior impact: Default `qa` runs an eighth headless command that reports combat/movement canon drift as findings + recommendations; scaffold check and pre-commit Python guard remain hard gates for duplicate grids.
+- Verification: `canon_consistency_audit.gd` exit 0 with 9 findings (7× duplicate CombatRoot grid, corridor speed/scale drift); `combat_test_scaffold_check.gd` exit 1; `check_combat_test_scaffold.py` exit 1 on instance+override duplicate grid in `.tscn`.
+- Notes: Warn+recommend for audit; user-confirmed scope combat + movement every run.
+
+## 2026-05-23 - QA Progress vs Quality scoring overhaul
+
+- Request: Redesign QA analytics so scores reflect game completion (not inflated quality/bot pass rates); dual Progress + Quality charting with hard milestone gates.
+- Implementation: Added `QA_PROGRESS_CHECKLIST.md` (weighted milestones, gate caps 1.5–5.0, Option 2 formula). Extended rubric, run-log JSON schema, and `qa agent` skill to require separate **Progress** and **Quality** scores. Rewrote `update_qa_analytics.py` to plot Progress + Quality as primary SVG lines, axis scores and Bots as secondary; backward-compatible with legacy payloads (Progress gaps until next QA run logs `progress` object).
+- Files changed:
+  - `AXEL/axel_project/plans/qa/QA_PROGRESS_CHECKLIST.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.svg`
+  - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
+  - `.cursor/skills/axel-simulated-qa/SKILL.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Future QA runs log completion progress capped by gates (~2.x expected today) independently of quality (~3.5–3.9). Analytics chart no longer treats bot pass=5 as “game done.”
+- Verification: `python AXEL/axel_project/tools/qa/update_qa_analytics.py` — 10 payloads parsed; analytics MD/SVG regenerated with interpretation section.
+- Notes: Historical run log entries lack `progress`; first post-change `run qa` should populate Progress line on chart.
+
+## 2026-05-23 - QA progress checklist expansion (content milestones)
+
+- Request: Add milestones for map layout, assets, combat anim/VFX, items, shop, locker hub, audio, and menu screens to the progress checklist.
+- Implementation: Expanded `QA_PROGRESS_CHECKLIST.md` to 149 total weight — new Gate 2 items (interact list, locker shell, scene visual style); Gate 3 items (multi-room maps, drawn assets, combat animations/VFX, item bar, full item integration/placements, shop, complete locker hub); Gate 4 items (game-wide SFX, title/credits/options/about). Added scope notes for combat animation and VFX implementation. Updated rubric total-weight reference and run-log template default `checklist_total_weight`.
+- Files changed:
+  - `AXEL/axel_project/plans/qa/QA_PROGRESS_CHECKLIST.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Progress scoring reflects full production scope; expected Progress band slightly lower until new milestones are completed.
+- Verification: Checklist gate subtotals sum to 149 (15+23+35+62+14).
+- Notes: None.
+
+## 2026-05-23 - QA checklist: plan-doc traceability + Viral Forge scope
+
+- Request: Confirm milestone list covers prior plan docs; add relevant Viral Forge ideas only.
+- Implementation: Added §Plan doc coverage and §Viral Forge relevance tables to `QA_PROGRESS_CHECKLIST.md`. New milestones for blueprint globals (HUD, GameState/SceneRouter, StoryBox/PuzzleInput, scene FX), `AXEL_notes` roguelite loop (six areas, combat triggers, memories, locker/Hole, run reset, 50/50), VF-adapted items (synergy framework, peak cascade moment, tutorial, seed UI, moral framing). Excluded VF spin-offs (ZERO web app, Resonance cosmic/Steam, Tilt heist). Total weight 149 → **200**.
+- Files changed:
+  - `AXEL/axel_project/plans/qa/QA_PROGRESS_CHECKLIST.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Progress scoring reflects full design surface; lower % completion for same shipped work until new milestones are done.
+- Verification: Gate subtotals 15+30+40+95+20 = 200.
+- Notes: Re-run `update_qa_analytics.py` optional until next QA payload with `checklist_total_weight: 200`.
+
+## 2026-05-23 - QA analytics expandable project-points chart
+
+- Request: Analytics graph should not be fixed 0–5; Y-axis should grow as checklist milestones add weighted scope.
+- Implementation: `update_qa_analytics.py` now plots **ProgressPoints** (`checklist_completed_weight`) on an auto-scaling left axis, **ScopeCeiling** (`checklist_total_weight`, dashed), and **Quality** on a fixed 0–5 right axis. Legacy `progress.score` approximates points when completed_weight is missing. Rubric + checklist docs updated.
+- Files changed:
+  - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.svg`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - `AXEL/axel_project/plans/qa/QA_PROGRESS_CHECKLIST.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Chart ceiling expands when checklist total weight increases; completed work trends upward in raw points instead of capping at 5.
+- Verification: `python AXEL/axel_project/tools/qa/update_qa_analytics.py` exit 0.
+- Notes: Historical runs without `progress` still show scope ceiling (200) and Quality; points line appears after first payload with `checklist_completed_weight`.
+
+## 2026-05-23 - Remove Bots line from QA analytics
+
+- Request: Remove Bots trend line (always showed 5, not useful).
+- Implementation: Removed dead bot-aggregate chart code and Bots snapshot line from `update_qa_analytics.py`; regenerated analytics artifacts.
+- Files changed: `tools/qa/update_qa_analytics.py`, `plans/qa/AXEL_QA_ANALYTICS.md`, `plans/qa/AXEL_QA_ANALYTICS.svg`, `plans/core/AI_CHANGELOG.md`
+- Behavior impact: Chart and snapshot no longer include Bots; bot playtests still run and log under `playtest_commands` in QA reports.
+- Verification: Regenerated analytics; no `Bots` in `AXEL_QA_ANALYTICS.md`.
+
+## 2026-05-23 - QA analytics chart layout and readability
+
+- Request: Scale up chart (less empty margin), shorten x-axis dates (R-index + table), multi-line tick labels, center Scope ceiling and Quality legend, smooth lines.
+- Implementation: `update_qa_analytics.py` uses larger plot area (1200×680), short `R#` + `MM-DD` x-ticks, run index table in markdown, centered primary/secondary legends with two-line labels for scope/quality, quadratic-smoothed SVG paths.
+- Files changed:
+  - `AXEL/axel_project/tools/qa/update_qa_analytics.py`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.md`
+  - `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.svg`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: SVG is denser and readable; full dates/scopes live in the run index table below the chart section.
+- Verification: `python AXEL/axel_project/tools/qa/update_qa_analytics.py` exit 0; 11 runs parsed.
+
+## 2026-05-23 - Scene 1.1 visual style comparison sweep
+
+- Request: Plan and run a deterministic Scene 1.1 screenshot pass for baseline plus all options in `VISUAL_STYLE_OPTIONS.md` (one image per variant for user selection).
+- Implementation: Added test-only variant matrix, staged approximation shaders (A/B/C1–C4/D/E), overlay applier, and `capture_scene_1_1_style_sweep.gd` with scripted 120-frame walk + PNG export. Minimal `AXEL_SKIP_INTRO` hook on `1.1_SchoolExterior.gd`. Ran full 9-variant sweep; copies saved under `style_sweep_1_1/`.
+- Files changed:
+  - `AXEL/axel_project/test/visual_style/*`
+  - `AXEL/axel_project/tools/visual_style/run_scene_1_1_style_sweep.ps1`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/style_sweep_1_1/*.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Production visuals unchanged unless a variant is chosen for integration; capture tooling is opt-in via `-s res://test/visual_style/capture_scene_1_1_style_sweep.gd`.
+- Verification: Godot sweep exit 0; 9 PNGs at 1152×648 after 120-frame walk; shader compile clean on second pass.
+- Notes: Staged shaders approximate external options for comparison; integrate chosen option from upstream repos when moving beyond look-dev.
+
+## 2026-05-23 - Global noir line-preservation parameter tune
+
+- Request: Fix disappearing line art from baseline noir quantization while keeping Option A CRT direction; global parameter-only scope.
+- Implementation: Retuned global `noir_palette_filter.gdshader` defaults (`line_contrast` 1.25, thresholds `t0/t1/t2` 0.07/0.31/0.78, warm highlight `white_color` instead of black crush). Disabled Scene 1.1 local noir overrides (`_USE_LOCAL_NOIR_TUNING := false`) and removed contradictory per-capture tuning in `style_overlay_applier.gd`.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/noir_palette_filter.gdshader`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/test/visual_style/style_overlay_applier.gd`
+  - `AXEL/axel_project/style_sweep_1_1_linefix/*.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: All scenes using `NoirPaletteOverlay` inherit line-safer quantization; thin strokes retain more continuity under noir+CRT stack.
+- Verification: Captures `style_sweep_1_1_linefix/01_baseline.png` + `02_A_crt_plugin.png`; `scene_smoke_check.gd` OK (6 scenes).
+- Notes: Go/no-go — adopt globally; optional next step is minor CRT intensity reduction if scanlines still compete with 1px art lines.
+
+## 2026-05-23 - Invert noir palette (red strokes on black ground) + adopt CRT on 1.1
+
+- Request: Keep Option A CRT look but swap colors — red areas to black, black outlines to red.
+- Implementation: Inverted luminance band mapping in `noir_palette_filter.gdshader` (dark -> red, mid/high -> black). Promoted CRT pass to `scenes/fx/crt_plugin_overlay.gdshader` + `CrtPluginOverlay.tscn`; enabled noir/scanline/CRT on `1.1_SchoolExterior` for runtime parity with chosen style.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/noir_palette_filter.gdshader`
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/fx/CrtPluginOverlay.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/test/visual_style/*`
+  - `AXEL/axel_project/style_sweep_1_1_linefix/02_A_crt_plugin.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Global noir now renders black ground + red line art; Scene 1.1 plays with full noir+scanline+CRT stack.
+- Verification: Re-captured `02_A_crt_plugin.png`; `scene_smoke_check.gd` OK (6 scenes).
+
+## 2026-05-23 - Style-sweep outline-aware Option A CRT
+
+- Request: CRT plugin should detect art outlines and apply full CRT treatment to them (like player), style-sweep pipeline only.
+- Implementation: Extended `test/visual_style/shaders/option_a_crt_plugin.gdshader` with 8-neighbor luminance edge mask, red/bright line bias, and boosted CRT pass on outlines. Pointed `variant_matrix` Option A back to test shader path.
+- Files changed:
+  - `AXEL/axel_project/test/visual_style/shaders/option_a_crt_plugin.gdshader`
+  - `AXEL/axel_project/test/visual_style/variant_matrix.gd`
+  - `AXEL/axel_project/test/visual_style/README.md`
+  - `AXEL/axel_project/style_sweep_1_1_linefix/02_A_crt_plugin.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Style-sweep Option A only; production `crt_plugin_overlay.gdshader` unchanged.
+- Verification: `A_crt_plugin` capture exit 0; outlines show stronger chroma/scanline treatment in updated PNG.
+
+## 2026-05-23 - Revert outline-aware CRT (style sweep)
+
+- Request: Revert outline-aware Option A CRT; restore previous look.
+- Implementation: Restored simple `option_a_crt_plugin.gdshader` (no outline mask). Pointed sweep Option A back to `crt_plugin_overlay.gdshader`. Removed outline README section. Re-captured `style_sweep_1_1_linefix/02_A_crt_plugin.png`.
+- Files changed:
+  - `AXEL/axel_project/test/visual_style/shaders/option_a_crt_plugin.gdshader`
+  - `AXEL/axel_project/test/visual_style/variant_matrix.gd`
+  - `AXEL/axel_project/test/visual_style/README.md`
+  - `AXEL/axel_project/style_sweep_1_1_linefix/02_A_crt_plugin.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Style-sweep Option A uses standard CRT pass again (pre-outline experiment).
+
+## 2026-05-23 - Scene 1.1 edge-aware RGB-shadow CRT outlines
+
+- Request: Replicate player-style RGB chroma shadowing on environment + character outlines in Scene 1.1 via global post-process; keep player `ShadowOutline` silhouette unchanged.
+- Implementation: Extended production `crt_plugin_overlay.gdshader` with luminance edge mask (4- + diagonal-neighbor gradients), `smoothstep` thresholding, and edge-boosted horizontal R/G/B channel offsets (`outline_edge_threshold`, `outline_edge_strength`, `outline_rgb_offset`, `outline_softness`). Scene 1.1 applies conservative tuning in `_apply_local_crt_outline_tuning()` (`_USE_LOCAL_CRT_OUTLINE_TUNING`); layer stack unchanged (CRT stays at 108, dialogue at 110). No edits to `Player.gd` or `ShadowOutline`.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Scene 1.1 env red ink lines and white player/character edges get stronger RGB fringe at high-contrast boundaries; base CRT chroma remains elsewhere. Other scenes using `CrtPluginOverlay` get shader defaults only until they opt into local tuning.
+- Verification: `scene_smoke_check.gd` OK (6 scenes); style-sweep `A_crt_plugin` capture exit 0.
+- Notes: Differs from reverted style-sweep outline experiment (edge-boosted chroma only, not full CRT stack duplication on outlines).
+
+## 2026-05-23 - Fix noir red-line RGB fringe (Scene 1.1 CRT)
+
+- Request: CRT RGB-shadow not visible on environment red outlines (only player showed fringe).
+- Root cause: Luminance-only edge chroma cannot fringe pure-red noir strokes — channel offsets sample R-only pixels so G/B stay zero.
+- Implementation: Extended `crt_plugin_overlay.gdshader` with `red_ink_amount()` detection, RGB+ink edge metric, and `apply_red_ink_fringe()` that bleeds red ink into G/B channel halos. Added `outline_ink_fringe` uniform; lowered edge threshold and raised offsets in Scene 1.1 local tuning.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Red noir line art should show RGB separation similar in spirit to player CRT fringe; white sprite edges still use luminance/RGB edge boost.
+- Verification: `scene_smoke_check.gd` OK (6 scenes).
+
+## 2026-05-23 - Revert Scene 1.1 outline CRT experiment
+
+- Request: Return to previous CRT version and refresh style-sweep screenshot.
+- Implementation: Restored simple `crt_plugin_overlay.gdshader` (global chroma only, no edge/ink outline uniforms). Removed Scene 1.1 `_apply_local_crt_outline_tuning()`. Reverted `style_overlay_applier.gd` to standard stack overlay path. Re-captured `02_A_crt_plugin.png`.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/test/visual_style/style_overlay_applier.gd`
+  - `AXEL/axel_project/style_sweep_1_1_linefix/02_A_crt_plugin.png`
+  - `AXEL/axel_project/style_sweep_1_1/02_A_crt_plugin.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Scene 1.1 CRT is back to standard curvature/mask/vignette/chroma pass; no outline-specific RGB fringe tuning.
+- Verification: Style-sweep `A_crt_plugin` capture exit 0.
+
+## 2026-05-23 - Reduce CRT on overworld player by 33%
+
+- Request: Decrease CRT effect on the player model by 33%.
+- Implementation: Added `player_crt_reduction` (default `0.33`) and `player_sprite_mask()` in `crt_plugin_overlay.gdshader` to detect white overworld sprite + dark silhouette shadow; CRT mix scales to 67% on those pixels (chroma, scanlines, mask, vignette, curvature).
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Environment CRT unchanged; player body and shadow get ~33% less post-process CRT. Tweak via `player_crt_reduction` on `CrtPluginOverlay/FilterRect` material.
+- Verification: `scene_smoke_check.gd` OK (6 scenes).
+
+## 2026-05-23 - Global post-FX autoload (non-combat only)
+
+- Request: Global rule — noir + scanline + CRT applied everywhere except combat.
+- Implementation: Added autoload `AxelPostFxStack` (`scripts/autoload/axel_post_fx_stack.gd`) hooked to `SceneTree.scene_changed`; attaches the three overlay packed scenes to non-combat scenes, skips `res://combat/*`, style-sweep (`AXEL_DISABLE_POST_FX=1`), and scenes with `StyleSweepOverlays`. Removed per-scene overlay instances from `1.1_SchoolExterior.tscn` and `1.2_Corridor.tscn`; simplified `1.1_SchoolExterior.gd`. Corridor noir tuning resolves filter via autoload. Documented in `AI_DOCS.md` §6 and governance rule §12.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/test/visual_style/capture_scene_1_1_style_sweep.gd`
+  - `AXEL/axel_project/test/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Main menu, Arc 1+, and future overworld scenes get the full stack automatically; combat scenes unchanged. Corridor now includes CRT (was scanline+noir only).
+- Verification: `scene_smoke_check.gd` OK (6 scenes).
+
+## 2026-05-23 - Remove style sweep output folders
+
+- Request: Remove `style_sweep_1_1` and `style_sweep_1_1_linefix` folders.
+- Implementation: Deleted both directories under `AXEL/axel_project/`. Style-sweep runner no longer copies PNGs back into the repo (captures remain under Godot `user://style_sweep_1_1` only when the sweep script is run).
+- Files changed:
+  - `AXEL/axel_project/style_sweep_1_1/` (removed)
+  - `AXEL/axel_project/style_sweep_1_1_linefix/` (removed)
+  - `AXEL/axel_project/tools/visual_style/run_scene_1_1_style_sweep.ps1`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No committed comparison PNGs in-repo; opt-in sweep tooling unchanged.

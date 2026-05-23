@@ -3,29 +3,9 @@ extends SceneTree
 ## Run from repo root:
 ##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd
 
-const SCENE_PATH := "res://combat/combat_test.tscn"
+const ValidatorsScript := preload("res://test/qa/qa_canon_validators.gd")
 
-const REQUIRED_UNIQUE: Array[String] = [
-	"CombatRoot",
-	"MetaBox",
-	"SeedSpinBox",
-	"SpinButton",
-	"BankrollLabel",
-	"GoalBox",
-	"GoalLabel",
-	"BetMinusButton",
-	"BetLabel",
-	"BetPlusButton",
-	"MultiplierReadout",
-	"EncounterWinOverlay",
-	"EncounterWinLabel",
-	"SuperFSChoiceOverlay",
-	"ChooseLoveButton",
-	"ChooseStarButton",
-	"ChooseStormButton",
-]
-
-const REQUIRED_PATHS: Array[String] = []
+const SCENE_PATH := ValidatorsScript.COMBAT_TEST_SCENE
 
 
 func _init() -> void:
@@ -57,18 +37,14 @@ func _main() -> void:
 		await root_ui.ready
 	await process_frame
 
-	var missing: PackedStringArray = PackedStringArray()
-	for uname in REQUIRED_UNIQUE:
-		if root_ui.find_child(uname, true, false) == null:
-			missing.append(uname)
-
-	for path in REQUIRED_PATHS:
-		if root_ui.get_node_or_null(path) == null:
-			missing.append(path)
-
+	var missing := ValidatorsScript.missing_combat_test_unique(root_ui)
 	var combat := root_ui.find_child("CombatRoot", true, false)
-	if combat != null and combat.get_node_or_null("GridUI") == null:
-		missing.append("CombatRoot/GridUI")
+	var grid_violations := ValidatorsScript.check_combat_root_grid_uniqueness(combat)
+
+	if not grid_violations.is_empty():
+		push_error("Scaffold FAIL (%s): %s" % [SCENE_PATH, ", ".join(grid_violations)])
+		quit(1)
+		return
 
 	if not missing.is_empty():
 		push_error("Scaffold FAIL (%s): missing %s" % [SCENE_PATH, ", ".join(missing)])

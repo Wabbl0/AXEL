@@ -2,52 +2,83 @@
 
 Auto-generated from `AXEL_QA_RUN_LOG.md` by `tools/qa/update_qa_analytics.py`.
 
-- Last generated (UTC): `2026-05-19T17:29:23.601282+00:00`
-- Runs parsed: `10`
+- Last generated (UTC): `2026-05-23T14:30:49.945243+00:00`
+- Runs parsed: `11`
+
+## Score interpretation
+
+- **Progress (points)** — sum of completed milestone weights (left axis, 0–250+).
+- **Scope ceiling** — `checklist_total_weight` for that QA run: the maximum points possible if every milestone in `QA_PROGRESS_CHECKLIST.md` were done. The dashed blue line steps up when you add milestones (e.g. 149 → 200). It is **not** a score — it is the size of the project definition.
+- **Quality / Total** — weighted rubric score 0–5 (bold red, right axis).
+- **S, N, I, E, C, R** — rubric axis breakdown 0–5 (dashed, right axis).
+- **Neither** points nor Quality alone means ship-ready.
 
 ## Latest snapshot
 
 - Mode: `playtest`
-- Scope: `symbol_slot.gd retimed win popup; combat_root/combat_test lob target wiring`
+- Scope: `Default playtest + canon audit`
 - Trigger: `user request`
-- Findings: `blocker=0 major=0 minor=1 nit=2`
-- Categories: `STYLE=0 LORE=0 IMMERSION=1 TENSION=0 CLARITY=1 COMBAT=0 ARCH=0 REGRESSION=0 BUG=0 TOOL=1`
-- Bugs/problems: `none`
-- Bots: `bot_arc1_exterior=pass bot_dialogue_loop=pass`
-- Item balance audit: `captured`
+- **Progress:** `48/200 pts (12%) gate=0 cap=1.5 score=1.2`
+- **Quality:** `Total=3.10` Band=`C`
+- Findings: `blocker=1 major=7 minor=2 nit=0`
+- Categories: `STYLE=1 LORE=0 IMMERSION=0 TENSION=0 CLARITY=1 COMBAT=7 ARCH=0 REGRESSION=1 BUG=1 TOOL=0`
+- Bugs/problems: `combat_test_scaffold_check duplicate grid`
+- Item balance audit: `skip`
+- Canon consistency audit: `pass`
 
+## Canon Consistency Audit (latest)
+
+- Findings: blocker=`0` major=`7` minor=`2` nit=`0`
+
+### Top findings
+
+- `major` | `COMBAT` | `combat.grid_duplicate` — CombatRoot has 2x GridUI
 ## Latest deltas vs previous run
 
-- `Total`: `3.57` (`-0.10` vs previous)
-- `S`: `4.00` (`+0.00` vs previous)
+- `ProgressPoints`: `48.00` (n/a previous)
+- `ScopeCeiling`: `200.00` (`+0.00` vs previous)
+- `Quality`: `3.10` (`-0.47` vs previous)
+- `Total`: `3.10` (`-0.47` vs previous)
+- `S`: `3.00` (`-1.00` vs previous)
 - `N`: `4.00` (`+0.00` vs previous)
 - `I`: `3.00` (`+0.00` vs previous)
-- `E`: `4.00` (`+1.00` vs previous)
-- `C`: `3.00` (`-1.00` vs previous)
-- `R`: `3.00` (`-1.00` vs previous)
-- `Bots`: `5.00` (`+0.00` vs previous)
+- `E`: `3.00` (`-1.00` vs previous)
+- `C`: `3.00` (`+0.00` vs previous)
+- `R`: `2.00` (`-1.00` vs previous)
 
-## Trend chart (Total + S/N/I/E/C/R + Bots)
+## Trend chart (project points + quality)
 
-![AXEL QA Score Trends](AXEL_QA_ANALYTICS.svg)
+## Run index (chart x-axis)
+
+| Run | Date | Scope |
+|-----|------|-------|
+| `R1` | `2026-05-08` | validation run for analytics parser and trend ge… |
+| `R2` | `2026-05-08` | validation run with playtest command outcomes an… |
+| `R3` | `2026-05-08` | scenes/Arc_1/1.1_SchoolExterior.tscn placeholder… |
+| `R4` | `2026-05-08` | scenes/Arc_1/1.1_SchoolExterior.gd and scenes/Ar… |
+| `R5` | `2026-05-11` | combat baseline full playtest + item balance aud… |
+| `R6` | `2026-05-11` | Item system infra (ItemDef, ItemInventory, Comba… |
+| `R7` | `2026-05-11` | Full combined run after workflow hygiene changes |
+| `R8` | `2026-05-17` | Post-fix QA for combat seed queue, HUD spin cont… |
+| `R9` | `2026-05-19` | Post-rescale combat economy; win/loss and wager/… |
+| `R10` | `2026-05-19` | symbol_slot.gd retimed win popup; combat_root/co… |
+| `R11` | `2026-05-23` | Default playtest + canon audit |
+![AXEL QA Analytics](AXEL_QA_ANALYTICS.svg)
+
+Chart x-axis: `R1`, `R2`, … with `MM-DD` below; full dates and scopes in the run index table.
 
 Fallback Mermaid view:
 
 ```mermaid
 xychart-beta
-  title "AXEL QA Score Trends"
-  x-axis ["2026-05-08#1", "2026-05-08#2", "2026-05-08#3", "2026-05-08#4", "2026-05-11#5", "2026-05-11#6", "2026-05-11#7", "2026-05-17#8", "2026-05-19#9", "2026-05-19#10"]
-  y-axis "Score" 0 --> 5
-  line [2.7, 3.65, 1.95, 3.85, 3.68, 3.85, 3.85, 3.85, 3.67, 3.57]
-  line [3, 4, 2, 4, 4, 4, 4, 4, 4, 4]
-  line [3, 4, 3, 4, 4, 4, 4, 4, 4, 4]
-  line [2, 3, 2, 4, 4, 4, 4, 4, 3, 3]
-  line [2, 3, 2, 3, 3, 3, 3, 3, 3, 4]
-  line [3, 4, 1, 4, 4, 4, 4, 4, 4, 3]
-  line [3, 4, 1, 4, 3, 4, 4, 4, 4, 3]
+  title "AXEL QA — Project points (auto scale)"
+  x-axis ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11"]
+  y-axis "Points" 0 --> 250
+  line [null, null, null, null, null, null, null, null, null, null, 48]
+  line [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
 ```
 
-- Series order: Total, S, N, I, E, C, R. The dashed `Bots` aggregate (pass=5, fail=0; gaps for skip/missing) appears in the SVG only — Mermaid `xychart-beta` cannot render gaps cleanly so it is omitted from the fallback view.
+- SVG: left = project points (0–250+); right = Quality + S/N/I/E/C/R (0–5). Mermaid fallback shows points lines only.
 
 ## Item Balance Summary
 

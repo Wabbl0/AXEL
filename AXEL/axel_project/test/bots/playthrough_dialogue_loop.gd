@@ -140,7 +140,22 @@ func _run_playthrough() -> bool:
 	print("Bot dialogue/interact commands executed: %d, physics_frames=%d" % [
 		runner.commands_executed, driver.physics_frame()
 	])
+	_print_bot_metrics(driver, runner, true)
 	return true
+
+
+func _print_bot_metrics(driver, runner: BotScenarioRunner, transition_ok: bool) -> void:
+	var payload := {
+		"bot": "dialogue_loop",
+		"scene_start": _SCENE_EXTERIOR,
+		"scene_end": _SCENE_CORRIDOR,
+		"physics_frames": driver.physics_frame(),
+		"commands_executed": runner.commands_executed,
+		"walk_frames_right": _WALK_FRAMES_RIGHT,
+		"interact_key": "SPACE",
+		"transition_ok": transition_ok,
+	}
+	print("BOT_METRICS_JSON %s" % JSON.stringify(payload))
 
 
 func _assert_dialogue_visible() -> bool:

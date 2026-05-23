@@ -50,6 +50,7 @@ tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playt
 Both bots:
 
 - Exit `0` on success, `1` on first failed assertion.
+- On success, print `BOT_METRICS_JSON` (physics frames, interact key, transition flag) for QA analytics ingestion.
 - Print verbose step-by-step trace (`[bot.scenario] step=N op=...`) plus
   per-event input log (`[bot.input] frame=N PRESS keycode=...`) so failures
   pinpoint the exact frame and command index.

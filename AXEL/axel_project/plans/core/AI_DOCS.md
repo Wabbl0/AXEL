@@ -75,6 +75,7 @@ Primary style direction:
 
 - Palette baseline: black + blood red (`#ff0000`) + dark blood (`#4a0000`).
 - CRT/scanline/glitch/shake aesthetics are core identity, not optional decoration.
+- **Global post-FX stack (non-combat):** Autoload `AxelPostFxStack` (`res://scripts/autoload/axel_post_fx_stack.gd`) applies `NoirPaletteOverlay` + `ScanlineOverlay` + `CrtPluginOverlay` on every scene change. **Excluded:** any scene whose `scene_file_path` begins with `res://combat/`. Do not embed those three overlays in narrative/overworld `.tscn` files — add per-scene tuning via `AxelPostFxStack.get_noir_filter_rect()` or shader defaults. Style-sweep / isolated tests: set env `AXEL_DISABLE_POST_FX=1` to avoid double stacks.
 - Typography center: VT323 (Space Mono may be used for supporting text where explicitly needed).
 - UI and narrative mood: dread, guilt, memory corruption, morally uneasy wins.
 - Big wins should read as unsettling/intrusive, not purely celebratory.
@@ -166,10 +167,12 @@ For all substantive AXEL tasks, planning outputs must be implementation-ready fo
 - `qa agent` (short forms: `qa`, `run qa`) = simulated QA review workflow.
   - Skill: `.cursor/skills/axel-simulated-qa/SKILL.md`
   - Rubric (canonical command set, confidence tiers, scoring, analytics payload): `AXEL/axel_project/plans/qa/AXEL_QA_REVIEW_RUBRIC.md`
+  - Progress checklist (completion milestones + hard gates): `AXEL/axel_project/plans/qa/QA_PROGRESS_CHECKLIST.md`
+  - Canon consistency audit contract: `AXEL/axel_project/plans/qa/AXEL_CANON_CONSISTENCY_AUDIT.md`
   - Run log: `AXEL/axel_project/plans/qa/AXEL_QA_RUN_LOG.md`
-  - Analytics: `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.md`
+  - Analytics: `AXEL/axel_project/plans/qa/AXEL_QA_ANALYTICS.md` (+ `AXEL_QA_ANALYTICS.svg` — **Progress** vs **Quality** dual primary)
   - Generator: `AXEL/axel_project/tools/qa/update_qa_analytics.py`
-  - **Default execution:** combined static + full playtest. See rubric §Playtest-mode for exact commands, gate/metrics semantics, item balance audit, and skip policy.
+  - **Default execution:** combined static + full playtest (includes `canon_consistency_audit.gd` for combat/movement visual+gameplay drift). See rubric §Playtest-mode for exact commands, gate/metrics semantics, canon audit (warn+recommend), item balance audit, and skip policy.
   - **Persistence invariant (mandatory):** every run appends a payload to the run log and refreshes analytics via the generator script. See rubric §Persistent-analytics-payload for required keys.
   - **Static-only override:** `qa static` skips all headless commands.
   - **Output:** concise, **technical-first**; **Recommendations** required every run (minimum 3).
@@ -178,7 +181,7 @@ For all substantive AXEL tasks, planning outputs must be implementation-ready fo
 
 ## 12) Simulated QA Reviewer
 
-- **Purpose:** Opt-in simulated QA with concise **technical-first** reports and **mandatory recommendations** (≥3). Default run is combined static + full playtest; see rubric §Playtest-mode for details.
+- **Purpose:** Opt-in simulated QA with concise **technical-first** reports and **mandatory recommendations** (≥3). Default run is combined static + full playtest, including canon consistency audit (`res://test/qa/canon_consistency_audit.gd`) for combat test + movement scenes; see rubric §Playtest-mode for details.
 - **Invocation:** On `qa agent`, `qa`, `run qa`, `qa playtest`, or user agreement after a substantive change, read and apply `.cursor/skills/axel-simulated-qa/SKILL.md`.
 - **Artifacts:** listed under `qa agent` in §11 above.
 - **Governance:** Agents should **ask** after substantial AXEL edits whether to run QA; see `.cursor/rules/axel-ai-docs-governance.mdc`.

@@ -3,7 +3,6 @@ extends Node2D
 @onready var background: ColorRect = $Background
 @onready var ceiling_light: PointLight2D = $CeilingLight
 @onready var _top_dialogue: Node = $TopDialogueOverlay
-@onready var _noir_filter_rect: ColorRect = $NoirPaletteOverlay/FilterRect
 @onready var _highlighted_locker_bypass: Sprite2D = $LockerBypassLayer/HighlightedLockerBypass
 @onready var _highlighted_locker_aura: Sprite2D = $LockerBypassLayer/HighlightedLockerAura
 
@@ -44,7 +43,13 @@ func _update_ceiling_flicker() -> void:
 
 
 func _apply_local_noir_tuning() -> void:
-	var shader_material := _noir_filter_rect.material as ShaderMaterial
+	var filter_rect: ColorRect = null
+	var stack := get_node_or_null("/root/AxelPostFxStack")
+	if stack != null and stack.has_method("get_noir_filter_rect"):
+		filter_rect = stack.get_noir_filter_rect()
+	if filter_rect == null:
+		filter_rect = get_node_or_null("NoirPaletteOverlay/FilterRect") as ColorRect
+	var shader_material := filter_rect.material as ShaderMaterial if filter_rect != null else null
 	if shader_material == null:
 		return
 

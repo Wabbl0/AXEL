@@ -1,13 +1,15 @@
 extends Control
 
+signal win_popup_border_touched(payout_cents: int)
+
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
 const WIN_POPUP_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 
 ## Winnings popup — distinct phases: appear small -> scale up -> glow -> lob -> fade.
-const WIN_POPUP_FONT_SIZE := 16
-const WIN_POPUP_SCALE_START := 0.5
-const WIN_POPUP_SCALE_PEAK := 2.0
-const WIN_POPUP_SCALE_LOB_END := 0.85
+const WIN_POPUP_FONT_SIZE := 20
+const WIN_POPUP_SCALE_START := 0.72
+const WIN_POPUP_SCALE_PEAK := 1.45
+const WIN_POPUP_SCALE_LOB_END := 0.92
 const WIN_POPUP_ARC_HEIGHT := 52.0
 ## Baseline total ~0.62s; default is 2x slower (~1.24s) with fixed phase shares.
 const WIN_POPUP_TOTAL_DURATION := 1.24
@@ -28,6 +30,10 @@ var _win_glow_label: Label
 var _lob_p0: Vector2 = Vector2.ZERO
 var _lob_p1: Vector2 = Vector2.ZERO
 var _lob_p2: Vector2 = Vector2.ZERO
+var _lob_use_target: bool = false
+var _touch_target_rect_global: Rect2 = Rect2()
+var _touch_payout_cents: int = 0
+var _touch_emitted: bool = false
 
 
 func _ready() -> void:
@@ -90,6 +96,8 @@ func play_win_popup(
 	_duration: float = 0.4,
 	delay: float = 0.0,
 	throw_target_global: Vector2 = Vector2.INF,
+	throw_target_rect_global: Rect2 = Rect2(),
+	payout_cents: int = 0,
 ) -> void:
 	_ensure_win_label()
 	_ensure_win_glow_label()
@@ -105,6 +113,10 @@ func play_win_popup(
 	var start_pos := _popup_start_position(pivot)
 	var end_pos := _resolve_throw_target_local(throw_target_global, pivot)
 	var use_lob := throw_target_global != Vector2.INF and end_pos.distance_to(start_pos) > 4.0
+	_lob_use_target = use_lob
+	_touch_target_rect_global = throw_target_rect_global if use_lob else Rect2()
+	_touch_payout_cents = maxi(payout_cents, 0)
+	_touch_emitted = false
 
 	_win_label.position = start_pos
 	_win_glow_label.position = start_pos
@@ -174,6 +186,7 @@ func _apply_lob_position(t: float) -> void:
 		_win_label.position = pos
 	if is_instance_valid(_win_glow_label):
 		_win_glow_label.position = pos
+	_try_emit_border_touch()
 
 
 func _bezier_quad(p0: Vector2, p1: Vector2, p2: Vector2, t: float) -> Vector2:
@@ -205,7 +218,27 @@ func _apply_popup_pivot(pivot: Vector2) -> void:
 	_win_glow_label.pivot_offset = pivot
 
 
+func _try_emit_border_touch() -> void:
+	if _touch_emitted or not _lob_use_target:
+		return
+	if _touch_target_rect_global.size.x <= 0.0 or _touch_target_rect_global.size.y <= 0.0:
+		return
+	if _touch_payout_cents <= 0:
+		return
+	if _win_label == null or not is_instance_valid(_win_label):
+		return
+	var popup_rect := _win_label.get_global_rect()
+	if not popup_rect.intersects(_touch_target_rect_global):
+		return
+	_touch_emitted = true
+	win_popup_border_touched.emit(_touch_payout_cents)
+
+
 func _reset_win_popup_visuals() -> void:
+	_lob_use_target = false
+	_touch_target_rect_global = Rect2()
+	_touch_payout_cents = 0
+	_touch_emitted = false
 	var pivot := _popup_pivot()
 	var origin := _popup_start_position(pivot)
 	if _win_label != null:
@@ -280,10 +313,10 @@ func _ensure_win_label() -> void:
 	_win_label.offset_bottom = 0.0
 	_apply_win_popup_font(_win_label)
 	_win_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
-	_win_label.add_theme_color_override("font_outline_color", Color(0.22, 0.22, 0.22, 1.0))
-	_win_label.add_theme_constant_override("outline_size", 4)
-	_win_label.add_theme_color_override("font_shadow_color", Color(0.12, 0.12, 0.12, 0.85))
-	_win_label.add_theme_constant_override("shadow_offset_x", 1)
+	_win_label.add_theme_color_override("font_outline_color", Color(0.08, 0.08, 0.08, 1.0))
+	_win_label.add_theme_constant_override("outline_size", 2)
+	_win_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.55))
+	_win_label.add_theme_constant_override("shadow_offset_x", 0)
 	_win_label.add_theme_constant_override("shadow_offset_y", 1)
 	_win_label.visible = false
 	_win_label.modulate.a = 0.0
@@ -305,9 +338,9 @@ func _ensure_win_glow_label() -> void:
 	_win_glow_label.offset_right = 0.0
 	_win_glow_label.offset_bottom = 0.0
 	_apply_win_popup_font(_win_glow_label)
-	_win_glow_label.add_theme_color_override("font_color", Color(1.0, 0.24, 0.24, 0.95))
-	_win_glow_label.add_theme_color_override("font_outline_color", Color(0.45, 0.0, 0.0, 0.95))
-	_win_glow_label.add_theme_constant_override("outline_size", 6)
+	_win_glow_label.add_theme_color_override("font_color", Color(1.0, 0.28, 0.28, 0.9))
+	_win_glow_label.add_theme_color_override("font_outline_color", Color(0.55, 0.0, 0.0, 0.85))
+	_win_glow_label.add_theme_constant_override("outline_size", 3)
 	_win_glow_label.visible = false
 	_win_glow_label.modulate.a = 0.0
 	add_child(_win_glow_label)
@@ -318,6 +351,7 @@ func _ensure_win_glow_label() -> void:
 func _apply_win_popup_font(label: Label) -> void:
 	label.add_theme_font_override("font", WIN_POPUP_FONT)
 	label.add_theme_font_size_override("font_size", WIN_POPUP_FONT_SIZE)
+	label.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 func _cancel_tween(tween: Tween) -> void:

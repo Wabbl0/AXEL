@@ -1,0 +1,49 @@
+shader_type canvas_item;
+// CRT post-pass (curvature, phosphor mask, vignette, chroma) — stacks above noir + scanline.
+
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
+uniform float curvature : hint_range(0.0, 0.25) = 0.08;
+uniform float scanline_strength : hint_range(0.0, 0.5) = 0.12;
+uniform float mask_strength : hint_range(0.0, 1.0) = 0.35;
+uniform float vignette : hint_range(0.0, 1.0) = 0.22;
+uniform float chroma : hint_range(0.0, 0.01) = 0.0025;
+uniform float player_crt_reduction : hint_range(0.0, 1.0) = 0.33;
+
+vec2 curve_uv(vec2 uv, float amount) {
+	vec2 c = uv - 0.5;
+	float r2 = dot(c, c);
+	return uv + c * r2 * amount;
+}
+
+// Overworld player uses white_sprite (balanced bright RGB); env is noir red/black.
+float player_sprite_mask(vec3 rgb) {
+	float lum = dot(rgb, vec3(0.299, 0.587, 0.114));
+	float balance = 1.0 - abs(rgb.r - rgb.g) - abs(rgb.g - rgb.b);
+	float white_body = smoothstep(0.42, 0.78, lum) * smoothstep(0.12, 0.45, balance);
+	float shadow = smoothstep(0.02, 0.22, lum) * (1.0 - smoothstep(0.35, 0.55, lum));
+	return clamp(max(white_body, shadow * 0.85), 0.0, 1.0);
+}
+
+void fragment() {
+	vec2 uv_screen = SCREEN_UV;
+	vec3 src = texture(screen_texture, uv_screen).rgb;
+	float crt_mix = 1.0 - player_sprite_mask(src) * player_crt_reduction;
+
+	vec2 uv = curve_uv(uv_screen, curvature);
+	vec3 col = vec3(0.0);
+	if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
+		float off = chroma;
+		col.r = texture(screen_texture, uv + vec2(off, 0.0)).r;
+		col.g = texture(screen_texture, uv).g;
+		col.b = texture(screen_texture, uv - vec2(off, 0.0)).b;
+		float scan = sin(uv.y * 800.0) * 0.5 + 0.5;
+		col *= 1.0 - scan * scanline_strength;
+		float mask = sin(uv.x * 900.0) * 0.5 + 0.5;
+		col = mix(col, col * 0.85, mask * mask_strength);
+		vec2 d = uv - 0.5;
+		float vig = 1.0 - dot(d, d) * vignette * 4.0;
+		col *= vig;
+		col = mix(src, col, crt_mix);
+	}
+	COLOR = vec4(col, 1.0);
+}

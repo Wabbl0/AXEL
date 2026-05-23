@@ -15,6 +15,9 @@ signal matched_symbols_resolved(entries: Array)
 ## Fired once per winning line when payout is known.
 ## Payload: { "symbol_id", "symbol_name", "length", "bet", "symbol_value", "cascade_multiplier", "payout_cents" }
 signal line_win_resolved(event: Dictionary)
+## Fired when a line-win popup first overlaps the total winnings readout border.
+## Payload: { "payout_cents": int }
+signal winnings_popup_border_touched(event: Dictionary)
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -1295,12 +1298,16 @@ func _play_count_flash_for_lines(lines: Array) -> void:
 			if popup_slot != null and popup_slot.has_method("play_win_popup"):
 				var popup_delay: float = fx_stagger_sec * float(max(flash_index - 1, 0))
 				var throw_target := _get_winnings_popup_target_global()
+				var payout_cents := _line_payout_cents(line)
+				_wire_win_popup_border_touch(popup_slot, payout_cents)
 				popup_slot.call(
 					"play_win_popup",
 					"+%s" % payout_text,
 					count_flash_duration_sec + 0.2,
 					popup_delay,
-					throw_target
+					throw_target,
+					_get_winnings_popup_target_rect_global(),
+					payout_cents,
 				)
 	await get_tree().create_timer(count_flash_duration_sec + fx_stagger_sec * max(flash_index - 1, 0)).timeout
 
@@ -1315,13 +1322,46 @@ func _show_win_popups_for_lines(lines: Array) -> void:
 		var popup_slot := _get_slot(popup_coord)
 		if popup_slot != null and popup_slot.has_method("play_win_popup"):
 			var throw_target := _get_winnings_popup_target_global()
-			popup_slot.call("play_win_popup", "+%s" % payout_text, 0.01, 0.0, throw_target)
+			var payout_cents := _line_payout_cents(line)
+			_wire_win_popup_border_touch(popup_slot, payout_cents)
+			popup_slot.call(
+				"play_win_popup",
+				"+%s" % payout_text,
+				0.01,
+				0.0,
+				throw_target,
+				_get_winnings_popup_target_rect_global(),
+				payout_cents,
+			)
 
 
 func _get_winnings_popup_target_global() -> Vector2:
 	if _winnings_popup_target == null or not is_instance_valid(_winnings_popup_target):
 		return Vector2.INF
 	return _winnings_popup_target.get_global_rect().get_center()
+
+
+func _get_winnings_popup_target_rect_global() -> Rect2:
+	if _winnings_popup_target == null or not is_instance_valid(_winnings_popup_target):
+		return Rect2()
+	return _winnings_popup_target.get_global_rect()
+
+
+func _wire_win_popup_border_touch(popup_slot: Node, payout_cents: int) -> void:
+	if payout_cents <= 0:
+		return
+	if not popup_slot.has_signal("win_popup_border_touched"):
+		return
+	var handler := Callable(self, "_on_win_popup_border_touched")
+	if popup_slot.is_connected("win_popup_border_touched", handler):
+		popup_slot.disconnect("win_popup_border_touched", handler)
+	popup_slot.connect("win_popup_border_touched", handler, CONNECT_ONE_SHOT)
+
+
+func _on_win_popup_border_touched(payout_cents: int) -> void:
+	if payout_cents <= 0:
+		return
+	emit_signal("winnings_popup_border_touched", {"payout_cents": payout_cents})
 
 
 func _line_popup_anchor_coord(cells: Array) -> Vector2i:

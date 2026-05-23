@@ -6,22 +6,9 @@ extends SceneTree
 ## Exit 0 on success; exit 1 on missing resource, load failure, or instantiate failure.
 
 ## Curated canonical scenes (not const: PackedStringArray literal is not a const expression in all analyzers).
-const COMBAT_TEST_SCENE := "res://combat/combat_test.tscn"
+const ValidatorsScript := preload("res://test/qa/qa_canon_validators.gd")
 
-const _COMBAT_TEST_REQUIRED_UNIQUE: Array[String] = [
-	"CombatRoot",
-	"MetaBox",
-	"SeedSpinBox",
-	"SpinButton",
-	"BankrollLabel",
-	"GoalBox",
-	"GoalLabel",
-	"BetMinusButton",
-	"BetLabel",
-	"BetPlusButton",
-	"MultiplierReadout",
-	"CombatRoot",
-]
+const COMBAT_TEST_SCENE := ValidatorsScript.COMBAT_TEST_SCENE
 
 var _smoke_scenes: PackedStringArray = PackedStringArray([
 	"res://scenes/Main_Menu/0.1_MainMenu.tscn",
@@ -80,11 +67,4 @@ func _main() -> void:
 
 
 func _missing_combat_test_scaffold(root_ui: Node) -> PackedStringArray:
-	var missing: PackedStringArray = PackedStringArray()
-	for uname in _COMBAT_TEST_REQUIRED_UNIQUE:
-		if root_ui.find_child(uname, true, false) == null:
-			missing.append(uname)
-	var combat := root_ui.find_child("CombatRoot", true, false)
-	if combat != null and combat.get_node_or_null("GridUI") == null:
-		missing.append("CombatRoot/GridUI")
-	return missing
+	return ValidatorsScript.missing_combat_test_unique(root_ui)

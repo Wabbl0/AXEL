@@ -4,41 +4,20 @@ extends Node2D
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
 @onready var _door_interact_area: Area2D = get_node("1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea")
 
-var _noir_filter_rect: ColorRect
-
 const _NEXT_SCENE_PATH := "res://scenes/Arc_1/1.2_Corridor.tscn"
-const _NOIR_OVERLAY_ENABLED := false
-const _USE_LOCAL_NOIR_TUNING := true
 
 var _is_transitioning := false
 
 
 func _ready() -> void:
-	var noir_overlay := get_node_or_null("NoirPaletteOverlay") as CanvasLayer
-	if noir_overlay != null:
-		noir_overlay.visible = _NOIR_OVERLAY_ENABLED
-	if _NOIR_OVERLAY_ENABLED:
-		_noir_filter_rect = get_node_or_null("NoirPaletteOverlay/FilterRect") as ColorRect
-		if _USE_LOCAL_NOIR_TUNING:
-			_apply_local_noir_tuning()
 	set_process_unhandled_input(true)
+	if _should_skip_intro():
+		return
 	_run_intro_dialogue()
 
 
-func _apply_local_noir_tuning() -> void:
-	if _noir_filter_rect == null:
-		push_warning("1.1_SchoolExterior: NoirPaletteOverlay/FilterRect missing; skipping local noir tuning.")
-		return
-	var shader_material := _noir_filter_rect.material as ShaderMaterial
-	if shader_material == null:
-		return
-	shader_material.set_shader_parameter("t0", 0.10)
-	shader_material.set_shader_parameter("t1", 0.28)
-	shader_material.set_shader_parameter("t2", 0.58)
-	shader_material.set_shader_parameter("line_contrast", 1.5)
-	shader_material.set_shader_parameter("dark_blood_color", Color(0.26, 0.0, 0.0, 1.0))
-	shader_material.set_shader_parameter("blood_red_color", Color(0.88, 0.0, 0.0, 1.0))
-	shader_material.set_shader_parameter("white_color", Color(0.0, 0.0, 0.0, 1.0))
+func _should_skip_intro() -> bool:
+	return OS.has_environment("AXEL_SKIP_INTRO") and OS.get_environment("AXEL_SKIP_INTRO") == "1"
 
 
 func _run_intro_dialogue() -> void:

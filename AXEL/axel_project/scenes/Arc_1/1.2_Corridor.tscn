@@ -7,10 +7,8 @@
 [ext_resource type="Texture2D" uid="uid://b2qaxk4m8nqwc" path="res://assets/props/graffiti/corridor_christmas_graffiti_85.png" id="5_graffiti"]
 [ext_resource type="Texture2D" uid="uid://1dw7sw0yvk2c" path="res://assets/props/debris/debris_chunk_01.png" id="6_debris"]
 [ext_resource type="Texture2D" uid="uid://ccku02e3vf434" path="res://assets/props/debris/trash_bag_01.png" id="7_trash"]
-[ext_resource type="PackedScene" path="res://scenes/fx/NoirPaletteOverlay.tscn" id="8_noir_overlay"]
 [ext_resource type="Shader" uid="uid://cbex5l0q04sc" path="res://scenes/fx/locker_palette_filter.gdshader" id="9_locker_shader"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
-[ext_resource type="PackedScene" path="res://scenes/fx/ScanlineOverlay.tscn" id="11_scanline_overlay"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_locker_local"]
 shader = ExtResource("9_locker_shader")
@@ -306,10 +304,4 @@ polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=641622148]
 shape = SubResource("CircleShape2D_player")
 
-[node name="NoirPaletteOverlay" parent="." unique_id=1037884425 instance=ExtResource("8_noir_overlay")]
-scale = Vector2(1.12, 1.12)
-transform = Transform2D(1.12, 0, 0, 1.12, 0, 0)
-
 [node name="TopDialogueOverlay" parent="." unique_id=529892493 instance=ExtResource("10_top_dialogue")]
-
-[node name="ScanlineOverlay" parent="." instance=ExtResource("11_scanline_overlay")]

@@ -56,6 +56,9 @@ const WINNINGS_READOUT_FONT := 31
 const CASCADE_MULT_READOUT_FONT := 24
 const WINNINGS_READOUT_OUTLINE := 1
 const CASCADE_MULT_READOUT_OUTLINE := 1
+const WINNINGS_COUNTER_MAX_DURATION := 0.25
+const WINNINGS_COUNTER_MIN_STEP := 0.004
+const WINNINGS_COUNTER_MAX_STEP := 0.02
 const HISTORY_BODY_FONT := 13
 const HISTORY_MINI_ICON_SIZE := 14
 const HISTORY_ROW_SEPARATION := 3
@@ -130,6 +133,10 @@ var _economics_stack: VBoxContainer
 var _cascade_mult_label: Label
 var _cascade_mult_pill: PanelContainer
 var _last_displayed_cascade_mult: int = 1
+var _displayed_round_winnings: int = 0
+var _target_round_winnings: int = 0
+var _winnings_counter_running: bool = false
+var _winnings_counter_generation: int = 0
 var _runtime_initialized: bool = false
 var _editor_preview_refresh_queued: bool = false
 var _editor_tree_ready_attempts: int = 0
@@ -625,6 +632,8 @@ func _connect_runtime_signals() -> void:
 		combat.premium_meter_changed.connect(_on_premium_meter_changed)
 	if not combat.meter_full_transition_started.is_connected(_on_meter_full_transition_started):
 		combat.meter_full_transition_started.connect(_on_meter_full_transition_started)
+	if not combat.winnings_popup_border_touched.is_connected(_on_winnings_popup_border_touched):
+		combat.winnings_popup_border_touched.connect(_on_winnings_popup_border_touched)
 	if not choose_love_button.pressed.is_connected(_on_choose_love_pressed):
 		choose_love_button.pressed.connect(_on_choose_love_pressed)
 	if not choose_star_button.pressed.is_connected(_on_choose_star_pressed):
@@ -1232,8 +1241,10 @@ func _refresh_readouts() -> void:
 	var stake_value := int(_safe_get_current_bet())
 	if bet_label != null:
 		bet_label.text = "%d" % stake_value
-	if mult_label != null:
-		mult_label.text = "%d" % int(_safe_get_round_winnings())
+	if mult_label != null and not _winnings_counter_running:
+		var combat_total := int(_safe_get_round_winnings())
+		if _displayed_round_winnings == combat_total and _target_round_winnings == combat_total:
+			_apply_winnings_readout_text()
 	_refresh_cascade_multiplier_readout()
 	if _premium_progress != null:
 		_premium_progress.value = float(_safe_get_meter_sections_filled())
@@ -1305,12 +1316,78 @@ func _on_spin_started(seed_value: int) -> void:
 	_set_seed_spin_value_no_signal(seed_value)
 	_clear_history_spin_list()
 	_last_displayed_cascade_mult = int(combat.get_multiplier_value())
+	_reset_winnings_counter_display()
 
 
 func _on_spin_finished() -> void:
+	_sync_winnings_counter_to_combat_truth()
 	if combat.get_state() == CombatRoot.State.IDLE or combat.is_encounter_complete():
 		spin_btn.disabled = false
 	_refresh_spin_button_state()
+
+
+func _on_winnings_popup_border_touched(event: Dictionary) -> void:
+	var cents: int = int(event.get("payout_cents", 0))
+	if cents <= 0:
+		return
+	_target_round_winnings += cents
+	_start_winnings_counter_if_needed()
+
+
+func _reset_winnings_counter_display() -> void:
+	_kill_winnings_counter()
+	_displayed_round_winnings = 0
+	_target_round_winnings = 0
+	_apply_winnings_readout_text()
+
+
+func _sync_winnings_counter_to_combat_truth() -> void:
+	_kill_winnings_counter()
+	var combat_total := int(_safe_get_round_winnings())
+	_displayed_round_winnings = combat_total
+	_target_round_winnings = combat_total
+	_apply_winnings_readout_text()
+
+
+func _apply_winnings_readout_text() -> void:
+	if mult_label == null:
+		return
+	mult_label.text = "%d" % _displayed_round_winnings
+
+
+func _kill_winnings_counter() -> void:
+	_winnings_counter_generation += 1
+	_winnings_counter_running = false
+
+
+func _start_winnings_counter_if_needed() -> void:
+	if _winnings_counter_running:
+		return
+	if _displayed_round_winnings >= _target_round_winnings:
+		return
+	_winnings_counter_running = true
+	_run_winnings_counter_async()
+
+
+func _run_winnings_counter_async() -> void:
+	var gen := _winnings_counter_generation
+	while _displayed_round_winnings < _target_round_winnings:
+		if gen != _winnings_counter_generation:
+			return
+		var remaining := _target_round_winnings - _displayed_round_winnings
+		var step_interval := WINNINGS_COUNTER_MAX_DURATION / float(max(remaining, 1))
+		step_interval = clampf(step_interval, WINNINGS_COUNTER_MIN_STEP, WINNINGS_COUNTER_MAX_STEP)
+		_displayed_round_winnings += 1
+		_apply_winnings_readout_text()
+		var tree := get_tree()
+		if tree == null:
+			break
+		await tree.create_timer(step_interval).timeout
+	if gen != _winnings_counter_generation:
+		return
+	_winnings_counter_running = false
+	if _displayed_round_winnings < _target_round_winnings:
+		_start_winnings_counter_if_needed()
 
 
 func _on_meter_full_transition_started() -> void:

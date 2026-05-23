@@ -22,8 +22,9 @@ Copy the template block, fill values, paste **below** the last entry.
 - **Mode:** <static | playtest>
 - **Scope:** <one line: feature, scene list, or paths reviewed>
 - **Trigger:** <user request | post-change agreed QA>
-- **Playtest commands:** princess_check=<pass|fail|skip> determinism=<pass|fail|skip> rtp_audit=<captured|skip> scene_smoke=<pass|fail|skip> bot_arc1_exterior=<pass|fail|skip> bot_dialogue_loop=<pass|fail|skip> item_balance_audit=<captured|skip>
-- **Scores:** S=_ N=_ I=_ E=_ C=_ R=_ **Total=_._** Band=_
+- **Playtest commands:** princess_check=<pass|fail|skip> determinism=<pass|fail|skip> rtp_audit=<captured|skip> scene_smoke=<pass|fail|skip> combat_test_scaffold=<pass|fail|skip> canon_consistency_audit=<captured|skip> bot_arc1_exterior=<pass|fail|skip> bot_dialogue_loop=<pass|fail|skip> item_balance_audit=<captured|skip>
+- **Progress:** **_._** (gate _ cap _._; checklist _%)
+- **Quality:** S=_ N=_ I=_ E=_ C=_ R=_ **Total=_._** Band=_
 - **Findings count:** blocker=_ major=_ minor=_ nit=_
 - **By category:** STYLE=_ LORE=_ IMMERSION=_ TENSION=_ CLARITY=_ COMBAT=_ ARCH=_ REGRESSION=_ BUG=_ TOOL=_
 - **Recommendations (logged):** <3–5 short bullets mirroring the chat report>
@@ -39,9 +40,23 @@ Copy the template block, fill values, paste **below** the last entry.
   "scope": "<one line scope>",
   "trigger": "user request",
   "scores": {"S": 0, "N": 0, "I": 0, "E": 0, "C": 0, "R": 0, "Total": 0.0, "Band": "F"},
+  "quality": {"S": 0, "N": 0, "I": 0, "E": 0, "C": 0, "R": 0, "Total": 0.0, "Band": "F"},
+  "progress": {
+    "score": 0.0,
+    "scoring_mode": "option2",
+    "progress_raw": 0.0,
+    "gate_cap": 1.5,
+    "gate_state": 0,
+    "checklist_completion": 0.0,
+    "checklist_completed_weight": 0,
+    "checklist_total_weight": 200,
+    "coverage_factor": 0.5,
+    "defect_penalty": 1.0,
+    "milestones_completed": []
+  },
   "findings_count": {"blocker": 0, "major": 0, "minor": 0, "nit": 0},
   "by_category": {"STYLE": 0, "LORE": 0, "IMMERSION": 0, "TENSION": 0, "CLARITY": 0, "COMBAT": 0, "ARCH": 0, "REGRESSION": 0, "BUG": 0, "TOOL": 0},
-  "playtest_commands": {"princess_check": "skip", "determinism": "skip", "rtp_audit": "skip", "scene_smoke": "skip", "bot_arc1_exterior": "skip", "bot_dialogue_loop": "skip"},
+  "playtest_commands": {"princess_check": "skip", "determinism": "skip", "rtp_audit": "skip", "scene_smoke": "skip", "combat_test_scaffold": "skip", "canon_consistency_audit": "skip", "bot_arc1_exterior": "skip", "bot_dialogue_loop": "skip"},
   "bugs_or_regressions": [],
   "item_balance": null,
   "item_metrics": null
@@ -118,10 +133,13 @@ Copy the template block, fill values, paste **below** the last entry.
   - `<!-- QA_ANALYTICS_JSON_END -->`
 - Keep key names stable so `tools/qa/update_qa_analytics.py` can parse history safely.
 - Allowed `mode`: `static`, `playtest`.
-- Allowed `playtest_commands` keys: `princess_check`, `determinism`, `rtp_audit`, `scene_smoke`, `bot_arc1_exterior`, `bot_dialogue_loop`, `item_balance_audit`. Allowed values: `pass`, `fail`, `captured`, `skip` (`captured` is for `rtp_audit` and `item_balance_audit` metrics; the rest are pass/fail gates that may also be `skip`).
+- Allowed `playtest_commands` keys: `princess_check`, `determinism`, `rtp_audit`, `scene_smoke`, `combat_test_scaffold`, `canon_consistency_audit`, `bot_arc1_exterior`, `bot_dialogue_loop`, `item_balance_audit`, `item_synergy_smoke`. Allowed values: `pass`, `fail`, `captured`, `skip` (`captured` for metrics-only commands).
+- Required `quality` object and `progress` object — see `AXEL_QA_REVIEW_RUBRIC.md` §Persistent analytics payload. Mirror axis values in `scores` for backward compatibility.
+- Score **Progress** from `QA_PROGRESS_CHECKLIST.md` (not from quality axes).
 - Optional `item_balance` object: present when `item_balance_audit=captured`. Contains `schema_version`, `items_tested`, and per-classification item id lists.
 - Optional `item_metrics` array: per-item detail objects with RTP/hit-rate/encounter deltas and confidence intervals.
-- `scores.Total` must be numeric and rounded to 2 decimals.
+- Optional `canon_audit` object when `canon_consistency_audit=captured`.
+- `scores.Total` / `quality.Total` must be numeric and rounded to 2 decimals; `progress.score` likewise.
 - `bugs_or_regressions` should list short strings (IDs or concise notes) for discovered bugs/problems.
 
 ---
@@ -415,4 +433,20 @@ Copy the template block, fill values, paste **below** the last entry.
     {"item_id": "L3_void_satchel", "label": "neutral", "baseline_rtp": 0.40883, "item_rtp": 0.40883, "delta_rtp": 0.0, "delta_rtp_ci95": [-0.16347, 0.16347], "baseline_hit_rate": 0.365, "item_hit_rate": 0.365, "delta_hit_rate": 0.0, "baseline_encounter_success": 0.01667, "item_encounter_success": 0.01667, "delta_encounter_success": 0.0, "seeds_used": 20}
   ]
 }
+<!-- QA_ANALYTICS_JSON_END -->
+
+## 2026-05-23 — QA agent readiness smoke (canon audit extension)
+
+- **Mode:** playtest
+- **Scope:** Default 8-command playtest + canon consistency audit
+- **Trigger:** user request
+- **Playtest commands:** princess_check=pass determinism=pass rtp_audit=captured scene_smoke=pass combat_test_scaffold=fail canon_consistency_audit=captured bot_arc1_exterior=pass bot_dialogue_loop=pass item_balance_audit=skip item_synergy_smoke=skip
+- **Progress:** **1.2** (gate 0 cap 1.5)
+- **Quality:** S=3 N=4 I=3 E=3 C=3 R=2 **Total=3.10** Band=C
+- **Findings count:** blocker=1 major=7 minor=2 nit=0
+- **Recommendations (logged):** Remove duplicate CombatRoot grid; tune Corridor player profile; re-run playtest after fix
+- **Trend vs previous run:** down — scaffold gate fail
+
+<!-- QA_ANALYTICS_JSON_BEGIN -->
+{"timestamp":"2026-05-23T16:45:00+03:00","run_title":"QA agent readiness smoke","mode":"playtest","scope":"Default playtest + canon audit","trigger":"user request","scores":{"S":3,"N":4,"I":3,"E":3,"C":3,"R":2,"Total":3.10,"Band":"C"},"quality":{"S":3,"N":4,"I":3,"E":3,"C":3,"R":2,"Total":3.10,"Band":"C"},"progress":{"score":1.2,"gate_cap":1.5,"gate_state":0,"checklist_completion":0.12},"findings_count":{"blocker":1,"major":7,"minor":2,"nit":0},"by_category":{"STYLE":1,"CLARITY":1,"COMBAT":7,"REGRESSION":1,"BUG":1},"playtest_commands":{"princess_check":"pass","determinism":"pass","rtp_audit":"captured","scene_smoke":"pass","combat_test_scaffold":"fail","canon_consistency_audit":"pass","bot_arc1_exterior":"pass","bot_dialogue_loop":"pass","item_balance_audit":"skip","item_synergy_smoke":"skip"},"canon_audit":{"schema_version":1,"findings_count":{"major":7,"minor":2},"findings":[{"id":"combat.grid_duplicate","severity":"major","category":"COMBAT","evidence":"CombatRoot has 2x GridUI"}]},"bugs_or_regressions":["combat_test_scaffold_check duplicate grid"]}
 <!-- QA_ANALYTICS_JSON_END -->

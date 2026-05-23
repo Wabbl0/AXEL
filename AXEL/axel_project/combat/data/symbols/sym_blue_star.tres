@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://t0t5ktmc40o6" path="res://combat/scripts/symbol_def.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://br1u63015sfgj" path="res://combat/art/grid_symbols/blue_star.png" id="2_tex"]
-[ext_resource type="Texture2D" path="res://combat/art/placeholders/blue_star.png" id="3_tex"]
+[ext_resource type="Texture2D" uid="uid://cvko045axlsdh" path="res://combat/art/placeholders/blue_star.png" id="3_tex"]
 
 [resource]
 script = ExtResource("1_script")

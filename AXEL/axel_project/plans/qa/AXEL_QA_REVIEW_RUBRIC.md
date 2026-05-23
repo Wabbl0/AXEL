@@ -17,7 +17,7 @@ Use this section to set **confidence** and required **evidence**. Default `qa` v
 
 ### Default command set (playtest: combat + scene smoke + bot playthrough)
 
-Plain `qa` / `run qa` / `qa agent` runs **all seven** commands below in one pass. Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
+Plain `qa` / `run qa` / `qa agent` runs **all eight** commands below in one pass. Run from **repo root** (Windows uses `tools/cmd/godot.cmd`):
 
 ```bat
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
@@ -25,6 +25,7 @@ tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/det
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/scene_smoke_check.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/qa/canon_consistency_audit.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_arc1_exterior.gd
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playthrough_dialogue_loop.gd
 ```
@@ -32,8 +33,9 @@ tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://test/bots/playt
 The two bot scripts are documented in `AXEL/axel_project/test/bots/README.md`.
 
 - **Pass/fail gates:** `princess_check`, `determinism_check`, `scene_smoke_check`, `combat_test_scaffold_check`, `playthrough_arc1_exterior`, `playthrough_dialogue_loop` — non-zero exit = report as **blocker** / `BUG` or `REGRESSION`.
+- **`canon_consistency_audit.gd`:** always exits 0 — parse stdout for `CANON_AUDIT_JSON`. Full schema and severity mapping: `AXEL_CANON_CONSISTENCY_AUDIT.md`. Report each finding in **Technical findings** (severity/category/evidence) and fold into **Recommendations** (evidence → impact → fix). Duplicate combat grid nodes, missing movement contracts, and profile drift (speed/scale) are typical signals. Do not block the QA run on audit findings alone unless a separate gate command failed.
 - **`rtp_audit.gd`:** always exits 0 — parse stdout for `RTP_AUDIT_JSON` (or printed metrics) and record in analytics; do not fail the run on RTP alone unless thresholds are specified.
-- **`item_balance_audit.gd` (conditional):** run after the six default commands when item definitions exist under `combat/data/items/`. Always exits 0. If no items found or item API not implemented, record `item_balance_audit=skip` in payload. If items are tested, parse `ITEM_BALANCE_JSON` stdout and include `item_balance` + `item_metrics` in the analytics payload.
+- **`item_balance_audit.gd` (conditional):** run after the eight default commands when item definitions exist under `combat/data/items/`. Always exits 0. If no items found or item API not implemented, record `item_balance_audit=skip` in payload. If items are tested, parse `ITEM_BALANCE_JSON` stdout and include `item_balance` + `item_metrics` in the analytics payload.
 - **Skip policy:** if any command cannot run (missing tooling, unavailable Godot binary, etc.), name every skipped command explicitly in the report and downgrade confidence one tier per missing gate (drop bots first → `combat + scene smoke`; drop scene smoke → `combat simulated`; drop combat → `static review`).
 
 ### Item combat simulation command (conditional)
@@ -63,7 +65,7 @@ tools\\cmd\\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/i
 
 ### When user says “playtest” or “high confidence”
 
-1. Run the full default command set above (seven commands) — same as plain `qa` — and report which (if any) failed or were skipped.
+1. Run the full default command set above (eight commands) — same as plain `qa` — and report which (if any) failed or were skipped.
 2. Run the item balance audit command if item definitions exist.
 3. Set **Confidence:** to `combat + scene smoke + bot playthrough` only if **all** pass/fail gates passed and metrics captured. Otherwise pick the highest tier still satisfied by the evidence (see Skip policy above).
 4. Prioritize **bugs, regressions, and fix recommendations** over subjective feel.
@@ -131,6 +133,57 @@ Round **Total** to **two decimal places**. Optionally map to letter band:
 | ≥ 2.00  | D      |
 | < 2.00  | F      |
 
+This weighted **Total** is the **Quality Score** (build quality / readiness). It is **not** game completion progress.
+
+---
+
+## Progress Score (game completion)
+
+Source checklist: `QA_PROGRESS_CHECKLIST.md`. Progress and Quality are reported **separately** every run.
+
+### Definitions
+
+| Metric | Meaning |
+|--------|---------|
+| **Progress** | How much of the game is built (milestone completion), hard-capped by gates |
+| **Quality** | How good the current build is (`scores.Total` from axes above) |
+
+Neither score alone means ship-ready. High Quality with low Progress = polished slice, not a finished game.
+
+### Formula (Option 2 — default)
+
+1. `checklist_completion = completed_weight / total_weight` (from checklist; current total weight = **200** — see `QA_PROGRESS_CHECKLIST.md`).
+2. `ProgressRaw = 5 × checklist_completion`.
+3. `CoverageFactor = 0.5 + 0.5 × (passed_required_checks / total_required_checks)` — only **gate** commands that ran (not `skip`); `canon_consistency_audit=captured` counts as pass for coverage; exclude conditional audits when `skip`.
+4. `DefectPenalty = 1.0 - min(0.35, 0.12×blockers + 0.05×majors)` from `findings_count`.
+5. `gate_state` = highest gate with **all** its milestones marked done (0–4). `gate_cap` from checklist table (1.5 / 2.5 / 3.5 / 4.5 / 5.0).
+6. **`Progress = min(gate_cap, ProgressRaw × CoverageFactor × DefectPenalty)`** — round to **two decimals**.
+
+### Formula (Option 1 — fallback)
+
+Set `progress.scoring_mode` to `"gate_only"` in the payload:
+
+`Progress = min(gate_cap, ProgressRaw)` — no coverage or defect multipliers.
+
+### Gate caps (hard)
+
+| `gate_state` | Cap |
+|--------------|-----|
+| 0 | 1.5 |
+| 1 | 2.5 |
+| 2 | 3.5 |
+| 3 | 4.5 |
+| 4 | 5.0 |
+
+Until Gate 2 milestones are done, Progress **cannot** exceed **3.5**, even if Quality is ~4.
+
+### Scoring output (report)
+
+Report both lines in **Scores**:
+
+- **Progress:** `<value>` — gate `<n>` cap `<cap>`; checklist `<pct>%`; coverage `<factor>`; defect penalty `<penalty>`
+- **Quality:** `S N I E C R` + **Total** + Band (as today)
+
 ## Violation taxonomy (categories)
 
 Use these `category` labels in findings and analytics:
@@ -176,18 +229,28 @@ In addition to the concise report, each run should append one machine-readable J
 Required keys:
 
 - `timestamp`, `run_title`, `mode`, `scope`, `trigger`
-- `scores` with numeric `S/N/I/E/C/R/Total` and string `Band`
+- `scores` with numeric `S/N/I/E/C/R/Total` and string `Band` (legacy; mirror `quality` for backward compatibility)
+- `quality` object: `{ "S", "N", "I", "E", "C", "R", "Total", "Band" }` — same values as `scores`
+- `progress` object:
+  - `score` (float) — final Progress 0..5
+  - `scoring_mode` (string) — `"option2"` (default) or `"gate_only"`
+  - `progress_raw`, `gate_cap`, `gate_state` (int 0–4)
+  - `checklist_completion` (float 0..1)
+  - `checklist_completed_weight`, `checklist_total_weight` (int)
+  - `coverage_factor`, `defect_penalty` (float)
+  - `milestones_completed` (array of milestone IDs, e.g. `"M1.1"`)
 - `findings_count` with `blocker/major/minor/nit`
 - `by_category` with taxonomy counts from this rubric
-- `playtest_commands` with `princess_check/determinism/rtp_audit/scene_smoke/bot_arc1_exterior/bot_dialogue_loop/item_balance_audit`
+- `playtest_commands` with `princess_check/determinism/rtp_audit/scene_smoke/combat_test_scaffold/canon_consistency_audit/bot_arc1_exterior/bot_dialogue_loop/item_balance_audit`
 - `bugs_or_regressions` as short list entries
 
 Optional keys (include when item data is available):
 
+- `canon_audit` object: `schema_version`, `findings_count` (severity map), `by_category`, short `findings` list (`id`, `severity`, `category`, `evidence`) — sourced from `CANON_AUDIT_JSON` stdout
 - `item_balance` object with `schema_version` (int, currently `1`), `items_tested` (int), `items_overpowered` (list of item ids), `items_underpowered` (list of item ids), `items_neutral` (list of item ids), `items_insufficient_data` (list of item ids)
 - `item_metrics` array of per-item objects: `{ "item_id", "label", "baseline_rtp", "item_rtp", "delta_rtp", "delta_rtp_ci95", "baseline_hit_rate", "item_hit_rate", "delta_hit_rate", "baseline_encounter_success", "item_encounter_success", "delta_encounter_success", "seeds_used" }`
 
-This payload is the source of truth for historical analytics and Mermaid trend lines. `tools/qa/update_qa_analytics.py` auto-discovers any `playtest_commands` key prefixed `bot_*` and aggregates them into a single dashed `Bots` line on `AXEL_QA_ANALYTICS.svg` (mapping: `pass=5`, `fail=0`, `skip`/missing = gap). New bot scripts that use the same key prefix automatically join the aggregate without further code changes.
+This payload is the source of truth for historical analytics and trend charts. `tools/qa/update_qa_analytics.py` plots **Progress points** (`checklist_completed_weight`) on an **auto-scaling** left axis (grows when the checklist adds milestone weight). A dashed **Scope ceiling** line shows `checklist_total_weight` per run (project definition size). **Quality** (0–5) uses the right axis only. Legacy runs without `progress` may omit points until the next logged run. Rubric axis scores (`S`–`R`) stay in the markdown delta table, not the SVG.
 
 **Archival:** When the main run log exceeds ~10 entries, older entries may be moved to `plans/qa/archive/AXEL_QA_RUN_LOG_<YYYY>.md`. The analytics generator ingests both the main log and archived `*.md` files, so trend continuity is preserved.
 

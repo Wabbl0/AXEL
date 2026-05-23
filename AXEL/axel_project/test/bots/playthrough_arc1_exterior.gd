@@ -113,7 +113,22 @@ func _run_playthrough() -> bool:
 	print("Bot exterior commands executed: %d, physics_frames=%d" % [
 		runner.commands_executed, driver.physics_frame()
 	])
+	_print_bot_metrics(driver, runner, true)
 	return true
+
+
+func _print_bot_metrics(driver, runner: BotScenarioRunner, transition_ok: bool) -> void:
+	var payload := {
+		"bot": "arc1_exterior",
+		"scene_start": _SCENE_EXTERIOR,
+		"scene_end": _SCENE_CORRIDOR,
+		"physics_frames": driver.physics_frame(),
+		"commands_executed": runner.commands_executed,
+		"walk_frames_right": _WALK_FRAMES_RIGHT,
+		"interact_key": "E",
+		"transition_ok": transition_ok,
+	}
+	print("BOT_METRICS_JSON %s" % JSON.stringify(payload))
 
 
 func _assert_player_in_door_interact_area() -> bool:
