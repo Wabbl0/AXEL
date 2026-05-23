@@ -24,10 +24,10 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xug1b"]
-content_margin_left = 8.0
-content_margin_top = 6.0
-content_margin_right = 8.0
-content_margin_bottom = 6.0
+content_margin_left = 11.0
+content_margin_top = 8.0
+content_margin_right = 11.0
+content_margin_bottom = 8.0
 bg_color = Color(0.03, 0, 0, 0.98)
 border_width_left = 1
 border_width_top = 1
@@ -151,10 +151,10 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3wx3o"]
-content_margin_left = 8.0
-content_margin_top = 6.0
-content_margin_right = 8.0
-content_margin_bottom = 6.0
+content_margin_left = 11.0
+content_margin_top = 8.0
+content_margin_right = 11.0
+content_margin_bottom = 8.0
 bg_color = Color(0.03, 0, 0, 0.98)
 border_width_left = 1
 border_width_top = 1
@@ -277,7 +277,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_xug1b")
 [node name="SectionHeader" type="Label" parent="PlayArea/PlayRow/HistoryPanel/@VBoxContainer@21363/@PanelContainer@21364" unique_id=276997]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.88, 0.4, 0.4, 1)
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 text = "HISTORY"
 horizontal_alignment = 1
 
@@ -345,8 +345,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_06m7f")
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_colors/font_outline_color = Color(1, 1, 1, 0.95)
-theme_override_constants/outline_size = 1
+theme_override_colors/font_color = Color(0.98, 0.35, 0.35, 1)
 theme_override_font_sizes/font_size = 31
 text = "0"
 horizontal_alignment = 1
@@ -360,8 +359,6 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_qqkc4")
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_colors/font_color = Color(0.98, 0.35, 0.35, 1)
-theme_override_colors/font_outline_color = Color(1, 1, 1, 0.95)
-theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 24
 text = "1×"
 horizontal_alignment = 1
@@ -423,7 +420,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_3wx3o")
 [node name="SectionHeader" type="Label" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@21369/@PanelContainer@21370" unique_id=823478834]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.88, 0.4, 0.4, 1)
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 text = "ITEMS (0/7)"
 horizontal_alignment = 1
 
@@ -441,14 +438,14 @@ theme_override_constants/separation = 4
 layout_mode = 2
 tooltip_text = "Common | Each reroll adds +0.06x encounter payout scalar (cap +0.36x)"
 theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 18
 text = "◇ Ash Reroll Token"
 
 [node name="@CheckBox@21376" type="CheckBox" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@21369/@ScrollContainer@21373/@VBoxContainer@21374" unique_id=1065990659]
 layout_mode = 2
 tooltip_text = "Legendary | Expands loadout capacity by +2 slots (max 9). Legendary only."
 theme_override_colors/font_color = Color(0.95, 0.75, 0.2, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 18
 text = "✦ Void Satchel"
 
 [node name="EconomicsCenter" type="CenterContainer" parent="." unique_id=1076663173]
@@ -526,24 +523,20 @@ alignment = 1
 
 [node name="BetMinusButton" type="Button" parent="EconomicsCenter/@VBoxContainer@20632/StakeSelector/BetRow" unique_id=2032393760]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
 text = "-"
 
-[node name="StakePill" type="PanelContainer" parent="EconomicsCenter/@VBoxContainer@20632/StakeSelector/BetRow" unique_id=1541121439]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_nwpd3")
-
-[node name="BetLabel" type="Label" parent="EconomicsCenter/@VBoxContainer@20632/StakeSelector/BetRow/StakePill" unique_id=1277085146]
+[node name="BetLabel" type="Label" parent="EconomicsCenter/@VBoxContainer@20632/StakeSelector/BetRow" unique_id=1277085146]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 36
 text = "100"
 horizontal_alignment = 1
 
 [node name="BetPlusButton" type="Button" parent="EconomicsCenter/@VBoxContainer@20632/StakeSelector/BetRow" unique_id=1519464377]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
 text = "+"
 
@@ -552,9 +545,9 @@ unique_name_in_owner = true
 z_index = 20
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.86
+anchor_left = 0.78
 anchor_top = 0.025
-anchor_right = 0.992
+anchor_right = 0.98
 anchor_bottom = 0.135
 grow_horizontal = 2
 grow_vertical = 2
@@ -576,7 +569,7 @@ unique_name_in_owner = true
 z_index = 20
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.008
+anchor_left = 0.02
 anchor_top = 0.025
 anchor_right = 0.14
 anchor_bottom = 0.135
@@ -789,7 +782,7 @@ horizontal_alignment = 1
 [node name="SuperFSChoiceHint" type="Label" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=428089608]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 text = "Fewer spins, higher potential"
 horizontal_alignment = 1
 
@@ -804,7 +797,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 disabled = true
 text = "BLOODY HANDS
 LOVE POWER
@@ -817,7 +810,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 disabled = true
 text = "ALCOHOL
 STAR POWER
@@ -830,7 +823,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 disabled = true
 text = "CIGARETTES
 STORM POWER

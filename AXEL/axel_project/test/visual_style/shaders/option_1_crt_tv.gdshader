@@ -1,0 +1,80 @@
+shader_type canvas_item;
+// Option 1 — CRT TV stack (nofacer / Asset Library CRT inspired).
+// Scanlines, curvature, phosphor mask, rolling line, interference noise, subtle glitch.
+
+#include "res://test/visual_style/shaders/theme_post_fx.gdshaderinc"
+
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
+uniform int theme_mode = 0;
+uniform float theme_strength : hint_range(0.0, 1.0) = 1.0;
+uniform float curvature : hint_range(0.0, 0.25) = 0.09;
+uniform float scanline_strength : hint_range(0.0, 0.5) = 0.14;
+uniform float mask_strength : hint_range(0.0, 1.0) = 0.32;
+uniform float vignette : hint_range(0.0, 1.0) = 0.24;
+uniform float chroma : hint_range(0.0, 0.01) = 0.003;
+uniform float noise_amount : hint_range(0.0, 0.2) = 0.06;
+uniform float interference : hint_range(0.0, 1.0) = 0.18;
+uniform float roll_amount : hint_range(0.0, 1.0) = 0.35;
+uniform float roll_speed : hint_range(-8.0, 8.0) = 2.4;
+uniform float glitch_rate : hint_range(0.0, 12.0) = 4.5;
+uniform float glitch_shift : hint_range(0.0, 0.02) = 0.006;
+
+float hash21(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+vec2 curve_uv(vec2 uv, float amount) {
+	vec2 c = uv - 0.5;
+	float r2 = dot(c, c);
+	return uv + c * r2 * amount;
+}
+
+void fragment() {
+	vec2 uv_screen = SCREEN_UV;
+	float t = TIME;
+
+	// Occasional horizontal glitch burst
+	float burst_id = floor(t * glitch_rate);
+	float burst_on = step(0.72, hash21(vec2(burst_id, 1.7)));
+	float burst_y = hash21(vec2(burst_id, 9.3));
+	float burst_band = burst_on * (1.0 - smoothstep(0.0, 0.035, abs(uv_screen.y - burst_y)));
+	vec2 uv = uv_screen;
+	uv.x += (hash21(vec2(burst_id, uv_screen.y * 120.0)) - 0.5) * glitch_shift * burst_band;
+
+	uv = curve_uv(uv, curvature);
+
+	vec3 col = vec3(0.0);
+	if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
+		float off = chroma;
+		col.r = texture(screen_texture, uv + vec2(off, 0.0)).r;
+		col.g = texture(screen_texture, uv).g;
+		col.b = texture(screen_texture, uv - vec2(off, 0.0)).b;
+
+		// Animated scanlines
+		float scan = sin((uv.y + t * 0.04) * 820.0) * 0.5 + 0.5;
+		col *= 1.0 - scan * scanline_strength;
+
+		// Phosphor shadow mask
+		float mask = sin(uv.x * 920.0) * 0.5 + 0.5;
+		col = mix(col, col * 0.86, mask * mask_strength);
+
+		// Rolling bright line (old TV roll)
+		float roll = fract(uv.y * 0.5 + t * roll_speed * 0.08);
+		float roll_line = smoothstep(0.92, 1.0, roll) * roll_amount;
+		col += vec3(roll_line * 0.12);
+
+		// Interference + white static grain
+		float grain_t = floor(t * 18.0);
+		float grain = hash21(uv * 1400.0 + vec2(grain_t, grain_t * 0.37)) - 0.5;
+		float interf = sin(uv.y * 180.0 + t * 14.0) * 0.5 + 0.5;
+		col += grain * noise_amount;
+		col = mix(col, col * (0.85 + interf * 0.15), interference * 0.35);
+
+		vec2 d = uv - 0.5;
+		float vig = 1.0 - dot(d, d) * vignette * 4.0;
+		col *= vig;
+	}
+
+	col = apply_theme_tint(col, theme_mode, theme_strength);
+	COLOR = vec4(col, 1.0);
+}

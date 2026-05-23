@@ -1,11 +1,12 @@
 extends SceneTree
-## Scene 1.1 visual style sweep: baseline + options A/B/C1-C4/D/E.
+## Scene 1.1 visual style sweep: baseline + 3 scanline/glitch comparison options.
 ##
 ## Run from repo root:
 ##   tools\cmd\godot.cmd --path AXEL/axel_project -s res://test/visual_style/capture_scene_1_1_style_sweep.gd
 ##
 ## Optional env:
 ##   AXEL_STYLE_VARIANT=baseline   (single variant; default = all)
+##   AXEL_STYLE_THEME=axel|green|white  (override theme_mode for option shaders)
 ##   AXEL_STYLE_OUTPUT=user://style_sweep_1_1  (override output dir)
 ##
 ## Exit 0 when all requested PNGs are written; 1 on failure.
@@ -139,6 +140,9 @@ func _save_viewport_png(user_path: String) -> bool:
 
 
 func _print_manifest() -> void:
+	var theme_override := ""
+	if OS.has_environment("AXEL_STYLE_THEME"):
+		theme_override = OS.get_environment("AXEL_STYLE_THEME")
 	var payload := {
 		"scene": _scene_path,
 		"output_dir": ProjectSettings.globalize_path(_output_dir),
@@ -148,5 +152,6 @@ func _print_manifest() -> void:
 		),
 		"walk_frames": _WALK_FRAMES,
 		"variants": VisualStyleVariantMatrix.variant_ids(),
+		"theme_override": theme_override,
 	}
 	print("STYLE_SWEEP_MANIFEST %s" % JSON.stringify(payload))

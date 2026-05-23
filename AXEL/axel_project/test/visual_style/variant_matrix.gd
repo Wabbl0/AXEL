@@ -1,76 +1,71 @@
 extends RefCounted
 class_name VisualStyleVariantMatrix
-## Canonical variant list for Scene 1.1 style comparison sweeps.
+## Canonical variant list for Scene 1.1 scanline/glitch comparison sweeps.
 ## IDs and filenames are stable; do not rename without updating capture tooling.
 
 const SCENE_PATH := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const OUTPUT_DIR := "user://style_sweep_1_1"
 
+## theme_mode shader uniform: 0=axel pass-through, 1=green phosphor, 2=mono white
+const THEME_AXEL := 0
+const THEME_GREEN := 1
+const THEME_MONO_WHITE := 2
+
 const VARIANTS: Array[Dictionary] = [
 	{
 		"id": "baseline",
-		"label": "Baseline (noir + scanline)",
+		"label": "Baseline (noir + scanline + CRT stack)",
 		"png": "01_baseline.png",
 		"stack": "baseline",
 		"shader": "",
+		"theme_mode": THEME_AXEL,
+		"theme_strength": 1.0,
 	},
 	{
-		"id": "A_crt_plugin",
-		"label": "Option A — CRT plugin (curvature + mask)",
-		"png": "02_A_crt_plugin.png",
+		"id": "option_1_crt_tv",
+		"label": "Option 1 — CRT TV (Asset Library / nofacer style)",
+		"png": "02_option_1_crt_tv.png",
 		"stack": "stack",
-		"shader": "res://scenes/fx/crt_plugin_overlay.gdshader",
+		"shader": "res://test/visual_style/shaders/option_1_crt_tv.gdshader",
+		"theme_mode": THEME_AXEL,
+		"theme_strength": 1.0,
 	},
 	{
-		"id": "B_vhs",
-		"label": "Option B — GodotRetro VHS",
-		"png": "03_B_vhs.png",
+		"id": "option_2_vhs_glitch",
+		"label": "Option 2 — VHS Glitch Burst (godotshaders MIT)",
+		"png": "03_option_2_vhs_glitch.png",
 		"stack": "stack",
-		"shader": "res://test/visual_style/shaders/option_b_vhs.gdshader",
+		"shader": "res://test/visual_style/shaders/option_2_vhs_glitch.gdshader",
+		"theme_mode": THEME_AXEL,
+		"theme_strength": 1.0,
 	},
 	{
-		"id": "C1_poster_dither",
-		"label": "Option C1 — Posterize + dither",
-		"png": "04_C1_poster_dither.png",
-		"stack": "replace_noir",
-		"shader": "res://test/visual_style/shaders/option_c1_poster_dither.gdshader",
-	},
-	{
-		"id": "C2_bayer_reduce",
-		"label": "Option C2 — Bayer + palette reduce",
-		"png": "05_C2_bayer_reduce.png",
-		"stack": "replace_noir",
-		"shader": "res://test/visual_style/shaders/option_c2_bayer_reduce.gdshader",
-	},
-	{
-		"id": "C3_oklab_snap",
-		"label": "Option C3 — Oklab palette snap",
-		"png": "06_C3_oklab_snap.png",
-		"stack": "replace_noir",
-		"shader": "res://test/visual_style/shaders/option_c3_oklab_snap.gdshader",
-	},
-	{
-		"id": "C4_vespera",
-		"label": "Option C4 — VesperaFX-style modular",
-		"png": "07_C4_vespera.png",
-		"stack": "replace_noir",
-		"shader": "res://test/visual_style/shaders/option_c4_vespera.gdshader",
-	},
-	{
-		"id": "D_crt_display",
-		"label": "Option D — CRT display (mask + glow)",
-		"png": "08_D_crt_display.png",
+		"id": "option_3_terminal_crt",
+		"label": "Option 3 — Terminal CRT (luminance-preserving)",
+		"png": "04_option_3_terminal_crt.png",
 		"stack": "stack",
-		"shader": "res://test/visual_style/shaders/option_d_crt_display.gdshader",
-	},
-	{
-		"id": "E_crt_luminance",
-		"label": "Option E — CRT luminance-preserving",
-		"png": "09_E_crt_luminance.png",
-		"stack": "stack",
-		"shader": "res://test/visual_style/shaders/option_e_crt_luminance.gdshader",
+		"shader": "res://test/visual_style/shaders/option_3_terminal_crt.gdshader",
+		"theme_mode": THEME_AXEL,
+		"theme_strength": 1.0,
 	},
 ]
+
+
+static func theme_mode_from_env(default_mode: int) -> int:
+	if not OS.has_environment("AXEL_STYLE_THEME"):
+		return default_mode
+	var raw := OS.get_environment("AXEL_STYLE_THEME").strip_edges().to_lower()
+	match raw:
+		"green", "green_phosphor", "pip_boy", "pip-boy":
+			return THEME_GREEN
+		"white", "mono_white", "mono":
+			return THEME_MONO_WHITE
+		"axel", "red_black", "red-black":
+			return THEME_AXEL
+		_:
+			if raw.is_valid_int():
+				return int(raw)
+			return default_mode
 
 
 static func variant_ids() -> PackedStringArray:

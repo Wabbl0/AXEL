@@ -48,30 +48,32 @@ const LAYOUT_CENTER_START := 0.24
 const LAYOUT_CENTER_END := 0.76
 const LAYOUT_SIDE_RIGHT_START := 0.78
 const LAYOUT_SIDE_RIGHT_END := 0.98
-const LAYOUT_TOP_BOX_START := 0.008
+const LAYOUT_TOP_BOX_START := LAYOUT_SIDE_START
 const LAYOUT_TOP_BOX_END := 0.14
 const LAYOUT_CENTER_HUD_START := 0.36
 const LAYOUT_CENTER_HUD_END := 0.64
 const LAYOUT_META_ICONS_SEPARATION := 4
 const META_ICON_GLYPH := "⬡"
 const META_ICON_FONT := 31
-const SIDE_PANEL_HEADER_FONT := 24
-const SIDE_PANEL_BODY_FONT := 16
+const SIDE_PANEL_HEADER_FONT := 32
+const SIDE_PANEL_BODY_FONT := 18
 const SIDE_PANEL_HINT_FONT := 14
 const WINNINGS_READOUT_FONT := 31
 const CASCADE_MULT_READOUT_FONT := 24
-const WINNINGS_READOUT_OUTLINE := 1
-const CASCADE_MULT_READOUT_OUTLINE := 1
+const WINNINGS_READOUT_OUTLINE := 0
+const CASCADE_MULT_READOUT_OUTLINE := 0
+const READOUT_ACCENT_COLOR := Color(0.98, 0.35, 0.35, 1.0)
+const STAKE_BUTTON_SIZE := 34.0
+const STAKE_BUTTON_SIZE_NARROW := 28.0
 const WINNINGS_COUNTER_MAX_DURATION := 0.25
 const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
-const HISTORY_BODY_FONT := 13
-const HISTORY_MINI_ICON_SIZE := 14
+const HISTORY_BODY_FONT := SIDE_PANEL_BODY_FONT
+const HISTORY_MINI_ICON_SIZE := 18
 const HISTORY_ROW_SEPARATION := 3
-const HISTORY_LINE2_LEFT_MARGIN := 18
-const HISTORY_TEXT_OUTLINE := 2
-const LAYOUT_GOAL_BOX_START := 0.86
-const LAYOUT_GOAL_BOX_END := 0.992
+const HISTORY_TEXT_OUTLINE := 1
+const LAYOUT_GOAL_BOX_START := 0.78
+const LAYOUT_GOAL_BOX_END := LAYOUT_SIDE_RIGHT_END
 
 var RARITY_COLORS: Dictionary = {
 	0: Color(0.65, 0.65, 0.65),
@@ -629,11 +631,13 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 	_organize_top_hud()
 	_configure_hud_layers()
 	_ensure_play_shell()
-	_style_stake_pill()
+	_configure_stake_display()
+	_style_stake_buttons()
 	_configure_spin_button_layer()
 	if budget_label != null:
 		budget_label.visible = false
 	_build_item_picker()
+	_apply_side_panel_typography()
 	if not resized.is_connected(_on_size_changed):
 		resized.connect(_on_size_changed)
 
@@ -825,6 +829,7 @@ func _restore_play_shell_from_scene() -> bool:
 	if _play_row == null:
 		return false
 	_spin_history_panel = _play_row.get_node_or_null("HistoryPanel") as PanelContainer
+	_bind_history_spin_list_from_panel(_spin_history_panel)
 	_center_column = _play_row.get_node_or_null("CenterColumn") as VBoxContainer
 	if _center_column == null:
 		return false
@@ -842,6 +847,8 @@ func _restore_play_shell_from_scene() -> bool:
 		_cascade_mult_pill = winnings_row.get_node_or_null("CascadeMultiplierPill") as PanelContainer
 		if _cascade_mult_label == null:
 			_cascade_mult_label = winnings_row.get_node_or_null("CascadeMultiplierReadout") as Label
+		_configure_winnings_readout()
+		_configure_cascade_multiplier_readout()
 	return _grid_host != null and _center_footer != null
 
 
@@ -1091,6 +1098,15 @@ func _configure_top_corner_hud() -> void:
 		goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		goal_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		goal_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if goal_box != null:
+		goal_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var meta_content := meta_box.get_node_or_null("MetaContent") as VBoxContainer
+	if meta_content != null:
+		meta_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var seed_row := meta_box.get_node_or_null("MetaContent/SeedRow") as HBoxContainer
+	if seed_row != null:
+		seed_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+		seed_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 func _winnings_readout_bg_style() -> StyleBoxFlat:
@@ -1110,7 +1126,8 @@ func _configure_winnings_readout() -> void:
 	if mult_label == null:
 		return
 	mult_label.add_theme_font_size_override("font_size", WINNINGS_READOUT_FONT)
-	mult_label.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.95))
+	mult_label.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+	mult_label.remove_theme_color_override("font_outline_color")
 	mult_label.add_theme_constant_override("outline_size", WINNINGS_READOUT_OUTLINE)
 
 
@@ -1118,8 +1135,8 @@ func _configure_cascade_multiplier_readout() -> void:
 	if _cascade_mult_label == null:
 		return
 	_cascade_mult_label.add_theme_font_size_override("font_size", CASCADE_MULT_READOUT_FONT)
-	_cascade_mult_label.add_theme_color_override("font_color", Color(0.98, 0.35, 0.35, 1.0))
-	_cascade_mult_label.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.95))
+	_cascade_mult_label.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+	_cascade_mult_label.remove_theme_color_override("font_outline_color")
 	_cascade_mult_label.add_theme_constant_override("outline_size", CASCADE_MULT_READOUT_OUTLINE)
 
 
@@ -1169,10 +1186,10 @@ func _side_panel_title_style() -> StyleBoxFlat:
 	style.border_color = Color(0.35, 0.02, 0.02, 0.85)
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(2)
-	style.content_margin_left = 8
-	style.content_margin_top = 6
-	style.content_margin_right = 8
-	style.content_margin_bottom = 6
+	style.content_margin_left = 11
+	style.content_margin_top = 8
+	style.content_margin_right = 11
+	style.content_margin_bottom = 8
 	return style
 
 
@@ -1180,6 +1197,55 @@ func _style_side_panel_header(header: Label) -> void:
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_theme_font_size_override("font_size", SIDE_PANEL_HEADER_FONT)
 	header.add_theme_color_override("font_color", Color(0.88, 0.4, 0.4, 1.0))
+
+
+func _bind_history_spin_list_from_panel(panel: PanelContainer) -> void:
+	if panel == null:
+		return
+	var existing := panel.find_child("HistorySpinList", true, false) as VBoxContainer
+	if existing != null:
+		_history_spin_list = existing
+		return
+	var header := panel.get_meta("header") as Label
+	if header != null:
+		_style_side_panel_header(header)
+	var list_root := panel.get_meta("list") as VBoxContainer
+	if list_root == null:
+		return
+	_history_spin_list = VBoxContainer.new()
+	_history_spin_list.name = "HistorySpinList"
+	_history_spin_list.add_theme_constant_override("separation", HISTORY_ROW_SEPARATION)
+	list_root.add_child(_history_spin_list)
+	_reassert_node_ownership(_history_spin_list)
+
+
+func _apply_side_panel_typography() -> void:
+	for panel in [_spin_history_panel, _item_picker_panel]:
+		if panel == null:
+			continue
+		var header := panel.get_meta("header") as Label
+		if header != null:
+			_style_side_panel_header(header)
+		var header_strip := header.get_parent() as PanelContainer if header != null else null
+		if header_strip != null:
+			header_strip.add_theme_stylebox_override("panel", _side_panel_title_style())
+	_apply_item_picker_body_typography()
+
+
+func _apply_item_picker_body_typography() -> void:
+	if _item_picker_panel == null:
+		return
+	for child in _item_picker_panel.find_children("*", "CheckBox", true, false):
+		var cb := child as CheckBox
+		cb.add_theme_font_size_override("font_size", SIDE_PANEL_BODY_FONT)
+	for child in _item_picker_panel.find_children("*", "Label", true, false):
+		var label := child as Label
+		if label == _item_picker_title:
+			continue
+		if label.name == "SectionHeader":
+			continue
+		if label.text == "No items available":
+			label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 
 
 func _make_side_panel_header_strip(header_text: String) -> PanelContainer:
@@ -1233,31 +1299,57 @@ func _make_side_panel(header_text: String, with_scroll_list: bool = true) -> Pan
 	return panel
 
 
-func _style_stake_pill() -> void:
-	if bet_label == null or bet_label.get_parent() == null:
+func _configure_stake_display() -> void:
+	if bet_label == null:
 		return
 	var bet_row := bet_label.get_parent() as HBoxContainer
 	if bet_row == null:
-		return
-	var idx := bet_label.get_index()
-	_stake_pill = PanelContainer.new()
-	_stake_pill.name = "StakePill"
-	var pill_style := StyleBoxFlat.new()
-	pill_style.bg_color = Color(0.1, 0.0, 0.0, 0.85)
-	pill_style.border_color = Color(0.78, 0.03, 0.03, 0.95)
-	pill_style.set_border_width_all(2)
-	pill_style.set_corner_radius_all(18)
-	pill_style.content_margin_left = 16
-	pill_style.content_margin_right = 16
-	pill_style.content_margin_top = 4
-	pill_style.content_margin_bottom = 4
-	_stake_pill.add_theme_stylebox_override("panel", pill_style)
-	_reparent_for_layout(bet_label, _stake_pill)
+		bet_row = bet_label.get_parent().get_parent() as HBoxContainer if bet_label.get_parent() != null else null
+	if bet_label.get_parent() is PanelContainer:
+		var pill := bet_label.get_parent() as PanelContainer
+		bet_row = pill.get_parent() as HBoxContainer
+		if bet_row != null:
+			var idx := pill.get_index()
+			_reparent_for_layout(bet_label, bet_row)
+			bet_row.move_child(bet_label, idx)
+			pill.queue_free()
+			_stake_pill = null
+	elif bet_label.get_parent() != null and bet_label.get_parent().name == "StakePill":
+		var pill_node := bet_label.get_parent()
+		bet_row = pill_node.get_parent() as HBoxContainer
+		if bet_row != null:
+			var idx := pill_node.get_index()
+			_reparent_for_layout(bet_label, bet_row)
+			bet_row.move_child(bet_label, idx)
+			pill_node.queue_free()
+			_stake_pill = null
 	bet_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bet_label.add_theme_font_size_override("font_size", 22)
-	bet_row.add_child(_stake_pill)
-	bet_row.move_child(_stake_pill, idx)
-	_reassert_node_ownership(_stake_pill)
+	bet_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+
+func _stake_button_style() -> StyleBoxFlat:
+	var flat := StyleBoxFlat.new()
+	flat.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	flat.border_color = Color(0.78, 0.03, 0.03, 0.85)
+	flat.set_border_width_all(1)
+	flat.set_corner_radius_all(2)
+	flat.content_margin_left = 4
+	flat.content_margin_right = 4
+	flat.content_margin_top = 2
+	flat.content_margin_bottom = 2
+	return flat
+
+
+func _style_stake_buttons() -> void:
+	for btn in [bet_minus_btn, bet_plus_btn]:
+		if btn == null:
+			continue
+		var flat := _stake_button_style()
+		btn.add_theme_stylebox_override("normal", flat)
+		btn.add_theme_stylebox_override("hover", flat.duplicate())
+		btn.add_theme_stylebox_override("pressed", flat.duplicate())
+		btn.add_theme_stylebox_override("focus", flat.duplicate())
+		btn.add_theme_stylebox_override("disabled", flat.duplicate())
 
 
 func _on_spin_pressed() -> void:
@@ -1347,14 +1439,14 @@ func _pulse_cascade_multiplier() -> void:
 	if _cascade_mult_pill == null:
 		return
 	_cascade_mult_pill.scale = Vector2.ONE
-	_cascade_mult_pill.modulate = Color.WHITE
+	_cascade_mult_pill.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	var peak := create_tween()
 	peak.set_parallel(true)
-	peak.tween_property(_cascade_mult_pill, "modulate", Color(1.45, 0.4, 0.4, 1.0), 0.1)
-	peak.tween_property(_cascade_mult_pill, "scale", Vector2(1.08, 1.08), 0.1)
+	peak.tween_property(_cascade_mult_pill, "modulate", Color(1.25, 0.35, 0.35, 1.0), 0.1)
+	peak.tween_property(_cascade_mult_pill, "scale", Vector2(1.06, 1.06), 0.1)
 	var settle := peak.chain()
 	settle.set_parallel(true)
-	settle.tween_property(_cascade_mult_pill, "modulate", Color.WHITE, 0.18)
+	settle.tween_property(_cascade_mult_pill, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.18)
 	settle.tween_property(_cascade_mult_pill, "scale", Vector2.ONE, 0.18)
 
 
@@ -1506,13 +1598,9 @@ func _append_history_spin_row(event: Dictionary) -> void:
 	var bet: int = int(event.get("bet", 0))
 	var symbol_value: float = float(event.get("symbol_value", 0.0))
 	var cascade_mult: int = int(event.get("cascade_multiplier", 1))
-	var row := VBoxContainer.new()
-	row.add_theme_constant_override("separation", HISTORY_ROW_SEPARATION)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var line1 := HBoxContainer.new()
-	line1.add_theme_constant_override("separation", 4)
-	line1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var tex: Texture2D = event.get("texture") as Texture2D
 	if tex != null:
 		var icon := TextureRect.new()
@@ -1522,40 +1610,26 @@ func _append_history_spin_row(event: Dictionary) -> void:
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		line1.add_child(icon)
-	var line1_label := Label.new()
-	line1_label.text = "%d x %s" % [bet, _format_history_factor(symbol_value)]
-	line1_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	line1_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_apply_history_text_style(line1_label)
-	line1.add_child(line1_label)
-	row.add_child(line1)
-
-	var line2_row := HBoxContainer.new()
-	line2_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var line2_indent := Control.new()
-	line2_indent.custom_minimum_size = Vector2(HISTORY_LINE2_LEFT_MARGIN, 0.0)
-	line2_indent.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	line2_row.add_child(line2_indent)
-	var line2_label := Label.new()
-	line2_label.text = "x %d" % cascade_mult
-	line2_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	line2_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_history_text_style(line2_label)
-	line2_row.add_child(line2_label)
-	row.add_child(line2_row)
-
+		row.add_child(icon)
+	var row_label := Label.new()
+	row_label.text = "%d x %s x %d" % [bet, _format_history_factor(symbol_value), cascade_mult]
+	row_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	row_label.clip_text = true
+	row_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_apply_history_text_style(row_label)
+	row.add_child(row_label)
 	_history_spin_list.add_child(row)
 
 
 func _apply_history_text_style(label: Label) -> void:
 	label.add_theme_font_size_override("font_size", HISTORY_BODY_FONT)
-	label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
-	label.add_theme_color_override("font_outline_color", Color(0.48, 0.48, 0.48, 1.0))
+	label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.92, 1.0))
+	label.add_theme_color_override("font_outline_color", Color(0.35, 0.02, 0.02, 0.85))
 	label.add_theme_constant_override("outline_size", HISTORY_TEXT_OUTLINE)
-	label.add_theme_color_override("font_shadow_color", Color(0.15, 0.15, 0.15, 0.9))
-	label.add_theme_constant_override("shadow_offset_x", 1)
-	label.add_theme_constant_override("shadow_offset_y", 1)
+	label.remove_theme_color_override("font_shadow_color")
+	label.remove_theme_constant_override("shadow_offset_x")
+	label.remove_theme_constant_override("shadow_offset_y")
 
 
 func _format_history_factor(value: float) -> String:
@@ -1689,9 +1763,14 @@ func _layout_execute_button_to_grid_width(grid_w: float) -> void:
 func _apply_responsive_layout() -> void:
 	if _play_area == null:
 		return
-	_place_control_rect(meta_box, LAYOUT_TOP_BOX_START, LAYOUT_CORNER_Y0, LAYOUT_TOP_BOX_END, LAYOUT_CORNER_Y1)
+	_place_control_rect(meta_box, LAYOUT_SIDE_START, LAYOUT_CORNER_Y0, LAYOUT_TOP_BOX_END, LAYOUT_CORNER_Y1)
 	_place_control_rect(goal_box, LAYOUT_GOAL_BOX_START, LAYOUT_CORNER_Y0, LAYOUT_GOAL_BOX_END, LAYOUT_CORNER_Y1)
-	_place_control_rect(_economics_center, LAYOUT_CENTER_HUD_START, LAYOUT_CENTER_HUD_Y0, LAYOUT_CENTER_HUD_END, LAYOUT_CENTER_HUD_Y1)
+	var economics_x0 := LAYOUT_CENTER_HUD_START
+	var economics_x1 := LAYOUT_CENTER_HUD_END
+	if size.x >= RESPONSIVE_NARROW_W:
+		economics_x0 = maxf(LAYOUT_CENTER_HUD_START, LAYOUT_CENTER_START + 0.02)
+		economics_x1 = minf(LAYOUT_CENTER_HUD_END, LAYOUT_CENTER_END - 0.02)
+	_place_control_rect(_economics_center, economics_x0, LAYOUT_CENTER_HUD_Y0, economics_x1, LAYOUT_CENTER_HUD_Y1)
 	_apply_economics_typography()
 
 	var main_y0 := LAYOUT_MAIN_Y0
@@ -1719,12 +1798,12 @@ func _apply_economics_typography() -> void:
 	if goal_label != null:
 		goal_label.add_theme_font_size_override("font_size", bankroll_font)
 	if bet_label != null:
-		var stake_font := 22 if size.x >= RESPONSIVE_NARROW_W else 18
-		bet_label.add_theme_font_size_override("font_size", stake_font)
+		bet_label.add_theme_font_size_override("font_size", bankroll_font)
 	if bet_minus_btn != null and bet_plus_btn != null:
-		var btn_size := 40.0 if size.x >= RESPONSIVE_NARROW_W else 34.0
+		var btn_size := STAKE_BUTTON_SIZE if size.x >= RESPONSIVE_NARROW_W else STAKE_BUTTON_SIZE_NARROW
 		bet_minus_btn.custom_minimum_size = Vector2(btn_size, btn_size)
 		bet_plus_btn.custom_minimum_size = Vector2(btn_size, btn_size)
+		_style_stake_buttons()
 
 
 func _place_control_rect(control_node: Control, x0: float, y0: float, x1: float, y1: float) -> void:
@@ -1845,6 +1924,7 @@ func _build_item_picker() -> void:
 	if existing_panel != null:
 		_item_picker_panel = existing_panel
 		_item_picker_title = _item_picker_panel.get_meta("header") as Label
+		_apply_item_picker_body_typography()
 		return
 	_item_picker_panel = _make_side_panel("ITEMS")
 	_item_picker_panel.name = "ItemPickerPanel"

@@ -2373,3 +2373,34 @@ Copy and fill:
 - Behavior impact: Future AXEL chats should include a brief learning note after every implemented fix, using the same 3-bullet structure.
 - Verification: Confirmed governance rule item 13 and `AI_DOCS.md` §9 step 9 + §13 checklist item use matching language and format.
 - Notes: Governance-only change; no gameplay/runtime behavior changed.
+
+## 2026-05-23 - Non-Combat Scanline/Glitch Comparison Sweep
+
+- Request: Plan and prototype three free animated scanline/white-noise/glitch post-FX options (old TV / Pip-Boy feel) for non-combat scenes, run Scene 1.1 screenshot comparison, and deliver screenshots for selection.
+- Implementation: Added three test-only comparison shaders (CRT TV, VHS glitch burst, terminal CRT) with shared theme tint include (`axel` / `green` / `mono white`). Narrowed `variant_matrix.gd` to baseline + 3 options, extended `style_overlay_applier.gd` for theme uniforms and production baseline stack, updated capture README/manifest. Ran deterministic sweep on `1.1_SchoolExterior`.
+- Files changed:
+  - `AXEL/axel_project/test/visual_style/shaders/theme_post_fx.gdshaderinc`
+  - `AXEL/axel_project/test/visual_style/shaders/option_1_crt_tv.gdshader`
+  - `AXEL/axel_project/test/visual_style/shaders/option_2_vhs_glitch.gdshader`
+  - `AXEL/axel_project/test/visual_style/shaders/option_3_terminal_crt.gdshader`
+  - `AXEL/axel_project/test/visual_style/variant_matrix.gd`
+  - `AXEL/axel_project/test/visual_style/style_overlay_applier.gd`
+  - `AXEL/axel_project/test/visual_style/capture_scene_1_1_style_sweep.gd`
+  - `AXEL/axel_project/test/visual_style/README.md`
+  - `AXEL/axel_project/tools/visual_style/output/scanline_glitch_comparison/*.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Production runtime unchanged (`AxelPostFxStack` / combat exclusion untouched). Test harness can capture baseline vs 3 candidate stacks; option shaders support runtime theme switching via `AXEL_STYLE_THEME`.
+- Verification: `run_scene_1_1_style_sweep.ps1` exit 0; 4 PNGs written to `%APPDATA%/Godot/app_userdata/AXEL/style_sweep_1_1` and copied to `tools/visual_style/output/scanline_glitch_comparison/`.
+- Notes: Option 2 screenshot captured during an active glitch burst (RGB split visible); re-run with `$env:AXEL_STYLE_THEME="green"` to preview Pip-Boy phosphor on any option.
+
+## 2026-05-23 - Combat HUD Polish Pass
+
+- Request: Polish combat HUD typography/alignment — single-row history log with larger fonts and ellipsis, items font parity, goal/meta alignment to side panels, stake indicator cleanup (no circle, bankroll-sized value, non-overlapping +/-), and remove white highlight/glow from winnings/multiplier readouts.
+- Implementation: Updated responsive layout anchors so MetaBox left aligns with history panel and GoalBox right aligns with items panel right edge. History rows now render as one truncated line; side-panel headers scaled ~33% (24→32). Removed StakePill wrapper from scaffold; stake value uses bankroll typography; stake +/- buttons use transparent bordered style with reduced size. Winnings and cascade multiplier readouts drop white outline/halo styling in favor of red accent text only.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Combat test HUD reads cleaner at multiple resolutions; history never wraps to a second line; corner HUD columns share vertical alignment guides with side panels; stake controls stay in header band without pill chrome.
+- Verification: `python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py` exit 0; lints clean on `combat_test.gd`.
+- Notes: User confirmed history overflow should truncate with ellipsis and goal alignment reference is items panel right edge.
