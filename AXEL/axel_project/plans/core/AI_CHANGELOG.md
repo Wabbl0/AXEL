@@ -2348,3 +2348,28 @@ Copy and fill:
   - `AXEL/axel_project/combat/scripts/combat_test.gd`
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Verification: `check_combat_test_scaffold.py` OK; `combat_test_scaffold_check.gd` OK; `canon_consistency_audit.gd` — 2 minor movement findings only (Corridor speed/scale).
+
+## 2026-05-23 - Fix combat UI mojibake (Unicode-safe)
+
+- Request: Fix random symbols in combat top-left icons and item box labels; harden tooling to prevent re-corruption.
+- Root cause: `combat_test.tscn` stored mojibake (`Ã¢…`, `â¬¡`, etc.) after UTF-8 scene text was read via `subprocess.run(..., text=True)` on Windows (locale codepage decode) and rewritten as UTF-8 by `check_combat_test_scaffold.py` staged auto-fix.
+- Implementation: Restored canonical Unicode glyphs in scene (`⬡`, `⌂`, `◇`, `✦`, `×`, `…` ellipsis in metadata). Scaffold checker now reads git blobs as bytes + strict UTF-8 decode. Added `check_mojibake_signatures()` guard in `canon_validators_shared.py`.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/tools/qa/check_combat_test_scaffold.py`
+  - `AXEL/axel_project/tools/qa/canon_validators_shared.py`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Combat shell shows correct meta icons and item rarity prefixes; pre-commit blocks reintroduction of mojibake in staged `combat_test.tscn`.
+- Verification: `python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py` (OK); `combat_test_scaffold_check.gd` (OK). Manual F6 on `combat_test.tscn` recommended for visual confirm.
+
+## 2026-05-23 - Persistent Beginner-Fix Explanations Governance
+
+- Request: Require agents to explain each fix in simple beginner coding terms (no metaphors), short and concise, so the user learns project structure across future chats.
+- Implementation: Added mandatory post-fix teaching rule to always-on governance and mirrored it in `AI_DOCS.md` workflow + consistency checklist. Format locked to 3 bullets: Cause, Fix, What to learn.
+- Files changed:
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Future AXEL chats should include a brief learning note after every implemented fix, using the same 3-bullet structure.
+- Verification: Confirmed governance rule item 13 and `AI_DOCS.md` §9 step 9 + §13 checklist item use matching language and format.
+- Notes: Governance-only change; no gameplay/runtime behavior changed.

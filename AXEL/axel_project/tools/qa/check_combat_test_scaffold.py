@@ -12,6 +12,7 @@ if str(_TOOLS_QA_DIR) not in sys.path:
 
 from canon_validators_shared import (  # noqa: E402
     check_duplicate_grid_overrides,
+    check_mojibake_signatures,
     sanitize_duplicate_combat_root_grid,
 )
 
@@ -47,24 +48,36 @@ def check_scene_text(text: str) -> list[str]:
     return missing
 
 
+def _decode_utf8(data: bytes, context: str) -> str:
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        print(
+            f"BLOCKED: {context} is not valid UTF-8 ({exc}).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from exc
+
+
+def _run_git_bytes(args: list[str]) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        args,
+        capture_output=True,
+        cwd=REPO_ROOT,
+    )
+
+
 def _staged_scene_text() -> str | None:
-    listed = subprocess.run(
-        ["git", "diff", "--cached", "--name-only", "--", SCENE_REL],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-    )
-    if SCENE_REL not in listed.stdout.splitlines():
+    listed = _run_git_bytes(["git", "diff", "--cached", "--name-only", "--", SCENE_REL])
+    if listed.returncode != 0:
         return None
-    blob = subprocess.run(
-        ["git", "show", f":{SCENE_REL}"],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-    )
+    names = _decode_utf8(listed.stdout, "git diff --cached --name-only").splitlines()
+    if SCENE_REL not in names:
+        return None
+    blob = _run_git_bytes(["git", "show", f":{SCENE_REL}"])
     if blob.returncode != 0:
         return None
-    return blob.stdout
+    return _decode_utf8(blob.stdout, f"staged {SCENE_REL}")
 
 
 def _git_add_scene() -> None:
@@ -94,7 +107,19 @@ def _try_autofix_staged_grid_duplicates(text: str) -> tuple[str, list[str]]:
 
 def _validate_scene_text(text: str) -> int:
     missing = check_scene_text(text)
+    mojibake_violations = check_mojibake_signatures(text)
     grid_violations = check_duplicate_grid_overrides(text)
+    if mojibake_violations:
+        print(
+            "BLOCKED: combat_test.tscn contains mojibake (corrupted Unicode).\n"
+            "Restore glyphs from combat_test_scaffold_baseline.tscn / combat_test.gd constants.\n"
+            "If pre-commit rewrote the file, ensure check_combat_test_scaffold.py decodes git blobs as UTF-8.\n"
+            "Violations:",
+            file=sys.stderr,
+        )
+        for item in mojibake_violations:
+            print(f"  - {item}", file=sys.stderr)
+        return 1
     if grid_violations:
         print(
             "BLOCKED: combat_test.tscn has duplicate CombatRoot grid overrides.\n"

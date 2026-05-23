@@ -20,6 +20,17 @@ COMBAT_ROOT_INSTANCE_MARKERS = (
     'instance=ExtResource("2_combat_root")',
 )
 
+# UTF-8 text mis-decoded as Windows-1252/latin-1 (common in combat_test.tscn glyphs).
+MOJIBAKE_SIGNATURES = (
+    "Ã¢",
+    "Ã—",
+    "â€”",
+    "â€¡",
+    "â¬",
+    "Å’",
+    "Å“",
+)
+
 NODE_HEADER_RE = re.compile(r'^\[node name="([^"]+)"([^\]]*)\]\s*$')
 SECTION_HEADER_PREFIXES = ("[node ", "[sub_resource", "[ext_resource")
 
@@ -120,6 +131,18 @@ def sanitize_duplicate_combat_root_grid(text: str) -> tuple[str, list[str]]:
     if cleaned and not cleaned.endswith("\n") and text.endswith("\n"):
         cleaned += "\n"
     return cleaned, removed_names
+
+
+def check_mojibake_signatures(text: str) -> list[str]:
+    """Detect UTF-8 mojibake left in combat_test.tscn after locale mis-decode rewrites."""
+    violations: list[str] = []
+    for signature in MOJIBAKE_SIGNATURES:
+        if signature in text:
+            violations.append(
+                f'combat_test.tscn contains mojibake signature {signature!r} '
+                "(restore Unicode glyphs; ensure scaffold checker uses UTF-8 decode)"
+            )
+    return violations
 
 
 def check_duplicate_grid_overrides(text: str) -> list[str]:

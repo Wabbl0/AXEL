@@ -125,8 +125,12 @@ For substantive AXEL requests:
    - Convert potential assumptions into explicit user-confirmed decisions; do not assume hidden defaults.
 7. Implement changes.
 8. Verify behavior (tests or explicit manual checks).
-9. Append one entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md` if change was implemented.
-10. If a task introduces or updates a reusable workflow/agent pipeline (scripts, specs, rules, runner contracts), record it in this file and in `.cursor/rules/axel-ai-docs-governance.mdc` so future chats can reference it directly.
+9. **Beginner fix teaching (mandatory when a fix was implemented):** After fixing a problem, explain it in simple beginner coding terms (no metaphors). Keep it short. Use exactly 3 bullets:
+   - **Cause:** what code/state was wrong and why it broke behavior.
+   - **Fix:** what files/functions were changed and what the new behavior is.
+   - **What to learn:** one practical takeaway about project structure or coding pattern.
+10. Append one entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md` if change was implemented.
+11. If a task introduces or updates a reusable workflow/agent pipeline (scripts, specs, rules, runner contracts), record it in this file and in `.cursor/rules/axel-ai-docs-governance.mdc` so future chats can reference it directly.
 
 **Governance rule / AI_DOCS responsibility split:** The always-applied rule (`.cursor/rules/axel-ai-docs-governance.mdc`) is intentionally concise — it directs agents to read this file and enforces the hard conflict gate, QA opt-in trigger, and canonical alias stability. All detailed procedures, command sets, invariants, and pipeline specs live here in `AI_DOCS.md` and in the referenced subsystem docs (rubric, skill, specs). Do not re-duplicate detailed content into the governance rule.
 
@@ -196,6 +200,7 @@ Before finishing:
 - [ ] Conflicts were resolved using hierarchy and documented.
 - [ ] New planning requests asked at least 2 clarifying questions and continued clarification until assumption-free plan readiness.
 - [ ] Implemented request was appended to `AI_CHANGELOG.md`.
+- [ ] If a fix was implemented, user received a concise beginner explanation (Cause / Fix / What to learn; no metaphors).
 
 ## 14) Multi-Machine Git Preservation
 
