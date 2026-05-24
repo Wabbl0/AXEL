@@ -1165,7 +1165,7 @@ func fit_to_panel(
 	var cell_size: float
 	if fill_panel:
 		var inner_w: float = safe_w - GRID_EDGE_MARGIN * 2.0
-		var inner_h: float = safe_h - GRID_EDGE_MARGIN
+		var inner_h: float = safe_h - GRID_EDGE_MARGIN * 2.0
 		var by_w: float = (inner_w - float(GridManager.COLS - 1) * sep_h) / float(GridManager.COLS)
 		var by_h: float = (inner_h - float(GridManager.ROWS - 1) * sep_v) / float(GridManager.ROWS)
 		cell_size = clampf(minf(by_w, by_h), CELL_SIZE_MIN, PANEL_FILL_CELL_MAX)

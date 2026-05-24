@@ -2480,3 +2480,28 @@ Copy and fill:
 - Behavior impact: Gameplay/runtime unchanged. This is migration safety and continuity documentation only.
 - Verification: `git status -sb` shows `main...origin/main`; `git rev-list --left-right --count origin/main...main` = `0 0`; required commit for both PCs is `c99e410edd8d3580ae5ba4bc4d09d649bddb341a`.
 - Notes: New-account validation on PC1/PC2 remains a manual gate after account creation/login succeeds.
+
+## 2026-05-24 - Combat UI layout and typography pass
+
+- Request: Align History/grid/Items top borders, remove grid-to-winnings slack while maximizing grid size, increase History log font ~50% and Items font ~25% without clipping, and left-align Items rows to match History indentation.
+- Implementation: Raised play band (`LAYOUT_MAIN_Y0` 0.145→0.12), changed `GridHost` to shrink-to-content after grid fit, computed footer stack height so grid uses remaining center-column space, matched vertical gaps via `CENTER_COLUMN_SEPARATION`, added width-aware font scaling helpers, tightened item checkbox left alignment, and synced scene baselines.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Combat shell panels and grid top-align higher; grid grows to fill available center height; grid→winnings gap matches winnings→Execute spacing; History/Items body text scales up when panel width allows.
+- Verification: GDScript linter clean on touched scripts; manual F6 review recommended at default and narrow widths.
+- Notes: Font targets cap dynamically per panel inner width to avoid clipping.
+
+## 2026-05-24 - Combat play band moved downward
+
+- Request: Correct combat shell vertical direction because History/grid/Items were moved up and started clipping against top HUD.
+- Implementation: Moved play band start downward by updating shared runtime + scene baseline (`LAYOUT_MAIN_Y0` and `PlayArea.anchor_top`) from `0.12` to `0.16`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: History panel, combat grid, and Items panel sit lower and no longer collide with top-level HUD row.
+- Verification: GDScript linter clean on touched script file.
+- Notes: Keeps prior spacing/typography improvements while correcting only vertical placement direction.

@@ -240,7 +240,7 @@ color = Color(0, 0, 0, 1)
 [node name="PlayArea" type="Control" parent="." unique_id=797875107]
 anchors_preset = 0
 anchor_left = 0.02
-anchor_top = 0.145
+anchor_top = 0.16
 anchor_right = 0.98
 anchor_bottom = 0.99
 grow_horizontal = 2
@@ -306,7 +306,7 @@ clip_contents = true
 custom_minimum_size = Vector2(260, 200)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
+size_flags_vertical = 0
 
 [node name="CombatRoot" parent="PlayArea/PlayRow/CenterColumn/GridHost" unique_id=952603979 instance=ExtResource("2_combat_root")]
 unique_name_in_owner = true
@@ -438,14 +438,14 @@ theme_override_constants/separation = 4
 layout_mode = 2
 tooltip_text = "Common | Each reroll adds +0.06x encounter payout scalar (cap +0.36x)"
 theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 22
 text = "◇ Ash Reroll Token"
 
 [node name="@CheckBox@21376" type="CheckBox" parent="PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@21369/@ScrollContainer@21373/@VBoxContainer@21374" unique_id=1065990659]
 layout_mode = 2
 tooltip_text = "Legendary | Expands loadout capacity by +2 slots (max 9). Legendary only."
 theme_override_colors/font_color = Color(0.95, 0.75, 0.2, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 22
 text = "✦ Void Satchel"
 
 [node name="EconomicsCenter" type="CenterContainer" parent="." unique_id=1076663173]

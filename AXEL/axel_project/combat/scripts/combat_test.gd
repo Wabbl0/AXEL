@@ -29,9 +29,10 @@ const LAYOUT_CORNER_Y0 := 0.025
 const LAYOUT_CORNER_Y1 := 0.135
 const LAYOUT_CENTER_HUD_Y0 := 0.03
 const LAYOUT_CENTER_HUD_Y1 := 0.14
-const LAYOUT_MAIN_Y0 := 0.145
+const LAYOUT_MAIN_Y0 := 0.16
 const LAYOUT_MAIN_END := 0.99
 const CENTER_COLUMN_SEPARATION := 10
+const GRID_HOST_MIN_HEIGHT := 200.0
 const WINNINGS_BAND_MIN_HEIGHT := 40.0
 const WINNINGS_ROW_SEPARATION := 8
 const CENTER_FOOTER_SEPARATION := 12
@@ -57,7 +58,12 @@ const META_ICON_GLYPH := "⬡"
 const META_ICON_FONT := 31
 const SIDE_PANEL_HEADER_FONT := 32
 const SIDE_PANEL_BODY_FONT := 18
+const SIDE_PANEL_BODY_FONT_MIN := 14
+const HISTORY_BODY_FONT_SCALE := 1.5
+const ITEMS_BODY_FONT_SCALE := 1.25
 const SIDE_PANEL_HINT_FONT := 14
+const ITEM_PICKER_ROW_H_SEP := 4
+const ITEM_PICKER_CHECKBOX_ICON_MAX := 18
 const WINNINGS_READOUT_FONT := 31
 const CASCADE_MULT_READOUT_FONT := 24
 const WINNINGS_READOUT_OUTLINE := 0
@@ -68,7 +74,6 @@ const STAKE_BUTTON_SIZE_NARROW := 28.0
 const WINNINGS_COUNTER_MAX_DURATION := 0.25
 const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
-const HISTORY_BODY_FONT := SIDE_PANEL_BODY_FONT
 const HISTORY_MINI_ICON_SIZE := 18
 const HISTORY_ROW_SEPARATION := 3
 const HISTORY_TEXT_OUTLINE := 1
@@ -361,7 +366,7 @@ func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: 
 	var sep_h := float(grid_ui.get_theme_constant("h_separation"))
 	var sep_v := float(grid_ui.get_theme_constant("v_separation"))
 	var inner_w := safe_w - FALLBACK_GRID_EDGE_MARGIN * 2.0
-	var inner_h := safe_h - FALLBACK_GRID_EDGE_MARGIN
+	var inner_h := safe_h - FALLBACK_GRID_EDGE_MARGIN * 2.0
 	var by_w := (inner_w - float(FALLBACK_GRID_COLS - 1) * sep_h) / float(FALLBACK_GRID_COLS)
 	var by_h := (inner_h - float(FALLBACK_GRID_ROWS - 1) * sep_v) / float(FALLBACK_GRID_ROWS)
 	var cell_size := clampf(minf(by_w, by_h), FALLBACK_CELL_SIZE_MIN, FALLBACK_CELL_SIZE_MAX)
@@ -903,8 +908,8 @@ func _build_play_shell() -> void:
 	_grid_host = Control.new()
 	_grid_host.name = "GridHost"
 	_grid_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_grid_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_grid_host.custom_minimum_size = Vector2(260, 200)
+	_grid_host.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_grid_host.custom_minimum_size = Vector2(260, GRID_HOST_MIN_HEIGHT)
 	_grid_host.clip_contents = true
 	_center_column.add_child(_grid_host)
 	_reassert_node_ownership(_grid_host)
@@ -1223,6 +1228,7 @@ func _apply_side_panel_typography() -> void:
 	for panel in [_spin_history_panel, _item_picker_panel]:
 		if panel == null:
 			continue
+		panel.add_theme_stylebox_override("panel", _side_panel_style())
 		var header := panel.get_meta("header") as Label
 		if header != null:
 			_style_side_panel_header(header)
@@ -1235,9 +1241,9 @@ func _apply_side_panel_typography() -> void:
 func _apply_item_picker_body_typography() -> void:
 	if _item_picker_panel == null:
 		return
+	var body_font := _resolved_items_body_font()
 	for child in _item_picker_panel.find_children("*", "CheckBox", true, false):
-		var cb := child as CheckBox
-		cb.add_theme_font_size_override("font_size", SIDE_PANEL_BODY_FONT)
+		_style_item_picker_checkbox(child as CheckBox, body_font)
 	for child in _item_picker_panel.find_children("*", "Label", true, false):
 		var label := child as Label
 		if label == _item_picker_title:
@@ -1246,6 +1252,18 @@ func _apply_item_picker_body_typography() -> void:
 			continue
 		if label.text == "No items available":
 			label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+
+
+func _style_item_picker_checkbox(cb: CheckBox, body_font: int = -1) -> void:
+	if cb == null:
+		return
+	if body_font < 0:
+		body_font = _resolved_items_body_font()
+	cb.add_theme_font_size_override("font_size", body_font)
+	cb.add_theme_constant_override("h_separation", ITEM_PICKER_ROW_H_SEP)
+	cb.add_theme_constant_override("icon_max_width", ITEM_PICKER_CHECKBOX_ICON_MAX)
+	cb.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 func _make_side_panel_header_strip(header_text: String) -> PanelContainer:
@@ -1281,6 +1299,7 @@ func _make_side_panel(header_text: String, with_scroll_list: bool = true) -> Pan
 
 		var list := VBoxContainer.new()
 		list.add_theme_constant_override("separation", 4)
+		list.alignment = BoxContainer.ALIGNMENT_BEGIN
 		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		scroll.add_child(list)
 
@@ -1599,14 +1618,15 @@ func _append_history_spin_row(event: Dictionary) -> void:
 	var symbol_value: float = float(event.get("symbol_value", 0.0))
 	var cascade_mult: int = int(event.get("cascade_multiplier", 1))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
+	row.add_theme_constant_override("separation", HISTORY_ROW_SEPARATION)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var icon_size := _history_mini_icon_size()
 	var tex: Texture2D = event.get("texture") as Texture2D
 	if tex != null:
 		var icon := TextureRect.new()
 		icon.name = "HistorySymbolIcon"
 		icon.texture = tex
-		icon.custom_minimum_size = Vector2(HISTORY_MINI_ICON_SIZE, HISTORY_MINI_ICON_SIZE)
+		icon.custom_minimum_size = Vector2(icon_size, icon_size)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -1623,7 +1643,7 @@ func _append_history_spin_row(event: Dictionary) -> void:
 
 
 func _apply_history_text_style(label: Label) -> void:
-	label.add_theme_font_size_override("font_size", HISTORY_BODY_FONT)
+	label.add_theme_font_size_override("font_size", _resolved_history_body_font())
 	label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.92, 1.0))
 	label.add_theme_color_override("font_outline_color", Color(0.35, 0.02, 0.02, 0.85))
 	label.add_theme_constant_override("outline_size", HISTORY_TEXT_OUTLINE)
@@ -1689,23 +1709,28 @@ func _layout_combat() -> void:
 	var host_w := maxf(_grid_host.size.x, _center_column.size.x)
 	if host_w < 64.0:
 		host_w = maxf(_center_column.get_combined_minimum_size().x, 260.0)
-	var host_h := maxf(_grid_host.size.y, 200.0)
+	var footer_stack_h := _get_center_column_footer_stack_height()
+	var center_col_h := maxf(_center_column.size.y, GRID_HOST_MIN_HEIGHT)
+	var max_host_h := maxf(center_col_h - footer_stack_h, GRID_HOST_MIN_HEIGHT)
 	var bottom_reserve := PREMIUM_BAR_HEIGHT + PREMIUM_BAR_LAYOUT_PAD
 	_suppress_combat_root_legacy_labels()
 	var grid_w := 0.0
 	if _can_layout_combat_grid():
-		combat.fit_to_panel(Vector2(host_w, host_h), bottom_reserve, true, true)
+		combat.fit_to_panel(Vector2(host_w, max_host_h), bottom_reserve, true, true)
 		grid_w = _safe_get_grid_ui_width()
 		_fallback_grid_width = grid_w
 		_layout_premium_bar()
+		_shrink_grid_host_to_content(host_w)
 	elif combat != null:
-		grid_w = _layout_combat_grid_fallback(host_w, host_h, bottom_reserve)
+		grid_w = _layout_combat_grid_fallback(host_w, max_host_h, bottom_reserve)
 		_fallback_grid_width = grid_w
-		_layout_premium_bar_fallback_aligned(grid_w, host_h)
+		_layout_premium_bar_fallback_aligned(grid_w, max_host_h)
+		_shrink_grid_host_to_content(host_w)
 	else:
 		grid_w = _get_center_column_interior_width(host_w)
 		_fallback_grid_width = grid_w
-		_layout_premium_bar_fallback(grid_w, host_h)
+		_layout_premium_bar_fallback(grid_w, max_host_h)
+		_shrink_grid_host_to_content(host_w)
 	_layout_execute_button_to_grid_width(grid_w)
 	if _is_editor_preview():
 		_ensure_editor_grid_shell_visible()
@@ -1788,6 +1813,110 @@ func _apply_responsive_layout() -> void:
 	if _item_picker_panel != null:
 		_item_picker_panel.custom_minimum_size = Vector2(side_w, side_panel_h)
 		_item_picker_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	if _grid_host != null:
+		_grid_host.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_apply_side_panel_typography()
+	_refresh_history_row_typography()
+
+
+func _get_center_column_footer_stack_height() -> float:
+	var stack_h := 0.0
+	if _bottom_window_margin != null:
+		stack_h += maxf(_bottom_window_margin.custom_minimum_size.y, BOTTOM_WINDOW_MARGIN)
+	if _center_footer != null:
+		stack_h += _center_footer.get_combined_minimum_size().y
+	if _winnings_center != null:
+		stack_h += maxf(_winnings_center.custom_minimum_size.y, WINNINGS_BAND_MIN_HEIGHT)
+	stack_h += float(CENTER_COLUMN_SEPARATION) * 2.0
+	return stack_h
+
+
+func _shrink_grid_host_to_content(host_w: float) -> void:
+	if _grid_host == null:
+		return
+	var used_h := GRID_HOST_MIN_HEIGHT
+	if combat != null:
+		var grid_ui := combat.get_node_or_null("GridUI") as Control
+		if grid_ui != null:
+			var grid_bottom := combat.position.y + grid_ui.position.y + grid_ui.size.y
+			used_h = grid_bottom + PREMIUM_BAR_HEIGHT + PREMIUM_BAR_LAYOUT_PAD
+	_grid_host.custom_minimum_size = Vector2(host_w, maxf(used_h, GRID_HOST_MIN_HEIGHT))
+	_grid_host.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _side_panel_inner_width(panel: PanelContainer) -> float:
+	if panel == null:
+		return 200.0
+	var panel_w := panel.size.x
+	if panel_w < 32.0:
+		panel_w = panel.custom_minimum_size.x
+	var style := panel.get_theme_stylebox("panel") as StyleBox
+	if style != null:
+		panel_w -= style.get_content_margin(Side.SIDE_LEFT) + style.get_content_margin(Side.SIDE_RIGHT)
+	return maxf(panel_w - 6.0, 64.0)
+
+
+func _fit_body_font_size(sample_text: String, target_scale: float, max_width: float, font: Font) -> int:
+	var max_size := maxi(int(round(float(SIDE_PANEL_BODY_FONT) * target_scale)), SIDE_PANEL_BODY_FONT)
+	if font == null or max_width <= 0.0:
+		return max_size
+	for font_size in range(max_size, SIDE_PANEL_BODY_FONT_MIN - 1, -1):
+		var text_size := font.get_string_size(sample_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+		if text_size.x <= max_width:
+			return font_size
+	return SIDE_PANEL_BODY_FONT_MIN
+
+
+func _resolved_history_body_font() -> int:
+	var inner_w := _side_panel_inner_width(_spin_history_panel)
+	var max_font := int(round(float(SIDE_PANEL_BODY_FONT) * HISTORY_BODY_FONT_SCALE))
+	var icon_w := float(_history_mini_icon_size_for_font(max_font))
+	var font := get_theme_font("font", "Label")
+	return _fit_body_font_size(
+		"100 x 0.5 x 9",
+		HISTORY_BODY_FONT_SCALE,
+		inner_w - icon_w - float(HISTORY_ROW_SEPARATION),
+		font,
+	)
+
+
+func _resolved_items_body_font() -> int:
+	var inner_w := _side_panel_inner_width(_item_picker_panel)
+	var font := get_theme_font("font", "CheckBox")
+	if font == null:
+		font = get_theme_font("font", "Label")
+	return _fit_body_font_size(
+		"◈ Void Satchel",
+		ITEMS_BODY_FONT_SCALE,
+		inner_w - float(ITEM_PICKER_CHECKBOX_ICON_MAX + ITEM_PICKER_ROW_H_SEP),
+		font,
+	)
+
+
+func _history_mini_icon_size_for_font(body_font: int) -> int:
+	return maxi(
+		int(round(float(HISTORY_MINI_ICON_SIZE) * float(body_font) / float(SIDE_PANEL_BODY_FONT))),
+		HISTORY_MINI_ICON_SIZE,
+	)
+
+
+func _history_mini_icon_size() -> int:
+	return _history_mini_icon_size_for_font(_resolved_history_body_font())
+
+
+func _refresh_history_row_typography() -> void:
+	if _history_spin_list == null:
+		return
+	var body_font := _resolved_history_body_font()
+	var icon_size := _history_mini_icon_size_for_font(body_font)
+	for row in _history_spin_list.get_children():
+		if not row is HBoxContainer:
+			continue
+		for child in row.get_children():
+			if child is TextureRect:
+				(child as TextureRect).custom_minimum_size = Vector2(icon_size, icon_size)
+			elif child is Label:
+				_apply_history_text_style(child as Label)
 
 func _apply_economics_typography() -> void:
 	var bankroll_font := BANKROLL_READOUT_FONT
@@ -1941,7 +2070,7 @@ func _build_item_picker() -> void:
 		var rarity_idx: int = clampi(int(item.get("rarity")), 0, RARITY_GLYPHS.size() - 1)
 		cb.text = "%s %s" % [RARITY_GLYPHS[rarity_idx], item.display_name]
 		cb.tooltip_text = "%s | %s" % [RARITY_NAMES[rarity_idx], item.description]
-		cb.add_theme_font_size_override("font_size", SIDE_PANEL_BODY_FONT)
+		_style_item_picker_checkbox(cb)
 		cb.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
 		cb.toggled.connect(_on_item_checkbox_toggled.bind(item, cb))
 		items_vbox.add_child(cb)
