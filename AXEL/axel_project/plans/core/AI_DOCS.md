@@ -134,6 +134,20 @@ For substantive AXEL requests:
 
 **Governance rule / AI_DOCS responsibility split:** The always-applied rule (`.cursor/rules/axel-ai-docs-governance.mdc`) is intentionally concise — it directs agents to read this file and enforces the hard conflict gate, QA opt-in trigger, and canonical alias stability. All detailed procedures, command sets, invariants, and pipeline specs live here in `AI_DOCS.md` and in the referenced subsystem docs (rubric, skill, specs). Do not re-duplicate detailed content into the governance rule.
 
+### Context routing (token-efficient new chats)
+
+- **Contract:** `plans/core/AGENT_CONTEXT_ROUTING.md` — keyword classification, confidence rules, strict bundle locks, unlock phrases, prefix fast-paths.
+- **Active packs:** `COMBAT_MIN_CONTEXT.md`, `SCENES_MIN_CONTEXT.md`, `NARRATIVE_MIN_CONTEXT.md`, `VISUAL_STYLE_MIN_CONTEXT.md` under `plans/core/context_packs/`.
+- **Prefixes:** `combat:`, `scenes:`, `narrative:`, `vfx:` (`vfx:` maps to `visual_style` bundle; no `visual_style:` prefix).
+- **Startup:** Governance rule item 1 runs routing before loading full unrelated canon (skip irrelevant `AI_DOCS.md` sections per active lock).
+- **Ambiguous first message:** Ask which bundle applies; do not assume a domain.
+- **Cross-domain:** Primary bundle only until user sends `unlock <bundle>` for a second domain.
+- **Indexing:** `.cursorignore` aggressively excludes caches, tool previews, `exports/Drawings/**`, and `AXEL/html/pictures/**`; `@`-mention those files when a task needs visual prototype references.
+- **Hierarchy unchanged:** §3 conflict resolution and §10 hard conflict gate still apply; routing does not override invariants.
+- **Future bundles:** Add `context_packs/*_MIN_CONTEXT.md`, register in routing doc, update governance + changelog together (`qa_tools` reserved).
+- **Meta-process:** `meta:` prefix — no domain pack; see `AGENT_CONTEXT_ROUTING.md` §1b and `CHAT_LANE_PROTOCOL.md`.
+- **Chat lanes:** `CHAT_LANE_PROTOCOL.md` — Lane A (discovery) vs Lane B (implementation); compact handoff between chats.
+
 ## 10) Premium-to-Auto Planning Protocol
 
 For all substantive AXEL tasks, planning outputs must be implementation-ready for later auto-model execution.
@@ -242,3 +256,31 @@ git checkout checkpoint-2026-05-22-combat-state
 - If edits are already committed and pushed, the working tree is clean — nothing left to stage.
 - Check recent history: `git log --oneline -n 10`
 - Check remote parity: `git status -sb` should not show unpushed commits before switching machines
+
+## 15) Token Budget and Turn Economy
+
+Default limits to reduce API burn while preserving canon quality. Full lane workflow: `CHAT_LANE_PROTOCOL.md`. Validation: `API_USAGE_VALIDATION_TRACKER.md`.
+
+### Per-chat defaults
+
+| Chat type | Max doc load | Tool discipline | QA |
+|-----------|--------------|-----------------|-----|
+| Lane A discovery | Routed pack OR meta §3+§15 only | One batched search before follow-ups | Off |
+| Lane B implement | Active pack + files in handoff | No re-read unchanged canon same chat | User-requested only |
+| Meta-process | §3, §15, lane protocol | Edit only cited governance files | Off |
+
+### Turn rules
+
+- **Prefix first:** Start new chats with `combat:`, `scenes:`, `narrative:`, `vfx:`, or `meta:` — skips ambiguity turns.
+- **One domain:** No second pack without `unlock <bundle>`.
+- **No duplicate reads:** Do not re-open `AI_DOCS.md` or the active pack if already loaded this chat unless task scope changed.
+- **Plan skip:** If handoff has task, files, and acceptance criteria → implement directly (no separate plan phase).
+- **Progress:** One-liner during dense edits; full structured feed only when planning, exploring, or blocked (§9).
+- **Planning intake:** Still ≥2 clarifying questions for **new** ambiguous planning requests; skip when user supplied Lane B handoff.
+
+### Exceptions (allow extra depth)
+
+- Hard conflict gate (§10) — full options required.
+- User says `unlock <bundle>`, `run qa`, or `deep dive`.
+- Scaffold/combat canon risk — read `combat_test` scaffold paths before combat edits.
+- Quality regression in tracker — restore bundle-specific depth until median ≥ 4.

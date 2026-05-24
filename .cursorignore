@@ -1,8 +1,31 @@
 ﻿# Exclude large debug logs (up to 300+ MB) from indexing
-logs/debug/**
+logs/**
 
 # Exclude reference-only Moon Princess capture files (JS bundles, CSS, hashed assets)
 AXEL/axel_project/exports/Moon Princess Files/**
 
 # Exclude any bundled JS files that may appear elsewhere
 **/*bundle*.js
+
+# Migration backups (duplicate agent transcripts, not runtime source)
+tools/account_migration_backups/**
+
+# Godot editor cache (regenerated on open)
+AXEL/axel_project/.godot/**
+
+# Godot sidecars (source of truth is .png, .gd, .tscn, etc.)
+**/*.import
+**/*.uid
+
+# Tool-generated previews / style sweeps (keep JSON drafts in scene_builder/output)
+**/tools/visual_style/output/**
+**/tools/scene_builder/output/layout_previews/**
+
+# Non-authoritative export captures (layout refs, screenshots, brainstorm exports)
+AXEL/axel_project/exports/screenshots/**
+AXEL/axel_project/exports/Drawings/**
+AXEL/axel_project/exports/Viral Forge/**
+AXEL/axel_project/exports/*.pdf
+
+# Legacy HTML prototype art (~83 MB) — not indexed; @-mention files when needed for narrative/scene look-dev
+AXEL/html/pictures/**

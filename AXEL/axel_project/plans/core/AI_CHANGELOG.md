@@ -2505,3 +2505,87 @@ Copy and fill:
 - Behavior impact: History panel, combat grid, and Items panel sit lower and no longer collide with top-level HUD row.
 - Verification: GDScript linter clean on touched script file.
 - Notes: Keeps prior spacing/typography improvements while correcting only vertical placement direction.
+
+## 2026-05-24 - Combat-only context routing (new-chat token reduction)
+
+- Request: Implement concept-specific context routing so new chats load minimal relevant guidance (combat-only v1), ask on ambiguity, and avoid cross-domain context unless explicitly unlocked.
+- Implementation: Added routing contract (`AGENT_CONTEXT_ROUTING.md`) with keyword triggers, confidence table, strict combat lock, and unlock phrases. Added compact combat pack (`context_packs/COMBAT_MIN_CONTEXT.md`). Wired always-on governance rule (new item 1: classify first message, load pack, clarify on low confidence). Registered workflow in `AI_DOCS.md` §9 Context routing subsection.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AGENT_CONTEXT_ROUTING.md` (new)
+  - `AXEL/axel_project/plans/core/context_packs/COMBAT_MIN_CONTEXT.md` (new)
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay/runtime changes. New chats should load combat min context instead of scene/narrative arc docs when combat keywords match; ambiguous prompts should trigger bundle clarification; cross-domain work requires explicit `unlock <bundle>`.
+- Verification: Prompt-routing matrix (expected behavior):
+  - `Fix wild spawn on 3-line wins in combat_root` → confident combat, load pack, no scene docs.
+  - `Tune C1 ash reroll RTP` → confident combat (weak×2+), load pack.
+  - `combat: reduce bankroll drain on stake` → fast-path combat, load pack.
+  - `Make the schoolyard feel darker` → low confidence / not combat → ask bundle, no Arc_1 load.
+  - `Update dialogue in 1.1 schoolyard` → not combat → ask bundle.
+  - `After combat win, load 1.2 corridor` → cross-domain → combat primary + ask before `unlock scenes`.
+  - `Run qa` → QA opt-in unchanged; full playtest not auto-loaded under combat lock unless requested.
+  - `What is AXEL about?` → low confidence → ask bundle.
+- Rollback: Remove governance rule item 1 and AI_DOCS Context routing subsection; delete routing doc and combat pack; restore prior governance numbering.
+- Notes: Builds on 2026-05-11 chat-efficiency work (pointer-first governance, `.cursorignore`). Future bundles: scenes, narrative, qa_tools, visual_style per routing doc §9.
+
+## 2026-05-24 - Context routing phase 2: scenes/narrative/vfx packs + aggressive ignore
+
+- Request: Extend routing with `scenes`, `narrative`, and visual-effects packs; add colon prefixes (`vfx:` → `visual_style`); aggressively expand `.cursorignore` while preserving canonical gameplay sources.
+- Implementation: Added three min context packs (`SCENES_MIN_CONTEXT.md`, `NARRATIVE_MIN_CONTEXT.md`, `VISUAL_STYLE_MIN_CONTEXT.md`). Expanded `AGENT_CONTEXT_ROUTING.md` with per-bundle keyword tables, prefix fast-paths, strict locks, and indexing notes. Updated governance rule item 1 for all prefixes and unlock semantics. Updated `AI_DOCS.md` §9 context-routing bullets. Extended `.cursorignore` with migration backups, Godot cache/sidecars, tool previews, export captures, `logs/**`, and `AXEL/html/pictures/**`.
+- Files changed:
+  - `.cursorignore`
+  - `AXEL/axel_project/plans/core/AGENT_CONTEXT_ROUTING.md`
+  - `AXEL/axel_project/plans/core/context_packs/SCENES_MIN_CONTEXT.md` (new)
+  - `AXEL/axel_project/plans/core/context_packs/NARRATIVE_MIN_CONTEXT.md` (new)
+  - `AXEL/axel_project/plans/core/context_packs/VISUAL_STYLE_MIN_CONTEXT.md` (new)
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay/runtime changes. New chats route to one of four domain packs; `vfx:` loads visual_style pack; indexed noise reduced (~logs, cache, previews, drawings, html pictures). Narrative/scene tasks needing prototype art should `@`-mention excluded image paths.
+- Verification: Prompt-routing matrix (expected behavior):
+  - `scenes: layout 1.2 corridor path bands` → fast-path scenes pack.
+  - `Position schoolyard interact near door in 1.1` → confident scenes, no combat catalog.
+  - `narrative: fix true ending flag check` → fast-path narrative pack.
+  - `Add memory for basement key in game_data` → confident narrative, no scene-builder drafts.
+  - `vfx: reduce scanline intensity on overworld` → fast-path visual_style (`vfx:` alias).
+  - `Tune noir palette on AxelPostFxStack` → confident visual_style, no combat RTP docs.
+  - `Fix wild spawn in combat_root` → confident combat (unchanged).
+  - `combat: tune C1 RTP` → fast-path combat (unchanged).
+  - `Make it darker` → low confidence → ask bundle.
+  - `Combat win then transition to 1.2 corridor` → cross-domain → primary + ask `unlock scenes`.
+  - `What is AXEL?` → low confidence → ask bundle.
+- Rollback: Restore prior `.cursorignore`; delete three new packs; revert routing doc, governance item 1, and AI_DOCS §9 bullets to combat-only v1.
+- Notes: `qa_tools` bundle remains reserved. `exports/Drawings/**` and `html/pictures/**` excluded from index by design — use explicit file mentions when needed.
+
+## 2026-05-24 - Scene 1.2 corridor visual replacement
+
+- Request: Replace Scene 1.2 corridor picture and decorative assets with `exports/Drawings/1.2_Corridor.png`; keep collision borders unchanged; defer background Y alignment.
+- Implementation: Swapped `Background` to a `Sprite2D` using the exported drawing; removed locker/graffiti/debris/floor/light visual stacks; simplified `1.2_Corridor.gd` to layout + dialogue + push-in tween; exposed `BACKGROUND_Y` constant for follow-up tuning.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Corridor renders as a single full-scene drawing (2400×1500, cover-scaled to 1280×720); all wall/locker colliders and player/dialogue nodes unchanged; ceiling flicker and locker highlight effects removed.
+- Verification: Headless `res://tools/scene_smoke_check.gd` — OK (6 scenes).
+- Notes: Set `BACKGROUND_Y` in `1.2_Corridor.gd` when user provides correct vertical alignment.
+
+## 2026-05-24 - API usage optimization (lanes, meta routing, token budget)
+
+- Request: Implement API usage optimization plan — reduce token burn while preserving agent effectiveness.
+- Implementation: Added two-lane chat protocol and validation tracker; trimmed always-on governance rule to pointers; registered `meta_process` bundle with `meta:` prefix; added `AI_DOCS.md` §15 token budget/turn economy; minified all four domain context packs; linked compact handoff vs full premium template.
+- Files changed:
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AGENT_CONTEXT_ROUTING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/CHAT_LANE_PROTOCOL.md` (new)
+  - `AXEL/axel_project/plans/core/API_USAGE_VALIDATION_TRACKER.md` (new)
+  - `AXEL/axel_project/plans/core/context_packs/COMBAT_MIN_CONTEXT.md`
+  - `AXEL/axel_project/plans/core/context_packs/SCENES_MIN_CONTEXT.md`
+  - `AXEL/axel_project/plans/core/context_packs/NARRATIVE_MIN_CONTEXT.md`
+  - `AXEL/axel_project/plans/core/context_packs/VISUAL_STYLE_MIN_CONTEXT.md`
+  - `AXEL/axel_project/plans/core/PREMIUM_TO_AUTO_HANDOFF_TEMPLATE.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay/runtime changes. Agents should use Lane A/B split, `meta:` for process chats, shorter governance injection, smaller packs, and §15 turn limits. User fills `API_USAGE_VALIDATION_TRACKER.md` over next 10 tasks to confirm quality.
+- Verification: Routing matrix — `meta: reduce API usage` → §1b, no domain pack; `scenes: implement: …` → scenes pack + lane B; governance rule line count reduced (~29 → ~18 substantive lines).
+- Notes: Rollback per tracker rollback triggers or restore pre-minification packs from git history.

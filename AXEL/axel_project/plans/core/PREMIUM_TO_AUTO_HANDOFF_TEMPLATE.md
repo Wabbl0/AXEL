@@ -1,5 +1,7 @@
 # Premium-to-Auto Handoff Template
 
+Use for **large** cross-system work. Routine scoped tasks: use the compact block in `CHAT_LANE_PROTOCOL.md` (Lane B handoff) instead.
+
 Use this template for substantive AXEL planning responses that are intended for later execution by auto models.
 
 ## 1) Inferred Intent
