@@ -1,0 +1,15 @@
+﻿Captured: 2026-05-24T00:10:41.0725411+03:00
+
+git status -sb
+## main...origin/main
+?? tools/account_migration_backups/
+
+git branch --show-current
+main
+
+git rev-parse HEAD
+c99e410edd8d3580ae5ba4bc4d09d649bddb341a
+
+git remote -v
+origin	https://github.com/Wabbl0/Godot.git (fetch)
+origin	https://github.com/Wabbl0/Godot.git (push)

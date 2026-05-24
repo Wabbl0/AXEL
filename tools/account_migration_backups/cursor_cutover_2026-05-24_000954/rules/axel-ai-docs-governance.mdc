@@ -1,0 +1,27 @@
+---
+description: AXEL always-on AI docs governance
+alwaysApply: true
+---
+
+# AXEL AI Docs Governance
+
+For any substantive AXEL task in this workspace:
+
+1. **Read `AXEL/axel_project/plans/core/AI_DOCS.md` first.** It is the canonical memory layer — hierarchy, invariants, agent workflows, reusable pipelines, and detailed procedures all live there.
+2. If the request is implemented, append an entry to `AXEL/axel_project/plans/core/AI_CHANGELOG.md`.
+3. If sources conflict, resolve using the `AI_DOCS.md` §3 hierarchy and note the resolution in the changelog.
+4. **Hard conflict gate (mandatory):** If the request conflicts with `AI_DOCS.md` hierarchy/invariants, stop immediately and present 2-4 explicit options before continuing.
+5. **Progress feed:** For long or multi-step work, provide a live progress feed. Use the full structured format (current step, tool, files, status, next step, stuck state) during planning, exploration, and blocked states. During dense implementation loops a concise one-liner status is sufficient.
+6. **Canonical agent aliases (keep stable across chats):**
+   - `scene agent` — see `AI_DOCS.md` §11 for spec, invariants, and file targets.
+   - `qa agent` / `qa` / `run qa` — see `AI_DOCS.md` §11-§12 and `.cursor/skills/axel-simulated-qa/SKILL.md` for default execution (includes canon consistency audit for combat + movement scenes), command set, persistence, and rubric.
+7. **Simulated QA (opt-in):** After substantial AXEL changes, **ask** the user whether to run QA. Do not run automatically unless the user already requested it. Details: `AI_DOCS.md` §12.
+8. If a reusable workflow/agent pipeline is added or updated, record it in `AI_DOCS.md` and this rule so future chats can discover it.
+9. **Clarification-first:** If requirements are ambiguous, ask the user before assuming defaults. Do not infer unstated layout, economy, or behavior without confirmation.
+10. **Planning intake gate:** For every new planning request, ask at least 2 targeted clarifying questions before producing a plan, then continue asking follow-ups until intent/scope/constraints are concise and assumption-free.
+11. **No silent assumptions in planning:** If assumptions are needed, pause and ask. Convert assumptions into explicit user-confirmed decisions.
+
+Prefer small, consistent edits that preserve AXEL's identity (black/red CRT-glitch tone, guilt/memory themes, deterministic combat intent).
+
+12. **Global post-FX (non-combat):** `AxelPostFxStack` autoload applies noir + scanline + CRT everywhere except `res://combat/*`. Do not instance those overlays in overworld scene `.tscn` files. See `AI_DOCS.md` style canon.
+13. **Beginner fix teaching (mandatory after fixes):** When a problem is fixed, add a short beginner-friendly explanation in plain coding terms (no metaphors). Use exactly 3 concise bullets: **Cause**, **Fix**, **What to learn**. Purpose: help the user learn project structure while building AXEL. Details: `AI_DOCS.md` §9.

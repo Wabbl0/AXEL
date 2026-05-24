@@ -2465,3 +2465,18 @@ Copy and fill:
 - Behavior impact: Corridor movement matches layout profile; scene transitions no longer log post-FX TypedArray errors; combat HUD anchor drift is caught automatically at two viewport breakpoints.
 - Verification: canon audit 0 findings; scaffold check pass (wide+narrow); bot playthroughs pass without post-FX script errors; princess/determinism/scene smoke/item synergy pass.
 - Notes: Manual HUD typography checklist remains operator step per rubric (not automatable).
+
+## 2026-05-24 - Dual-PC Cursor Account Cutover Readiness Prep
+
+- Request: Prepare the workspace for deleting the current Cursor account and continuing with a new account across two PCs (same OneDrive folder, GitHub as source of truth).
+- Implementation: Captured pre-cutover git/governance baseline, created a dated cursor-context backup bundle with SHA256 manifest, recorded a git parity checkpoint commit for cross-machine verification, and generated a concrete handoff checklist plus PC2 parity script under the run backup folder.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+  - `tools/account_migration_backups/dual_pc_cutover_2026-05-24_133553/pc1_pre_cutover_state.txt`
+  - `tools/account_migration_backups/dual_pc_cutover_2026-05-24_133553/governance_snapshot_hashes.txt`
+  - `tools/account_migration_backups/dual_pc_cutover_2026-05-24_133553/backup_manifest.txt`
+  - `tools/account_migration_backups/dual_pc_cutover_2026-05-24_133553/NEW_ACCOUNT_CUTOVER_CHECKLIST.md`
+  - `tools/account_migration_backups/dual_pc_cutover_2026-05-24_133553/pc2_git_parity_check.ps1`
+- Behavior impact: Gameplay/runtime unchanged. This is migration safety and continuity documentation only.
+- Verification: `git status -sb` shows `main...origin/main`; `git rev-list --left-right --count origin/main...main` = `0 0`; required commit for both PCs is `c99e410edd8d3580ae5ba4bc4d09d649bddb341a`.
+- Notes: New-account validation on PC1/PC2 remains a manual gate after account creation/login succeeds.

@@ -1,0 +1,16 @@
+﻿Captured: 2026-05-24T13:35:53.8823946+03:00
+Workspace: C:\Users\valtt\OneDrive\Godot
+
+git status -sb
+## main...origin/main
+?? tools/account_migration_backups/
+
+git rev-parse HEAD
+c99e410edd8d3580ae5ba4bc4d09d649bddb341a
+
+git rev-list --left-right --count origin/main...main
+0	0
+
+git remote -v
+origin	https://github.com/Wabbl0/Godot.git (fetch)
+origin	https://github.com/Wabbl0/Godot.git (push)
