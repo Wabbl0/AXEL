@@ -319,9 +319,19 @@ func _warn_duplicate_combat_root_children() -> void:
 				count += 1
 		if count > 1:
 			dupes.append("%s (%d×)" % [base_name, count])
-	for base_name in COMBAT_ROOT_INSTANCED_CHILDREN:
-		if combat.get_node_or_null(NodePath("%s2" % base_name)) != null:
-			dupes.append("%s2" % base_name)
+	# Catch numbered suffix drift like GridFrame2, GridFrame3, etc.
+	for child in combat.get_children():
+		var name_s := String(child.name)
+		for base_name in COMBAT_ROOT_INSTANCED_CHILDREN:
+			if not name_s.begins_with(base_name) or name_s == base_name:
+				continue
+			var suffix := name_s.substr(base_name.length())
+			if suffix.is_empty():
+				continue
+			var n := suffix.to_int()
+			if n >= 2 and str(n) == suffix:
+				dupes.append(name_s)
+				break
 	if not dupes.is_empty():
 		push_error(
 			(
@@ -330,6 +340,16 @@ func _warn_duplicate_combat_root_children() -> void:
 				+ "(pre-commit: tools/qa/check_combat_test_scaffold.py)."
 			) % ", ".join(dupes)
 		)
+
+
+func _prune_orphan_economics_stacks() -> void:
+	if _economics_center == null or not is_instance_valid(_economics_center):
+		return
+	for child in _economics_center.get_children():
+		if child == _economics_stack:
+			continue
+		if child is VBoxContainer and (String(child.name).begins_with("@VBoxContainer@") or child.name == "EconomicsStack"):
+			child.queue_free()
 
 
 func _suppress_combat_root_legacy_labels() -> void:
@@ -751,6 +771,7 @@ func _finish_editor_preview_layout() -> void:
 	_refresh_editor_placeholder_readouts()
 	_reassert_scaffold_ownership()
 	_validate_editor_combat_root_structure()
+	_validate_editor_economics_structure()
 
 
 func _validate_editor_combat_root_structure() -> void:
@@ -763,6 +784,23 @@ func _validate_editor_combat_root_structure() -> void:
 		"CombatTest CombatRoot structure drift: %s. "
 		% ", ".join(violations)
 		+ " Keep combat_root.tscn instance only; remove inline Grid* nodes under CombatRoot. "
+		+ "Pre-commit auto-fix: python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py --staged"
+	)
+
+
+func _validate_editor_economics_structure() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var validators := load("res://tools/qa/qa_canon_validators.gd") as Script
+	var violations: PackedStringArray = PackedStringArray()
+	if validators != null:
+		violations = PackedStringArray(validators.call("check_economics_center_uniqueness", self))
+	if violations.is_empty():
+		return
+	push_error(
+		"CombatTest Economics structure drift: %s. "
+		% ", ".join(violations)
+		+ " Keep a single EconomicsStack under EconomicsCenter; remove orphan @VBoxContainer stacks. "
 		+ "Pre-commit auto-fix: python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py --staged"
 	)
 
@@ -1038,6 +1076,8 @@ func _integrate_economics_into_center_hud() -> void:
 			_reparent_for_layout(_economics_center, self)
 			move_child(_economics_center, 2)
 
+	if _economics_stack == null and _economics_center != null:
+		_economics_stack = _economics_center.get_node_or_null("EconomicsStack") as VBoxContainer
 	if _economics_stack == null:
 		_economics_stack = VBoxContainer.new()
 		_economics_stack.name = "EconomicsStack"
@@ -1046,6 +1086,8 @@ func _integrate_economics_into_center_hud() -> void:
 		_economics_stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_economics_stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		_economics_center.add_child(_economics_stack)
+
+	_prune_orphan_economics_stacks()
 
 	if bankroll_label != null:
 		bankroll_label.visible = true

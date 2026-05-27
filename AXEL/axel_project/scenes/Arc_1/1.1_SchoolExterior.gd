@@ -3,14 +3,26 @@ extends Node2D
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
 @onready var _door_interact_area: Area2D = get_node("1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea")
+@onready var _leaf_areas: Array[Area2D] = [
+	get_node("EnvironmentColliders/TreeLine_Bottom_Leaves"),
+	get_node("EnvironmentColliders/TreeLine_Top_Leaves"),
+]
+@onready var _player_visual_nodes: Array[CanvasItem] = [
+	get_node("PlayerLayer/Player/AnimatedSprite"),
+	get_node("PlayerLayer/Player/ShadowOutline"),
+	get_node("PlayerLayer/Player/FallbackBody"),
+]
 
 const _NEXT_SCENE_PATH := "res://scenes/Arc_1/1.2_Corridor.tscn"
+const _LEAF_FADE_ALPHA := 0.2
 
 var _is_transitioning := false
+var _leaf_overlap_count := 0
 
 
 func _ready() -> void:
 	set_process_unhandled_input(true)
+	_bind_leaf_area_signals()
 	if _should_skip_intro():
 		return
 	_run_intro_dialogue()
@@ -58,3 +70,33 @@ func _is_player_near_door() -> bool:
 		if body == _player:
 			return true
 	return false
+
+
+func _bind_leaf_area_signals() -> void:
+	for leaf_area in _leaf_areas:
+		if not is_instance_valid(leaf_area):
+			continue
+		leaf_area.body_entered.connect(_on_leaf_area_body_entered)
+		leaf_area.body_exited.connect(_on_leaf_area_body_exited)
+
+
+func _on_leaf_area_body_entered(body: Node2D) -> void:
+	if body != _player:
+		return
+	_leaf_overlap_count += 1
+	_set_player_visual_alpha(_LEAF_FADE_ALPHA)
+
+
+func _on_leaf_area_body_exited(body: Node2D) -> void:
+	if body != _player:
+		return
+	_leaf_overlap_count = maxi(_leaf_overlap_count - 1, 0)
+	if _leaf_overlap_count == 0:
+		_set_player_visual_alpha(1.0)
+
+
+func _set_player_visual_alpha(alpha: float) -> void:
+	for visual in _player_visual_nodes:
+		if not is_instance_valid(visual):
+			continue
+		visual.modulate.a = alpha

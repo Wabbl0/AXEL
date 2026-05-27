@@ -34,6 +34,9 @@ MOJIBAKE_SIGNATURES = (
 NODE_HEADER_RE = re.compile(r'^\[node name="([^"]+)"([^\]]*)\]\s*$')
 SECTION_HEADER_PREFIXES = ("[node ", "[sub_resource", "[ext_resource")
 
+ECONOMICS_STACK_NAME = "EconomicsStack"
+ECONOMICS_CENTER_NAME = "EconomicsCenter"
+
 
 @dataclass(frozen=True)
 class _SceneNodeBlock:
@@ -78,8 +81,18 @@ def _paths_to_remove(blocks: list[_SceneNodeBlock]) -> set[str]:
     for block in blocks:
         if block.name in COMBAT_ROOT_GRID_UNIQUE and _parent_is_direct_combat_root(block.parent):
             marked.add(block.full_path)
-        elif block.name.endswith("2") and block.name[:-1] in COMBAT_ROOT_GRID_UNIQUE:
-            marked.add(block.full_path)
+        else:
+            # Catch numbered suffix drift like GridFrame2, GridFrame3, etc.
+            for base in COMBAT_ROOT_GRID_UNIQUE:
+                if not block.name.startswith(base) or block.name == base:
+                    continue
+                suffix = block.name[len(base) :]
+                if not suffix.isdigit():
+                    continue
+                n = int(suffix)
+                if n >= 2:
+                    marked.add(block.full_path)
+                    break
 
     changed = True
     while changed:
@@ -161,7 +174,68 @@ def check_duplicate_grid_overrides(text: str) -> list[str]:
                 f"(runtime duplicate grid)"
             )
     for name in COMBAT_ROOT_GRID_UNIQUE:
-        dup = f"{name}2"
-        if re.search(rf'\[node name="{re.escape(dup)}"', text):
-            violations.append(f'combat_test.tscn contains duplicate node name "{dup}"')
+        # Any numbered suffix is drift (GridFrame2, GridFrame3, ...).
+        pattern = rf'\[node name="{re.escape(name)}([2-9][0-9]*)"'
+        for match in re.finditer(pattern, text):
+            violations.append(
+                f'combat_test.tscn contains duplicate node name "{name}{match.group(1)}"'
+            )
+    return violations
+
+
+def sanitize_orphan_economics_stacks(text: str) -> tuple[str, list[str]]:
+    """Remove orphan @VBoxContainer@* blocks under EconomicsCenter.
+
+    Returns (cleaned_text, removed_node_names).
+    """
+    lines = text.splitlines(keepends=True)
+    if not lines and text:
+        lines = [text]
+    blocks = _parse_scene_node_blocks(lines)
+    remove_paths: set[str] = set()
+
+    for block in blocks:
+        if block.parent == ECONOMICS_CENTER_NAME and block.name.startswith("@VBoxContainer@"):
+            remove_paths.add(block.full_path)
+
+    # Remove descendants of removed blocks.
+    if remove_paths:
+        changed = True
+        while changed:
+            changed = False
+            for block in blocks:
+                if block.full_path in remove_paths:
+                    continue
+                for removed in list(remove_paths):
+                    if block.parent == removed or block.parent.startswith(f"{removed}/"):
+                        remove_paths.add(block.full_path)
+                        changed = True
+                        break
+
+    if not remove_paths:
+        return text, []
+
+    removed_names = [b.name for b in blocks if b.full_path in remove_paths]
+    skip_ranges = {(b.start_line, b.end_line) for b in blocks if b.full_path in remove_paths}
+
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        if any(start <= i < end for start, end in skip_ranges):
+            i += 1
+            continue
+        out.append(lines[i])
+        i += 1
+
+    cleaned = "".join(out)
+    if cleaned and not cleaned.endswith("\n") and text.endswith("\n"):
+        cleaned += "\n"
+    return cleaned, removed_names
+
+
+def check_orphan_economics_stacks(text: str) -> list[str]:
+    violations: list[str] = []
+    if re.search(rf'\[node name=\"@VBoxContainer@\d+\"[^\]]*parent=\"{re.escape(ECONOMICS_CENTER_NAME)}\"', text):
+        for match in re.finditer(r'\[node name="(@VBoxContainer@[^"]+)"[^\]]*parent="EconomicsCenter"', text):
+            violations.append(f'combat_test.tscn contains orphan economics stack "{match.group(1)}"')
     return violations

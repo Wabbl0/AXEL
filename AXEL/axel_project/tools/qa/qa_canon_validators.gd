@@ -95,9 +95,55 @@ static func check_combat_root_grid_uniqueness(combat: Node) -> PackedStringArray
 		elif count > 1:
 			violations.append("CombatRoot has %d× %s (expected 1)" % [count, base_name])
 	for base_name in COMBAT_ROOT_NO_SUFFIX2:
-		var dup_name := "%s2" % base_name
-		if combat.get_node_or_null(NodePath(dup_name)) != null:
-			violations.append("CombatRoot duplicate node %s" % dup_name)
+		# Catch numbered suffix drift like GridFrame2, GridFrame3, etc.
+		for child in combat.get_children():
+			var name_s := String(child.name)
+			if not name_s.begins_with(base_name):
+				continue
+			if name_s == base_name:
+				continue
+			var suffix := name_s.substr(base_name.length())
+			if suffix.length() == 0:
+				continue
+			var n := suffix.to_int()
+			if n >= 2 and str(n) == suffix:
+				violations.append("CombatRoot duplicate node %s" % name_s)
+	return violations
+
+
+static func check_economics_center_uniqueness(root_ui: Node) -> PackedStringArray:
+	var violations: PackedStringArray = PackedStringArray()
+	if root_ui == null:
+		return violations
+
+	var ec := root_ui.find_child("EconomicsCenter", true, false) as Node
+	if ec == null:
+		violations.append("EconomicsCenter missing")
+		return violations
+
+	var stack_count := 0
+	var stack: Node = null
+	for child in ec.get_children():
+		if child.name == "EconomicsStack":
+			stack_count += 1
+			stack = child
+		if String(child.name).begins_with("@VBoxContainer@"):
+			violations.append("EconomicsCenter orphan stack %s" % String(child.name))
+
+	if stack_count == 0:
+		violations.append("EconomicsCenter missing EconomicsStack")
+		return violations
+	if stack_count > 1:
+		violations.append("EconomicsCenter has %d× EconomicsStack (expected 1)" % stack_count)
+
+	if stack != null:
+		var bl := root_ui.find_child("BankrollLabel", true, false) as Node
+		if bl != null and not (bl.get_parent() == stack):
+			violations.append("BankrollLabel parent drift: expected EconomicsCenter/EconomicsStack")
+		var ss := root_ui.find_child("StakeSelector", true, false) as Node
+		if ss != null and not (ss.get_parent() == stack):
+			violations.append("StakeSelector parent drift: expected EconomicsCenter/EconomicsStack")
+
 	return violations
 
 
@@ -168,6 +214,16 @@ static func collect_combat_test_findings(
 			scene_path,
 			violation,
 			"Remove duplicate grid/overlay nodes under CombatRoot; keep a single GridUI/GridManager stack."
+		))
+
+	for violation in check_economics_center_uniqueness(root_ui):
+		findings.append(make_finding(
+			"combat.economics_duplicate",
+			"major",
+			"COMBAT",
+			scene_path,
+			violation,
+			"Keep a single EconomicsCenter/EconomicsStack; remove orphan VBox stacks and keep bankroll/stake under EconomicsStack."
 		))
 
 	if combat != null:

@@ -370,7 +370,6 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("3_theme")
 script = ExtResource("1_combat_test")
-editor_preview_enabled = true
 
 [node name="BlackBackground" type="ColorRect" parent="." unique_id=232267701]
 layout_mode = 1
@@ -447,7 +446,7 @@ theme_override_constants/separation = 10
 
 [node name="GridHost" type="Control" parent="PlayArea/PlayRow/CenterColumn" unique_id=1714625934]
 clip_contents = true
-custom_minimum_size = Vector2(625, 379)
+custom_minimum_size = Vector2(625, 409)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
@@ -458,10 +457,10 @@ unique_name_in_owner = true
 [node name="PremiumProgressBar" type="ProgressBar" parent="PlayArea/PlayRow/CenterColumn/GridHost" unique_id=1152686182]
 z_index = 6
 layout_mode = 0
-offset_left = 132.5
-offset_top = 368.0
-offset_right = 492.5
-offset_bottom = 378.0
+offset_left = 117.5
+offset_top = 398.0
+offset_right = 507.5
+offset_bottom = 408.0
 mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_3smro")
 theme_override_styles/fill = SubResource("StyleBoxFlat_jim0v")
@@ -520,7 +519,7 @@ alignment = 1
 [node name="SpinButton" type="Button" parent="PlayArea/PlayRow/CenterColumn/CenterFooter" unique_id=1986715139]
 unique_name_in_owner = true
 z_index = 30
-custom_minimum_size = Vector2(360, 72)
+custom_minimum_size = Vector2(390, 72)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
@@ -617,49 +616,7 @@ size_flags_vertical = 4
 theme_override_constants/separation = 4
 alignment = 1
 
-[node name="@VBoxContainer@19288" type="VBoxContainer" parent="EconomicsCenter" unique_id=1433091581]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="@VBoxContainer@21414" type="VBoxContainer" parent="EconomicsCenter" unique_id=1592096198]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="@VBoxContainer@29393" type="VBoxContainer" parent="EconomicsCenter" unique_id=746744045]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="@VBoxContainer@20594" type="VBoxContainer" parent="EconomicsCenter" unique_id=1233314000]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="@VBoxContainer@20632" type="VBoxContainer" parent="EconomicsCenter" unique_id=770127498]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="@VBoxContainer@20989" type="VBoxContainer" parent="EconomicsCenter" unique_id=1950444564]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="BankrollLabel" type="Label" parent="EconomicsCenter/@VBoxContainer@20989" unique_id=1441860414]
+[node name="BankrollLabel" type="Label" parent="EconomicsCenter/EconomicsStack" unique_id=1441860414]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
@@ -668,19 +625,19 @@ text = "1000/1000"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="StakeSelector" type="HBoxContainer" parent="EconomicsCenter/@VBoxContainer@20989" unique_id=66713695]
+[node name="StakeSelector" type="HBoxContainer" parent="EconomicsCenter/EconomicsStack" unique_id=66713695]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="BetRow" type="HBoxContainer" parent="EconomicsCenter/@VBoxContainer@20989/StakeSelector" unique_id=1953737693]
+[node name="BetRow" type="HBoxContainer" parent="EconomicsCenter/EconomicsStack/StakeSelector" unique_id=1953737693]
 layout_mode = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="BetMinusButton" type="Button" parent="EconomicsCenter/@VBoxContainer@20989/StakeSelector/BetRow" unique_id=2032393760]
+[node name="BetMinusButton" type="Button" parent="EconomicsCenter/EconomicsStack/StakeSelector/BetRow" unique_id=2032393760]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
@@ -691,7 +648,7 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_tqck3")
 theme_override_styles/focus = SubResource("StyleBoxFlat_0oqu1")
 text = "-"
 
-[node name="BetLabel" type="Label" parent="EconomicsCenter/@VBoxContainer@20989/StakeSelector/BetRow" unique_id=1277085146]
+[node name="BetLabel" type="Label" parent="EconomicsCenter/EconomicsStack/StakeSelector/BetRow" unique_id=1277085146]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
@@ -699,7 +656,7 @@ theme_override_font_sizes/font_size = 36
 text = "100"
 horizontal_alignment = 1
 
-[node name="BetPlusButton" type="Button" parent="EconomicsCenter/@VBoxContainer@20989/StakeSelector/BetRow" unique_id=1519464377]
+[node name="BetPlusButton" type="Button" parent="EconomicsCenter/EconomicsStack/StakeSelector/BetRow" unique_id=1519464377]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(34, 34)
 layout_mode = 2

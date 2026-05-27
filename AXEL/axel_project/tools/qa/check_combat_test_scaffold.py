@@ -12,8 +12,10 @@ if str(_TOOLS_QA_DIR) not in sys.path:
 
 from canon_validators_shared import (  # noqa: E402
     check_duplicate_grid_overrides,
+    check_orphan_economics_stacks,
     check_mojibake_signatures,
     sanitize_duplicate_combat_root_grid,
+    sanitize_orphan_economics_stacks,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -105,10 +107,28 @@ def _try_autofix_staged_grid_duplicates(text: str) -> tuple[str, list[str]]:
     return cleaned, removed
 
 
+def _try_autofix_staged_orphan_economics_stacks(text: str) -> tuple[str, list[str]]:
+    """Sanitize staged text; write working tree + restage when fixes apply."""
+    cleaned, removed = sanitize_orphan_economics_stacks(text)
+    if not removed:
+        return text, removed
+    SCENE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SCENE_PATH.write_text(cleaned, encoding="utf-8", newline="\n")
+    _git_add_scene()
+    print(
+        "combat_test scaffold check: auto-fixed orphan EconomicsCenter stacks "
+        f"({len(removed)} node block(s) removed)."
+    )
+    for name in removed:
+        print(f"  - removed orphan node: {name}")
+    return cleaned, removed
+
+
 def _validate_scene_text(text: str) -> int:
     missing = check_scene_text(text)
     mojibake_violations = check_mojibake_signatures(text)
     grid_violations = check_duplicate_grid_overrides(text)
+    economics_violations = check_orphan_economics_stacks(text)
     if mojibake_violations:
         print(
             "BLOCKED: combat_test.tscn contains mojibake (corrupted Unicode).\n"
@@ -123,11 +143,22 @@ def _validate_scene_text(text: str) -> int:
     if grid_violations:
         print(
             "BLOCKED: combat_test.tscn has duplicate CombatRoot grid overrides.\n"
-            "Keep combat_root.tscn instance only; remove inline Grid* nodes under CombatRoot.\n"
+            "Keep combat_root.tscn instance only; remove inline Grid* nodes under CombatRoot "
+            "(including numbered suffix drift like GridFrame2/GridFrame3).\n"
             "Violations:",
             file=sys.stderr,
         )
         for item in grid_violations:
+            print(f"  - {item}", file=sys.stderr)
+        return 1
+    if economics_violations:
+        print(
+            "BLOCKED: combat_test.tscn has orphan EconomicsCenter VBox stacks.\n"
+            "These are usually created by @tool preview drift; keep a single EconomicsStack under EconomicsCenter.\n"
+            "Violations:",
+            file=sys.stderr,
+        )
+        for item in economics_violations:
             print(f"  - {item}", file=sys.stderr)
         return 1
     if missing:
@@ -160,6 +191,13 @@ def main() -> int:
     grid_violations = check_duplicate_grid_overrides(text)
     if grid_violations and use_staged:
         text, _removed = _try_autofix_staged_grid_duplicates(text)
+        restaged = _staged_scene_text()
+        if restaged is not None:
+            text = restaged
+
+    economics_violations = check_orphan_economics_stacks(text)
+    if economics_violations and use_staged:
+        text, _removed = _try_autofix_staged_orphan_economics_stacks(text)
         restaged = _staged_scene_text()
         if restaged is not None:
             text = restaged

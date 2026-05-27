@@ -45,6 +45,19 @@ func _main() -> void:
 	var combat := root_ui.find_child("CombatRoot", true, false)
 	var grid_violations := ValidatorsScript.check_combat_root_grid_uniqueness(combat)
 
+	var suffix_violations := _check_numbered_grid_suffixes(combat)
+	if not suffix_violations.is_empty():
+		for item in suffix_violations:
+			grid_violations.append(item)
+
+	var validators := load("res://tools/qa/qa_canon_validators.gd") as Script
+	var econ_violations: PackedStringArray = PackedStringArray()
+	if validators != null:
+		econ_violations = PackedStringArray(validators.call("check_economics_center_uniqueness", root_ui))
+	if not econ_violations.is_empty():
+		for item in econ_violations:
+			grid_violations.append(item)
+
 	if not grid_violations.is_empty():
 		push_error("Scaffold FAIL (%s): %s" % [SCENE_PATH, ", ".join(grid_violations)])
 		quit(1)
@@ -68,6 +81,39 @@ func _main() -> void:
 
 	print("Combat test scaffold check OK.")
 	quit(0)
+
+
+func _check_numbered_grid_suffixes(combat: Node) -> PackedStringArray:
+	var violations: PackedStringArray = PackedStringArray()
+	if combat == null:
+		return violations
+
+	var bases: Array[String] = [
+		"GridManager",
+		"GridFrame",
+		"GridUI",
+		"GridFlashOverlay",
+		"PowerIntroLayer",
+		"RoundWinningsLabel",
+		"EncounterWonLabel",
+		"MultiplierLabel",
+	]
+
+	var re := RegEx.new()
+	var pattern := "^(%s)([0-9]+)$" % "|".join(bases)
+	var err := re.compile(pattern)
+	if err != OK:
+		violations.append("internal: failed to compile suffix regex")
+		return violations
+
+	for child in combat.get_children():
+		var m := re.search(String(child.name))
+		if m == null:
+			continue
+		var n := int(m.get_string(2))
+		if n >= 2:
+			violations.append("CombatRoot duplicate node %s" % String(child.name))
+	return violations
 
 
 func _apply_viewport_and_wait_layout(root_ui: Control, viewport_size: Vector2) -> void:
