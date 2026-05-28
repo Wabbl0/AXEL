@@ -2,11 +2,12 @@ extends Node2D
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
-@onready var _door_interact_area: Area2D = get_node("1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea")
 @onready var _leaf_areas: Array[Area2D] = [
 	get_node("EnvironmentColliders/TreeLine_Bottom_Leaves"),
 	get_node("EnvironmentColliders/TreeLine_Top_Leaves"),
 ]
+
+var _door_interact_area: Area2D
 
 const _NEXT_SCENE_PATH := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const _LEAF_FADE_ALPHA := 0.2
@@ -17,6 +18,9 @@ var _is_transitioning := false
 
 
 func _ready() -> void:
+	_door_interact_area = get_node_or_null(
+		"1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea"
+	) as Area2D
 	set_process_unhandled_input(true)
 	_configure_leaf_occlusion_masks()
 	if _should_skip_intro():

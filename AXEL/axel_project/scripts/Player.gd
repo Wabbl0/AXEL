@@ -29,6 +29,23 @@ const _MIKE_FRAME_COUNT := 13
 @export var frame_width: int = 0
 @export var frame_height: int = 0
 @export var animation_fps: float = 10.0
+## Builds CharacterBody2D collision from sprite alpha instead of the scene circle.
+@export var use_alpha_collision: bool = true
+## Frame index on the Mike sheet when `collision_use_all_frames_union` is false.
+@export_range(0, 12) var collision_frame_index: int = 0
+## Union all 13 frames so walk cycles do not poke past the collider.
+@export var collision_use_all_frames_union: bool = true
+@export_range(0.0, 1.0) var collision_alpha_threshold: float = 0.1
+## Higher values simplify the traced outline (fewer sharp corners).
+@export var collision_polygon_epsilon: float = 3.0
+## Shrinks the alpha mask before tracing; removes thin protrusions that snag on walls.
+@export_range(0, 8) var collision_alpha_shrink_pixels: int = 2
+## Chaikin smoothing passes on the traced polygon (0 = off).
+@export_range(0, 4) var collision_smooth_iterations: int = 2
+## Pulls the final polygon slightly inward from its center so edges slide instead of catch.
+@export var collision_inward_margin: float = 1.5
+## Fraction of frame height kept for collision, measured from the feet up (0.5 = lower half / waist cut).
+@export_range(0.2, 1.0) var collision_lower_body_ratio: float = 0.5
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite
 @onready var shadow_outline: AnimatedSprite2D = $ShadowOutline
@@ -47,6 +64,7 @@ func _ready() -> void:
 		_resolve_layout_and_cell()
 		_build_sprite_frames()
 		_setup_shadow_outline()
+		_setup_alpha_collision()
 		fallback_body.visible = false
 		animated_sprite.visible = true
 		_apply_overworld_tint()
@@ -139,6 +157,281 @@ func _setup_shadow_outline() -> void:
 	shadow_outline.frame = animated_sprite.frame
 	shadow_outline.frame_progress = animated_sprite.frame_progress
 	shadow_outline.play(animated_sprite.animation)
+
+
+func _setup_alpha_collision() -> void:
+	if not use_alpha_collision:
+		return
+	var sheet_image := _get_sheet_image()
+	if sheet_image == null:
+		push_warning("Player: could not read sprite sheet for alpha collision; keeping scene collision shape.")
+		return
+
+	var fw := _cell.x
+	var fh := _cell.y
+	if fw <= 0 or fh <= 0:
+		return
+
+	var bitmap := BitMap.new()
+	if collision_use_all_frames_union:
+		bitmap = _build_union_alpha_bitmap(sheet_image)
+	else:
+		var frame_image := _crop_sheet_frame_image(sheet_image, collision_frame_index)
+		bitmap.create_from_image_alpha(frame_image, collision_alpha_threshold)
+
+	_bitmap_clip_to_lower_body(bitmap, fw, fh, collision_lower_body_ratio)
+	var raw_bitmap := _copy_bitmap(bitmap)
+	bitmap = _erode_bitmap(bitmap, collision_alpha_shrink_pixels)
+	if not _bitmap_has_opaque_pixels(bitmap):
+		bitmap = raw_bitmap
+
+	call_deferred("_apply_alpha_collision_shapes", bitmap, fw, fh)
+
+
+func _apply_alpha_collision_shapes(bitmap: BitMap, fw: int, fh: int) -> void:
+	if not is_inside_tree():
+		return
+
+	var polygons: Array = bitmap.opaque_to_polygons(Rect2i(0, 0, fw, fh), collision_polygon_epsilon)
+	var frame_center := Vector2(float(fw) * 0.5, float(fh) * 0.5)
+	var anchor_pos := animated_sprite.position
+	var pending_shapes: Array[PackedVector2Array] = []
+
+	for poly in polygons:
+		var points: PackedVector2Array = poly
+		if points.size() < 3:
+			continue
+		points = _smooth_collision_polygon(points, collision_smooth_iterations)
+		if collision_inward_margin > 0.0:
+			points = _inset_polygon_toward_center(points, collision_inward_margin)
+		points = _sanitize_collision_polygon(points)
+		if points.size() < 3:
+			continue
+		var centered := PackedVector2Array()
+		centered.resize(points.size())
+		for i in points.size():
+			centered[i] = points[i] - frame_center
+		pending_shapes.append(centered)
+
+	if pending_shapes.is_empty():
+		var fallback := _circle_points_from_bitmap(bitmap, fw, fh, frame_center)
+		if fallback.size() >= 3:
+			pending_shapes.append(fallback)
+		else:
+			push_warning("Player: alpha collision produced no valid shapes; keeping scene collision shape.")
+			return
+
+	_clear_collision_shapes()
+	var insert_index := animated_sprite.get_index() + 1
+	for centered in pending_shapes:
+		var shape := ConvexPolygonShape2D.new()
+		shape.points = centered
+		var collision := CollisionShape2D.new()
+		collision.position = anchor_pos
+		collision.shape = shape
+		add_child(collision)
+		move_child(collision, insert_index)
+		insert_index += 1
+
+
+func _get_sheet_image() -> Image:
+	if sprite_sheet != null:
+		var image := sprite_sheet.get_image()
+		if image != null and not image.is_empty():
+			return image
+		if not sprite_sheet.resource_path.is_empty() and ResourceLoader.exists(sprite_sheet.resource_path):
+			var loaded := load(sprite_sheet.resource_path) as Texture2D
+			if loaded != null:
+				var reloaded := loaded.get_image()
+				if reloaded != null and not reloaded.is_empty():
+					return reloaded
+	return null
+
+
+func _crop_sheet_frame_image(sheet_image: Image, frame_index: int) -> Image:
+	var region := _region_for_mike_frame(frame_index)
+	return sheet_image.get_region(
+		Rect2i(int(region.position.x), int(region.position.y), int(region.size.x), int(region.size.y))
+	)
+
+
+func _build_union_alpha_bitmap(sheet_image: Image) -> BitMap:
+	var fw := _cell.x
+	var fh := _cell.y
+	var union := BitMap.new()
+	union.create(Vector2i(fw, fh))
+	for frame_index in _MIKE_FRAME_COUNT:
+		var frame_image := _crop_sheet_frame_image(sheet_image, frame_index)
+		var frame_bitmap := BitMap.new()
+		frame_bitmap.create_from_image_alpha(frame_image, collision_alpha_threshold)
+		for y in fh:
+			for x in fw:
+				if frame_bitmap.get_bit(x, y):
+					union.set_bit(x, y, true)
+	return union
+
+
+func _clear_collision_shapes() -> void:
+	for child in get_children():
+		if child is CollisionShape2D:
+			remove_child(child)
+			child.queue_free()
+
+
+func _bitmap_has_opaque_pixels(bitmap: BitMap) -> bool:
+	var size := bitmap.get_size()
+	for y in size.y:
+		for x in size.x:
+			if bitmap.get_bit(x, y):
+				return true
+	return false
+
+
+func _copy_bitmap(source: BitMap) -> BitMap:
+	var copy := BitMap.new()
+	var size := source.get_size()
+	copy.create(size)
+	for y in size.y:
+		for x in size.x:
+			if source.get_bit(x, y):
+				copy.set_bit(x, y, true)
+	return copy
+
+
+func _bitmap_clip_to_lower_body(bitmap: BitMap, fw: int, fh: int, lower_ratio: float) -> void:
+	if lower_ratio >= 1.0:
+		return
+	var keep_from_y := int(float(fh) * (1.0 - clampf(lower_ratio, 0.0, 1.0)))
+	for y in keep_from_y:
+		for x in fw:
+			bitmap.set_bit(x, y, false)
+
+
+func _erode_bitmap(source: BitMap, passes: int) -> BitMap:
+	if passes <= 0:
+		return source
+	var size := source.get_size()
+	var fw := size.x
+	var fh := size.y
+	var current := source
+	for _pass in passes:
+		var eroded := BitMap.new()
+		eroded.create(size)
+		for y in fh:
+			for x in fw:
+				if current.get_bit(x, y) and not _bitmap_has_empty_neighbor(current, x, y, fw, fh):
+					eroded.set_bit(x, y, true)
+		current = eroded
+	return current
+
+
+func _bitmap_has_empty_neighbor(bitmap: BitMap, x: int, y: int, fw: int, fh: int) -> bool:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var nx := x + dx
+			var ny := y + dy
+			if nx < 0 or ny < 0 or nx >= fw or ny >= fh:
+				return true
+			if not bitmap.get_bit(nx, ny):
+				return true
+	return false
+
+
+func _smooth_collision_polygon(points: PackedVector2Array, iterations: int) -> PackedVector2Array:
+	var result := points.duplicate()
+	for _iter in iterations:
+		if result.size() < 3:
+			break
+		var smoothed := PackedVector2Array()
+		var count := result.size()
+		for i in count:
+			var p0 := result[i]
+			var p1 := result[(i + 1) % count]
+			smoothed.append(p0.lerp(p1, 0.25))
+			smoothed.append(p0.lerp(p1, 0.75))
+		result = smoothed
+		if result.size() > 64:
+			result = _decimate_polygon(result, 32)
+	return Geometry2D.convex_hull(result)
+
+
+func _decimate_polygon(points: PackedVector2Array, target_count: int) -> PackedVector2Array:
+	if points.size() <= target_count:
+		return points
+	var reduced := PackedVector2Array()
+	var step := float(points.size()) / float(target_count)
+	var idx := 0.0
+	for _i in target_count:
+		reduced.append(points[mini(int(idx), points.size() - 1)])
+		idx += step
+	return reduced
+
+
+func _sanitize_collision_polygon(points: PackedVector2Array) -> PackedVector2Array:
+	if points.size() < 3:
+		return PackedVector2Array()
+	var hull := Geometry2D.convex_hull(points)
+	if hull.size() < 3:
+		return PackedVector2Array()
+	if absf(_polygon_signed_area(hull)) < 8.0:
+		return PackedVector2Array()
+	return hull
+
+
+func _polygon_signed_area(points: PackedVector2Array) -> float:
+	var area := 0.0
+	var count := points.size()
+	for i in count:
+		var p0 := points[i]
+		var p1 := points[(i + 1) % count]
+		area += p0.x * p1.y - p1.x * p0.y
+	return area * 0.5
+
+
+func _circle_points_from_bitmap(bitmap: BitMap, fw: int, fh: int, frame_center: Vector2) -> PackedVector2Array:
+	var min_p := Vector2i(fw, fh)
+	var max_p := Vector2i(-1, -1)
+	for y in fh:
+		for x in fw:
+			if bitmap.get_bit(x, y):
+				min_p.x = mini(min_p.x, x)
+				min_p.y = mini(min_p.y, y)
+				max_p.x = maxi(max_p.x, x)
+				max_p.y = maxi(max_p.y, y)
+	if max_p.x < 0:
+		return PackedVector2Array()
+	var center := Vector2(float(min_p.x + max_p.x) * 0.5, float(min_p.y + max_p.y) * 0.5) - frame_center
+	var radius := Vector2(float(max_p.x - min_p.x), float(max_p.y - min_p.y)).length() * 0.22
+	radius = maxf(radius, 6.0)
+	var segments := 16
+	var circle := PackedVector2Array()
+	circle.resize(segments)
+	for i in segments:
+		var angle := TAU * float(i) / float(segments)
+		circle[i] = center + Vector2(cos(angle), sin(angle)) * radius
+	return circle
+
+
+func _inset_polygon_toward_center(points: PackedVector2Array, margin: float) -> PackedVector2Array:
+	if points.is_empty() or margin <= 0.0:
+		return points
+	var center := Vector2.ZERO
+	for p in points:
+		center += p
+	center /= float(points.size())
+	var inset := PackedVector2Array()
+	inset.resize(points.size())
+	for i in points.size():
+		var p := points[i]
+		var offset := p - center
+		var length := offset.length()
+		if length <= margin:
+			inset[i] = center
+		else:
+			inset[i] = center + offset * ((length - margin) / length)
+	return Geometry2D.convex_hull(inset)
 
 
 func _apply_overworld_tint() -> void:

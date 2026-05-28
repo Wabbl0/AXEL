@@ -11,7 +11,7 @@
 size = Vector2(1280, 32)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
-size = Vector2(33, 1074.25)
+size = Vector2(29.5, 757)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 16.0
@@ -28,12 +28,13 @@ centered = false
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339485]
 position = Vector2(640, 400)
-limit_left = -60
-limit_top = -300
-limit_right = 1340
-limit_bottom = 870
+limit_left = 10
+limit_top = -241
+limit_right = 1270
+limit_bottom = 812
 script = ExtResource("14_camera_script")
 target_path = NodePath("../PlayerLayer/Player")
+fixed_x = 640.0
 
 [node name="EnvironmentColliders" type="Node2D" parent="." unique_id=1768690352]
 
@@ -41,84 +42,91 @@ target_path = NodePath("../PlayerLayer/Player")
 position = Vector2(546, 246)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Bottom" unique_id=369581141]
-position = Vector2(64, -159)
-polygon = PackedVector2Array(33, 115, 34, 132, -4, 132, 0, 115)
+position = Vector2(64, -160)
+polygon = PackedVector2Array(34, 126, 34, 132, -4, 132, -2, 126)
 
 [node name="TreeLine_Bottom_Leaves" type="Area2D" parent="EnvironmentColliders" unique_id=1804677714]
 position = Vector2(546, 246)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Bottom_Leaves" unique_id=1865596340]
 position = Vector2(46, -147)
-polygon = PackedVector2Array(78, -46, 91, 12, 65, 47, 51, 50, 50, 108, 58, 135, 9, 136, 21.27668, 83.64821, 23, 69, 17, 44, -1, 31, -7, 8, -6, -52, 33, -66)
+polygon = PackedVector2Array(78, -46, 91, 12, 65, 47, 51, 50, 51, 109, 58, 135, 9, 137, 21.27668, 83.64821, 23, 69, 17, 44, -1, 31, -7, 8, -6, -52, 33, -66)
 
 [node name="TreeLine_Top" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1014041490]
 position = Vector2(677, -68)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Top" unique_id=303433852]
-position = Vector2(19, -118)
-polygon = PackedVector2Array(26, 102, 27, 114, -13, 117, -10, 98)
+position = Vector2(19, -111)
+polygon = PackedVector2Array(26, 102, 27, 114, -13, 117, -12, 101)
 
 [node name="TreeLine_Top_Leaves" type="Area2D" parent="EnvironmentColliders" unique_id=153265421]
 position = Vector2(677, -68)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Top_Leaves" unique_id=1592128453]
-polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 84, -89, 66, -76, 44.941437, -77.21301, 43, -7, 9, -1, 12, -23, 12, -82, -10, -93, -14, -114, -15, -130, -8, -147, -12, -165, -8, -176, -1, -188, 11, -191, 44, -191)
+polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 84, -89, 66, -76, 44.941437, -77.21301, 44, -16, 50, 11, 4, 13, 7, -11, 12, -82, -10, -93, -14, -114, -15, -130, -8, -147, -12, -165, -8, -176, -1, -188, 11, -191, 44, -191)
 
 [node name="Rocks_Left" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1796740676]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left" unique_id=1199693288]
+position = Vector2(173, 473)
+polygon = PackedVector2Array(-7, -34, 14, -29, 24, -8, 42, 4, 48, 15, -32, 9)
+
+[node name="CollisionPolygon2D2" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left" unique_id=1439809042]
+position = Vector2(270, 456)
+polygon = PackedVector2Array(0, 4, -28, 2, -5, -15, 2, -20, 12, -5, 17, 5)
+
+[node name="CollisionPolygon2D3" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left" unique_id=599931353]
+polygon = PackedVector2Array(243, 361, 254, 352, 247, 346, 238, 335, 228, 338, 217, 351, 215, 362, 202, 363, 207, 373)
+
+[node name="Stump_Left" type="StaticBody2D" parent="EnvironmentColliders" unique_id=226973750]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Stump_Left" unique_id=555994690]
+position = Vector2(304, 125)
+polygon = PackedVector2Array(-24, -17, 8, -24, 33, -15, 29, 5, -24, 4)
 
 [node name="Rocks_Right" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1101637411]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Right" unique_id=1459243302]
+position = Vector2(809, 689)
+polygon = PackedVector2Array(-47, -23, -77, -2, -88, 22, 60, 21, 56, -24, 26, -41, 8, -75, -14, -75, -19, -59, -34, -52)
 
-[node name="Building_Front" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1325363810]
+[node name="CollisionPolygon2D2" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Right" unique_id=113757170]
+polygon = PackedVector2Array(677, 660, 683, 652, 690, 642, 703, 650, 709, 679, 668, 682, 667, 669)
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Building_Front" unique_id=131446952]
-
-[node name="1.1_EnvironmentPlaceholders" type="Node2D" parent="." unique_id=1975434927]
-
-[node name="1.1_School_Building_Doors_01_Collision" type="StaticBody2D" parent="1.1_EnvironmentPlaceholders" unique_id=1045591823]
-position = Vector2(-66, 13)
-
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_Collision" unique_id=123314690]
-position = Vector2(-71, 50)
-polygon = PackedVector2Array(1035, 305, 1115, 305, 1115, 430, 1035, 430)
-
-[node name="1.1_School_Building_Doors_01_InteractArea" type="Area2D" parent="1.1_EnvironmentPlaceholders" unique_id=799181332]
-position = Vector2(-66, 13)
-
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea" unique_id=1990327212]
-position = Vector2(-80, 49)
-polygon = PackedVector2Array(1035, 305, 1115, 305, 1115, 430, 1035, 430)
-
-[node name="TopWall" type="StaticBody2D" parent="." unique_id=1058376895]
+[node name="TopWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1058376895]
 position = Vector2(640, 16)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="TopWall" unique_id=1627696374]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/TopWall" unique_id=1627696374]
 position = Vector2(0, -300)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
-[node name="BottomWall" type="StaticBody2D" parent="." unique_id=1196423384]
+[node name="BottomWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1196423384]
 position = Vector2(640, 704)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="BottomWall" unique_id=324826100]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/BottomWall" unique_id=324826100]
 position = Vector2(0, 119)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
-[node name="LeftWall" type="StaticBody2D" parent="." unique_id=1418059198]
+[node name="LeftWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1418059198]
 position = Vector2(16, 360)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall" unique_id=963137740]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/LeftWall" unique_id=963137740]
 position = Vector2(1.5, -89.125)
 shape = SubResource("RectangleShape2D_wall_vertical")
 
-[node name="RightWall" type="StaticBody2D" parent="." unique_id=432242208]
+[node name="RightWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=432242208]
 position = Vector2(1264, 360)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall" unique_id=455161837]
-position = Vector2(-336, 90.25)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=455161837]
+position = Vector2(-337.75, 94.5)
 shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="Doors" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1045591823]
+position = Vector2(-47, 13)
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Doors" unique_id=123314690]
+position = Vector2(-88, 32)
+polygon = PackedVector2Array(1035, 305, 1048, 306, 1048, 443, 1035, 443)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=1984527034]
 layer = 100

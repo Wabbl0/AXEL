@@ -22,8 +22,8 @@ This repository contains the AXEL Godot project and supporting tools used for de
 
 - Open Godot and import: `AXEL/axel_project/project.godot`
 - Or launch one of the included editor binaries from repository root:
-  - `Godot_v4.6.2-stable_win64.exe`
-  - `Godot_v4.6.2-stable_win64_console.exe`
+  - `Godot_v4.6.3-stable_win64.exe`
+  - `Godot_v4.6.3-stable_win64_console.exe`
 
 ### 2) Run the game
 

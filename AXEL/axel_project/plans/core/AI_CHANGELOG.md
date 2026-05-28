@@ -2589,3 +2589,94 @@ Copy and fill:
 - Behavior impact: No gameplay/runtime changes. Agents should use Lane A/B split, `meta:` for process chats, shorter governance injection, smaller packs, and §15 turn limits. User fills `API_USAGE_VALIDATION_TRACKER.md` over next 10 tasks to confirm quality.
 - Verification: Routing matrix — `meta: reduce API usage` → §1b, no domain pack; `scenes: implement: …` → scenes pack + lane B; governance rule line count reduced (~29 → ~18 substantive lines).
 - Notes: Rollback per tracker rollback triggers or restore pre-minification packs from git history.
+
+## 2026-05-28 - Upgrade Godot editor to 4.6.3
+
+- Request: Download and install Godot 4.6.3; update repo references for a seamless switch from 4.6.2.
+- Implementation: Downloaded official `Godot_v4.6.3-stable_win64.exe.zip` from GitHub releases, extracted editor + console binaries to repo root, pointed `tools/cmd/godot.cmd` and VS Code Godot Tools paths at 4.6.3, removed 4.6.2 binaries and the zip artifact.
+- Files changed:
+  - `Godot_v4.6.3-stable_win64.exe` (new)
+  - `Godot_v4.6.3-stable_win64_console.exe` (new)
+  - `tools/cmd/godot.cmd`
+  - `tools/Godot.code-workspace`
+  - `.vscode/settings.json`
+  - `AXEL/.vscode/settings.json`
+  - `README.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: CLI wrappers and editor integration use Godot 4.6.3 maintenance build; no project script changes required (4.6.x compatible).
+- Verification: `Godot_v4.6.3-stable_win64.exe --version` → `4.6.3.stable.official.7d41c59c4`; `tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd` → `Determinism check OK`.
+- Notes: Historical changelog entries still cite 4.6.2 console invocations where recorded at implementation time.
+
+## 2026-05-28 - Player alpha-channel collision from Mike sheet
+
+- Request: Use sprite alpha as the player collision outline so the hitbox fits the visible model.
+- Implementation: Extended `Player.gd` with runtime alpha extraction from the assigned sprite sheet (`mike_walking-Sheet.png` in Arc 1 scenes). On `_ready`, builds a `BitMap` from frame alpha (union of all 13 walk frames by default), converts to `ConvexPolygonShape2D` via `opaque_to_polygons`, replaces scene `CollisionShape2D` circle children, and anchors shapes to `AnimatedSprite` position with frame-center offset. Exports: `use_alpha_collision`, `collision_use_all_frames_union`, `collision_frame_index`, `collision_alpha_threshold`, `collision_polygon_epsilon`. Scene circle shapes remain as fallback if image read fails.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Player physics outline matches Mike’s painted silhouette across walk animations; no per-scene hitbox hand-tuning required.
+- Verification: Headless Godot test — `get_image()` on imported sheet (832×64), union bitmap → 1 polygon (~38 vertices) at 64×64 cell size.
+- Notes: `mike_walking.png` is not in repo; collision uses the same sheet texture already assigned on `Player`. Toggle `collision_use_all_frames_union` off to use a single frame only.
+
+## 2026-05-28 - Smooth alpha collision to reduce wall snagging
+
+- Request: Curved/smoothed player collision edges; raw alpha polygon gets stuck on environment borders.
+- Implementation: Extended `Player.gd` alpha collision pipeline with (1) bitmap erosion (`collision_alpha_shrink_pixels`, default 2) before tracing, (2) higher default trace simplification (`collision_polygon_epsilon` 3.0), (3) Chaikin corner smoothing (`collision_smooth_iterations`, default 2) + `Geometry2D.convex_hull`, and (4) inward margin inset (`collision_inward_margin`, default 1.5 px) so the collider slides off sharp world geometry.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Player hitbox stays alpha-derived but with rounded, slightly smaller outline; should snag less on rock/stump/door polygons while still blocking the visible body.
+- Verification: `ReadLints` clean on `Player.gd`.
+- Notes: Tune on `Player` inspector — increase `collision_alpha_shrink_pixels` / `collision_inward_margin` if still sticky; set `collision_smooth_iterations` to 0 to disable curve pass only.
+
+## 2026-05-28 - Harden alpha collision setup (editor crash guard)
+
+- Request: Godot crashed after collision smoothing changes; re-verify and stabilize.
+- Implementation: Deferred collision shape replacement to next frame (`call_deferred`), replaced `free()` with `remove_child` + `queue_free`, skip erosion when it empties the mask, validate polygon area/vertex count (decimate cap), circle fallback from bitmap bounds, and null-safe door `InteractArea` lookup in `1.1_SchoolExterior.gd` (node removed from scene).
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Safer collision rebuild at runtime; scene 1.1 no longer errors on missing door interact node (door E/Space transition inactive until Area2D restored).
+- Verification: Headless `--scene res://scenes/Arc_1/1.1_SchoolExterior.tscn --quit-after 8` exits 0 without node errors.
+
+## 2026-05-28 - Lower-body-only player collision (waist cut)
+
+- Request: Remove collision above the waist; keep roughly the lower half of the sprite for hitbox from current perspective.
+- Implementation: Added `collision_lower_body_ratio` (default `0.5`) to `Player.gd`; alpha bitmap is clipped to the bottom portion of each frame before trace/smooth/apply.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Player collides with legs/feet zone only; upper body and arms no longer snag on rocks/door borders.
+- Notes: Raise toward `0.55`–`0.6` on `Player` if waist cut feels too high; lower toward `0.4` for feet-only.
+
+## 2026-05-28 - School exterior viewport black backdrop
+
+- Request: Add black backdrop so grey default clear color does not show when camera moves past background PNG edges.
+- Implementation: Added `BackdropLayer` (`CanvasLayer` -199, follow viewport) with fullscreen black `ColorRect` behind world content in `1.1_SchoolExterior.tscn`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Areas outside the scaled school drawing render black instead of grey; noir post-FX no longer remaps void edges into red fringe lines at bottom/right.
+- Verification: Manual — pan camera to bottom/right limits with and without `AXEL_DISABLE_POST_FX=1`; void should stay black.
+
+## 2026-05-28 - School exterior camera limits (remove backdrop)
+
+- Request: Remove black backdrop; tighten camera limits so viewport stays within background art bounds.
+- Implementation: Removed `BackdropLayer`/`BlackFill`. Recomputed camera limits from scaled `1.1_SchoolExterior.png` bounds (3520² at ~0.335/0.321 scale): vertical limits `153`–`384`, horizontal locked at `fixed_x = 622` (background center; art narrower than 1400px viewport).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Camera no longer pans past top/bottom of background; horizontal position centered on art. Small side void may remain because drawing width (~1179px) is less than viewport width (1400px).
+- Verification: Manual — walk to bottom/right; grey void below art should no longer appear.
+
+## 2026-05-28 - Restore camera follow + 10% tighter limits
+
+- Request: Restore vertical camera follow; tighten original camera bounds by total 10% (5% per side); keep CRT vignette/fisheye screen-constant during movement.
+- Implementation: Reverted hard-lock camera setup (`fixed_x`/`limit_left`/`limit_right` at 622, tight Y 153–384). Restored `fixed_x = 640` and set limits to `left=10`, `top=-241`, `right=1270`, `bottom=812`. Added Y clamp in `camera_follow_vertical.gd` so follow respects limits. Verified CRT uses `SCREEN_UV` in fullscreen overlay (screen-space, camera-independent).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/camera_follow_vertical.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Camera follows player vertically again within slightly tighter play bounds; CRT curve/vignette remain fixed to viewport while world scrolls.
+- Verification: Headless `--quit-after 3` on `1.1_SchoolExterior.tscn` exits 0.

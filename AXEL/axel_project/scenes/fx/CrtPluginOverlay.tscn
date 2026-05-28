@@ -4,6 +4,12 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
 shader = ExtResource("1_crt_shader")
+shader_parameter/curvature = 0.08
+shader_parameter/chroma = 0.001
+shader_parameter/vignette = 0.3
+shader_parameter/scanline_strength = 0.12
+shader_parameter/mask_strength = 0.35
+shader_parameter/player_crt_reduction = 0.33
 
 [node name="CrtPluginOverlay" type="CanvasLayer"]
 layer = 108
