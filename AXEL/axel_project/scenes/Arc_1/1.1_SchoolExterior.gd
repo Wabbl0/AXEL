@@ -7,22 +7,18 @@ extends Node2D
 	get_node("EnvironmentColliders/TreeLine_Bottom_Leaves"),
 	get_node("EnvironmentColliders/TreeLine_Top_Leaves"),
 ]
-@onready var _player_visual_nodes: Array[CanvasItem] = [
-	get_node("PlayerLayer/Player/AnimatedSprite"),
-	get_node("PlayerLayer/Player/ShadowOutline"),
-	get_node("PlayerLayer/Player/FallbackBody"),
-]
 
 const _NEXT_SCENE_PATH := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const _LEAF_FADE_ALPHA := 0.2
+const _LEAF_EDGE_SOFTNESS := 34.0
+const _LEAF_MASK_PADDING := Vector2(22.0, 28.0)
 
 var _is_transitioning := false
-var _leaf_overlap_count := 0
 
 
 func _ready() -> void:
 	set_process_unhandled_input(true)
-	_bind_leaf_area_signals()
+	_configure_leaf_occlusion_masks()
 	if _should_skip_intro():
 		return
 	_run_intro_dialogue()
@@ -72,31 +68,33 @@ func _is_player_near_door() -> bool:
 	return false
 
 
-func _bind_leaf_area_signals() -> void:
+func _configure_leaf_occlusion_masks() -> void:
+	if not is_instance_valid(_player):
+		return
+	if not _player.has_method("configure_leaf_occlusion_masks"):
+		return
+	var masks: Array[Vector4] = []
 	for leaf_area in _leaf_areas:
-		if not is_instance_valid(leaf_area):
-			continue
-		leaf_area.body_entered.connect(_on_leaf_area_body_entered)
-		leaf_area.body_exited.connect(_on_leaf_area_body_exited)
+		masks.append(_leaf_area_to_mask_rect(leaf_area))
+	while masks.size() < 2:
+		masks.append(Vector4(0.0, 0.0, 1.0, 1.0))
+	_player.call("configure_leaf_occlusion_masks", masks[0], masks[1], _LEAF_FADE_ALPHA, _LEAF_EDGE_SOFTNESS)
 
 
-func _on_leaf_area_body_entered(body: Node2D) -> void:
-	if body != _player:
-		return
-	_leaf_overlap_count += 1
-	_set_player_visual_alpha(_LEAF_FADE_ALPHA)
-
-
-func _on_leaf_area_body_exited(body: Node2D) -> void:
-	if body != _player:
-		return
-	_leaf_overlap_count = maxi(_leaf_overlap_count - 1, 0)
-	if _leaf_overlap_count == 0:
-		_set_player_visual_alpha(1.0)
-
-
-func _set_player_visual_alpha(alpha: float) -> void:
-	for visual in _player_visual_nodes:
-		if not is_instance_valid(visual):
-			continue
-		visual.modulate.a = alpha
+func _leaf_area_to_mask_rect(leaf_area: Area2D) -> Vector4:
+	if not is_instance_valid(leaf_area):
+		return Vector4(0.0, 0.0, 1.0, 1.0)
+	var polygon_node := leaf_area.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
+	if polygon_node == null or polygon_node.polygon.is_empty():
+		return Vector4(leaf_area.global_position.x, leaf_area.global_position.y, 1.0, 1.0)
+	var min_point := Vector2(INF, INF)
+	var max_point := Vector2(-INF, -INF)
+	for local_point in polygon_node.polygon:
+		var world_point := polygon_node.to_global(local_point)
+		min_point.x = minf(min_point.x, world_point.x)
+		min_point.y = minf(min_point.y, world_point.y)
+		max_point.x = maxf(max_point.x, world_point.x)
+		max_point.y = maxf(max_point.y, world_point.y)
+	var center := (min_point + max_point) * 0.5
+	var radius := (max_point - min_point) * 0.5 + _LEAF_MASK_PADDING
+	return Vector4(center.x, center.y, maxf(radius.x, 1.0), maxf(radius.y, 1.0))

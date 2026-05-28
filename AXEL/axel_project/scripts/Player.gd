@@ -152,6 +152,22 @@ func _apply_overworld_tint() -> void:
 		animated_sprite.modulate = overworld_tint
 	shadow_outline.modulate = Color(0.0, 0.0, 0.0, 0.55)
 
+
+func configure_leaf_occlusion_masks(mask0: Vector4, mask1: Vector4, fade_alpha: float, edge_softness: float) -> void:
+	var mat := animated_sprite.material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("leaf_mask_0", mask0)
+	mat.set_shader_parameter("leaf_mask_1", mask1)
+	mat.set_shader_parameter("leaf_fade_alpha", clampf(fade_alpha, 0.0, 1.0))
+	mat.set_shader_parameter("leaf_edge_softness", maxf(edge_softness, 0.001))
+
+
+func set_leaf_occlusion_active(_active: bool) -> void:
+	# Kept for scene compatibility; occlusion is now spatial-only and always evaluated.
+	# Parameter intentionally unused.
+	pass
+
 func _physics_process(_delta: float) -> void:
 	var direction := Vector2.ZERO
 
