@@ -76,6 +76,7 @@ Primary style direction:
 - Palette baseline: black + blood red (`#ff0000`) + dark blood (`#4a0000`).
 - CRT/scanline/glitch/shake aesthetics are core identity, not optional decoration.
 - **Global post-FX stack (non-combat):** Autoload `AxelPostFxStack` (`res://scripts/autoload/axel_post_fx_stack.gd`) applies `NoirPaletteOverlay` + `ScanlineOverlay` + `CrtPluginOverlay` on every scene change. **Excluded:** any scene whose `scene_file_path` begins with `res://combat/`. Do not embed those three overlays in narrative/overworld `.tscn` files — add per-scene tuning via `AxelPostFxStack.get_noir_filter_rect()` or shader defaults. Style-sweep / isolated tests: set env `AXEL_DISABLE_POST_FX=1` to avoid double stacks.
+- **Event-tier overworld FX:** Autoload `AxelEventFx` (`res://scripts/autoload/axel_event_fx.gd`) handles scene-transition glitch, global event/jumpscare glitch API, and interface pulse cadence (30–60 s timer OR 40–90 walk steps, shared cooldown). Distinct from baseline stack. Canon reference: `plans/references/AXEL_OVERWORLD_EVENT_FX.md`. Passive cadence/enter-glitch honor `AXEL_DISABLE_POST_FX=1` and `AXEL_DISABLE_EVENT_FX=1`.
 - Typography center: VT323 (Space Mono may be used for supporting text where explicitly needed).
 - UI and narrative mood: dread, guilt, memory corruption, morally uneasy wins.
 - Big wins should read as unsettling/intrusive, not purely celebratory.

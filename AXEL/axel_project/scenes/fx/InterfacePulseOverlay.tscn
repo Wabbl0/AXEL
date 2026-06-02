@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://tools/visual_style/shaders/option_1_crt_tv.gdshader" id="1_crt_tv_shader"]
+[ext_resource type="Script" path="res://scenes/fx/interface_pulse_overlay.gd" id="2_pulse_script"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt_tv_pulse"]
+shader = ExtResource("1_crt_tv_shader")
+shader_parameter/scanline_strength = 0.18
+shader_parameter/roll_amount = 0.42
+shader_parameter/noise_amount = 0.08
+shader_parameter/glitch_rate = 2.0
+shader_parameter/glitch_shift = 0.003
+
+[node name="InterfacePulseOverlay" type="CanvasLayer"]
+layer = 109
+script = ExtResource("2_pulse_script")
+
+[node name="FilterRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_crt_tv_pulse")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)

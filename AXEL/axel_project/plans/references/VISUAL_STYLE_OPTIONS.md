@@ -98,6 +98,17 @@ Primary implementation: `noir_palette_filter.gdshader` + `overworld_scanline.gds
 
 ---
 
+## Production event overlays (pilot)
+
+Promoted from style-sweep comparison shaders into runtime event-tier overlays (owned by `AxelEventFx`, not baseline stack):
+
+| Comparison option | Runtime overlay | Trigger |
+|-------------------|-----------------|---------|
+| Option 2 VHS glitch | `IntroGlitchOverlay` | Scene enter, events, jumpscares (`play_glitch_burst`) |
+| Option 1 CRT TV | `InterfacePulseOverlay` | Cadence timer/steps, scripted distortion beats |
+
+See `plans/references/AXEL_OVERWORLD_EVENT_FX.md` for API and cadence rules.
+
 ## Recommended Next Steps
 
 1. Keep current noir + scanline baseline as primary visual.

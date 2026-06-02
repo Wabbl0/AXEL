@@ -12,7 +12,8 @@
 
 - Canonical filenames only (e.g. `1.2_Corridor.tscn`) — never `Corridor.tscn` aliases
 - Scene complete → purge `tools/scene_builder/output/layout_previews/` temps
-- Post-FX: autoload owns stack — no noir/scanline/CRT in overworld `.tscn`
+- Post-FX: autoload owns baseline stack — no noir/scanline/CRT in overworld `.tscn`
+- Event FX: `AxelEventFx` autoload owns glitch/interface overlays — call API from scene scripts, do not embed overlays in `.tscn`
 - One arc file per task; `@`-mention `exports/Drawings/*` (index-excluded)
 
 ## Hard gates

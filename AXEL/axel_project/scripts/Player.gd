@@ -54,10 +54,37 @@ const _MIKE_FRAME_COUNT := 13
 ## Right-side walks (walk_right / walk_up_right) vs left-side; W-only and S-only use this. Idle does not clear it.
 var _last_side_is_right: bool = true
 
+var _input_enabled: bool = true
+var _scripted_velocity: Vector2 = Vector2.ZERO
+var _step_distance_accumulator: float = 0.0
+var _last_step_position: Vector2 = Vector2.ZERO
+
+const _STEP_DISTANCE_PX := 8.0
+
 var _layout: SheetLayoutMode = SheetLayoutMode.HORIZONTAL_13
 var _cell: Vector2i = Vector2i(32, 32)
 
+
+func set_input_enabled(enabled: bool) -> void:
+	_input_enabled = enabled
+	if not enabled:
+		_scripted_velocity = Vector2.ZERO
+		velocity = Vector2.ZERO
+
+
+func is_input_enabled() -> bool:
+	return _input_enabled
+
+
+func set_scripted_velocity(v: Vector2) -> void:
+	_scripted_velocity = v
+
+
+func clear_scripted_velocity() -> void:
+	_scripted_velocity = Vector2.ZERO
+
 func _ready() -> void:
+	_last_step_position = global_position
 	if sprite_sheet == null:
 		sprite_sheet = _try_load_default_sprite_sheet()
 	if sprite_sheet:
@@ -462,6 +489,16 @@ func set_leaf_occlusion_active(_active: bool) -> void:
 	pass
 
 func _physics_process(_delta: float) -> void:
+	if not _input_enabled:
+		if _scripted_velocity != Vector2.ZERO:
+			velocity = _scripted_velocity
+			move_and_slide()
+			_update_animation(_scripted_velocity)
+		else:
+			velocity = Vector2.ZERO
+			_update_animation(Vector2.ZERO)
+		return
+
 	var direction := Vector2.ZERO
 
 	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A):
@@ -473,9 +510,23 @@ func _physics_process(_delta: float) -> void:
 	if Input.is_action_pressed("ui_down") or Input.is_key_pressed(KEY_S):
 		direction.y += 1.0
 
-	velocity = direction.normalized() * speed
+	velocity = direction.normalized() * speed if direction != Vector2.ZERO else Vector2.ZERO
 	move_and_slide()
+	_report_walk_steps_for_cadence()
 	_update_animation(direction)
+
+
+func _report_walk_steps_for_cadence() -> void:
+	if not _input_enabled:
+		return
+	var moved := global_position.distance_to(_last_step_position)
+	if moved <= 0.001:
+		return
+	_last_step_position = global_position
+	_step_distance_accumulator += moved
+	while _step_distance_accumulator >= _STEP_DISTANCE_PX:
+		_step_distance_accumulator -= _STEP_DISTANCE_PX
+		AxelEventFx.register_walk_step()
 
 func _update_animation(direction: Vector2) -> void:
 	if animated_sprite.sprite_frames == null:

@@ -10,8 +10,14 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(1280, 32)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
-size = Vector2(29.5, 757)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
+size = Vector2(29.5, 1096)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_right"]
+size = Vector2(29.5, 741.5449)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_b508v"]
+size = Vector2(215, 25)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 16.0
@@ -27,14 +33,14 @@ texture = ExtResource("13_bg_drawing")
 centered = false
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339485]
-position = Vector2(640, 400)
-limit_left = 10
+position = Vector2(549, 400)
+limit_left = 59
 limit_top = -241
-limit_right = 1270
+limit_right = 1200
 limit_bottom = 812
 script = ExtResource("14_camera_script")
 target_path = NodePath("../PlayerLayer/Player")
-fixed_x = 640.0
+fixed_x = 549.0
 
 [node name="EnvironmentColliders" type="Node2D" parent="." unique_id=1768690352]
 
@@ -111,15 +117,25 @@ shape = SubResource("RectangleShape2D_wall_horizontal")
 position = Vector2(16, 360)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/LeftWall" unique_id=963137740]
-position = Vector2(1.5, -89.125)
-shape = SubResource("RectangleShape2D_wall_vertical")
+position = Vector2(1.5, -75)
+shape = SubResource("RectangleShape2D_wall_vertical_left")
 
 [node name="RightWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=432242208]
 position = Vector2(1264, 360)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=455161837]
-position = Vector2(-337.75, 94.5)
-shape = SubResource("RectangleShape2D_wall_vertical")
+position = Vector2(-337.75, 86.5)
+shape = SubResource("RectangleShape2D_wall_vertical_right")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=1919725186]
+position = Vector2(-25.720947, -454.66916)
+rotation = -2.099631
+shape = SubResource("RectangleShape2D_wall_vertical_right")
+
+[node name="CollisionShape2D3" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=175384946]
+position = Vector2(-61.5, -551.5)
+rotation = 1.5707964
+shape = SubResource("RectangleShape2D_b508v")
 
 [node name="Doors" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1045591823]
 position = Vector2(-47, 13)

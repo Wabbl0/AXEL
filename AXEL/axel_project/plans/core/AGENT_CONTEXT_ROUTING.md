@@ -75,7 +75,7 @@ Prefix must appear at the start of the first user message (optional leading whit
 
 ## 7) Keyword classification — `visual_style`
 
-**Strong** (any one → confident): `AxelPostFxStack`, post-FX, scanline, CRT, noir palette, glitch, vignette, shader tuning (overworld), `AXEL_DISABLE_POST_FX`, style sweep, `AXEL_STYLE_VARIANT`, production FX under `scenes/fx/`.
+**Strong** (any one → confident): `AxelPostFxStack`, `AxelEventFx`, post-FX, scanline, CRT, noir palette, glitch, vignette, interface cadence, scene-transition glitch, `play_glitch_burst`, `play_jumpscare`, `AXEL_DISABLE_POST_FX`, `AXEL_DISABLE_EVENT_FX`, style sweep, `AXEL_STYLE_VARIANT`, production FX under `scenes/fx/`, `AXEL_OVERWORLD_EVENT_FX.md`.
 
 **Weak** (≥2): VT323/typography canon tied to UI presentation, line_contrast, overlay stack.
 
@@ -106,7 +106,8 @@ Prefix must appear at the start of the first user message (optional leading whit
 - `AXEL/html/pictures/**` is index-excluded — `@`-mention when visual prototype reference is needed.
 
 ### `visual_style` lock
-- Do not embed noir/scanline/CRT in overworld `.tscn` (autoload owns stack).
+- Do not embed noir/scanline/CRT in overworld `.tscn` (autoload owns baseline stack).
+- Do not embed `IntroGlitchOverlay` / `InterfacePulseOverlay` in overworld `.tscn` (autoload `AxelEventFx` owns event tier).
 - Do not apply global stack to `res://combat/*`.
 - No combat economy or arc dialogue unless unlocked.
 

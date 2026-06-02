@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://tools/visual_style/shaders/option_2_vhs_glitch.gdshader" id="1_glitch_shader"]
+[ext_resource type="Script" path="res://scenes/fx/intro_glitch_overlay.gd" id="2_glitch_script"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glitch"]
+shader = ExtResource("1_glitch_shader")
+shader_parameter/intensity = 0.82
+shader_parameter/glitch_frequency = 4.2
+shader_parameter/slice_intensity = 0.5
+
+[node name="IntroGlitchOverlay" type="CanvasLayer"]
+layer = 112
+script = ExtResource("2_glitch_script")
+
+[node name="FilterRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_glitch")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)

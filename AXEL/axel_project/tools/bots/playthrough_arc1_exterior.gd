@@ -1,18 +1,11 @@
 extends SceneTree
 ## Headless playthrough bot: Arc 1 / 1.1 School Exterior.
 ##
-## Verifies real-input fidelity for the overworld traversal + interaction loop.
-## Synthesizes physical key events through `Input.parse_input_event()` so the
-## same code paths a player exercises (`Player.gd::_physics_process` polling,
-## `1.1_SchoolExterior.gd::_unhandled_input` interaction handler) are driven.
+## Phase A: forced intro unlock (full sequence).
+## Phase B: door traversal + transition (reload with AXEL_SKIP_INTRO=1, spawn path).
 ##
 ## Run from repo root:
 ##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_arc1_exterior.gd
-##
-## Exit codes:
-##   0 = scene loaded, player walked to door, interaction key triggered
-##       transition to 1.2_Corridor.tscn within timeout.
-##   1 = any phase failed (load, traversal, interaction, transition assertion).
 
 const InputEventDriverScript := preload("res://tools/bots/input_event_driver.gd")
 const BotScenarioRunnerScript := preload("res://tools/bots/scenario_runner.gd")
@@ -20,17 +13,17 @@ const BotScenarioRunnerScript := preload("res://tools/bots/scenario_runner.gd")
 const _SCENE_EXTERIOR := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const _SCENE_CORRIDOR := "res://scenes/Arc_1/1.2_Corridor.tscn"
 
-## Player starts ~ (120, 360); door interact area spans roughly x=959..1039 at y~360.
-## Speed 180 px/s at 60 Hz physics = 3 px / frame; ~290 frames to traverse + buffer.
 const _WALK_FRAMES_RIGHT := 340
 const _SETTLE_FRAMES_AFTER_WALK := 6
 const _INTERACT_TAP_FRAMES := 3
 const _TRANSITION_TIMEOUT_FRAMES := 240
 const _SCENE_READY_GRACE_FRAMES := 4
+const _INTRO_UNLOCK_TIMEOUT_FRAMES := 720
 const _VERBOSE := true
 
 
 func _init() -> void:
+	OS.set_environment("AXEL_DISABLE_EVENT_FX", "1")
 	call_deferred("_main")
 
 
@@ -52,47 +45,58 @@ func _run_playthrough() -> bool:
 		push_error("Bot FAIL: missing corridor scene resource: %s" % _SCENE_CORRIDOR)
 		return false
 
-	var change_err := change_scene_to_file(_SCENE_EXTERIOR)
-	if change_err != OK:
-		push_error("Bot FAIL: change_scene_to_file(exterior) -> %d" % change_err)
-		return false
-
-	# Allow the deferred scene change to install current_scene + run _ready.
-	for _i in _SCENE_READY_GRACE_FRAMES:
-		await process_frame
-
-	if current_scene == null:
-		push_error("Bot FAIL: current_scene is null after change_scene_to_file.")
-		return false
-	if current_scene.scene_file_path != _SCENE_EXTERIOR:
-		push_error("Bot FAIL: expected current_scene=%s, got %s" % [
-			_SCENE_EXTERIOR, current_scene.scene_file_path
-		])
+	if not await _load_exterior_scene():
 		return false
 
 	var driver := InputEventDriverScript.new(self, _VERBOSE)
 	var runner := BotScenarioRunnerScript.new(self, driver, _VERBOSE)
 
-	var commands: Array = [
-		{"op": "log", "msg": "phase 1: warm up frames"},
+	var intro_commands: Array = [
+		{"op": "log", "msg": "phase A1: warm up frames"},
 		{"op": "wait_frames", "frames": 4},
+		{
+			"op": "assert_eventually",
+			"desc": "forced intro completes and player input unlocks",
+			"fn": Callable(self, "_assert_player_input_unlocked"),
+			"timeout_frames": _INTRO_UNLOCK_TIMEOUT_FRAMES,
+			"poll_every_frames": 2,
+		},
+	]
 
-		{"op": "log", "msg": "phase 2: walk right toward door"},
+	if not await runner.run(intro_commands):
+		push_error("Bot FAIL (intro) [%s]" % runner.failure_summary())
+		_dump_diagnostics(driver)
+		driver.release_all()
+		return false
+
+	driver.release_all()
+
+	OS.set_environment("AXEL_SKIP_INTRO", "1")
+	if not await _load_exterior_scene():
+		return false
+
+	driver = InputEventDriverScript.new(self, _VERBOSE)
+	runner = BotScenarioRunnerScript.new(self, driver, _VERBOSE)
+
+	var door_commands: Array = [
+		{"op": "log", "msg": "phase B1: warm up after skip-intro reload"},
+		{"op": "wait_frames", "frames": 4},
+		{
+			"op": "assert",
+			"desc": "skip-intro reload keeps player input enabled at spawn",
+			"fn": Callable(self, "_assert_player_input_unlocked"),
+		},
+		{"op": "log", "msg": "phase B2: walk right toward door"},
 		{"op": "hold", "key": KEY_D, "frames": _WALK_FRAMES_RIGHT},
-
-		{"op": "log", "msg": "phase 3: settle frames after walk"},
+		{"op": "log", "msg": "phase B3: settle frames after walk"},
 		{"op": "wait_frames", "frames": _SETTLE_FRAMES_AFTER_WALK},
-
 		{
 			"op": "assert",
 			"desc": "player overlaps door interact area before tapping E",
 			"fn": Callable(self, "_assert_player_in_door_interact_area"),
 		},
-
-		{"op": "log", "msg": "phase 4: tap interaction key (E)"},
+		{"op": "log", "msg": "phase B4: tap interaction key (E)"},
 		{"op": "tap", "key": KEY_E, "frames": _INTERACT_TAP_FRAMES},
-
-		{"op": "log", "msg": "phase 5: await scene transition to corridor"},
 		{
 			"op": "assert_eventually",
 			"desc": "current_scene becomes 1.2_Corridor.tscn",
@@ -102,11 +106,11 @@ func _run_playthrough() -> bool:
 		},
 	]
 
-	var ok := await runner.run(commands)
+	var ok := await runner.run(door_commands)
 	driver.release_all()
 
 	if not ok:
-		push_error("Bot FAIL [%s]" % runner.failure_summary())
+		push_error("Bot FAIL (door) [%s]" % runner.failure_summary())
 		_dump_diagnostics(driver)
 		return false
 
@@ -114,6 +118,24 @@ func _run_playthrough() -> bool:
 		runner.commands_executed, driver.physics_frame()
 	])
 	_print_bot_metrics(driver, runner, true)
+	return true
+
+
+func _load_exterior_scene() -> bool:
+	var change_err := change_scene_to_file(_SCENE_EXTERIOR)
+	if change_err != OK:
+		push_error("Bot FAIL: change_scene_to_file(exterior) -> %d" % change_err)
+		return false
+	for _i in _SCENE_READY_GRACE_FRAMES:
+		await process_frame
+	if current_scene == null:
+		push_error("Bot FAIL: current_scene is null after change_scene_to_file.")
+		return false
+	if current_scene.scene_file_path != _SCENE_EXTERIOR:
+		push_error("Bot FAIL: expected current_scene=%s, got %s" % [
+			_SCENE_EXTERIOR, current_scene.scene_file_path
+		])
+		return false
 	return true
 
 
@@ -129,6 +151,17 @@ func _print_bot_metrics(driver, runner: BotScenarioRunner, transition_ok: bool) 
 		"transition_ok": transition_ok,
 	}
 	print("BOT_METRICS_JSON %s" % JSON.stringify(payload))
+
+
+func _assert_player_input_unlocked() -> bool:
+	if current_scene == null:
+		return false
+	var player: CharacterBody2D = current_scene.get_node_or_null("PlayerLayer/Player")
+	if player == null:
+		return false
+	if player.has_method("is_input_enabled"):
+		return player.is_input_enabled()
+	return true
 
 
 func _assert_player_in_door_interact_area() -> bool:

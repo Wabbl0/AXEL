@@ -55,6 +55,25 @@ func show_line(
 	await hide_line()
 
 
+## Shows a line without blocking the caller; player movement continues during reveal/hold.
+func show_line_nonblocking(
+	text: String,
+	hold_duration: float = 2.5,
+	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
+	allow_skip: bool = true,
+) -> void:
+	_run_line_async(text, hold_duration, chars_per_sec, allow_skip)
+
+
+func _run_line_async(
+	text: String,
+	hold_duration: float,
+	chars_per_sec: float,
+	allow_skip: bool,
+) -> void:
+	await show_line(text, hold_duration, chars_per_sec, allow_skip)
+
+
 func _run_typewriter(full_text: String, chars_per_sec: float, allow_skip: bool) -> void:
 	var n := full_text.length()
 	if n == 0:

@@ -2680,3 +2680,94 @@ Copy and fill:
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Camera follows player vertically again within slightly tighter play bounds; CRT curve/vignette remain fixed to viewport while world scrolls.
 - Verification: Headless `--quit-after 3` on `1.1_SchoolExterior.tscn` exits 0.
+
+## 2026-05-28 - School exterior right-edge crop (+5%)
+
+- Request: Red line bar gone from bottom but still on right; tighten visible window from the right by another 5%.
+- Implementation: Previous `limit_right` did not affect view because camera X is fixed. Shifted `fixed_x` from `640` to `500` (140px total / 10% of original 1400px range: prior 5% + extra 5% from right) and set `limit_right` to `1200` so visible right edge moves from ~1340 to ~1200.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Viewport shows ~70px less content on the right; vertical follow unchanged.
+- Verification: Manual — check right edge no longer shows background void/red bar.
+
+## 2026-05-28 - School exterior left-edge crop (~7%)
+
+- Request: After right crop, red void lines appeared on top-left/bottom-left; crop from the left by ~7% the same way.
+- Implementation: Shifted `fixed_x` from `500` to `598` (+98px, 7% of original 1400px view width) and `limit_left` from `10` to `108`. Visible left edge moves from ~-200 to ~-102.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: ~98px less content visible on the left; vertical follow unchanged. Visible right edge shifts to ~1298.
+- Verification: Manual — confirm left corner void/red lines are reduced.
+
+## 2026-05-28 - Balance horizontal camera crop (left/right)
+
+- Request: Right red line returned after left crop; balance both sides.
+- Implementation: Set `fixed_x` to midpoint `549` (between right-biased `500` and left-biased `598`); `limit_left` to `59`. Visible edges ~`-151` left / ~`1249` right.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Compromise crop hides void on both corners without fully favoring one side.
+- Verification: Manual — check top-left, bottom-left, and right edges.
+
+## 2026-05-29 - Unlink left/right wall collision shapes (1.1)
+
+- Request: Left and right wall collision boundaries were linked; unlink so each can be positioned independently.
+- Implementation: Duplicated shared `RectangleShape2D_wall_vertical` into `RectangleShape2D_wall_vertical_left` and `RectangleShape2D_wall_vertical_right`; each `CollisionShape2D` now references its own sub-resource (Godot edits to shape size no longer propagate across walls).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Runtime collision unchanged until shapes are edited in the editor; left/right wall shape/size can now be tuned separately.
+- Verification: Manual — move or resize one wall collider in Godot; confirm the other does not follow.
+
+## 2026-05-29 - Arc 1 forced intro sequence (1.1 School Exterior)
+
+- Request: Scripted pre-dialogue flow — glitch, walk to stones, Option 1 interface pulse, first dialogue, unlock player, second non-blocking dialogue after ~50px movement.
+- Implementation: Replaced auto three-line intro with `IntroState` sequence in `1.1_SchoolExterior.gd` (glitch overlay → scripted walk to `Rocks_Right` → CRT TV interface pulse → first line → unlock → distance-triggered second line via `show_line_nonblocking`). Added `Player.gd` input lock/scripted velocity API. Added `IntroGlitchOverlay` (VHS) and `InterfacePulseOverlay` (Option 1 CRT TV) under `scenes/fx/`. Extended `TopDialogueOverlay.show_line_nonblocking`. Bot: phase A asserts intro unlock; phase B reloads with `AXEL_SKIP_INTRO` for door regression.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/fx/intro_glitch_overlay.gd`
+  - `AXEL/axel_project/scenes/fx/IntroGlitchOverlay.tscn`
+  - `AXEL/axel_project/scenes/fx/interface_pulse_overlay.gd`
+  - `AXEL/axel_project/scenes/fx/InterfacePulseOverlay.tscn`
+  - `AXEL/axel_project/tools/bots/playthrough_arc1_exterior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: New game on 1.1 plays forced intro before player control; `AXEL_SKIP_INTRO=1` bypasses sequence. Second dialogue does not lock movement. Door interact still requires `1.1_EnvironmentPlaceholders/..._InteractArea` node in scene (not present in `.tscn` yet).
+- Verification: Headless bot phase A — intro unlock OK (~586 frames). Phase B door overlap still fails until interact area is placed in editor.
+- Notes: Tune `_STONES_STAND_OFFSET` / `_STONES_ARRIVE_DISTANCE` in editor if stand position needs adjustment.
+
+## 2026-05-29 - Arc 1 intro reorder (glitch → wait → distortion + short left walk)
+
+- Request: Reorder intro to glitch → 1s wait → interface distortion during very short walk to left stones → dialogue; keep glitch and interface as separate effects; preserve unlock + movement-triggered second line.
+- Implementation: Reordered `_run_forced_intro_sequence()` in `1.1_SchoolExterior.gd`; retargeted walk to `Rocks_Left` with shorter caps (`_SCRIPTED_WALK_MAX_FRAMES` 96, arrive 36px). Added `start_distortion()` / `stop_distortion()` on `interface_pulse_overlay.gd` so CRT TV pulse runs only during the walk and ends on arrival.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/fx/interface_pulse_overlay.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Intro is shorter; distortion is concurrent with left-stone walk, not a separate post-walk beat. Post-dialogue unlock + 50px second line unchanged.
+- Verification: Headless bot phase A — intro unlock OK (~370 frames). Phase B door overlap unchanged (interact area node still absent in `.tscn`).
+
+## 2026-05-29 - Global Event FX system (AxelEventFx)
+
+- Request: Implement global event FX — scene-transition glitch on all non-combat scenes, global API for events/jumpscares, interface pulse cadence (30–60s OR 40–90 walk steps, shared cooldown), and persist agent knowledge in canon docs.
+- Implementation: Added `AxelEventFx` autoload owning `IntroGlitchOverlay` + `InterfacePulseOverlay`. Scene-enter glitch on non-combat transitions (1.1 intro opt-out). Public API: `play_glitch_burst`, `play_interface_pulse`, `start/stop_interface_distortion`, `play_jumpscare`, `set_cadence_enabled`, `register_walk_step`. Cadence scheduler with shared 30s cooldown. `Player.gd` reports walk steps (8px threshold, input-enabled only). Migrated `1.1_SchoolExterior` off embedded overlays to autoload API. Bot sets `AXEL_DISABLE_EVENT_FX=1` for deterministic passive FX. Added `plans/references/AXEL_OVERWORLD_EVENT_FX.md`; updated `AI_DOCS.md` §6, visual_style/scenes context packs, routing keywords, governance rule.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/tools/bots/playthrough_arc1_exterior.gd`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/context_packs/VISUAL_STYLE_MIN_CONTEXT.md`
+  - `AXEL/axel_project/plans/core/context_packs/SCENES_MIN_CONTEXT.md`
+  - `AXEL/axel_project/plans/core/AGENT_CONTEXT_ROUTING.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: All non-combat scene transitions play a brief enter glitch. While exploring, interface CRT pulses fire randomly by time or walking. Scenes call `AxelEventFx` for scripted glitch/jumpscare beats. 1.1 intro unchanged in flow but uses global API; cadence paused during intro.
+- Verification: Headless scene smoke + arc1 exterior bot (with `AXEL_DISABLE_EVENT_FX=1`).
