@@ -1,8 +1,8 @@
 # AXEL QA Canon Consistency Checks
 
-Headless audits for visual/gameplay drift vs canon. Used by default `qa agent` runs.
+Headless audits for visual/gameplay drift vs canon. Run manually or via `run_default_playtest.ps1`.
 
-Full contract (JSON schema, severity mapping, payload keys): [`plans/qa/AXEL_CANON_CONSISTENCY_AUDIT.md`](../plans/qa/AXEL_CANON_CONSISTENCY_AUDIT.md).
+Stdout prints `CANON_AUDIT_JSON` (always exits 0 — warn + recommend; parse JSON for findings).
 
 ## Commands
 

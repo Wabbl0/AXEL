@@ -6,9 +6,10 @@
 [ext_resource type="Script" uid="uid://bj16cjcb4p1kx" path="res://scenes/Arc_1/1.1_SchoolExterior.gd" id="12_school_ext"]
 [ext_resource type="Texture2D" uid="uid://cwowj33yu3igx" path="res://exports/Drawings/1.1_SchoolExterior.png" id="13_bg_drawing"]
 [ext_resource type="Script" uid="uid://buxd5usryyset" path="res://scenes/Arc_1/camera_follow_vertical.gd" id="14_camera_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="15_interact_prompt"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
-size = Vector2(1280, 32)
+size = Vector2(1279, 32)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
 size = Vector2(29.5, 1096)
@@ -110,7 +111,7 @@ shape = SubResource("RectangleShape2D_wall_horizontal")
 position = Vector2(640, 704)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/BottomWall" unique_id=324826100]
-position = Vector2(0, 119)
+position = Vector2(-0.5, 119)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="LeftWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1418059198]
@@ -141,8 +142,17 @@ shape = SubResource("RectangleShape2D_b508v")
 position = Vector2(-47, 13)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Doors" unique_id=123314690]
-position = Vector2(-88, 32)
-polygon = PackedVector2Array(1035, 305, 1048, 306, 1048, 443, 1035, 443)
+position = Vector2(-241.0259, 77.96611)
+scale = Vector2(1.1533451, 0.910815)
+polygon = PackedVector2Array(1029.5764, 283.99994, 1047.8591, 284.9999, 1045.6765, 438.1064, 1030.9368, 439.2043)
+
+[node name="DoorInteractArea" type="Area2D" parent="EnvironmentColliders/Doors" unique_id=1982745601]
+monitorable = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Doors/DoorInteractArea" unique_id=1982745602]
+position = Vector2(-2483.8662, 31.99997)
+scale = Vector2(3.2818022, 1.0000004)
+polygon = PackedVector2Array(1029.5764, 283.99994, 1047.8591, 284.9999, 1048.1638, 461.99985, 1030.1858, 454.99985)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=1984527034]
 layer = 100
@@ -151,7 +161,7 @@ follow_viewport_enabled = true
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=304166626]
 unique_name_in_owner = true
 z_index = 20
-position = Vector2(73, 402)
+position = Vector2(-200, 402)
 scale = Vector2(1.2, 1.2)
 script = ExtResource("2_elx0u")
 speed = 180.0
@@ -174,3 +184,5 @@ polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 shape = SubResource("CircleShape2D_player")
 
 [node name="TopDialogueOverlay" parent="." unique_id=875088782 instance=ExtResource("11_top_dialogue")]
+
+[node name="InteractPromptOverlay" parent="." unique_id=1738398091 instance=ExtResource("15_interact_prompt")]

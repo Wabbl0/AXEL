@@ -76,7 +76,9 @@ const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
 const HISTORY_MINI_ICON_SIZE := 18
 const HISTORY_ROW_SEPARATION := 3
-const HISTORY_TEXT_OUTLINE := 1
+const HUD_WHITE_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
+const HUD_WHITE_TEXT_SHADOW_COLOR := Color(0.22, 0.22, 0.22, 0.72)
+const HUD_WHITE_TEXT_SHADOW_OFFSET_Y := 1
 const LAYOUT_GOAL_BOX_START := 0.78
 const LAYOUT_GOAL_BOX_END := LAYOUT_SIDE_RIGHT_END
 
@@ -833,6 +835,7 @@ func _organize_top_hud() -> void:
 	_reparent_hud_to_root(goal_box)
 	_strip_corner_panel_boxes()
 	_configure_top_corner_hud()
+	_configure_white_hud_readouts()
 	_integrate_economics_into_center_hud()
 
 func _reparent_hud_to_root(node: Control) -> void:
@@ -1154,6 +1157,21 @@ func _configure_top_corner_hud() -> void:
 	if seed_row != null:
 		seed_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		seed_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+func _configure_white_hud_readouts() -> void:
+	for label in [bankroll_label, bet_label, goal_label, encounter_win_label]:
+		if label != null:
+			_apply_white_hud_text_style(label)
+
+
+func _apply_white_hud_text_style(label: Label) -> void:
+	label.add_theme_color_override("font_color", HUD_WHITE_TEXT_COLOR)
+	label.remove_theme_color_override("font_outline_color")
+	label.add_theme_constant_override("outline_size", 0)
+	label.add_theme_color_override("font_shadow_color", HUD_WHITE_TEXT_SHADOW_COLOR)
+	label.add_theme_constant_override("shadow_offset_x", 0)
+	label.add_theme_constant_override("shadow_offset_y", HUD_WHITE_TEXT_SHADOW_OFFSET_Y)
 
 
 func _winnings_readout_bg_style() -> StyleBoxFlat:
@@ -1686,12 +1704,7 @@ func _append_history_spin_row(event: Dictionary) -> void:
 
 func _apply_history_text_style(label: Label) -> void:
 	label.add_theme_font_size_override("font_size", _resolved_history_body_font())
-	label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.92, 1.0))
-	label.add_theme_color_override("font_outline_color", Color(0.35, 0.02, 0.02, 0.85))
-	label.add_theme_constant_override("outline_size", HISTORY_TEXT_OUTLINE)
-	label.remove_theme_color_override("font_shadow_color")
-	label.remove_theme_constant_override("shadow_offset_x")
-	label.remove_theme_constant_override("shadow_offset_y")
+	_apply_white_hud_text_style(label)
 
 
 func _format_history_factor(value: float) -> String:

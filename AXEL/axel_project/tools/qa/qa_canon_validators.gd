@@ -64,7 +64,8 @@ const MOVEMENT_SCENE_PROFILES: Dictionary = {
 			"PlayerLayer/Player",
 			"Camera2D",
 			"TopDialogueOverlay",
-			"1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea",
+			"InteractPromptOverlay",
+			"EnvironmentColliders/Doors/DoorInteractArea",
 		],
 	},
 	"res://scenes/Arc_1/1.2_Corridor.tscn": {

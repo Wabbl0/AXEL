@@ -67,13 +67,16 @@ func _on_scene_changed() -> void:
 
 	if scene == null:
 		_cadence_active = false
+		_set_ambient(false)
 		return
 
 	if _should_skip_event_fx(scene):
 		_cadence_active = false
+		_set_ambient(false)
 		return
 
 	_cadence_active = true
+	_set_ambient(true)
 	_arm_cadence_targets()
 
 	if not _should_skip_enter_glitch(scene):
@@ -211,12 +214,26 @@ func apply_to_scene(scene: Node) -> void:
 	_reset_cadence_state()
 	if scene == null:
 		_cadence_active = false
+		_set_ambient(false)
 		return
 	if _should_skip_event_fx(scene):
 		_cadence_active = false
+		_set_ambient(false)
 		return
 	_cadence_active = true
+	_set_ambient(true)
 	_arm_cadence_targets()
+
+
+func _set_ambient(enabled: bool) -> void:
+	if _pulse == null or not is_instance_valid(_pulse):
+		return
+	if enabled:
+		if _pulse.has_method("start_ambient"):
+			_pulse.start_ambient()
+	else:
+		if _pulse.has_method("stop_ambient"):
+			_pulse.stop_ambient()
 
 
 func _instantiate_overlay(packed_path: String) -> Node:

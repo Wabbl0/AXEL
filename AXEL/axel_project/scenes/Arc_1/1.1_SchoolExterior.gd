@@ -6,8 +6,10 @@ enum IntroState {
 }
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
+@onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
 @onready var _rocks_left: StaticBody2D = $EnvironmentColliders/Rocks_Left
+@onready var _left_wall_collision: CollisionShape2D = $EnvironmentColliders/LeftWall/CollisionShape2D
 @onready var _leaf_areas: Array[Area2D] = [
 	get_node("EnvironmentColliders/TreeLine_Bottom_Leaves"),
 	get_node("EnvironmentColliders/TreeLine_Top_Leaves"),
@@ -22,13 +24,15 @@ const _LEAF_EDGE_SOFTNESS := 34.0
 const _LEAF_MASK_PADDING := Vector2(22.0, 28.0)
 
 const _GLITCH_BURST_SEC := 0.85
-const _POST_GLITCH_WAIT_SEC := 1.0
 const _STONES_ARRIVE_DISTANCE := 36.0
-const _STONES_STAND_OFFSET := Vector2(-28.0, 6.0)
-const _SCRIPTED_WALK_MAX_FRAMES := 96
+const _SCRIPTED_WALK_SPEED_SCALE := 0.5
+const _SCRIPTED_WALK_MAX_FRAMES := 600
 const _SECOND_DIALOGUE_DISTANCE := 50.0
 const _FIRST_DIALOGUE_LINE := "You promised, you'd never come back."
 const _SECOND_DIALOGUE_LINE := "Yet, here we are..."
+const _THIRD_DIALOGUE_LINE := "Pathetic."
+const _PATHETIC_BEAT_SEC := 2.0
+const _SECOND_LINE_TAIL_HOLD_SEC := 2.0
 
 var _is_transitioning := false
 var _unlock_position: Vector2 = Vector2.ZERO
@@ -38,13 +42,19 @@ var _watching_movement := false
 
 func _ready() -> void:
 	_door_interact_area = get_node_or_null(
-		"1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea"
+		"EnvironmentColliders/Doors/DoorInteractArea"
 	) as Area2D
+	if is_instance_valid(_door_interact_area):
+		_door_interact_area.body_entered.connect(_on_door_interact_body_entered)
+		_door_interact_area.body_exited.connect(_on_door_interact_body_exited)
 	set_process_unhandled_input(true)
 	_configure_leaf_occlusion_masks()
 	if _should_skip_intro():
 		_intro_state = IntroState.PLAYER_FREE
+		if is_instance_valid(_player):
+			_player.global_position = _left_stones_stand_target()
 		_enable_player_control()
+		_refresh_door_interact_prompt()
 		return
 	_run_forced_intro_sequence()
 
@@ -62,8 +72,17 @@ func _process(_delta: float) -> void:
 		return
 	_second_dialogue_fired = true
 	_watching_movement = false
-	if _top_dialogue.has_method("show_line_nonblocking"):
-		_top_dialogue.show_line_nonblocking(_SECOND_DIALOGUE_LINE, 2.5)
+	_play_second_then_pathetic()
+
+
+func _play_second_then_pathetic() -> void:
+	if not _top_dialogue.has_method("type_line"):
+		return
+	await _top_dialogue.type_line(_SECOND_DIALOGUE_LINE)
+	await get_tree().create_timer(_PATHETIC_BEAT_SEC).timeout
+	await _top_dialogue.type_line(_THIRD_DIALOGUE_LINE)
+	await get_tree().create_timer(_SECOND_LINE_TAIL_HOLD_SEC).timeout
+	await _top_dialogue.hide_line()
 
 
 func _run_forced_intro_sequence() -> void:
@@ -71,24 +90,32 @@ func _run_forced_intro_sequence() -> void:
 	_disable_player_control()
 	AxelEventFx.set_cadence_enabled(false)
 
-	await AxelEventFx.play_glitch_burst(_GLITCH_BURST_SEC)
-
-	await get_tree().create_timer(_POST_GLITCH_WAIT_SEC).timeout
+	if is_instance_valid(_left_wall_collision):
+		_left_wall_collision.set_deferred("disabled", true)
 
 	AxelEventFx.start_interface_distortion()
 
+	_run_intro_glitch_burst(_GLITCH_BURST_SEC)
 	await _scripted_walk_to_left_stones()
+
+	if is_instance_valid(_left_wall_collision):
+		_left_wall_collision.set_deferred("disabled", false)
 
 	await AxelEventFx.stop_interface_distortion()
 
-	if _top_dialogue.has_method("show_line"):
-		await _top_dialogue.show_line(_FIRST_DIALOGUE_LINE, 2.0)
+	if _top_dialogue.has_method("type_line"):
+		await _top_dialogue.type_line(_FIRST_DIALOGUE_LINE)
 
 	_unlock_position = _player.global_position
 	_enable_player_control()
 	_intro_state = IntroState.PLAYER_FREE
 	_watching_movement = true
 	AxelEventFx.set_cadence_enabled(true)
+	_refresh_door_interact_prompt()
+
+
+func _run_intro_glitch_burst(duration_sec: float) -> void:
+	await AxelEventFx.play_glitch_burst(duration_sec)
 
 
 func _disable_player_control() -> void:
@@ -110,7 +137,8 @@ func _scripted_walk_to_left_stones() -> void:
 		return
 
 	var target := _left_stones_stand_target()
-	var move_speed := float(_player.get("speed")) if _player.get("speed") != null else 180.0
+	var base_speed := float(_player.get("speed")) if _player.get("speed") != null else 180.0
+	var move_speed := base_speed * _SCRIPTED_WALK_SPEED_SCALE
 	var frames := 0
 
 	while is_instance_valid(_player):
@@ -129,21 +157,24 @@ func _scripted_walk_to_left_stones() -> void:
 
 
 func _left_stones_stand_target() -> Vector2:
-	var min_point := Vector2(INF, INF)
-	var max_point := Vector2(-INF, -INF)
-	for child in _rocks_left.get_children():
-		if child is CollisionPolygon2D:
-			var poly := child as CollisionPolygon2D
-			for local_point in poly.polygon:
-				var world_point := poly.to_global(local_point)
-				min_point.x = minf(min_point.x, world_point.x)
-				min_point.y = minf(min_point.y, world_point.y)
-				max_point.x = maxf(max_point.x, world_point.x)
-				max_point.y = maxf(max_point.y, world_point.y)
-	if max_point.x < min_point.x:
-		return _player.global_position + Vector2(80.0, 40.0)
-	var center := (min_point + max_point) * 0.5
-	return center + _STONES_STAND_OFFSET
+	var poly2 := _rocks_left.get_node_or_null("CollisionPolygon2D2") as CollisionPolygon2D
+	var poly3 := _rocks_left.get_node_or_null("CollisionPolygon2D3") as CollisionPolygon2D
+	if poly2 == null or poly3 == null or poly2.polygon.is_empty() or poly3.polygon.is_empty():
+		if is_instance_valid(_player):
+			return _player.global_position + Vector2(80.0, 40.0)
+		return Vector2(249.0, 402.0)
+	var centroid2 := _polygon_global_centroid(poly2)
+	var centroid3 := _polygon_global_centroid(poly3)
+	return (centroid2 + centroid3) * 0.5
+
+
+func _polygon_global_centroid(poly: CollisionPolygon2D) -> Vector2:
+	if poly.polygon.is_empty():
+		return poly.global_position
+	var sum := Vector2.ZERO
+	for local_point in poly.polygon:
+		sum += poly.to_global(local_point)
+	return sum / float(poly.polygon.size())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -155,11 +186,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _is_player_near_door():
 		return
-	_is_transitioning = true
-	var err := get_tree().change_scene_to_file(_NEXT_SCENE_PATH)
-	if err != OK:
-		push_error("Failed to change scene to %s (error %d)." % [_NEXT_SCENE_PATH, err])
-		_is_transitioning = false
+	_begin_door_transition()
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
@@ -178,6 +205,63 @@ func _is_player_near_door() -> bool:
 		if body == _player:
 			return true
 	return false
+
+
+func _door_interact_anchor() -> Vector2:
+	if not is_instance_valid(_door_interact_area):
+		return Vector2.ZERO
+	var poly := _door_interact_area.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
+	if poly == null:
+		return _door_interact_area.global_position
+	return _polygon_global_centroid(poly)
+
+
+func _on_door_interact_body_entered(body: Node) -> void:
+	if body != _player:
+		return
+	_try_show_door_interact_prompt()
+
+
+func _on_door_interact_body_exited(body: Node) -> void:
+	if body != _player:
+		return
+	if _is_transitioning:
+		return
+	_hide_door_interact_prompt()
+
+
+func _try_show_door_interact_prompt() -> void:
+	if _intro_state != IntroState.PLAYER_FREE or _is_transitioning:
+		return
+	if not is_instance_valid(_interact_prompt):
+		return
+	_interact_prompt.show_prompt(_door_interact_anchor())
+
+
+func _hide_door_interact_prompt() -> void:
+	if _is_transitioning:
+		return
+	if not is_instance_valid(_interact_prompt):
+		return
+	_interact_prompt.hide_prompt()
+
+
+func _refresh_door_interact_prompt() -> void:
+	if _is_player_near_door():
+		_try_show_door_interact_prompt()
+	else:
+		_hide_door_interact_prompt()
+
+
+func _begin_door_transition() -> void:
+	_is_transitioning = true
+	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
+		_interact_prompt.hide_prompt_immediate()
+	var err := get_tree().change_scene_to_file(_NEXT_SCENE_PATH)
+	if err != OK:
+		push_error("Failed to change scene to %s (error %d)." % [_NEXT_SCENE_PATH, err])
+		_is_transitioning = false
+		AxelPostFxStack.apply_to_scene(get_tree().current_scene)
 
 
 func _configure_leaf_occlusion_masks() -> void:

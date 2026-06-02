@@ -7,7 +7,9 @@ uniform float scanline_strength : hint_range(0.0, 0.5) = 0.12;
 uniform float mask_strength : hint_range(0.0, 1.0) = 0.35;
 uniform float vignette : hint_range(0.0, 1.0) = 0.22;
 uniform float chroma : hint_range(0.0, 0.01) = 0.0025;
+uniform float player_chroma : hint_range(0.0, 0.01) = 0.0002;
 uniform float player_crt_reduction : hint_range(0.0, 1.0) = 0.33;
+uniform float player_white_boost : hint_range(0.0, 1.0) = 0.8;
 
 vec2 curve_uv(vec2 uv, float amount) {
 	vec2 c = uv - 0.5;
@@ -24,6 +26,12 @@ float player_sprite_mask(vec3 rgb) {
 	return clamp(max(white_body, shadow * 0.85), 0.0, 1.0);
 }
 
+float player_white_body_mask(vec3 rgb) {
+	float lum = dot(rgb, vec3(0.299, 0.587, 0.114));
+	float balance = 1.0 - abs(rgb.r - rgb.g) - abs(rgb.g - rgb.b);
+	return smoothstep(0.42, 0.78, lum) * smoothstep(0.12, 0.45, balance);
+}
+
 void fragment() {
 	vec2 uv_screen = SCREEN_UV;
 	vec3 src = texture(screen_texture, uv_screen).rgb;
@@ -32,7 +40,11 @@ void fragment() {
 	vec2 uv = curve_uv(uv_screen, curvature);
 	vec3 col = vec3(0.0);
 	if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-		float off = chroma;
+		float p_mask = player_sprite_mask(src);
+		float p_chroma = p_mask;
+		p_chroma = max(p_chroma, player_sprite_mask(texture(screen_texture, uv_screen + vec2(chroma, 0.0)).rgb));
+		p_chroma = max(p_chroma, player_sprite_mask(texture(screen_texture, uv_screen - vec2(chroma, 0.0)).rgb));
+		float off = mix(chroma, player_chroma, p_chroma);
 		col.r = texture(screen_texture, uv + vec2(off, 0.0)).r;
 		col.g = texture(screen_texture, uv).g;
 		col.b = texture(screen_texture, uv - vec2(off, 0.0)).b;
@@ -44,6 +56,8 @@ void fragment() {
 		float vig = 1.0 - dot(d, d) * vignette * 4.0;
 		col *= vig;
 		col = mix(src, col, crt_mix);
+		float white_body = player_white_body_mask(src);
+		col = mix(col, vec3(1.0), white_body * player_white_boost);
 	}
 	COLOR = vec4(col, 1.0);
 }

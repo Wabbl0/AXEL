@@ -1,0 +1,90 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/InteractPromptOverlay.gd" id="1_script"]
+[ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="2_font"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0, 0, 0, 0.55)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.290196, 0, 0, 0.55)
+content_margin_left = 3
+content_margin_top = 1
+content_margin_right = 3
+content_margin_bottom = 1
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_inner"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_beam"]
+blend_mode = 1
+
+[node name="InteractPromptOverlay" type="CanvasLayer"]
+layer = 111
+follow_viewport_enabled = false
+script = ExtResource("1_script")
+
+[node name="ViewportRoot" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ChipRoot" type="Control" parent="ViewportRoot"]
+layout_mode = 0
+mouse_filter = 2
+
+[node name="BarPanel" type="PanelContainer" parent="ViewportRoot/ChipRoot"]
+layout_mode = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="PowerBeam" type="ColorRect" parent="ViewportRoot/ChipRoot/BarPanel"]
+z_index = 2
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = -2.0
+offset_bottom = 2.0
+grow_horizontal = 2
+mouse_filter = 2
+material = SubResource("CanvasItemMaterial_beam")
+visible = false
+color = Color(1, 1, 1, 1)
+modulate = Color(1, 1, 1, 0)
+
+[node name="InnerPanel" type="PanelContainer" parent="ViewportRoot/ChipRoot/BarPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_inner")
+
+[node name="KeyLabel" type="Label" parent="ViewportRoot/ChipRoot/BarPanel/InnerPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 26
+theme_override_fonts/font = ExtResource("2_font")
+text = "[E]"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Bloom" type="ColorRect" parent="ViewportRoot/ChipRoot/BarPanel"]
+z_index = 3
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("CanvasItemMaterial_beam")
+color = Color(1, 0, 0, 1)
+modulate = Color(1, 1, 1, 0)

@@ -55,7 +55,7 @@ Use this structure for all new content:
 
 - Prefer non-breaking, incremental moves.
 - If moving runtime assets, update all references in `.gd`, `.tscn`, and `.import` files in the same change.
-- Record all implemented structure migrations in `plans/core/AI_CHANGELOG.md`.
+- Record structure migrations in git commit messages (historical agent changelog archived under `plans/core/archive/`).
 
 ## Current Migration State (Implemented)
 

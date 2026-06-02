@@ -32,7 +32,7 @@ tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/pri
 tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
 ```
 
-**`qa agent` playtest bundle (combat + canonical scene smoke + RTP metrics):** same two lines above, then:
+**Full playtest bundle:** from repo root, `powershell AXEL/axel_project/tools/qa/run_default_playtest.ps1` (combat checks, scene smoke, canon audit, bots). Or run individually:
 
 ```bat
 tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd

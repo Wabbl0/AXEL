@@ -28,12 +28,33 @@ func _ready() -> void:
 
 func _on_scene_changed() -> void:
 	var scene := get_tree().current_scene
-	_detach()
+	var old_noir := _noir
+	var old_scanline := _scanline
+	var old_crt := _crt
+	_noir = null
+	_scanline = null
+	_crt = null
+	_attached_scene = null
+
 	if scene == null:
+		_free_overlay(old_noir)
+		_free_overlay(old_scanline)
+		_free_overlay(old_crt)
+		call_deferred("ensure_attached_to_current_scene")
 		return
+
 	if _should_skip_post_fx(scene):
+		_free_overlay(old_noir)
+		_free_overlay(old_scanline)
+		_free_overlay(old_crt)
+		call_deferred("ensure_attached_to_current_scene")
 		return
+
 	_attach_to_scene(scene)
+	_free_overlay(old_noir)
+	_free_overlay(old_scanline)
+	_free_overlay(old_crt)
+	call_deferred("ensure_attached_to_current_scene")
 
 
 func _should_skip_post_fx(scene: Node) -> bool:
@@ -51,6 +72,32 @@ static func is_combat_scene(scene: Node) -> bool:
 		return false
 	var path := scene.scene_file_path
 	return not path.is_empty() and path.begins_with("res://combat/")
+
+
+func _overlays_attached_to(scene: Node) -> bool:
+	if not is_instance_valid(scene):
+		return false
+	for layer in [_noir, _scanline, _crt]:
+		if layer == null or not is_instance_valid(layer):
+			return false
+		if layer.get_parent() != scene:
+			return false
+	return true
+
+
+## Re-attach when scene_changed aborted or overlays were detached without a successful attach.
+func ensure_attached_to_current_scene() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	var scene := tree.current_scene
+	if scene == null:
+		return
+	if _should_skip_post_fx(scene):
+		return
+	if _overlays_attached_to(scene):
+		return
+	apply_to_scene(scene)
 
 
 func _detach() -> void:
@@ -82,7 +129,10 @@ func _attach_to_scene(scene: Node) -> void:
 	_crt = _instantiate_overlay(CRT_SCENE) as CanvasLayer
 	if _noir == null or _scanline == null or _crt == null:
 		push_warning("AxelPostFxStack: failed to instantiate one or more overlay scenes.")
-		_detach()
+		_noir = null
+		_scanline = null
+		_crt = null
+		_attached_scene = null
 		return
 	for layer in [_noir, _scanline, _crt]:
 		if not is_instance_valid(layer):

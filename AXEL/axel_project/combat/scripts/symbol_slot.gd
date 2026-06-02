@@ -313,9 +313,9 @@ func _ensure_win_label() -> void:
 	_win_label.offset_bottom = 0.0
 	_apply_win_popup_font(_win_label)
 	_win_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
-	_win_label.add_theme_color_override("font_outline_color", Color(0.08, 0.08, 0.08, 1.0))
-	_win_label.add_theme_constant_override("outline_size", 2)
-	_win_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.55))
+	_win_label.remove_theme_color_override("font_outline_color")
+	_win_label.add_theme_constant_override("outline_size", 0)
+	_win_label.add_theme_color_override("font_shadow_color", Color(0.22, 0.22, 0.22, 0.72))
 	_win_label.add_theme_constant_override("shadow_offset_x", 0)
 	_win_label.add_theme_constant_override("shadow_offset_y", 1)
 	_win_label.visible = false

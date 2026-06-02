@@ -1,9 +1,6 @@
 ﻿# Exclude large debug logs (up to 300+ MB) from indexing
 logs/**
 
-# Exclude reference-only Moon Princess capture files (JS bundles, CSS, hashed assets)
-AXEL/axel_project/exports/Moon Princess Files/**
-
 # Exclude any bundled JS files that may appear elsewhere
 **/*bundle*.js
 
@@ -17,15 +14,27 @@ AXEL/axel_project/.godot/**
 **/*.import
 **/*.uid
 
+# Python cache (tool scripts)
+**/__pycache__/**
+**/*.pyc
+
+# Aseprite editor sources (runtime uses exported PNG)
+**/*.aseprite
+
 # Tool-generated previews / style sweeps (keep JSON drafts in scene_builder/output)
 **/tools/visual_style/output/**
 **/tools/scene_builder/output/layout_previews/**
 
-# Non-authoritative export captures (layout refs, screenshots, brainstorm exports)
-AXEL/axel_project/exports/screenshots/**
-AXEL/axel_project/exports/Drawings/**
-AXEL/axel_project/exports/Viral Forge/**
-AXEL/axel_project/exports/*.pdf
+# Archived QA run logs
+AXEL/axel_project/plans/qa/archive/**
 
-# Legacy HTML prototype art (~83 MB) — not indexed; @-mention files when needed for narrative/scene look-dev
+# Export captures + legacy port artifacts (narrative canon files stay indexed)
+AXEL/axel_project/exports/**
+!AXEL/axel_project/exports/game_data.json
+!AXEL/axel_project/exports/GameManager.gd
+
+# Legacy HTML prototype art (~83 MB) — @-mention when needed for narrative/scene look-dev
 AXEL/html/pictures/**
+
+# Archived agent changelog (historical; git is source of truth)
+AXEL/axel_project/plans/core/archive/**

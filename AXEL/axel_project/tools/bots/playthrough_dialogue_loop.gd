@@ -186,7 +186,7 @@ func _assert_player_in_door_interact_area() -> bool:
 	if current_scene == null:
 		return false
 	var area: Area2D = current_scene.get_node_or_null(
-		"1.1_EnvironmentPlaceholders/1.1_School_Building_Doors_01_InteractArea"
+		"EnvironmentColliders/Doors/DoorInteractArea"
 	)
 	var player: CharacterBody2D = current_scene.get_node_or_null("PlayerLayer/Player")
 	if area == null or player == null:

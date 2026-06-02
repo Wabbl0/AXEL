@@ -23,7 +23,7 @@ Lightweight contract for new-chat context selection. Goal: load only the minimum
 
 **Keywords (any one → confident meta):** API usage, token budget, context routing, governance rule, agent process, chat lane, handoff, `.cursor/rules`, optimization, meta-process.
 
-**Locks:** No domain packs unless user `unlock <bundle>`. No combat/scene/narrative/vfx implementation unless unlocked. Changelog only if docs/rules were edited.
+**Locks:** No domain packs unless user `unlock <bundle>`. No combat/scene/narrative/vfx implementation unless unlocked. Memory-layer edits only at docs flush (or immediately when this chat is the flush and user triggered it — see `AI_DOCS.md` §9 Deferred docs flush).
 
 **Not meta:** grid/spin/RTP, `.tscn` layout, flags/endings, shaders/CRT — route to domain bundles (§4–§7).
 
@@ -111,7 +111,7 @@ Prefix must appear at the start of the first user message (optional leading whit
 - Do not apply global stack to `res://combat/*`.
 - No combat economy or arc dialogue unless unlocked.
 
-**Always apply (all bundles):** `AI_DOCS.md` §3 hierarchy, §10 hard conflict gate, changelog on implement.
+**Always apply (all bundles):** `AI_DOCS.md` §3 hierarchy, §10 hard conflict gate, deferred docs flush at chat finish (`AI_DOCS.md` §9).
 
 ## 10) Clarification prompt (low confidence)
 
@@ -131,11 +131,11 @@ Prefix must appear at the start of the first user message (optional leading whit
 
 ## 12) Indexing note (`.cursorignore`)
 
-Aggressive exclusions reduce token/index noise. Key intentional exclusions: `logs/**`, `.godot/**`, `**/*.import`, tool preview outputs, `exports/Drawings/**`, `AXEL/html/pictures/**`. Canonical sources remain indexed: `plans/*`, `combat/*`, `scenes/*`, `scripts/*`, `AXEL/html/game.html`, `exports/game_data.json`, `exports/GameManager.gd`.
+Aggressive exclusions reduce token/index noise. Key patterns: `logs/**`, `.godot/**`, `**/*.import`, `**/*.uid`, `**/__pycache__/**`, `**/*.aseprite`, tool preview outputs, `AXEL/axel_project/exports/**` with `!game_data.json` and `!GameManager.gd`, `AXEL/html/pictures/**`, `plans/qa/archive/**`. Canonical sources remain indexed: `plans/*`, `combat/*`, `scenes/*`, `scripts/*`, `AXEL/html/game.html`, `exports/game_data.json`, `exports/GameManager.gd`. Excluded export paths remain available via `@`-mention.
 
 ## 13) Adding future bundles
 
 1. Add `context_packs/<BUNDLE>_MIN_CONTEXT.md`.
 2. Register triggers, lock rules, and optional prefix in this file.
 3. Update governance rule pointer (one line).
-4. Record in `AI_CHANGELOG.md`.
+4. Record in `AI_CHANGELOG.md` at docs flush (queue in Pending Docs Buffer until user triggers — `AI_DOCS.md` §9).

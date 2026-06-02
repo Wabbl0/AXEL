@@ -1,7 +1,8 @@
 # AXEL Overworld Playthrough Bots
 
 High-fidelity headless bots that simulate a real player by synthesizing
-`InputEventKey` events through the engine input pipeline. Used by `qa agent`
+`InputEventKey` events through the engine input pipeline. Used by
+`run_default_playtest.ps1`
 playtest mode to gate overworld scene flow (movement, dialogue, interaction)
 in addition to the existing combat headless checks.
 
@@ -103,7 +104,7 @@ automatically on failure). Prefer `wait_frames` (physics) over
 ## Plan-step 4 canon resolution
 
 Plan step 4 originally targeted `scripts/GameController.gd`. Per
-`plans/core/AI_CHANGELOG.md` (2026-05-08 "Restore SchoolExterior Full Layout"),
+`plans/core/archive/AI_CHANGELOG_2026.md` (2026-05-08 "Restore SchoolExterior Full Layout"),
 that script was deliberately stripped from active scenes. Per
 `plans/core/AI_DOCS.md` canon hierarchy, we did **not** resurrect it via a
 synthetic test scene (would violate "no architecture-layer mixing without

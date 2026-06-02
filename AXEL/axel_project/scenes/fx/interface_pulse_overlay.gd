@@ -1,12 +1,16 @@
 extends CanvasLayer
 ## Event-driven Option 1 CRT TV distortion (distinct from glitch + baseline AxelPostFxStack).
+## Always-on ambient wave at BASELINE_ALPHA; surges rise to SURGE_ALPHA and settle back.
 
 @onready var _filter_rect: ColorRect = $FilterRect
 
+const BASELINE_ALPHA := 0.30
+const SURGE_ALPHA := 0.80
 const _DEFAULT_DURATION := 1.1
 const _FADE_IN := 0.12
 const _FADE_OUT := 0.16
 
+var _ambient_active := false
 var _distortion_active := false
 var _fade_tween: Tween
 
@@ -18,21 +22,45 @@ func _ready() -> void:
 	_filter_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func start_distortion() -> void:
+func _rest_alpha() -> float:
+	return BASELINE_ALPHA if _ambient_active else 0.0
+
+
+func start_ambient() -> void:
 	_kill_fade_tween()
-	_distortion_active = true
+	_ambient_active = true
 	visible = true
 	_fade_tween = create_tween()
-	_fade_tween.tween_property(_filter_rect, "modulate:a", 1.0, _FADE_IN)
+	_fade_tween.tween_property(_filter_rect, "modulate:a", BASELINE_ALPHA, _FADE_IN)
 
 
-func stop_distortion() -> void:
+func stop_ambient() -> void:
 	_kill_fade_tween()
+	_ambient_active = false
 	_distortion_active = false
 	_fade_tween = create_tween()
 	_fade_tween.tween_property(_filter_rect, "modulate:a", 0.0, _FADE_OUT)
 	await _fade_tween.finished
 	visible = false
+
+
+func start_distortion() -> void:
+	_kill_fade_tween()
+	_distortion_active = true
+	visible = true
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(_filter_rect, "modulate:a", SURGE_ALPHA, _FADE_IN)
+
+
+func stop_distortion() -> void:
+	_kill_fade_tween()
+	_distortion_active = false
+	var rest := _rest_alpha()
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(_filter_rect, "modulate:a", rest, _FADE_OUT)
+	await _fade_tween.finished
+	if rest <= 0.0:
+		visible = false
 
 
 func play_pulse(duration_sec: float = _DEFAULT_DURATION) -> void:
