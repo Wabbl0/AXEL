@@ -14,6 +14,14 @@ enum IntroState {
 	get_node("EnvironmentColliders/TreeLine_Bottom_Leaves"),
 	get_node("EnvironmentColliders/TreeLine_Top_Leaves"),
 ]
+@onready var _trunk_lines: Array[StaticBody2D] = [
+	get_node("EnvironmentColliders/TreeLine_Bottom") as StaticBody2D,
+	get_node("EnvironmentColliders/TreeLine_Top") as StaticBody2D,
+]
+@onready var _behind_areas: Array[Area2D] = [
+	get_node("EnvironmentColliders/TreeLine_Bottom_Behind") as Area2D,
+	get_node("EnvironmentColliders/TreeLine_Top_Behind") as Area2D,
+]
 
 var _door_interact_area: Area2D
 var _intro_state: IntroState = IntroState.FORCED_SEQUENCE
@@ -22,6 +30,9 @@ const _NEXT_SCENE_PATH := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_EDGE_SOFTNESS := 34.0
 const _LEAF_MASK_PADDING := Vector2(22.0, 28.0)
+const _BEHIND_MASK_PADDING := Vector2(6.0, 8.0)
+const _BEHIND_EDGE_SOFTNESS := 20.0
+const _LEAF_Y_CUTOFF_MARGIN := 4.0
 
 const _GLITCH_BURST_SEC := 0.85
 const _STONES_ARRIVE_DISTANCE := 36.0
@@ -271,13 +282,49 @@ func _configure_leaf_occlusion_masks() -> void:
 		return
 	var masks: Array[Vector4] = []
 	for leaf_area in _leaf_areas:
-		masks.append(_leaf_area_to_mask_rect(leaf_area))
+		masks.append(_leaf_area_to_mask_rect(leaf_area, _LEAF_MASK_PADDING))
 	while masks.size() < 2:
 		masks.append(Vector4(0.0, 0.0, 1.0, 1.0))
-	_player.call("configure_leaf_occlusion_masks", masks[0], masks[1], _LEAF_FADE_ALPHA, _LEAF_EDGE_SOFTNESS)
+	var behind_masks: Array[Vector4] = []
+	for behind_area in _behind_areas:
+		behind_masks.append(_leaf_area_to_mask_rect(behind_area, _BEHIND_MASK_PADDING))
+	while behind_masks.size() < 2:
+		behind_masks.append(Vector4.ZERO)
+	var y_cutoffs: Array[float] = []
+	for trunk_body in _trunk_lines:
+		y_cutoffs.append(_trunk_line_y_cutoff(trunk_body))
+	while y_cutoffs.size() < 2:
+		y_cutoffs.append(1e9)
+	_player.call(
+		"configure_leaf_occlusion_masks",
+		masks[0],
+		masks[1],
+		_LEAF_FADE_ALPHA,
+		_LEAF_EDGE_SOFTNESS,
+		y_cutoffs[0],
+		y_cutoffs[1],
+		behind_masks[0],
+		behind_masks[1],
+		_BEHIND_EDGE_SOFTNESS,
+	)
 
 
-func _leaf_area_to_mask_rect(leaf_area: Area2D) -> Vector4:
+func _trunk_line_y_cutoff(trunk_body: StaticBody2D) -> float:
+	if not is_instance_valid(trunk_body):
+		return 1e9
+	var polygon_node := trunk_body.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
+	if polygon_node == null or polygon_node.polygon.is_empty():
+		return trunk_body.global_position.y - _LEAF_Y_CUTOFF_MARGIN
+	var max_y := -INF
+	for local_point in polygon_node.polygon:
+		var world_point := polygon_node.to_global(local_point)
+		max_y = maxf(max_y, world_point.y)
+	if max_y == -INF:
+		return 1e9
+	return max_y - _LEAF_Y_CUTOFF_MARGIN
+
+
+func _leaf_area_to_mask_rect(leaf_area: Area2D, padding: Vector2 = _LEAF_MASK_PADDING) -> Vector4:
 	if not is_instance_valid(leaf_area):
 		return Vector4(0.0, 0.0, 1.0, 1.0)
 	var polygon_node := leaf_area.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
@@ -292,5 +339,5 @@ func _leaf_area_to_mask_rect(leaf_area: Area2D) -> Vector4:
 		max_point.x = maxf(max_point.x, world_point.x)
 		max_point.y = maxf(max_point.y, world_point.y)
 	var center := (min_point + max_point) * 0.5
-	var radius := (max_point - min_point) * 0.5 + _LEAF_MASK_PADDING
+	var radius := (max_point - min_point) * 0.5 + padding
 	return Vector4(center.x, center.y, maxf(radius.x, 1.0), maxf(radius.y, 1.0))

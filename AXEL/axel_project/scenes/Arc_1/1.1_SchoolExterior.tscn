@@ -23,7 +23,7 @@ size = Vector2(215, 25)
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 16.0
 
-[node name="1.1_SchoolExterior" type="Node2D" unique_id=521734377]
+[node name="1_1_SchoolExterior" type="Node2D" unique_id=521734377]
 script = ExtResource("12_school_ext")
 
 [node name="Background_1_1" type="Sprite2D" parent="." unique_id=1347460712]
@@ -71,6 +71,21 @@ position = Vector2(677, -68)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Top_Leaves" unique_id=1592128453]
 polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 84, -89, 66, -76, 44.941437, -77.21301, 44, -16, 50, 11, 4, 13, 7, -11, 12, -82, -10, -93, -14, -114, -15, -130, -8, -147, -12, -165, -8, -176, -1, -188, 11, -191, 44, -191)
+
+[node name="TreeLine_Bottom_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=1647237940]
+position = Vector2(546, 246)
+collision_layer = 0
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Bottom_Behind" unique_id=1364804788]
+position = Vector2(46, -147)
+polygon = PackedVector2Array(-6, -52, 33, -66, 78, -46, 91, 5, 62, 30, 52, 53, 50, 112, 20, 112, 21, 50, 3, 35, -6, 24, -7, 8)
+
+[node name="TreeLine_Top_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=1869247497]
+position = Vector2(677, -68)
+collision_layer = 0
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Top_Behind" unique_id=317568994]
+polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 66, -76, 44, -16, 12, -82, -10, -93, -14, -130, -8, -147, -1, -188, 11, -191)
 
 [node name="Rocks_Left" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1796740676]
 

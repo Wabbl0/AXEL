@@ -131,9 +131,10 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 
 ## Arc 1 - Intro
 
-### 1.1 `SchoolExterior.tscn` (HTML id: `start`)
+### 1.1 `1.1_SchoolExterior.tscn` (HTML id: `start`)
 - Location label: (empty)
 - Background: `school.png`
+- Player leaf fade (legacy): `TreeLine_*_Leaves` ellipses + `TreeLine_*_Behind` `Area2D` polygons under `EnvironmentColliders`; `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_masks` → `white_sprite.gdshader` (`behind_mask_0/1`, per-pixel soft edge). Opaque in front of trunk; fade only inside behind zones under canopy. Tune behind polygons in editor if boundary feels early/late. `ShadowOutline` unchanged.
 - Dialogue: "You stand before the rotting wooden school building. The sky is grey. You feel a jolt in your chest, your GUILT lies here. You've come to finish what was left undone years ago."
 - Choices: `Walk inside` -> `Corridor`, `Turn away` -> `Ending1`
 - Animations: slow fade-in from black (1.5s); subtle low-frequency sway on the building sprite; scanlines overlay.
@@ -159,8 +160,8 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 - Location label: `CORRIDOR`
 - Background: `exports/Drawings/1.2_Corridor.png` on `WalkableWorld/Background` (viewport cover-fit in `1.2_Corridor.gd`; no push-in tween).
 - Player: `PlayerLayer` (layer 100), `corridor_large` profile — scale `3.0`, speed `540`; spawn ~`(73, 271)`.
-- Camera: `Camera2D` + `camera_follow_vertical.gd` (same pattern as 1.1 — fixed X, smooth vertical follow on `PlayerLayer/Player`).
-- Colliders: `EnvironmentColliders` at scene root (`TopWall`, `BottomWall`, `LeftWall`, `RightWall`, `UpperWallBlock`).
+- Camera: `Camera2D` + `camera_follow_vertical.gd` (same pattern as 1.1 — fixed X, smooth vertical follow on `PlayerLayer/Player`). Manual crop (legacy): `fixed_x = 560`, `limit_top = -15`, `limit_bottom = 730`, `limit_left = 0` — hides void outside cover-fit art; do not change `limit_left` without approval.
+- Colliders: `WalkableWorld/EnvironmentColliders` in **texture-pixel space** (`StaticBody2D` at collision center, shape at `(0,0)`); `1.2_Corridor.gd` syncs collider `position`/`scale` with cover-fit background on load (legacy — not `BackgroundCamera`).
 - Dialogue: opening line via `TopDialogueOverlay` (rewrite in `AXEL_SCENES_ARC1.md`).
 - Choices: `Go to your locker` -> `LockerHub`, `Turn away` -> `Ending1` (not wired in current minimal scene).
 - Animations: optional future ambient FX only.

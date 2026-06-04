@@ -19,3 +19,7 @@ Edit values under **Project > Project Settings > Debug > Shapes > Collision** in
 ## Legacy runtime overlay (disabled)
 
 The previous `PlaytestCollisionDebug` autoload (`scripts/debug/playtest_collision_debug.gd`) drew cyan outlines at runtime during debug builds. This was removed from the autoload list because it cluttered the running game view. The scripts remain in the repo at `scripts/debug/` for optional re-enablement but are inactive by default.
+
+## Scene 1.2 corridor borders
+
+Tune under `WalkableWorld/EnvironmentColliders` in the **2D editor** — move each `StaticBody2D` (gizmo = collision center; shapes stay at `(0,0)`). Positions are **texture-pixel** coordinates (~2400×1500 space), not small viewport numbers. At play, `1.2_Corridor.gd` rescales/repositions colliders with the cover-fit background; edits made at scene root or with large shape offsets will desync after F6. Use **Debug → Visible Collision Shapes** (F7) while playing to verify alignment with the drawing.

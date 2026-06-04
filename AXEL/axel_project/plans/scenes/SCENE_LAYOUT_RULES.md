@@ -39,6 +39,25 @@ Large scenes use per-scene tagged profiles:
 - `library_large`: player scale `0.78`, speed `145`
 - `default`: player scale `1.00`, speed `180`
 
+## Background and camera pipeline (new PNG scenes)
+
+New exploration scenes MUST derive `Camera2D` limits from the background PNG — never hand-tune `limit_*` or `fixed_x`. Void outside the art shows through post-FX as red/CRT fringe.
+
+- **Layout:** `scenes/core/background_layout.gd` — `BackgroundLayout.apply` (cover/contain → `world_rect`).
+- **Camera:** `scenes/core/background_camera_controller.gd` — `BackgroundCamera` on `Camera2D`; default `camera_mode = static_locked`.
+- **Colliders:** authorship in texture-pixel space under `WalkableWorld/EnvironmentColliders`; sync on `Camera2D.layout_applied` (new scenes) or `1.2_Corridor.gd` `_sync_environment_colliders(cover_scale, bg_position)` (legacy 1.2).
+- **Player:** world space under `WalkableWorld/Player` on new scenes (legacy 1.1/1.2 still use `PlayerLayer` until migration).
+
+Full template, JSON fields, and QA smoke: `plans/scenes/SCENE_BUILDER_AGENT_SPEC.md` → "Exploration Scene Template". Canon summary: `plans/core/AI_DOCS.md` → Optional references.
+
+## Arc 1.1 player leaf fade (legacy)
+
+Scene-specific; do not copy to new scenes without a design pass.
+
+- **Nodes:** `EnvironmentColliders/TreeLine_Bottom_Leaves`, `TreeLine_Top_Leaves` (canopy ellipses); `TreeLine_Bottom_Behind`, `TreeLine_Top_Behind` (`Area2D` polygons past trunk, under canopy).
+- **Wiring:** `1.1_SchoolExterior.gd` `_configure_leaf_occlusion_masks()` → `Player.configure_leaf_occlusion_masks` with `behind_mask_0/1` ellipses and `behind_edge_softness`.
+- **Shader:** `scenes/fx/white_sprite.gdshader` — fade = leaf ellipse × behind-zone ellipse per fragment; default `behind_mask_* = vec4(0)` disables fade elsewhere.
+
 ## Unknown Asset Handling
 
 - If classification confidence is below threshold, move asset to quarantine list.

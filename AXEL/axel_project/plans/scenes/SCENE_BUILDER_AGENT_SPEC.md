@@ -108,6 +108,9 @@ Root (Node2D + scene script)
 | `background_y` | `0` | Vertical offset (top-left anchor) |
 | `follow_smoothing` | `5` | Movable follow lerp |
 | `max_auto_zoom` | `4` | Cap auto-zoom when art is smaller than window |
+| `static_center` | `(inf, inf)` | Optional fixed center for `static_locked` (art center when unset) |
+
+Minimum supported art: prefer PNGs at least as large as the project window (1400×900) on both axes when using `contain`; smaller art relies on auto-zoom (capped by `max_auto_zoom`).
 
 ### `_ready()` call order
 

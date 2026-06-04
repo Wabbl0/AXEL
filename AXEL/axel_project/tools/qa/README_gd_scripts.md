@@ -25,7 +25,16 @@ Pre-commit (`tools/qa/check_combat_test_scaffold.py --staged`): if staged `comba
 ## Audited scenes
 
 - `res://combat/combat_test.tscn` — scaffold nodes, duplicate CombatRoot grid stack, grid cell count
-- `res://scenes/Arc_1/1.1_SchoolExterior.tscn` — player/camera/interact contract, speed/scale profile
-- `res://scenes/Arc_1/1.2_Corridor.tscn` — player/overlay contract, corridor_large speed/scale profile
+- `res://scenes/Arc_1/1.1_SchoolExterior.tscn` — player/camera/interact contract, speed/scale profile (leaf behind-zone fade: manual F5 only — see `AXEL_SCENES_BLUEPRINT.md` §1.1)
+- `res://scenes/Arc_1/1.2_Corridor.tscn` — player/overlay contract, corridor_large speed/scale profile, `WalkableWorld/EnvironmentColliders/*` paths
+- **New exploration scenes** using `background_camera_controller.gd` — `collect_background_camera_findings` (camera view must stay inside computed art rect; no-op on legacy 1.1/1.2)
 
-Profile bounds come from `plans/scenes/SCENE_LAYOUT_RULES.md` large-scene table.
+Profile bounds come from `plans/scenes/SCENE_LAYOUT_RULES.md` large-scene table. Background/camera pipeline: same file → "Background and camera pipeline".
+
+## Corridor collision probe (1.2 regression)
+
+```bat
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/corridor_collision_probe.gd
+```
+
+Scripted walk into `LeftWall` / `RightWall` after cover-fit layout; exits 0 on block, 1 on pass-through. Requires window size set in script (1400×900) for meaningful layout.

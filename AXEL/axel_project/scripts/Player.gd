@@ -473,7 +473,17 @@ func _apply_overworld_tint() -> void:
 	shadow_outline.modulate = Color(0.0, 0.0, 0.0, 0.55)
 
 
-func configure_leaf_occlusion_masks(mask0: Vector4, mask1: Vector4, fade_alpha: float, edge_softness: float) -> void:
+func configure_leaf_occlusion_masks(
+	mask0: Vector4,
+	mask1: Vector4,
+	fade_alpha: float,
+	edge_softness: float,
+	y_cutoff_0: float = 1e9,
+	y_cutoff_1: float = 1e9,
+	behind_mask0: Vector4 = Vector4.ZERO,
+	behind_mask1: Vector4 = Vector4.ZERO,
+	behind_softness: float = 16.0,
+) -> void:
 	var mat := animated_sprite.material as ShaderMaterial
 	if mat == null:
 		return
@@ -481,6 +491,11 @@ func configure_leaf_occlusion_masks(mask0: Vector4, mask1: Vector4, fade_alpha: 
 	mat.set_shader_parameter("leaf_mask_1", mask1)
 	mat.set_shader_parameter("leaf_fade_alpha", clampf(fade_alpha, 0.0, 1.0))
 	mat.set_shader_parameter("leaf_edge_softness", maxf(edge_softness, 0.001))
+	mat.set_shader_parameter("leaf_y_cutoff_0", y_cutoff_0)
+	mat.set_shader_parameter("leaf_y_cutoff_1", y_cutoff_1)
+	mat.set_shader_parameter("behind_mask_0", behind_mask0)
+	mat.set_shader_parameter("behind_mask_1", behind_mask1)
+	mat.set_shader_parameter("behind_edge_softness", maxf(behind_softness, 0.001))
 
 
 func set_leaf_occlusion_active(_active: bool) -> void:

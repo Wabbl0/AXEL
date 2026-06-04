@@ -2965,6 +2965,19 @@ Keep scope minimal. One batched question list only if truly blocked.
 
 ## 2026-06-04
 
+### Scene 1.1 — tree leaf fade behind zones (per-pixel soft gate)
+- Request: Mike looked half-faded at the trunk line when only partly under leaves; fade should apply only when behind the trunk. Follow-up: whole-body on/off clip at zone edge — need gradual per-pixel fade when straddling the behind zone.
+- Implementation: Added `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` `Area2D` zones under `EnvironmentColliders` (editor polygons past trunk, under canopy). `1.1_SchoolExterior.gd` fits `behind_mask_0/1` ellipses from behind polygons (tighter padding) into `configure_leaf_occlusion_masks`. `white_sprite.gdshader` multiplies leaf ellipse × behind-zone ellipse per fragment (`behind_edge_softness` linear edge); defaults `Vector4.ZERO` disable behind on other scenes. Removed boolean `leaf_behind_*` / `_physics_process` overlap polling. `ShadowOutline` unchanged; combat and post-FX untouched.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Opaque in front of trunk; leaf fade (`0.2`) ramps per pixel inside behind-zone ellipses under canopy (soft edge, partial body fade when straddling zone). Other scenes without behind masks: no fade.
+- Verification: Manual F5 on `1.1_SchoolExterior` — trunk front opaque, behind canopy whole-sprite fade, both trees; `1.2_Corridor` no fade. Tune behind polygons in editor if boundary feels early/late.
+- Notes: Supersedes per-pixel Y cutoff behavior from `### Scene 1.1 — tree leaf occlusion Y cutoff` for fade gating; Y cutoffs still passed but unused in shader.
+
 ### Scene 1.2 corridor — root rename, collision tree, camera follow
 - Request: Fix Mike walking through corridor borders; align 1.2 scene tree with 1.1 (root name, `EnvironmentColliders`, `Camera2D` vertical follow); keep `corridor_large` profile at scale `3.0` / speed `540`.
 - Implementation: Renamed scene root `1.2_Corridor1` → `1.2_Corridor`. Confirmed border colliders nested under `EnvironmentColliders/*` → `StaticBody2D` → `CollisionShape2D` (no orphan shapes at root). Vertical follow uses `Camera2D` + `camera_follow_vertical.gd` (same pattern as 1.1); `1.2_Corridor.gd` retains cover-fit background only (no `WalkableWorld` scroll). Synced `AI_DOCS.md` with Arc 1 scene-tree and `corridor_large` profile canon.
@@ -3050,3 +3063,59 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: No runtime change to 1.1/1.2. New exploration scenes wire `BackgroundCamera` on `Camera2D` with `background_path` — limits auto-derived from PNG size; view should not slide past art edges (no clear-color / post-FX red fringe).
 - Verification: Wire a throwaway scene with helper; manual F6 edge walk; optional `collect_background_camera_findings` in scene smoke. Confirm 1.1/1.2 unchanged.
 - Notes: `fit_mode` and `camera_mode` are per-scene exports. `margin_px` optional for CRT trim. Player for new scenes: `WalkableWorld/Player` in world space.
+
+### Scene 1.1 — tree leaf occlusion Y cutoff
+- Request: Leaf opacity fade behind trees should apply only above the trunk line (`TreeLine_Top` / `TreeLine_Bottom`), not when standing in front of the trunk.
+- Implementation: Added `leaf_y_cutoff_0/1` uniforms to `white_sprite.gdshader` (per-pixel gate: fade only when `world_pos.y < cutoff`). Extended `Player.configure_leaf_occlusion_masks` with optional Y cutoffs (default `1e9` for other scenes). `1.1_SchoolExterior.gd` derives cutoffs from trunk `StaticBody2D` collision polygons (`max` world Y minus `_LEAF_Y_CUTOFF_MARGIN`).
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Player stays fully opaque at tree trunk; fades inside leaf ellipses only when visually above each trunk-top line. Other overworld scenes unchanged.
+- Verification: Manual F5 on `1.1_SchoolExterior` — stand at trunk (opaque), walk up into canopy (fade). Headless scene load if Godot available.
+
+### Docs sync — background-derived camera bounds
+- Request: `update docs` after shared exploration background/camera helpers landed.
+- Implementation: Cross-linked `SCENE_LAYOUT_RULES.md` (background/camera pipeline section), `SCENE_BUILDER_AGENT_SPEC.md` (`static_center` export + minimum art size note), `README_gd_scripts.md` (exploration camera smoke). Primary canon already in `AI_DOCS.md` and changelog entry `### Background-derived camera bounds — shared exploration helpers`.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Documentation only; no runtime change.
+- Verification: N/A.
+- Notes: Legacy 1.1/1.2 migration remains deferred per `SCENE_BUILDER_AGENT_SPEC.md`.
+
+### Scene 1.2 corridor — collider sync parser fix
+- Request: `1.2_Corridor` failed to start with parser error: `_sync_environment_colliders()` argument 1 should be `float` but is `Vector2`.
+- Implementation: `_apply_background_layout()` passed `fit_scale` (`Vector2`) instead of `cover_scale` (`float`) to `_sync_environment_colliders(cover_scale, bg_position)`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Scene loads; border colliders sync with cover-fit background again after play.
+- Verification: Open/play `1.2_Corridor` — no parser error; F7 collision shapes track drawing edges.
+
+### Docs sync — 1.2 corridor collider canon
+- Request: `update docs` after collider follow-background work and parser fix.
+- Implementation: Aligned `AXEL_SCENES_BLUEPRINT.md` §1.2 collider path/sync; `SCENE_LAYOUT_RULES.md` legacy 1.2 sync note; `README_gd_scripts.md` corridor probe + validator paths; `PLAYTEST_DEBUG_COLLISIONS.md` editor tuning guide for texture-pixel borders.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/PLAYTEST_DEBUG_COLLISIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Documentation only.
+- Verification: Cross-refs match `1.2_Corridor.gd`, `qa_canon_validators.gd` `WalkableWorld/EnvironmentColliders/*` paths, and changelog `### Scene 1.2 corridor — colliders follow cover-fit background`.
+
+### Docs sync — 1.1 tree leaf behind-zone fade
+- Request: `update docs` only — cross-link implemented 1.1 leaf occlusion (behind-zone per-pixel fade); no code changes.
+- Implementation: Documented `TreeLine_*_Behind` + `behind_mask_*` pipeline in `AXEL_SCENES_BLUEPRINT.md` §1.1, `SCENE_LAYOUT_RULES.md` legacy section, `AI_DOCS.md` Arc 1 bullet; QA README notes manual F5 for 1.1. Recorded legacy 1.2 manual camera crop values in blueprint §1.2. Canon for fade gating is behind-mask ellipses (`### Scene 1.1 — tree leaf fade behind zones`); `### Scene 1.1 — tree leaf occlusion Y cutoff` is superseded (Y uniforms still passed; shader does not use them for fade).
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Documentation only.
+- Verification: Cross-refs match `1.1_SchoolExterior.gd`, `Player.configure_leaf_occlusion_masks`, `white_sprite.gdshader`.
