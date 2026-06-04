@@ -2841,6 +2841,53 @@ Please figure out for me:
 5. Questions for me — one bullet list; yes/no or A/B where possible.
 
 Keep explanations non-jargon; define Godot terms briefly when used.
+
+End your reply with this block (fill every field; quote line refs or node names where you read code):
+
+--- EXPLORATION ARTIFACT ---
+Area: <combat | scenes | narrative | vfx-overworld>
+Symptom: <what the player sees>
+Likely cause: <1–2 sentences>
+Files (verified):
+  - <path> — <role> — <relevant lines, nodes, or values>
+  - ...
+Canon risks: <from AI_DOCS, or "none">
+Draft approach: <3–5 beginner steps; no code yet>
+Open questions: <A/B or yes/no bullets>
+Do-not-touch: <what must stay as-is>
+--- END ARTIFACT ---
+```
+
+### Premium plan template
+- Request: Stop Premium Plan chats from re-exploring the repo (expensive reads/greps) when Explore on Auto already ran.
+- Implementation: Documented plan-only paste-in with explicit no-tool rule; Explore template now requires `EXPLORATION ARTIFACT` handoff block; `AI_DOCS.md` workflow table updated (new chat per step).
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Plan step consumes artifact text only; author starts a **new** Premium chat instead of saying "plan this fix" in the Explore thread.
+- Verification: Templates copy-paste ready below.
+
+**Paste on Premium in a new chat (Plan mode optional; paste artifact from Explore):**
+
+```text
+AXEL — plan only. Do not implement or edit files.
+
+Tool rule: Do NOT read, grep, search, or explore the codebase.
+Use ONLY the EXPLORATION ARTIFACT below. If a path, line, or behavior is missing or unclear, ask me in one batched question list — do not verify in the repo yourself.
+
+@AXEL/axel_project/plans/core/AI_DOCS.md (canon only — no file hunting)
+
+--- EXPLORATION ARTIFACT ---
+<paste block from Auto explore chat>
+--- END ARTIFACT ---
+
+Deliver:
+1. Numbered implementation steps (file + concrete change; no full code unless one line is essential)
+2. Acceptance criteria (what I should see in-game after the fix)
+3. Manual test checklist (≤5 steps)
+4. Residual risks / rollback note
+
+Keep scope minimal. One batched question list only if truly blocked.
 ```
 
 ### Fix 1.1 door transition crash + missing post-FX
@@ -2856,3 +2903,150 @@ Keep explanations non-jargon; define Godot terms briefly when used.
 - Behavior impact: **E** at the school door should reach `1.2_Corridor` with baseline post-FX intact; aborted swaps or failed scene load restore noir/CRT on the current scene instead of leaving 1.1 full-color.
 - Verification: Headless `res://tools/bots/playthrough_arc1_exterior.gd` exit 0, transition to `1.2_Corridor.tscn`, no `crt_power_fx` null-tree errors. Manual editor: intro complete → door → **E** (no debugger stop; post-FX on 1.2).
 - Notes: Canon unchanged — baseline post-FX remain autoload-only, not re-embedded in Arc `.tscn`.
+
+## 2026-06-03
+
+### Docs sync — 1.2 corridor canon matches editor-tuned runtime
+- Request: `update docs` after corridor scale/layout pass.
+- Implementation: Reconciled `corridor_large` profile across layout rules, QA validators, scene-builder tools, blueprint §1.2, and `scene_2_draft.json` to current scene values (`Player` scale `3`, speed `540`, spawn ~`(73, 271)`). Documented `WalkableWorld` parent for bg/colliders and `vertical_view_follow_*` scroll in blueprint.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/tools/scene_builder/layout_planner.py`
+  - `AXEL/axel_project/tools/scene_builder/path_validator.py`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/scene_2_draft.json`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs/QA only; runtime unchanged.
+- Verification: Profile bounds match `1.2_Corridor.tscn` `Player` exports.
+- Notes: Supersedes interim `6.56` / `1180` canon from the push-in removal pass; user tuned scale down in editor.
+
+### Scene 1.2 corridor — remove push-in zoom, scale player, retune collisions
+- Request: Remove unnecessary background zoom on 1.2 load; scale player ~8× for screen readability; retune collisions; update corridor_large canon.
+- Implementation: Removed push-in tween from `1.2_Corridor.gd`; background cover-fit uses viewport visible rect. Player `scale` 6.56, `speed` 1180, spawn `(80, 520)`, tighter alpha-collision exports and smaller fallback circle radius. Updated `SCENE_LAYOUT_RULES`, `qa_canon_validators`, blueprint, scene_builder profiles, and `scene_2_draft.json`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/tools/scene_builder/layout_planner.py`
+  - `AXEL/axel_project/tools/scene_builder/path_validator.py`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/scene_2_draft.json`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 1.2 loads with static full-bleed background (no 3.2s scale tween); Mike renders ~8× larger with proportionally faster walk; collision tuned for large scale (user may fine-tune scale/speed/spawn in editor).
+- Verification: Headless `res://tools/scene_smoke_check.gd` OK (6 scenes); `res://tools/qa/canon_consistency_audit.gd` OK (0 findings on 1.2).
+- Notes: Wall `StaticBody2D` nodes unchanged. Manual F7 collision pass recommended after visual scale tweak.
+
+### Explore artifact + Premium plan template (API cost)
+- Request: Add handoff templates so Explore stays on Auto and Premium Plan does not re-read/grep the repo.
+- Implementation: Beginner explore template now ends with `EXPLORATION ARTIFACT` block; added Premium plan template with explicit no-tool rule; `AI_DOCS.md` chat workflow table documents new-chat-per-step handoff.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Author copies artifact block only into a new Premium chat; thin artifacts go back to Auto for line refs instead of Premium exploration.
+- Verification: Templates under `### Beginner explore template` and `### Premium plan template` in this file.
+
+### Scene 1.2 — corridor_large 4× profile and spawn fix (docs)
+- Request: Explore handoff — player clipped off-screen at 6.56×; reduce to 4×, move spawn inside walkable bounds (full body visible, left ~X 80 below lockers), update `corridor_large` canon, collision pass.
+- Implementation: Documented `corridor_large` as scale `4.0` / speed `720` (`180 × scale`) in `SCENE_LAYOUT_RULES.md`, `qa_canon_validators.gd`, `layout_planner.py`, `path_validator.py`, `scene_2_draft.json`, and `AXEL_SCENES_BLUEPRINT.md`. Scene work: `1.2_Corridor.tscn` — spawn raised, `WalkableWorld` grouping, collision shapes aligned to cover-fit background (editor-tuned values may differ until Player matches profile).
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/tools/scene_builder/layout_planner.py`
+  - `AXEL/axel_project/tools/scene_builder/path_validator.py`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/scene_2_draft.json`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Canon expects Mike at 4× / 720 on 1.2 with left-floor spawn below locker collision; replaces prior 6.56× / 1180 profile from same-day push-in removal entry.
+- Verification: Align `PlayerLayer/Player` in `1.2_Corridor.tscn` to scale `(4, 4)` and speed `720`, then manual F7 collision pass; run `res://tools/qa/canon_consistency_audit.gd` on 1.2.
+- Notes: Supersedes `### Docs sync — 1.2 corridor canon matches editor-tuned runtime` (3.0 / 540) and `### Scene 1.2 corridor — remove push-in zoom` (6.56 / 1180). Wall `StaticBody2D` positions unchanged per explore artifact.
+
+## 2026-06-04
+
+### Scene 1.2 corridor — root rename, collision tree, camera follow
+- Request: Fix Mike walking through corridor borders; align 1.2 scene tree with 1.1 (root name, `EnvironmentColliders`, `Camera2D` vertical follow); keep `corridor_large` profile at scale `3.0` / speed `540`.
+- Implementation: Renamed scene root `1.2_Corridor1` → `1.2_Corridor`. Confirmed border colliders nested under `EnvironmentColliders/*` → `StaticBody2D` → `CollisionShape2D` (no orphan shapes at root). Vertical follow uses `Camera2D` + `camera_follow_vertical.gd` (same pattern as 1.1); `1.2_Corridor.gd` retains cover-fit background only (no `WalkableWorld` scroll). Synced `AI_DOCS.md` with Arc 1 scene-tree and `corridor_large` profile canon.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike should collide with top/bottom/side corridor borders; camera follows vertically without world scroll jitter; player remains scale `3.0` / speed `540`.
+- Verification: Scene tree matches 1.1 pattern (`Camera2D`, `EnvironmentColliders/*`); QA `corridor_large` profile bounds cover 540 / 3.0. Manual F7 play recommended for border collision and camera follow.
+- Notes: Filenames unchanged; no post-FX, props, or background edits. Supersedes conflicting 4× / 720 docs entry from 2026-06-03 when scene values differ — runtime canon is 3.0 / 540 per editor-tuned scene.
+
+### Scene 1.2 corridor — left/right wall collision alignment
+- Request: Mike could walk through the left and right corridor borders.
+- Implementation: Repositioned `LeftWall` and `RightWall` `StaticBody2D` nodes to the `corridor_large` path band (`x` 320 / 960) with zeroed shape offsets so vertical colliders align with the visible side walls under cover-fit background. Top/bottom/upper block colliders unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike should be blocked when walking into either side wall of the corridor floor lane.
+- Verification: Headless `canon_consistency_audit.gd` on 1.2; manual F7 play — walk into left and right borders.
+- Notes: Prior side walls sat near viewport edges (`x` ≈ −7 / 1298), outside the walkable band.
+
+### Scene 1.2 corridor — colliders follow cover-fit background
+- Request: After manually moving border colliders to the correct visual positions, Mike could walk through them again.
+- Implementation: Root cause was twofold: (1) `_apply_background_layout()` rescales/repositions the background at runtime while root-level colliders stayed fixed in editor world space; (2) large `CollisionShape2D` offsets meant the StaticBody2D gizmo did not match the actual shape. Moved `EnvironmentColliders` under `WalkableWorld`, authored walls in texture-pixel space with shapes at `(0,0)`, and sync collider `position`/`scale` to the cover-fit background each layout pass (deferred wake on `StaticBody2D` transforms). Left/right centers restored to prior tuned world positions (~`(21, 415)` / `(1291, 416)` at play).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/tools/qa/corridor_collision_probe.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Side/top/bottom borders should stay aligned with the drawing after play/rescale; Mike should be blocked at the visible walls.
+- Verification: Headless `corridor_collision_probe.gd` stops at `LeftWall` from `x=100`; canon audit paths updated for `WalkableWorld/EnvironmentColliders/*`.
+- Notes: In editor, tune `StaticBody2D` positions under `WalkableWorld/EnvironmentColliders` (texture coords); do not rely on large shape offsets or root-level world coords.
+
+### Scene 1.2 corridor — camera crop (edge void / post-FX red bands)
+- Request: Remove reddish blocky edge bands on top, bottom, and right when the camera pans vertically (same approach as scene 1.1); camera-only, scene 1.2 only; do not crop the left.
+- Implementation: Tightened `Camera2D` in `1.2_Corridor.tscn` so the viewport stays on cover-fit art: `fixed_x = 560` (~5.7% right crop on 1400px window), `limit_top = -55` (~3.9% top), `limit_bottom = 750` (~10% bottom from prior 840), `limit_left = 0` unchanged. Mirrors 1.1 pattern (`fixed_x` + vertical limits); no post-FX, collider, or script edits.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Vertical follow shows less void outside the corridor drawing at pan extremes; noir/CRT should no longer remap grey void into red fringe on top/bottom/right. Left framing unchanged.
+- Verification: Godot not on PATH in implement session — manual F6 on `1.2_Corridor`: walk floor to ceiling and confirm no red blocks on top/bottom/right; optional `AXEL_DISABLE_POST_FX=1` before/after. Colliders and `1.2_Corridor.gd` cover-fit unchanged.
+- Notes: If a edge still shows void, nudge `fixed_x` down (~10–15), `limit_top` more negative, or `limit_bottom` lower per explore plan; do not change `limit_left` unless left art is intentionally cropped.
+
+### Scene 1.2 corridor — camera crop top/bottom tighten
+- Request: Sides are good; remove ~20px red void on top and ~10px on bottom.
+- Implementation: `limit_top` `-55` → `-75`; `limit_bottom` `750` → `740`. `fixed_x` / horizontal limits unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Slightly less vertical play area visible at pan extremes; top/bottom void bands should be gone.
+- Verification: Manual F6 — pan floor to ceiling; confirm top/bottom edges clean; sides unchanged.
+
+### Scene 1.2 corridor — camera crop top/bottom direction fix
+- Request: After `limit_top` `-75` / `limit_bottom` `740`, top red increased and bottom unchanged.
+- Implementation: Corrected limit direction: in Godot 2D a **less negative** `limit_top` stops the camera from panning as far upward (hides top void); a **lower** `limit_bottom` stops downward pan. Set `limit_top` `-75` → `-35` (~20px stricter than pre-tweak `-55`); `limit_bottom` `740` → `730` (~20px stricter than original `750`). `fixed_x` unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Top void band should shrink; bottom should tighten if walk range hits `limit_bottom`.
+- Verification: Manual F6 — walk to top and bottom; compare to prior build. If bottom band persists, next step is small `BACKGROUND_Y` nudge in `1.2_Corridor.gd` (limits may not bind on floor walk).
+
+### Scene 1.2 corridor — camera crop top-left (~20px)
+- Request: Bottom fixed; ~20px red void remains at top-left.
+- Implementation: `limit_top` `-35` → `-15` (~20px less upward pan). `fixed_x`, `limit_bottom`, and `limit_left` unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Top / top-left void band should shrink when walking to the upper corridor.
+- Verification: Manual F6 — walk to top; confirm top-left clean; bottom and sides unchanged.
+
+### Background-derived camera bounds — shared exploration helpers
+- Request: Plan-only premium spec — future PNG exploration scenes must derive Camera2D limits from cover/contain layout instead of hand-tuned numbers; 1.1/1.2 unchanged.
+- Implementation: Added `BackgroundLayout` (cover/contain math → `world_rect`) and `BackgroundCamera` controller (`static_locked` default, `movable_follow` with auto-zoom when art is smaller than window). Documented mandatory pipeline in `SCENE_BUILDER_AGENT_SPEC.md` and `AI_DOCS.md`; QA smoke via `QaCanonValidators.collect_background_camera_findings`. Deferred migration note for 1.1/1.2 (world-space player, render order, camera rewire).
+- Files changed:
+  - `AXEL/axel_project/scenes/core/background_layout.gd`
+  - `AXEL/axel_project/scenes/core/background_camera_controller.gd`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No runtime change to 1.1/1.2. New exploration scenes wire `BackgroundCamera` on `Camera2D` with `background_path` — limits auto-derived from PNG size; view should not slide past art edges (no clear-color / post-FX red fringe).
+- Verification: Wire a throwaway scene with helper; manual F6 edge walk; optional `collect_background_camera_findings` in scene smoke. Confirm 1.1/1.2 unchanged.
+- Notes: `fit_mode` and `camera_mode` are per-scene exports. `margin_px` optional for CRT trim. Player for new scenes: `WalkableWorld/Player` in world space.

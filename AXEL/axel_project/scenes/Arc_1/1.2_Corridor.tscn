@@ -5,79 +5,97 @@
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
 [ext_resource type="Texture2D" uid="uid://cnnga4avp6u0u" path="res://exports/Drawings/1.2_Corridor.png" id="4_corridor_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
-size = Vector2(1316, 90)
+[ext_resource type="Script" uid="uid://buxd5usryyset" path="res://scenes/Arc_1/camera_follow_vertical.gd" id="14_camera_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
-size = Vector2(1303, 24)
+size = Vector2(2368.0889, 24)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
-size = Vector2(21, 827)
+size = Vector2(38.5, 1515)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
+size = Vector2(2413.9194, 90)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
-radius = 16.0
+radius = 5.5
 
-[node name="Corridor" type="Node2D" unique_id=1412693129]
+[node name="1_2_Corridor" type="Node2D" unique_id=1412693129]
 position = Vector2(1, -1)
 script = ExtResource("1_462mc")
 
-[node name="Background" type="Sprite2D" parent="." unique_id=1065278382]
+[node name="WalkableWorld" type="Node2D" parent="." unique_id=2100010099]
+
+[node name="Background" type="Sprite2D" parent="WalkableWorld" unique_id=1065278382]
 z_index = -100
 texture_filter = 1
 scale = Vector2(0.546, 0.546)
 texture = ExtResource("4_corridor_bg")
 centered = false
 
-[node name="LockerColliders" type="Node2D" parent="." unique_id=2100010001]
+[node name="EnvironmentColliders" type="Node2D" parent="WalkableWorld" unique_id=1768690353]
+scale = Vector2(0.546, 0.546)
 
-[node name="UpperWallBlock" type="StaticBody2D" parent="LockerColliders" unique_id=1200780001]
-position = Vector2(640, 360)
+[node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=850397541]
+position = Vector2(1172, 22)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="LockerColliders/UpperWallBlock" unique_id=1200780002]
-position = Vector2(18, 63)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall" unique_id=1179354634]
+position = Vector2(45.054443, -31.000002)
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1197718744]
+position = Vector2(1172, 1297)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=310166024]
+position = Vector2(40.454163, 159.04388)
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1349544675]
+position = Vector2(37, 762)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=830387823]
+position = Vector2(-20.14652, 0)
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=158922864]
+position = Vector2(2364, 763)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=1612973167]
+position = Vector2(58.608154, 0)
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="LockerWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1200780001]
+position = Vector2(1172, 659)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LockerWall" unique_id=1200780002]
+position = Vector2(42.285522, 84.7215)
 shape = SubResource("RectangleShape2D_upper_block")
 debug_color = Color(0.49424207, 0.87887543, 0.9511325, 0.41960785)
 
-[node name="TopWall" type="StaticBody2D" parent="." unique_id=850397541]
-position = Vector2(640, 12)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="TopWall" unique_id=1179354634]
-position = Vector2(11.5, 0)
-shape = SubResource("RectangleShape2D_wall_horizontal")
-
-[node name="BottomWall" type="StaticBody2D" parent="." unique_id=1197718744]
-position = Vector2(640, 708)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="BottomWall" unique_id=310166024]
-position = Vector2(0, 111)
-shape = SubResource("RectangleShape2D_wall_horizontal")
-
-[node name="LeftWall" type="StaticBody2D" parent="." unique_id=1349544675]
-position = Vector2(12, 360)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall" unique_id=830387823]
-position = Vector2(-20, 59)
-shape = SubResource("RectangleShape2D_wall_vertical")
-
-[node name="RightWall" type="StaticBody2D" parent="." unique_id=158922864]
-position = Vector2(1268, 360)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall" unique_id=1612973167]
-position = Vector2(38.5, 53.5)
-shape = SubResource("RectangleShape2D_wall_vertical")
+[node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]
+position = Vector2(560, 360)
+limit_left = 0
+limit_top = -15
+limit_right = 1280
+limit_bottom = 730
+script = ExtResource("14_camera_script")
+target_path = NodePath("../PlayerLayer/Player")
+fixed_x = 560.0
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=558325097]
 layer = 100
 follow_viewport_enabled = true
 
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=558325098]
-position = Vector2(46, 500)
-scale = Vector2(0.82, 0.82)
+position = Vector2(73, 271.00003)
+scale = Vector2(3, 3)
 script = ExtResource("2_player_script")
-speed = 150.0
+speed = 540.0
 sprite_sheet = ExtResource("3_player_sheet")
 animation_fps = 5.0
+collision_polygon_epsilon = 4.0
+collision_alpha_shrink_pixels = 4
+collision_inward_margin = 4.0
+collision_lower_body_ratio = 0.42
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1306492370]
 position = Vector2(0, 37.80487)

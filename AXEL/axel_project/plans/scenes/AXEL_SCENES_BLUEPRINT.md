@@ -12,7 +12,7 @@ todos:
     content: "SchoolExterior.tscn (start): school.png bg, intro monologue, choices Walk inside / Turn away, onEnter resets GameState, fade-in + sway animation."
     status: pending
   - id: scene-corridor
-    content: "1.2_Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, push-in camera tween and flickering PointLight2D."
+    content: "1.2_Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, static full-bleed background (viewport cover-fit), corridor_large player profile (3× scale, speed 540, left spawn)."
     status: pending
   - id: scene-locker-hub
     content: "LockerHub.tscn (scene_3): hub.png bg that swaps to map.png on click Area2D, five destination choices plus red basement entry, add_memory_once('scene_3') on enter."
@@ -157,10 +157,13 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 
 ### 1.2 `1.2_Corridor.tscn` (`scene_2`)
 - Location label: `CORRIDOR`
-- Background: `corridor.png`
-- Dialogue: "You step inside. The smell hits you - a mix of mold and old floor cleaner. The past is leaking into the present. You remember that your locker is at the end of the hallway."
-- Choices: `Go to your locker` -> `LockerHub`, `Turn away` -> `Ending1`
-- Animations: perspective push-in tween on the background (simulate walking deeper); flicker on a single fluorescent `PointLight2D`.
+- Background: `exports/Drawings/1.2_Corridor.png` on `WalkableWorld/Background` (viewport cover-fit in `1.2_Corridor.gd`; no push-in tween).
+- Player: `PlayerLayer` (layer 100), `corridor_large` profile — scale `3.0`, speed `540`; spawn ~`(73, 271)`.
+- Camera: `Camera2D` + `camera_follow_vertical.gd` (same pattern as 1.1 — fixed X, smooth vertical follow on `PlayerLayer/Player`).
+- Colliders: `EnvironmentColliders` at scene root (`TopWall`, `BottomWall`, `LeftWall`, `RightWall`, `UpperWallBlock`).
+- Dialogue: opening line via `TopDialogueOverlay` (rewrite in `AXEL_SCENES_ARC1.md`).
+- Choices: `Go to your locker` -> `LockerHub`, `Turn away` -> `Ending1` (not wired in current minimal scene).
+- Animations: optional future ambient FX only.
 
 ---
 

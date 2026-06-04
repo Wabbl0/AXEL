@@ -34,7 +34,7 @@ Keep scenes visibly abandoned, looted, broken, and rotting while preserving read
 
 Large scenes use per-scene tagged profiles:
 
-- `corridor_large`: player scale `0.82`, speed `150`
+- `corridor_large`: player scale `3.0`, speed `540` (editor-tuned; ~`180 × scale` when adjusting scale)
 - `classroom_large`: player scale `0.86`, speed `160`
 - `library_large`: player scale `0.78`, speed `145`
 - `default`: player scale `1.00`, speed `180`

@@ -23,7 +23,7 @@ size = Vector2(215, 25)
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 16.0
 
-[node name="Game" type="Node2D" unique_id=521734377]
+[node name="1.1_SchoolExterior" type="Node2D" unique_id=521734377]
 script = ExtResource("12_school_ext")
 
 [node name="Background_1_1" type="Sprite2D" parent="." unique_id=1347460712]

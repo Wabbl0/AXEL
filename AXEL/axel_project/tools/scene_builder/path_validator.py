@@ -14,7 +14,7 @@ MIN_MAIN_ROUTE_WIDTH = 280
 MAX_ROUTE_OCCUPANCY = 0.22
 
 PROFILE_RULES = {
-    "corridor_large": {"max_scale": 0.85, "max_speed": 155.0},
+    "corridor_large": {"max_scale": 3.2, "max_speed": 570.0},
     "classroom_large": {"max_scale": 0.89, "max_speed": 165.0},
     "library_large": {"max_scale": 0.80, "max_speed": 150.0},
     "default": {"max_scale": 1.0, "max_speed": 180.0},

@@ -55,19 +55,24 @@ Decaying school; guilt-driven return; locker hub. Memories; Flashlight/Key/Shove
 
 ## Chat workflow (API cost)
 
-Cursor does not auto-route exploration to cheaper models inside one premium Plan chat — you choose the model per chat.
+Cursor does not auto-route exploration to cheaper models inside one premium Plan chat — you choose the model per chat. **Use a new chat for each step** (Explore → Plan → Implement). Continuing in the same thread after explore makes Premium re-read the repo.
 
 | Step | Model | Prompt pattern |
 |------|--------|----------------|
-| Explore | Auto / Composer | Beginner explore template (`AI_CHANGELOG.md` → `### Beginner explore template`); **no implement** — author describes game behavior; agent picks area + files |
-| Plan | Premium + Plan | Paste explore reply only; ask for steps + acceptance + tests |
+| Explore | Auto / Composer | Beginner explore template (`AI_CHANGELOG.md` → `### Beginner explore template`); **no implement** — agent ends with `EXPLORATION ARTIFACT` block |
+| Plan | Premium + Plan mode | Premium plan template (`AI_CHANGELOG.md` → `### Premium plan template`); paste **artifact only** — **no read/grep/search** |
 | Implement | Auto | Paste plan block only; point at this file for canon |
+
+Handoff: copy only the `--- EXPLORATION ARTIFACT ---` … `--- END ARTIFACT ---` block from Explore into Plan — not the whole thread. If the artifact is thin, send Explore back to Auto to expand line refs; do not let Plan verify in the repo.
 
 Batch clarifying questions in **one** message on premium. Use git commits for history; optional changelog append on `update docs` (`## YYYY-MM-DD` day section + `###` entry title — see `plans/core/AI_CHANGELOG.md`). Headless verify: `tools/qa/run_default_playtest.ps1` when touching combat, scenes, or movement contracts.
 
 ## Optional references
 
 - **Scene agent:** `plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`, `tools/scene_builder/*` — canonical numbered filenames only (e.g. `1.2_Corridor.tscn`, never alias `Corridor.tscn`).
+- **New PNG exploration scenes (mandatory):** After background layout, derive camera limits from art size — never hand-tune `limit_*` / `fixed_x`. Shared helpers: `scenes/core/background_layout.gd` (`BackgroundLayout.apply` → scale, position, `world_rect`) and `scenes/core/background_camera_controller.gd` (`BackgroundCamera` on `Camera2D`). Default `camera_mode = static_locked` for new imports; enable `movable_follow` only when designer needs 2D pan. Per-scene `fit_mode` export: `cover` or `contain`. Player under `WalkableWorld/Player` in world space for new scenes (see migration note below). No post-FX embedded in `.tscn`.
+- **Arc 1 exploration scenes (1.1 / 1.2 — legacy, do not change without approval):** Root node named after the scene file (e.g. `1.2_Corridor`, not suffixed variants). Shared tree: `Camera2D` + `camera_follow_vertical.gd` (fixed X, smooth vertical follow on `PlayerLayer/Player`); border colliders under `WalkableWorld/EnvironmentColliders` in **texture-pixel space** (child `StaticBody2D` → shape at `(0,0)`; `1.2_Corridor.gd` syncs collider scale/offset with cover-fit background). `1.2` uses `corridor_large` profile — player scale `3.0`, speed `540`. Background cover-fit only in scene script; no `WalkableWorld` scroll. Manual camera limits remain until a dedicated migration pass.
+- **Arc 1 migration (deferred):** Move 1.1/1.2 player to `WalkableWorld/Player`, replace `PlayerLayer` screen-space follow with world-space + documented render order (`z_index` above noir), rewire cameras to `BackgroundCamera`. See `SCENE_BUILDER_AGENT_SPEC.md` → "Deferred migration".
 - **Headless checks:** `tools/qa/run_default_playtest.ps1`, `tools/bots/README.md` — run manually when you want verification; not required every chat.
 - **Collisions (editor):** `plans/core/PLAYTEST_DEBUG_COLLISIONS.md`
 - **Indexing:** Root `.cursorignore` — excludes logs, `.godot`, export captures, tool caches; keeps `exports/game_data.json` and `exports/GameManager.gd` indexed. `@`-mention excluded paths when needed.

@@ -5,8 +5,8 @@
   "scene_key": "corridor.tscn",
   "profile": "corridor_large",
   "player": {
-    "scale": 0.82,
-    "speed": 150.0
+    "scale": 3.0,
+    "speed": 540.0
   },
   "path_band": {
     "x0": 320,

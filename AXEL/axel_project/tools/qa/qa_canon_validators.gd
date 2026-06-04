@@ -3,6 +3,9 @@ class_name QaCanonValidators
 ## Shared canon/consistency assertions for combat test and movement scenes.
 ## Used by combat_test_scaffold_check, scene_smoke_check, and canon_consistency_audit.
 
+const BackgroundLayoutScript := preload("res://scenes/core/background_layout.gd")
+const BackgroundCameraScript := preload("res://scenes/core/background_camera_controller.gd")
+
 const COMBAT_TEST_SCENE := "res://combat/combat_test.tscn"
 
 const CombatTestScript := preload("res://combat/scripts/combat_test.gd")
@@ -70,13 +73,18 @@ const MOVEMENT_SCENE_PROFILES: Dictionary = {
 	},
 	"res://scenes/Arc_1/1.2_Corridor.tscn": {
 		"label": "corridor_large",
-		"speed_min": 130.0,
-		"speed_max": 175.0,
-		"scale_min": 0.75,
-		"scale_max": 0.95,
+		"speed_min": 510.0,
+		"speed_max": 570.0,
+		"scale_min": 2.8,
+		"scale_max": 3.2,
 		"required_paths": [
 			"PlayerLayer/Player",
+			"Camera2D",
 			"TopDialogueOverlay",
+			"WalkableWorld/EnvironmentColliders/TopWall",
+			"WalkableWorld/EnvironmentColliders/BottomWall",
+			"WalkableWorld/EnvironmentColliders/LeftWall",
+			"WalkableWorld/EnvironmentColliders/RightWall",
 		],
 	},
 }
@@ -477,6 +485,56 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 					"Point camera_follow script target_path at Player for consistent follow."
 				))
 
+	findings.append_array(collect_background_camera_findings(root, scene_path))
+	return findings
+
+
+static func collect_background_camera_findings(root: Node, scene_path: String) -> Array:
+	var findings: Array = []
+	if root == null or not root.is_inside_tree():
+		return findings
+	var camera := root.find_child("Camera2D", true, false) as Camera2D
+	if camera == null or camera.get_script() != BackgroundCameraScript:
+		return findings
+	var bg_path: NodePath = camera.get("background_path")
+	if bg_path.is_empty():
+		findings.append(make_finding(
+			"exploration.camera_missing_background_path",
+			"major",
+			"REGRESSION",
+			scene_path,
+			"Camera2D uses BackgroundCamera but background_path is empty",
+			"Set background_path to WalkableWorld/Background on new exploration scenes."
+		))
+		return findings
+	var background := camera.get_node_or_null(bg_path) as Sprite2D
+	if background == null or background.texture == null:
+		findings.append(make_finding(
+			"exploration.camera_background_unresolved",
+			"blocker",
+			"BUG",
+			scene_path,
+			"BackgroundCamera background_path does not resolve to a textured Sprite2D",
+			"Wire WalkableWorld/Background and assign the scene PNG."
+		))
+		return findings
+	var viewport_size: Vector2 = BackgroundLayoutScript.get_viewport_size(root)
+	var world_rect: Rect2 = BackgroundLayoutScript.compute_world_rect(
+		background, background.position, background.scale
+	)
+	var margin_inset_px: float = camera.get("margin_px")
+	var violations: PackedStringArray = BackgroundCameraScript.limits_enclose_rect(
+		camera, world_rect, viewport_size, margin_inset_px
+	)
+	for violation in violations:
+		findings.append(make_finding(
+			"exploration.camera_limits_bleed",
+			"blocker",
+			"BUG",
+			scene_path,
+			violation,
+			"Re-run BackgroundLayout + BackgroundCamera.apply_limits after _ready; check fit_mode and margin_px."
+		))
 	return findings
 
 
