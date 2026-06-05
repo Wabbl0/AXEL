@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://c2w2wybbrjrdt"]
+
+[ext_resource type="PackedScene" uid="uid://cftime1h11ofo" path="res://scenes/Arc_1/1.1_SchoolExterior.tscn" id="1_base"]
+
+[node name="1_1_SchoolExterior" unique_id=1976355297 instance=ExtResource("1_base")]
+skip_intro = true
+
+[node name="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Bottom_Behind" parent_id_path=PackedInt32Array(1804677714) index="0" unique_id=1865596340]
+position = Vector2(38.999996, -146)
+scale = Vector2(1.157552, 1.1575521)
+polygon = PackedVector2Array(78, -46, 89, 10, 65, 47, 51, 50, 51, 109, 62.200195, 126.99212, 8.638916, 126.12823, 21.27668, 83.64821, 23, 69, 17, 44, -1, 31, -7, 8, -7, -44, 7, -58, 34, -62, 63, -58)

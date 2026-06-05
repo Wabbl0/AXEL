@@ -486,7 +486,38 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 				))
 
 	findings.append_array(collect_background_camera_findings(root, scene_path))
+	findings.append_array(collect_background_editor_lock_findings(root, scene_path))
 	return findings
+
+
+static func collect_background_editor_lock_findings(root: Node, scene_path: String) -> Array:
+	var findings: Array = []
+	if root == null or not root.is_inside_tree():
+		return findings
+	for node in root.find_children("*", "Sprite2D", true, false):
+		var sprite := node as Sprite2D
+		if sprite == null or sprite.texture == null:
+			continue
+		if not _is_exploration_background_sprite(sprite):
+			continue
+		if sprite.has_meta(BackgroundLayoutScript.EDIT_LOCK_META):
+			continue
+		findings.append(make_finding(
+			"exploration.background_not_editor_locked",
+			"minor",
+			"CLARITY",
+			scene_path,
+			"Exploration background %s is not editor-locked" % sprite.get_path(),
+			"Attach locked_exploration_background.gd and set metadata/_edit_lock_ = true."
+		))
+	return findings
+
+
+static func _is_exploration_background_sprite(sprite: Sprite2D) -> bool:
+	var node_name := sprite.name
+	if node_name == "Background" or node_name.begins_with("Background_"):
+		return true
+	return sprite.get_parent() != null and sprite.get_parent().name == "WalkableWorld" and node_name.contains("Background")
 
 
 static func collect_background_camera_findings(root: Node, scene_path: String) -> Array:

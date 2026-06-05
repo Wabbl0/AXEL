@@ -134,7 +134,8 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 ### 1.1 `1.1_SchoolExterior.tscn` (HTML id: `start`)
 - Location label: (empty)
 - Background: `school.png`
-- Player leaf fade (legacy): `TreeLine_*_Leaves` ellipses + `TreeLine_*_Behind` `Area2D` polygons under `EnvironmentColliders`; `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_masks` → `white_sprite.gdshader` (`behind_mask_0/1`, per-pixel soft edge). Opaque in front of trunk; fade only inside behind zones under canopy. Tune behind polygons in editor if boundary feels early/late. `ShadowOutline` unchanged.
+- **Playtest variant:** `1.1_SchoolExterior_Playtest.tscn` — scene inheritance from base; only override is `skip_intro = true`. Edit the base `.tscn` for colliders/art; F6 the playtest scene for quick iteration without the forced intro. Unlock background via Scene-tree lock icon if repositioning art (`locked_exploration_background.gd` on `Background_1_1`).
+- Player leaf fade (legacy): `TreeLine_Bottom_Behind` + `TreeLine_Top_Behind` under `EnvironmentColliders` — `leaf_occlusion_zone.gd` on each (`feather_px`; polygon = child `CollisionPolygon2D`). `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_polygons` → `white_sprite.gdshader` (feathered polygon mask × trunk Y gate + feet anchor). Opaque in front of trunk; fade inside behind zones under canopy. **Editor tuning:** drag polygon points per tree; set `Feather Px` (both zones hand-tuned to `12.0` — preserve unless playtest says otherwise). `ShadowOutline` shares player shader material.
 - Dialogue: "You stand before the rotting wooden school building. The sky is grey. You feel a jolt in your chest, your GUILT lies here. You've come to finish what was left undone years ago."
 - Choices: `Walk inside` -> `Corridor`, `Turn away` -> `Ending1`
 - Animations: slow fade-in from black (1.5s); subtle low-frequency sway on the building sprite; scanlines overlay.

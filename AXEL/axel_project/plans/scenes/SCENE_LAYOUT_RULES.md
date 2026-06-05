@@ -54,9 +54,10 @@ Full template, JSON fields, and QA smoke: `plans/scenes/SCENE_BUILDER_AGENT_SPEC
 
 Scene-specific; do not copy to new scenes without a design pass.
 
-- **Nodes:** `EnvironmentColliders/TreeLine_Bottom_Leaves`, `TreeLine_Top_Leaves` (canopy ellipses); `TreeLine_Bottom_Behind`, `TreeLine_Top_Behind` (`Area2D` polygons past trunk, under canopy).
-- **Wiring:** `1.1_SchoolExterior.gd` `_configure_leaf_occlusion_masks()` → `Player.configure_leaf_occlusion_masks` with `behind_mask_0/1` ellipses and `behind_edge_softness`.
-- **Shader:** `scenes/fx/white_sprite.gdshader` — fade = leaf ellipse × behind-zone ellipse per fragment; default `behind_mask_* = vec4(0)` disables fade elsewhere.
+- **Nodes:** `EnvironmentColliders/TreeLine_Bottom_Behind`, `TreeLine_Top_Behind` — `Area2D` + `leaf_occlusion_zone.gd` + child `CollisionPolygon2D` (behind-canopy fade zones). Trunk depth line: `TreeLine_Bottom` / `TreeLine_Top` `StaticBody2D` polygons.
+- **Editor tuning:** Select each `TreeLine_*_Behind` node → Inspector `Feather Px`; edit polygon points on `CollisionPolygon2D`. Green preview overlay when zone selected in editor. Designer hand-tuned both zones to `feather_px = 12.0` and adjusted polygon shapes in editor — treat as authored layout; do not reset without playtest.
+- **Wiring:** `1.1_SchoolExterior.gd` `_configure_leaf_occlusion_masks()` resolves `TreeLine_*_Behind` zones → `Player.configure_leaf_occlusion_polygons` (world polygon + per-zone feather + trunk Y cutoffs).
+- **Shader:** `scenes/fx/white_sprite.gdshader` — fade = feathered polygon mask × trunk Y gate (`leaf_gate_softness`, `player_anchor_y` from lower-body collision). Empty polygon count disables that tree mask. `1.2` does not call setup.
 
 ## Unknown Asset Handling
 

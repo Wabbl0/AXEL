@@ -9,6 +9,14 @@ enum FitMode {
 }
 
 const DEFAULT_BACKGROUND_Y := 0.0
+const EDIT_LOCK_META := "_edit_lock_"
+
+
+static func ensure_editor_locked(sprite: Sprite2D) -> void:
+	if sprite == null or not Engine.is_editor_hint():
+		return
+	if not sprite.has_meta(EDIT_LOCK_META):
+		sprite.set_meta(EDIT_LOCK_META, true)
 
 
 static func get_viewport_size(from_node: Node) -> Vector2:
@@ -72,3 +80,4 @@ static func apply_to_sprite(sprite: Sprite2D, layout: Dictionary) -> void:
 		return
 	sprite.scale = layout["scale"]
 	sprite.position = layout["position"]
+	ensure_editor_locked(sprite)

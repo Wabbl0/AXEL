@@ -468,34 +468,68 @@ func _apply_overworld_tint() -> void:
 			var mat := ShaderMaterial.new()
 			mat.shader = shader
 			animated_sprite.material = mat
+			shadow_outline.material = mat
 	else:
 		animated_sprite.modulate = overworld_tint
 	shadow_outline.modulate = Color(0.0, 0.0, 0.0, 0.55)
 
 
 func configure_leaf_occlusion_masks(
-	mask0: Vector4,
-	mask1: Vector4,
+	_mask0: Vector4,
+	_mask1: Vector4,
 	fade_alpha: float,
 	edge_softness: float,
 	y_cutoff_0: float = 1e9,
 	y_cutoff_1: float = 1e9,
-	behind_mask0: Vector4 = Vector4.ZERO,
-	behind_mask1: Vector4 = Vector4.ZERO,
-	behind_softness: float = 16.0,
+	gate_softness: float = -1.0,
+) -> void:
+	configure_leaf_occlusion_polygons(
+		PackedVector2Array(),
+		PackedVector2Array(),
+		edge_softness,
+		edge_softness,
+		fade_alpha,
+		y_cutoff_0,
+		y_cutoff_1,
+		gate_softness,
+	)
+
+
+const _LEAF_POLY_SHADER_MAX := 32
+
+
+func _pad_leaf_polygon(poly: PackedVector2Array) -> PackedVector2Array:
+	var padded := poly.duplicate()
+	padded.resize(_LEAF_POLY_SHADER_MAX)
+	return padded
+
+
+func configure_leaf_occlusion_polygons(
+	poly0: PackedVector2Array,
+	poly1: PackedVector2Array,
+	feather0: float,
+	feather1: float,
+	fade_alpha: float,
+	y_cutoff_0: float = 1e9,
+	y_cutoff_1: float = 1e9,
+	gate_softness: float = -1.0,
 ) -> void:
 	var mat := animated_sprite.material as ShaderMaterial
 	if mat == null:
 		return
-	mat.set_shader_parameter("leaf_mask_0", mask0)
-	mat.set_shader_parameter("leaf_mask_1", mask1)
+	var gate := 12.0 if gate_softness < 0.0 else gate_softness
+	mat.set_shader_parameter("leaf_poly_0", _pad_leaf_polygon(poly0))
+	mat.set_shader_parameter("leaf_poly_0_count", mini(poly0.size(), _LEAF_POLY_SHADER_MAX))
+	mat.set_shader_parameter("leaf_poly_0_feather", maxf(feather0, 0.0))
+	mat.set_shader_parameter("leaf_poly_1", _pad_leaf_polygon(poly1))
+	mat.set_shader_parameter("leaf_poly_1_count", mini(poly1.size(), _LEAF_POLY_SHADER_MAX))
+	mat.set_shader_parameter("leaf_poly_1_feather", maxf(feather1, 0.0))
 	mat.set_shader_parameter("leaf_fade_alpha", clampf(fade_alpha, 0.0, 1.0))
-	mat.set_shader_parameter("leaf_edge_softness", maxf(edge_softness, 0.001))
+	mat.set_shader_parameter("leaf_gate_softness", maxf(gate, 0.001))
 	mat.set_shader_parameter("leaf_y_cutoff_0", y_cutoff_0)
 	mat.set_shader_parameter("leaf_y_cutoff_1", y_cutoff_1)
-	mat.set_shader_parameter("behind_mask_0", behind_mask0)
-	mat.set_shader_parameter("behind_mask_1", behind_mask1)
-	mat.set_shader_parameter("behind_edge_softness", maxf(behind_softness, 0.001))
+	if shadow_outline.material != mat:
+		shadow_outline.material = mat
 
 
 func set_leaf_occlusion_active(_active: bool) -> void:
@@ -503,7 +537,32 @@ func set_leaf_occlusion_active(_active: bool) -> void:
 	# Parameter intentionally unused.
 	pass
 
+
+func _get_collision_feet_anchor_y() -> float:
+	var anchor_y := -1.0e9
+	for child in get_children():
+		if child is CollisionShape2D:
+			var collision := child as CollisionShape2D
+			var shape := collision.shape
+			if shape is ConvexPolygonShape2D:
+				var poly := shape as ConvexPolygonShape2D
+				for point in poly.points:
+					anchor_y = maxf(anchor_y, collision.to_global(point).y)
+			elif shape is CircleShape2D:
+				var circle := shape as CircleShape2D
+				anchor_y = maxf(anchor_y, collision.to_global(Vector2(0.0, circle.radius)).y)
+	return anchor_y
+
+
+func _update_leaf_occlusion_anchor() -> void:
+	var mat := animated_sprite.material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("player_anchor_y", _get_collision_feet_anchor_y())
+
+
 func _physics_process(_delta: float) -> void:
+	_update_leaf_occlusion_anchor()
 	if not _input_enabled:
 		if _scripted_velocity != Vector2.ZERO:
 			velocity = _scripted_velocity

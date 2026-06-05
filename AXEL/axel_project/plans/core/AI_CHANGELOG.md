@@ -3119,3 +3119,50 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Documentation only.
 - Verification: Cross-refs match `1.1_SchoolExterior.gd`, `Player.configure_leaf_occlusion_masks`, `white_sprite.gdshader`.
+
+## 2026-06-05
+
+### Exploration background editor lock + 1.1 playtest scene
+- Request: Lock background images in all scenes (current and future) so accidental editor drags do not nudge cover-fit art; add a `1.1_SchoolExterior` variant that skips the intro for playtesting.
+- Implementation: Added `@tool` `locked_exploration_background.gd` and `BackgroundLayout.ensure_editor_locked()` (re-applied from `apply_to_sprite`). Wired lock script + `metadata/_edit_lock_` on `1.1`/`1.2` background sprites. Added `@export var skip_intro` on `1.1_SchoolExterior.gd` (also honors env `AXEL_SKIP_INTRO=1`). Created inherited `1.1_SchoolExterior_Playtest.tscn` with `skip_intro = true`. QA: `collect_background_editor_lock_findings` in `qa_canon_validators.gd`.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/locked_exploration_background.gd`
+  - `AXEL/axel_project/scenes/core/background_layout.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior_Playtest.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Background sprites show editor lock icon; runtime unchanged. Playtest scene spawns player at stones with control immediately. Canonical `1.1_SchoolExterior.tscn` still runs full intro.
+- Verification: Manual — open scenes in editor (lock visible); F6 playtest scene (no intro). Headless smoke not run (Godot CLI not in PATH).
+- Notes: Playtest inherits base scene — edit base for layout; child only for playtest-only overrides.
+
+### Docs sync — background lock + 1.1 playtest inheritance
+- Request: `update docs` after background lock and playtest scene work; clarify inherited-scene edit workflow.
+- Implementation: Expanded `AI_DOCS.md` Arc 1 bullet (playtest path, inheritance rule, `skip_intro` export). Added playtest variant + unlock note to `AXEL_SCENES_BLUEPRINT.md` §1.1. Added playtest-variant pattern to `SCENE_BUILDER_AGENT_SPEC.md`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Documentation only.
+- Verification: Cross-refs match `1.1_SchoolExterior_Playtest.tscn`, `locked_exploration_background.gd`, `1.1_SchoolExterior.gd` `skip_intro`.
+
+### 1.1 leaf fade — polygon feather zones + feet anchor
+- Request: Fix Mike head fading in front of tree trunks; tighten fade boundary; linear Y-axis transition; editor-tunable polygon feather mask; rename leaf zones to `TreeLine_*_Behind`; update docs after manual editor tuning.
+- Implementation: Replaced ellipse/AABB masks with `leaf_occlusion_zone.gd` (`LeafOcclusionZone`, `@export feather_px`, editor polygon preview) on `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind`. `white_sprite.gdshader` uses feathered polygon mask (max 32 verts) × trunk Y gate with `player_anchor_y` feet anchor and smooth depth exit. `Player.configure_leaf_occlusion_polygons` pads arrays for shader; `1.1_SchoolExterior.gd` resolves `TreeLine_*_Behind` (legacy `*_Leaves` fallback). Renamed leaf `Area2D` nodes from `TreeLine_*_Leaves` to `TreeLine_*_Behind`.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/leaf_occlusion_zone.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: `1.1` only — player fades inside hand-authored behind polygons under canopy; solid in front of trunk (head included); smooth Y-axis exit/entry. `1.2` and combat unchanged. `ShadowOutline` shares fade material.
+- Verification: Manual F5/F6 on `1.1` / playtest — in front (head solid), behind (fade), straddle, diagonal exit; `1.2` no fade.
+- Notes: **Designer hand-tuning in editor (preserve):** both `TreeLine_*_Behind` zones set to `feather_px = 12.0`; behind-zone `CollisionPolygon2D` shapes adjusted manually in `1.1_SchoolExterior.tscn`. Do not overwrite polygon/feather values without playtest. Stale doc refs to `behind_mask_*` / `TreeLine_*_Leaves` ellipses removed.

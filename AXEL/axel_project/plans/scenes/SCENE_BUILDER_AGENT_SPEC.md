@@ -88,7 +88,7 @@ New exploration `.tscn` files MUST use the shared background + camera pipeline. 
 ```
 Root (Node2D + scene script)
 ├── WalkableWorld (Node2D)
-│   ├── Background (Sprite2D, centered=false, z_index=-100)
+│   ├── Background (Sprite2D, centered=false, z_index=-100, script: `locked_exploration_background.gd`, `metadata/_edit_lock_ = true`)
 │   └── EnvironmentColliders (Node2D) — texture-pixel space; sync on layout_applied
 ├── Camera2D — script: res://scenes/core/background_camera_controller.gd
 ├── Player (CharacterBody2D under WalkableWorld/Player for new scenes — see migration note)
@@ -114,7 +114,7 @@ Minimum supported art: prefer PNGs at least as large as the project window (1400
 
 ### `_ready()` call order
 
-1. **Layout** — `BackgroundLayout.apply(sprite, viewport, fit_mode, background_y)` → apply scale/position to `Background`.
+1. **Layout** — `BackgroundLayout.apply(sprite, viewport, fit_mode, background_y)` → apply scale/position to `Background` (also re-applies editor lock via `apply_to_sprite`).
 2. **Colliders** — sync `EnvironmentColliders` position/scale to match background (connect to `Camera2D.layout_applied` or call from scene script).
 3. **Camera** — `BackgroundCamera.apply_limits(...)` (automatic when `background_path` is set on the controller; runs in `_ready` + deferred pass).
 
@@ -130,7 +130,11 @@ func _on_background_layout_applied(scale_factor: float, bg_position: Vector2, _w
 
 ### QA smoke (new scenes)
 
-After `_ready`, headless smoke MUST call `QaCanonValidators.collect_background_camera_findings(root, scene_path)` — asserts the camera view does not extend outside the computed art rect.
+After `_ready`, headless smoke MUST call `QaCanonValidators.collect_background_camera_findings(root, scene_path)` — asserts the camera view does not extend outside the computed art rect. Also `collect_background_editor_lock_findings` — exploration `Sprite2D` backgrounds must carry `metadata/_edit_lock_`.
+
+### Playtest scene variants (optional)
+
+When a shipped scene has a long intro or setup sequence, add an **inherited** child `.tscn` that instances the canonical scene and overrides only playtest flags (e.g. `skip_intro = true` on the root script). Do **not** duplicate the full scene tree. Example: `1.1_SchoolExterior_Playtest.tscn` → instances `1.1_SchoolExterior.tscn`. Layout edits belong on the base scene; child overrides are for playtest-only deltas.
 
 ## Deferred migration — Arc 1 scenes 1.1 / 1.2
 

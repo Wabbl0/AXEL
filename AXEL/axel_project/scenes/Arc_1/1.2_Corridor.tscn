@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://cnnga4avp6u0u" path="res://exports/Drawings/1.2_Corridor.png" id="4_corridor_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
 [ext_resource type="Script" uid="uid://buxd5usryyset" path="res://scenes/Arc_1/camera_follow_vertical.gd" id="14_camera_script"]
+[ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="15_bg_lock"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(2368.0889, 24)
@@ -31,6 +32,8 @@ texture_filter = 1
 scale = Vector2(0.546, 0.546)
 texture = ExtResource("4_corridor_bg")
 centered = false
+script = ExtResource("15_bg_lock")
+metadata/_edit_lock_ = true
 
 [node name="EnvironmentColliders" type="Node2D" parent="WalkableWorld" unique_id=1768690353]
 scale = Vector2(0.546, 0.546)
