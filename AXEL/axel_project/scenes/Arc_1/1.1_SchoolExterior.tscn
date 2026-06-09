@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="15_interact_prompt"]
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="16_leaf_zone"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="17_bg_lock"]
+[ext_resource type="Script" path="res://scenes/core/exploration_viewport.gd" id="18_exploration_viewport"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(1279, 32)
@@ -27,6 +28,10 @@ radius = 16.0
 
 [node name="1_1_SchoolExterior" type="Node2D" unique_id=521734377]
 script = ExtResource("12_school_ext")
+
+[node name="ExplorationViewport" type="Node" parent="."]
+script = ExtResource("18_exploration_viewport")
+design_viewport = Vector2i(1400, 1400)
 
 [node name="Background_1_1" type="Sprite2D" parent="." unique_id=1347460712]
 z_index = -100
@@ -71,15 +76,17 @@ position = Vector2(677, -68)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Top" unique_id=303433852]
 position = Vector2(19, -111)
-polygon = PackedVector2Array(26, 102, 27, 114, -13, 117, -12, 101)
+polygon = PackedVector2Array(26, 91, 26, 102, -12, 104, -11, 91)
 
 [node name="TreeLine_Top_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=153265421]
 position = Vector2(677, -68)
 script = ExtResource("16_leaf_zone")
-feather_px = 12.0
+feather_px = 4.0
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Top_Behind" unique_id=1592128453]
-polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 84, -89, 66, -76, 44.941437, -77.21301, 44, -16, 50, 11, 4, 13, 7, -11, 12, -82, -10, -93, -14, -114, -15, -130, -8, -147, -12, -165, -8, -176, -1, -188, 11, -191, 44, -191)
+position = Vector2(-3.9999914, 19.000006)
+scale = Vector2(1.1583737, 1.1583737)
+polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 84, -89, 66, -76, 44.941437, -77.21301, 49.20691, -12.085918, 52.660034, 0.8632736, -0.86328125, 0.8632736, 4.316345, -10.35936, 12, -82, -10, -93, -14, -114, -15, -130, -8, -147, -12, -165, -8, -176, -1, -188, 11, -191, 44, -191)
 
 [node name="Rocks_Left" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1796740676]
 
@@ -98,7 +105,7 @@ polygon = PackedVector2Array(243, 361, 254, 352, 247, 346, 238, 335, 228, 338, 2
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Stump_Left" unique_id=555994690]
 position = Vector2(304, 125)
-polygon = PackedVector2Array(-24, -17, 8, -24, 33, -15, 29, 5, -24, 4)
+polygon = PackedVector2Array(-25, -17, 8, -24, 33, -15, 29, 5, -24, 4)
 
 [node name="Rocks_Right" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1101637411]
 

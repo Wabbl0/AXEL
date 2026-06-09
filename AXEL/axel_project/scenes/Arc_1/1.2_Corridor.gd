@@ -10,7 +10,7 @@ const BACKGROUND_Y := 0.0
 
 
 func _ready() -> void:
-	_apply_background_layout()
+	# Deferred so ExplorationViewport resize is visible to get_visible_rect().
 	call_deferred("_apply_background_layout")
 	_show_spawn_line()
 

@@ -3166,3 +3166,37 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: `1.1` only — player fades inside hand-authored behind polygons under canopy; solid in front of trunk (head included); smooth Y-axis exit/entry. `1.2` and combat unchanged. `ShadowOutline` shares fade material.
 - Verification: Manual F5/F6 on `1.1` / playtest — in front (head solid), behind (fade), straddle, diagonal exit; `1.2` no fade.
 - Notes: **Designer hand-tuning in editor (preserve):** both `TreeLine_*_Behind` zones set to `feather_px = 12.0`; behind-zone `CollisionPolygon2D` shapes adjusted manually in `1.1_SchoolExterior.tscn`. Do not overwrite polygon/feather values without playtest. Stale doc refs to `behind_mask_*` / `TreeLine_*_Leaves` ellipses removed.
+
+## 2026-06-09
+
+### Per-scene exploration viewport + corridor_large speed (1.1 / 1.2)
+- Request: Fix 1.2 window/background aspect mismatch (side crop, post-FX void bands); stable per-scene design viewport; slower corridor walk; update corridor_large canon; wire 1.1 square viewport.
+- Implementation: Added `scenes/core/exploration_viewport.gd` — applies `@export design_viewport` on scene enter via `DisplayServer.window_set_size`, restores previous size on `_exit_tree`; debug scale via `@export debug_scale` or env `AXEL_DEBUG_VIEWPORT_SCALE`. Wired into `1.2_Corridor.tscn` (`1920×1200`, matches 2400×1500 art aspect) and `1.1_SchoolExterior.tscn` (`1400×1400`). `1.2_Corridor.gd` layout now deferred-only so cover-fit runs after resize. Player speed `540` → `362` in `1.2_Corridor.tscn`. Synced `corridor_large` speed band (~350–375) across QA, layout rules, blueprint, scene-builder tools, and `AI_DOCS.md`. Global `project.godot` viewport unchanged; `BackgroundCamera` migration on 1.2 deferred.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/exploration_viewport.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/tools/scene_builder/layout_planner.py`
+  - `AXEL/axel_project/tools/scene_builder/path_validator.py`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/scene_2_draft.json`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Entering 1.2 resizes window to 1920×1200 (1:1 cover-fit with corridor art — no side crop); exiting restores prior size. 1.1 uses 1400×1400 square window. Mike walks slower in corridor (362). Manual camera limits on 1.2 unchanged (`limit_left = 0`).
+- Verification: Manual F6 on 1.2 — full background width visible, no red side void; walk speed feels slower; exit to menu/combat restores 1400×900. F6 on 1.1 — square window, no global project.godot change.
+- Notes: Optional `BackgroundCamera` on 1.2 not wired this pass. User-facing resolution settings autoload deferred to later task.
+
+### Docs sync — per-scene exploration viewport + corridor_large speed
+- Request: `update docs` after viewport helper and corridor speed implementation.
+- Implementation: Added Arc 1 viewport section to `SCENE_LAYOUT_RULES.md`. Documented `ExplorationViewport` on blueprint §1.1/§1.2. Fixed stale `corridor_large` JSON example in `SCENE_BUILDER_AGENT_SPEC.md` (3.0 / 362); added approved legacy viewport subsection and clarified deferred migration checklist. Updated `tools/qa/README_gd_scripts.md` audited-scene notes and corridor probe window caveat.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Documentation only.
+- Verification: Cross-refs match `exploration_viewport.gd`, `1.2_Corridor.tscn` (`1920×1200`, speed `362`), `1.1_SchoolExterior.tscn` (`1400×1400`).

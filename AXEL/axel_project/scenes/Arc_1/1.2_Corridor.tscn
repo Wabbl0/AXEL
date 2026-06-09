@@ -6,7 +6,8 @@
 [ext_resource type="Texture2D" uid="uid://cnnga4avp6u0u" path="res://exports/Drawings/1.2_Corridor.png" id="4_corridor_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
 [ext_resource type="Script" uid="uid://buxd5usryyset" path="res://scenes/Arc_1/camera_follow_vertical.gd" id="14_camera_script"]
-[ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="15_bg_lock"]
+[ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="15_bg_lock"]
+[ext_resource type="Script" path="res://scenes/core/exploration_viewport.gd" id="16_exploration_viewport"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(2368.0889, 24)
@@ -23,6 +24,10 @@ radius = 5.5
 [node name="1_2_Corridor" type="Node2D" unique_id=1412693129]
 position = Vector2(1, -1)
 script = ExtResource("1_462mc")
+
+[node name="ExplorationViewport" type="Node" parent="."]
+script = ExtResource("16_exploration_viewport")
+design_viewport = Vector2i(1920, 1200)
 
 [node name="WalkableWorld" type="Node2D" parent="." unique_id=2100010099]
 
@@ -92,7 +97,7 @@ follow_viewport_enabled = true
 position = Vector2(73, 271.00003)
 scale = Vector2(3, 3)
 script = ExtResource("2_player_script")
-speed = 540.0
+speed = 362.0
 sprite_sheet = ExtResource("3_player_sheet")
 animation_fps = 5.0
 collision_polygon_epsilon = 4.0

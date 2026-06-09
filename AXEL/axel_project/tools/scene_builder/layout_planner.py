@@ -15,7 +15,7 @@ BLUEPRINT_PATH = PROJECT_ROOT / "plans/AXEL_SCENES_BLUEPRINT.md"
 SCENES_DIR = PROJECT_ROOT / "plans/scenes"
 
 PROFILE_BY_SCENE_KEY = {
-    "corridor": {"profile": "corridor_large", "player_scale": 3.0, "player_speed": 540.0},
+    "corridor": {"profile": "corridor_large", "player_scale": 3.0, "player_speed": 362.0},
     "classroom": {"profile": "classroom_large", "player_scale": 0.86, "player_speed": 160.0},
     "library": {"profile": "library_large", "player_scale": 0.78, "player_speed": 145.0},
     "default": {"profile": "default", "player_scale": 1.00, "player_speed": 180.0},

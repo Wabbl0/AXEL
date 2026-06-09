@@ -12,7 +12,7 @@ todos:
     content: "SchoolExterior.tscn (start): school.png bg, intro monologue, choices Walk inside / Turn away, onEnter resets GameState, fade-in + sway animation."
     status: pending
   - id: scene-corridor
-    content: "1.2_Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, static full-bleed background (viewport cover-fit), corridor_large player profile (3× scale, speed 540, left spawn)."
+    content: "1.2_Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, static full-bleed background (viewport cover-fit), corridor_large player profile (3× scale, speed 362, left spawn)."
     status: pending
   - id: scene-locker-hub
     content: "LockerHub.tscn (scene_3): hub.png bg that swaps to map.png on click Area2D, five destination choices plus red basement entry, add_memory_once('scene_3') on enter."
@@ -134,6 +134,7 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 ### 1.1 `1.1_SchoolExterior.tscn` (HTML id: `start`)
 - Location label: (empty)
 - Background: `school.png`
+- Viewport: `ExplorationViewport` child — `design_viewport = Vector2i(1400, 1400)` (square; matches art aspect). Restores global 1400×900 on exit. Debug: env `AXEL_DEBUG_VIEWPORT_SCALE`.
 - **Playtest variant:** `1.1_SchoolExterior_Playtest.tscn` — scene inheritance from base; only override is `skip_intro = true`. Edit the base `.tscn` for colliders/art; F6 the playtest scene for quick iteration without the forced intro. Unlock background via Scene-tree lock icon if repositioning art (`locked_exploration_background.gd` on `Background_1_1`).
 - Player leaf fade (legacy): `TreeLine_Bottom_Behind` + `TreeLine_Top_Behind` under `EnvironmentColliders` — `leaf_occlusion_zone.gd` on each (`feather_px`; polygon = child `CollisionPolygon2D`). `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_polygons` → `white_sprite.gdshader` (feathered polygon mask × trunk Y gate + feet anchor). Opaque in front of trunk; fade inside behind zones under canopy. **Editor tuning:** drag polygon points per tree; set `Feather Px` (both zones hand-tuned to `12.0` — preserve unless playtest says otherwise). `ShadowOutline` shares player shader material.
 - Dialogue: "You stand before the rotting wooden school building. The sky is grey. You feel a jolt in your chest, your GUILT lies here. You've come to finish what was left undone years ago."
@@ -159,8 +160,9 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 
 ### 1.2 `1.2_Corridor.tscn` (`scene_2`)
 - Location label: `CORRIDOR`
-- Background: `exports/Drawings/1.2_Corridor.png` on `WalkableWorld/Background` (viewport cover-fit in `1.2_Corridor.gd`; no push-in tween).
-- Player: `PlayerLayer` (layer 100), `corridor_large` profile — scale `3.0`, speed `540`; spawn ~`(73, 271)`.
+- Viewport: `ExplorationViewport` child — `design_viewport = Vector2i(1920, 1200)` (matches 2400×1500 art aspect; 1:1 cover-fit, no side crop). Restores global 1400×900 on exit. Debug: env `AXEL_DEBUG_VIEWPORT_SCALE`.
+- Background: `exports/Drawings/1.2_Corridor.png` on `WalkableWorld/Background` (viewport cover-fit in `1.2_Corridor.gd`, deferred after resize; no push-in tween).
+- Player: `PlayerLayer` (layer 100), `corridor_large` profile — scale `3.0`, speed `362`; spawn ~`(73, 271)`.
 - Camera: `Camera2D` + `camera_follow_vertical.gd` (same pattern as 1.1 — fixed X, smooth vertical follow on `PlayerLayer/Player`). Manual crop (legacy): `fixed_x = 560`, `limit_top = -15`, `limit_bottom = 730`, `limit_left = 0` — hides void outside cover-fit art; do not change `limit_left` without approval.
 - Colliders: `WalkableWorld/EnvironmentColliders` in **texture-pixel space** (`StaticBody2D` at collision center, shape at `(0,0)`); `1.2_Corridor.gd` syncs collider `position`/`scale` with cover-fit background on load (legacy — not `BackgroundCamera`).
 - Dialogue: opening line via `TopDialogueOverlay` (rewrite in `AXEL_SCENES_ARC1.md`).

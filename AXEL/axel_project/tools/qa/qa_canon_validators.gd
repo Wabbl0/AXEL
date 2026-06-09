@@ -73,8 +73,8 @@ const MOVEMENT_SCENE_PROFILES: Dictionary = {
 	},
 	"res://scenes/Arc_1/1.2_Corridor.tscn": {
 		"label": "corridor_large",
-		"speed_min": 510.0,
-		"speed_max": 570.0,
+		"speed_min": 350.0,
+		"speed_max": 375.0,
 		"scale_min": 2.8,
 		"scale_max": 3.2,
 		"required_paths": [

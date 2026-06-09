@@ -58,7 +58,7 @@ If conflicts appear, `core/AI_DOCS.md` wins; note the conflict in the implement 
   "background_texture_size": [2400, 1500],
   "fit_mode": "cover",
   "camera_mode": "static_locked",
-  "player": {"scale": 4.0, "speed": 720.0},
+  "player": {"scale": 3.0, "speed": 362.0},
   "path_band": {"x0": 320, "x1": 960, "y0": 430, "y1": 660},
   "placements": [
     {
@@ -136,9 +136,13 @@ After `_ready`, headless smoke MUST call `QaCanonValidators.collect_background_c
 
 When a shipped scene has a long intro or setup sequence, add an **inherited** child `.tscn` that instances the canonical scene and overrides only playtest flags (e.g. `skip_intro = true` on the root script). Do **not** duplicate the full scene tree. Example: `1.1_SchoolExterior_Playtest.tscn` → instances `1.1_SchoolExterior.tscn`. Layout edits belong on the base scene; child overrides are for playtest-only deltas.
 
+## Arc 1 legacy viewport (approved — 1.1 / 1.2)
+
+`1.1_SchoolExterior.tscn` and `1.2_Corridor.tscn` each include an `ExplorationViewport` child (`scenes/core/exploration_viewport.gd`) with per-scene `design_viewport` (1.1 = `1400×1400`, 1.2 = `1920×1200`). Do **not** change global `project.godot` window size for these scenes. Pick `design_viewport` from PNG aspect so cover-fit matches 1:1. Optional debug scale: env `AXEL_DEBUG_VIEWPORT_SCALE`.
+
 ## Deferred migration — Arc 1 scenes 1.1 / 1.2
 
-Do **not** retroactively rewire `1.1_SchoolExterior.tscn` or `1.2_Corridor.tscn` without an explicit approval gate. When migrated later:
+Do **not** retroactively rewire `1.1_SchoolExterior.tscn` or `1.2_Corridor.tscn` beyond approved deltas without an explicit approval gate. **Already done (approved):** per-scene `ExplorationViewport` window sizing. **Still deferred:** When migrated later:
 
 1. Move player physics/follow target to world space under `WalkableWorld/Player` (replace `PlayerLayer` screen-space workaround).
 2. Keep player drawn above noir via documented `z_index` / canvas layer order — not by moving the player off-world.

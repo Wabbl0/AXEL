@@ -34,10 +34,21 @@ Keep scenes visibly abandoned, looted, broken, and rotting while preserving read
 
 Large scenes use per-scene tagged profiles:
 
-- `corridor_large`: player scale `3.0`, speed `540` (editor-tuned; ~`180 × scale` when adjusting scale)
+- `corridor_large`: player scale `3.0`, speed `362` (editor-tuned; ~`180 × scale × 0.67` when adjusting scale)
 - `classroom_large`: player scale `0.86`, speed `160`
 - `library_large`: player scale `0.78`, speed `145`
 - `default`: player scale `1.00`, speed `180`
+
+## Per-scene exploration viewport (Arc 1 legacy — 1.1 / 1.2)
+
+Global `project.godot` stays at **1400×900** (do not change without approval — prior 1280×720 experiment broke 1.1). Arc 1 scenes instead resize the OS window on enter via `scenes/core/exploration_viewport.gd`:
+
+- Add child node `ExplorationViewport` with `@export design_viewport: Vector2i` matching background PNG aspect so cover-fit is 1:1 (no side crop / post-FX void fringe).
+- **1.2:** `Vector2i(1920, 1200)` — matches `1.2_Corridor.png` (2400×1500, 1.6:1).
+- **1.1:** `Vector2i(1400, 1400)` — square window for ~3520² school exterior art.
+- **Debug scale:** `@export debug_scale` or env `AXEL_DEBUG_VIEWPORT_SCALE` (e.g. `1.33` → 2560×1600 on 1.2).
+- Restores previous window size on `_exit_tree` so combat/menu unchanged.
+- **1.2 layout:** `_apply_background_layout()` in `1.2_Corridor.gd` must run deferred after resize. User-facing resolution/scale settings autoload is a separate future task.
 
 ## Background and camera pipeline (new PNG scenes)
 
