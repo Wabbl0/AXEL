@@ -1,0 +1,125 @@
+name: Combat Tests
+
+# Runs the full suite of headless combat checks on every push/PR that
+# touches combat scripts, scenes, or data. Can also be triggered manually
+# via the "Run workflow" button in the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'AXEL/axel_project/combat/**'
+      - 'AXEL/axel_project/tools/qa/**'
+      - 'AXEL/axel_project/tools/scene_smoke_check.gd'
+      - '.github/workflows/combat-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'AXEL/axel_project/combat/**'
+      - 'AXEL/axel_project/tools/qa/**'
+      - 'AXEL/axel_project/tools/scene_smoke_check.gd'
+      - '.github/workflows/combat-tests.yml'
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.6.3"
+  GODOT_RELEASE: "stable"
+  PROJECT_PATH: "AXEL/axel_project"
+
+jobs:
+  combat-tests:
+    name: Combat (headless · Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # ── Setup ────────────────────────────────────────────────────────────────
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Godot binary
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: .ci/godot/
+          key: godot-${{ env.GODOT_VERSION }}-${{ env.GODOT_RELEASE }}-linux-x86_64
+
+      - name: Download Godot Linux binary
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p .ci/godot
+          BINARY="Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64"
+          URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/${BINARY}.zip"
+          echo "Fetching: ${URL}"
+          wget -q "${URL}" -O /tmp/godot.zip
+          unzip -o /tmp/godot.zip "${BINARY}" -d /tmp/
+          mv "/tmp/${BINARY}" .ci/godot/godot
+          chmod +x .ci/godot/godot
+
+      # Godot 4.x Forward Plus uses Vulkan. Mesa lavapipe provides software
+      # Vulkan so the engine initialises correctly on GPU-less CI runners.
+      - name: Install Vulkan / Mesa software renderer
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libvulkan1 \
+            mesa-vulkan-drivers \
+            libgl1-mesa-dri
+
+      - name: Godot version check
+        run: .ci/godot/godot --version
+
+      # Rebuild .godot/ cache (global_script_class_cache.cfg, imported assets).
+      # Without this pass, class_name types like EncounterDef / GoalDef are
+      # unresolved and every headless script fails immediately.
+      # Godot exits non-zero after --import; suppress with || true.
+      - name: Import project resources
+        run: |
+          .ci/godot/godot --headless --path "${PROJECT_PATH}" --import 2>&1 || true
+
+      # ── Combat headless checks ────────────────────────────────────────────────
+
+      - name: "[COMBAT] Determinism check"
+        run: |
+          .ci/godot/godot --headless --path "${PROJECT_PATH}" \
+            -s res://combat/test/determinism_check.gd
+
+      - name: "[COMBAT] Princess behavior check"
+        run: |
+          .ci/godot/godot --headless --path "${PROJECT_PATH}" \
+            -s res://combat/test/princess_check.gd
+
+      # rtp_audit prints RTP_AUDIT_JSON metrics; always exits 0 by design.
+      - name: "[COMBAT] RTP audit (metrics only)"
+        run: |
+          .ci/godot/godot --headless --path "${PROJECT_PATH}" \
+            -s res://combat/test/rtp_audit.gd || true
+
+      - name: "[COMBAT] Scaffold check"
+        run: |
+          .ci/godot/godot --headless --path "${PROJECT_PATH}" \
+            -s res://combat/test/combat_test_scaffold_check.gd
+
+      # Item audits only run when combat/data/items/ is non-empty.
+      - name: "[COMBAT] Item balance & synergy (skip if no items)"
+        run: |
+          ITEMS_DIR="${PROJECT_PATH}/combat/data/items"
+          if [ -d "${ITEMS_DIR}" ] && [ -n "$(ls -A "${ITEMS_DIR}" 2>/dev/null)" ]; then
+            echo "Items found — running item audits"
+            .ci/godot/godot --headless --path "${PROJECT_PATH}" \
+              -s res://combat/test/item_balance_audit.gd || true
+            .ci/godot/godot --headless --path "${PROJECT_PATH}" \
+              -s res://combat/test/item_synergy_smoke.gd
+          else
+            echo "No items in ${ITEMS_DIR} — skipping item audits"
+          fi
+
+      # ── Broader smoke ─────────────────────────────────────────────────────────
+
+      # Instantiates Main_Menu, Arc_1, Arc_2, and combat scenes to verify
+      # that nothing is broken at the load/ready boundary.
+      - name: "[SMOKE] Scene smoke check"
+        run: |
+          .ci/godot/godot --headless --path "${PROJECT_PATH}" \
+            -s res://tools/scene_smoke_check.gd
