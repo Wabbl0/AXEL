@@ -3200,3 +3200,34 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Documentation only.
 - Verification: Cross-refs match `exploration_viewport.gd`, `1.2_Corridor.tscn` (`1920×1200`, speed `362`), `1.1_SchoolExterior.tscn` (`1400×1400`).
+
+## 2026-06-17
+
+### Scene 1.2 corridor — camera crop top/bottom (~5%)
+- Request: Trim thin red lines at top and bottom while walking in 1.2 only; camera-only, no viewport/layout changes.
+- Implementation: Nudged `Camera2D` vertical limits in `1.2_Corridor.tscn` by ~45px (~5% of ~900px visible height): `limit_top` `-15` → `30`, `limit_bottom` `730` → `685`. `fixed_x`, `limit_left`, and `limit_right` unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Slightly less vertical pan range at walk extremes; should hide thin noir void fringe on top/bottom without affecting 1.1 or layout math.
+- Verification: Manual F6 on `1.2_Corridor` — walk floor to ceiling; confirm top/bottom red lines gone. If a band remains, nudge limits ±5–10 only.
+
+### Scene 1.2 corridor — camera crop loosen (~10px, reduce clamp click)
+- Request: After ~5% crop, camera “clicks” slightly when moving up/down at pan limits.
+- Implementation: Loosened vertical limits by 10px to ease clamp transition: `limit_top` `30` → `20`, `limit_bottom` `685` → `695`. `fixed_x` / horizontal limits unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Slightly more vertical pan before limits bind; should feel smoother with minimal red fringe return.
+- Verification: Manual F6 — walk full corridor; confirm no click at pan extremes and no visible red band.
+
+### Exploration viewport — fix debug scale (content_scale_size + window)
+- Request: Debug scale did not enlarge in-editor play view; changing global project resolution broke player/colliders/background.
+- Implementation: `exploration_viewport.gd` now sets `get_tree().root.content_scale_size` and `root.size` together (same target), and restores both on exit. Previously only `DisplayServer.window_set_size` ran, so game coords stayed at project default 1400×900 while the OS window grew — upscaling only, no layout change. Embedded editor play still ignores window resize; use floating/external game window.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/exploration_viewport.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 on 1.1/1.2 in a floating window — debug scale changes actual game resolution per scene; menu/combat restore 1400×900 on exit. Do not change global Project Settings viewport for per-scene debug.
+- Verification: F6 corridor with debug_scale 1.33 in floating window — sharper/larger play area; background/colliders/player stay aligned. Stop play — window returns to prior size.

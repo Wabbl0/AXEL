@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dme8t6n6wopv2"
-path="res://.godot/imported/kahvila.png-68b98ce64f6e1feda23634223fab6a66.ctex"
+uid="uid://dhb1hfv26e0vx"
+path="res://.godot/imported/2.1_Locker.png-500edd2849a0379848f087df2c9c0703.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://exports/Drawings/kahvila.png"
-dest_files=["res://.godot/imported/kahvila.png-68b98ce64f6e1feda23634223fab6a66.ctex"]
+source_file="res://exports/Drawings/2.1_Locker.png"
+dest_files=["res://.godot/imported/2.1_Locker.png-500edd2849a0379848f087df2c9c0703.ctex"]
 
 [params]
 

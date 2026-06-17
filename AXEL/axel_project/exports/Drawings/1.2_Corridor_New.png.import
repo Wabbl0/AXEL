@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b8aq2ml6wyyff"
-path="res://.godot/imported/kaappilähi.png-db0c73ac9515af37639b3ecb28e12779.ctex"
+uid="uid://dy2bbh13pqews"
+path="res://.godot/imported/1.2_Corridor_New.png-9d05ce23bba4a297acfe06510ea21ec6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://exports/Drawings/kaappilähi.png"
-dest_files=["res://.godot/imported/kaappilähi.png-db0c73ac9515af37639b3ecb28e12779.ctex"]
+source_file="res://exports/Drawings/1.2_Corridor_New.png"
+dest_files=["res://.godot/imported/1.2_Corridor_New.png-9d05ce23bba4a297acfe06510ea21ec6.ctex"]
 
 [params]
 
