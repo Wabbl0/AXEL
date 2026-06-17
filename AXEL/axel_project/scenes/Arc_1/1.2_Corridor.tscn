@@ -6,7 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://cnnga4avp6u0u" path="res://exports/Drawings/1.2_Corridor.png" id="4_corridor_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="11_interact_prompt"]
-[ext_resource type="Script" path="res://scenes/core/background_camera_controller.gd" id="14_camera_script"]
+[ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="14_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="15_bg_lock"]
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="16_exploration_viewport"]
 
@@ -92,8 +92,6 @@ polygon = PackedVector2Array(-280, -60, -45.787476, -58.608032, -40.29297, 177.6
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]
 script = ExtResource("14_camera_script")
 background_path = NodePath("WalkableWorld/Background")
-fit_mode = 0
-camera_mode = 0
 static_center = Vector2(560, 0)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=558325097]
