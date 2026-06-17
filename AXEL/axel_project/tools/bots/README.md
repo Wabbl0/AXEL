@@ -34,7 +34,7 @@ Synthetic events take the same path as real keyboard input:
 | `input_event_driver.gd` | Press/release/hold/tap utilities + physics-frame stepper. Tracks held keys + event log. |
 | `scenario_runner.gd` | Interprets scenario command lists. Supports `press`, `release`, `release_all`, `tap`, `hold`, `wait_frames`, `wait_process_frames`, `wait_seconds`, `log`, `assert`, `assert_eventually`. Records first failure with frame + step context. |
 | `playthrough_arc1_exterior.gd` | Bot 1: walks player right, taps `E`, asserts transition `1.1_SchoolExterior.tscn` -> `1.2_Corridor.tscn`. |
-| `playthrough_dialogue_loop.gd` | Bot 2: drives `TopDialogueOverlay` Tab-skip, then walks + taps `SPACE` (alternate interact key), asserts same transition. |
+| `playthrough_dialogue_loop.gd` | Bot 2: drives `TopDialogueOverlay` full-line skip (Tab), then walks + taps `SPACE` (alternate interact key), asserts same transition. |
 
 ## Run
 
@@ -44,7 +44,7 @@ From repo root (Windows uses `tools\cmd\godot.cmd`):
 :: Bot 1: walk + interact (KEY_E)
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_arc1_exterior.gd
 
-:: Bot 2: dialogue Tab-skip + walk + interact (KEY_SPACE)
+:: Bot 2: dialogue skip (KEY_TAB) + walk + interact (KEY_SPACE)
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_dialogue_loop.gd
 ```
 
@@ -110,4 +110,5 @@ that script was deliberately stripped from active scenes. Per
 synthetic test scene (would violate "no architecture-layer mixing without
 intent"). `playthrough_dialogue_loop.gd` covers the same intent (dialogue
 advance/skip + interaction + state assertion) using currently-wired
-`TopDialogueOverlay` + `1.1_SchoolExterior` interaction handler.
+`TopDialogueOverlay` (Tab / E / Space / Enter / click skip while bar visible)
++ `1.1_SchoolExterior` interaction handler.

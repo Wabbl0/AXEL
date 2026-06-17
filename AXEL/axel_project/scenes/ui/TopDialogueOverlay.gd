@@ -3,11 +3,19 @@ extends CanvasLayer
 const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 
 ## Non-blocking bottom-centered dialogue bar; does not pause physics or capture input.
-## Typewriter reveal: press Tab to skip to full line (does not block movement).
+## While visible: Tab / E / Space / Enter / click during typing → 5× typewriter speed.
+## When the line is fully shown, the same inputs advance (scramble to next line or CRT off).
+
+enum LinePhase {
+	NONE,
+	TYPING,
+	READY,
+}
 
 const FADE_IN_SEC := 0.22
 const FADE_OUT_SEC := 0.22
 const DEFAULT_CHARS_PER_SEC := 28.0
+const TYPEWRITER_BOOST := 5.0
 const SLIDE_OFFSET := 12.0
 const SIDE_INSET_PX := 28.0
 const CURSOR_GLYPH := "\u2588"
@@ -32,7 +40,11 @@ const BAR_MIN_HEIGHT := 136.0
 @onready var _inner_panel: PanelContainer = $ViewportRoot/RootMargin/BarPanel/InnerPanel
 @onready var _label: Label = $ViewportRoot/RootMargin/BarPanel/InnerPanel/LineLabel
 
-var _skip_typewriter := false
+var _line_phase := LinePhase.NONE
+var _typewriter_speed_mult := 1.0
+var _advance_requested := false
+var _skip_input_enabled := true
+var _line_token := 0
 var _panel_style: StyleBoxFlat
 var _inner_style: StyleBoxFlat
 var _inner_style_empty: StyleBoxEmpty
@@ -93,10 +105,61 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not _fade_root.visible:
+	if not _fade_root.visible or not _skip_input_enabled:
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
-		_skip_typewriter = true
+	if not _is_advance_event(event):
+		return
+	if not _handle_line_input():
+		return
+	get_viewport().set_input_as_handled()
+
+
+func _is_advance_event(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		if not key_event.pressed or key_event.echo:
+			return false
+		return key_event.keycode in [KEY_TAB, KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		return touch_event.pressed
+	return false
+
+
+## Returns false when input should not be consumed (e.g. bar visible but idle).
+func _handle_line_input() -> bool:
+	match _line_phase:
+		LinePhase.TYPING:
+			_typewriter_speed_mult = TYPEWRITER_BOOST
+			return true
+		LinePhase.READY:
+			_advance_requested = true
+			return true
+	return false
+
+
+func is_line_ready() -> bool:
+	return _line_phase == LinePhase.READY
+
+
+## Waits until the player presses advance while the current line is fully shown.
+func await_line_advance() -> void:
+	var token := _line_token
+	await _wait_for_advance(token)
+
+
+func _wait_for_advance(token: int) -> void:
+	if not _line_alive(token):
+		return
+	if _line_phase != LinePhase.READY:
+		return
+	_advance_requested = false
+	while _line_alive(token) and not _advance_requested:
+		await get_tree().process_frame
+	_advance_requested = false
 
 
 func _set_ignore_mouse_recursive(n: Node) -> void:
@@ -125,6 +188,8 @@ func _fade_in() -> void:
 	_fade_root.visible = true
 	if fx_crt_power:
 		await _crt_power_on()
+		if not is_instance_valid(self):
+			return
 		return
 	_fade_root.modulate.a = 0.0
 	if fx_slide_up:
@@ -172,19 +237,95 @@ func _scramble_glitch(length: int) -> void:
 		await get_tree().process_frame
 
 
-## Fade in, typewriter reveal, hold, fade out. Safe to await; does not disable player movement.
+## Instantly cuts the current line so a higher-priority line can take over.
+func interrupt_line() -> void:
+	_line_token += 1
+	_line_phase = LinePhase.NONE
+	_typewriter_speed_mult = 1.0
+	_advance_requested = false
+	_cursor_active = false
+	_stop_border_pulse()
+	_cancel_crt_power()
+	if is_instance_valid(_fade_root):
+		_fade_root.visible = false
+		_fade_root.modulate.a = 0.0
+	if is_instance_valid(_label):
+		_label.text = ""
+	_reset_crt_visual()
+
+
+## Stops the current show_line sequence without hiding the bar (for in-bar line swaps).
+func cancel_pending_line() -> void:
+	_line_token += 1
+	_line_phase = LinePhase.NONE
+	_typewriter_speed_mult = 1.0
+	_advance_requested = false
+	_cursor_active = false
+	_stop_border_pulse()
+
+
+func is_bar_visible() -> bool:
+	return is_instance_valid(_fade_root) and _fade_root.visible and _fade_root.modulate.a > 0.01
+
+
+func _line_alive(token: int) -> bool:
+	return is_instance_valid(self) and token == _line_token
+
+
+func _cancel_crt_power() -> void:
+	CrtPowerFx.cancel(self, _fade_root, _panel, _beam, _bloom)
+
+
+## Type, wait for player advance, CRT off. `hold_duration` is kept for call-site compat (unused).
 func show_line(
 	text: String,
-	hold_duration: float = 2.5,
+	_hold_duration: float = 2.5,
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
-	_skip_typewriter = false
-	_label.text = ""
+	await show_lines([text], chars_per_sec, allow_skip)
+
+
+## Multi-line sequence: advance on press scrambles to the next line; last line CRT powers off.
+func show_lines(
+	texts: Array,
+	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
+	allow_skip: bool = true,
+) -> void:
+	if texts.is_empty():
+		return
+
+	_line_token += 1
+	var token := _line_token
+	_typewriter_speed_mult = 1.0
+	_advance_requested = false
+	_skip_input_enabled = allow_skip
 	_apply_chrome()
-	await _fade_in()
-	await _run_typewriter(text, chars_per_sec, allow_skip)
-	await get_tree().create_timer(maxf(hold_duration, 0.05)).timeout
+
+	if not _fade_root.visible or _fade_root.modulate.a < 1.0:
+		_label.text = ""
+		await _fade_in()
+		if not _line_alive(token):
+			return
+
+	for i in range(texts.size()):
+		var text: String = str(texts[i])
+		if i > 0:
+			if fx_line_swap_glitch:
+				await _scramble_glitch(text.length())
+			else:
+				_label.text = ""
+			if not _line_alive(token):
+				return
+
+		_typewriter_speed_mult = 1.0
+		await _run_typewriter(text, chars_per_sec, allow_skip, token)
+		if not _line_alive(token):
+			return
+		await _wait_for_advance(token)
+		if not _line_alive(token):
+			return
+
 	await hide_line()
 
 
@@ -207,13 +348,15 @@ func _run_line_async(
 	await show_line(text, hold_duration, chars_per_sec, allow_skip)
 
 
-## Fade in (if needed) + typewriter, then return with the line still visible.
+## Fade in (if needed) + typewriter, then return with the line still visible and awaiting advance.
 func type_line(
 	text: String,
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
-	_skip_typewriter = false
+	_typewriter_speed_mult = 1.0
+	_advance_requested = false
+	_skip_input_enabled = allow_skip
 	var is_swap := (
 		fx_line_swap_glitch
 		and _fade_root.visible
@@ -226,23 +369,29 @@ func type_line(
 		await _fade_in()
 	if is_swap:
 		await _scramble_glitch(text.length())
-	await _run_typewriter(text, chars_per_sec, allow_skip)
+	await _run_typewriter(text, chars_per_sec, allow_skip, _line_token)
 
 
-func _run_typewriter(full_text: String, chars_per_sec: float, allow_skip: bool) -> void:
+func _run_typewriter(
+	full_text: String,
+	chars_per_sec: float,
+	allow_skip: bool,
+	token: int = -1,
+) -> void:
 	var n := full_text.length()
 	if n == 0:
+		_line_phase = LinePhase.READY
 		return
 
+	_line_phase = LinePhase.TYPING
 	_start_border_pulse()
 	var cps := maxf(chars_per_sec, 4.0)
 	var delay := 1.0 / cps
 
 	for i in range(1, n + 1):
-		if allow_skip and _skip_typewriter:
-			_cursor_active = false
-			_label.text = full_text
+		if token >= 0 and not _line_alive(token):
 			_stop_border_pulse()
+			_line_phase = LinePhase.NONE
 			return
 		var revealed := full_text.substr(0, i)
 		_cursor_text = revealed
@@ -252,18 +401,25 @@ func _run_typewriter(full_text: String, chars_per_sec: float, allow_skip: bool) 
 		else:
 			_cursor_active = false
 			_label.text = revealed
-		await get_tree().create_timer(delay).timeout
+		var step_delay := delay
+		if allow_skip:
+			step_delay = delay / maxf(_typewriter_speed_mult, 1.0)
+		await get_tree().create_timer(step_delay).timeout
 
 	_cursor_active = false
 	_label.text = full_text
 	_stop_border_pulse()
+	_typewriter_speed_mult = 1.0
+	_line_phase = LinePhase.READY
 
 
 func hide_line() -> void:
 	if not _fade_root.visible:
+		_line_phase = LinePhase.NONE
 		return
 	_cursor_active = false
 	_stop_border_pulse()
+	_line_phase = LinePhase.NONE
 	if fx_crt_power:
 		await _crt_power_off()
 		_fade_root.visible = false

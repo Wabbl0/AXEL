@@ -10,12 +10,12 @@ extends SceneTree
 ## and interaction loop, which is the same spirit (advance/skip + interact +
 ## final-state assertion) using:
 ##
-##   - `scenes/ui/TopDialogueOverlay.gd`   - typewriter + Tab-skip via `_input`
+##   - `scenes/ui/TopDialogueOverlay.gd`   - full-line skip via `_input` (Tab/E/Space/Enter/click)
 ##   - `scenes/Arc_1/1.1_SchoolExterior.gd` - intro dialogue + door interaction
 ##                                            via `_unhandled_input`
 ##
 ## Distinct from `playthrough_arc1_exterior.gd`:
-##   - synthesizes KEY_TAB to drive the typewriter-skip _input handler
+##   - synthesizes KEY_TAB to drive the dialogue skip `_input` handler
 ##   - uses KEY_SPACE (not KEY_E) for the door interaction, validating the
 ##     alternate-key branch of `_is_interaction_event` (E/SPACE/ENTER/KP_ENTER)
 ##
@@ -23,7 +23,7 @@ extends SceneTree
 ##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_dialogue_loop.gd
 ##
 ## Exit codes:
-##   0 = dialogue overlay accepted Tab skips, walk + Space interaction
+##   0 = dialogue overlay accepted skip input, walk + Space interaction
 ##       triggered transition to corridor.
 ##   1 = any phase failed.
 

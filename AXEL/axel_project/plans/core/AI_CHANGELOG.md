@@ -3203,6 +3203,63 @@ Keep scope minimal. One batched question list only if truly blocked.
 
 ## 2026-06-17
 
+### CRT freeze — locker hub load and map click skip
+- Request: Play freezes after pressing E at 1.2 locker (hub load) or clicking map polygon in 2.1 while dialogue CRT is animating; debug view stays open, post-FX wave keeps moving.
+- Implementation: Added `CrtPowerFx.cancel()` with per-host session tokens and frame-polling `_await_tween()` (killed tweens never emit `finished`). `InteractPromptOverlay.hide_prompt_immediate()` and `TopDialogueOverlay` skip/dismiss paths call cancel. `2.1_LockerHub` MapHotspot `background_path` set to `../Background`; first-visit dialogue gates map clicks until sequence ends.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/crt_power_fx.gd`
+  - `AXEL/axel_project/scenes/ui/InteractPromptOverlay.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Interrupting CRT power-on/off (locker E, dialogue skip click) no longer hangs the session; map polygon tracks background art; map ignores clicks during first-visit dialogue.
+- Verification: Manual F6 — 1.2 locker E mid-CRT and settled; 2.1 map click during and after first-visit dialogue; X return to corridor. User-confirmed working.
+
+### CRT freeze regression — restore line-swap scramble glitch
+- Request: After CRT freeze fix, smell→locker (and similar) in-bar swaps use full CRT power off/on instead of scramble letter glitch.
+- Implementation: Removed `_cancel_crt_power()` from `cancel_pending_line()` — that path must keep the bar visible and at full opacity so `type_line()` can detect `is_swap` and run `_scramble_glitch()`; CRT cancel remains on `skip_current_line()`, `_dismiss_bar_immediate()`, and `interrupt_line()`.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Entering locker zone while spawn line is still up swaps to locker text with scramble glitch again, not CRT reboot.
+- Verification: F6 `1.2_Corridor` — walk to locker while smell line is visible; confirm letter scramble, not bar power off/on. User-confirmed working.
+
+### Docs — CRT cancel + line-swap canon
+- Request: `update docs` after CRT freeze fix and scramble-glitch regression fix verified in play.
+- Implementation: `AI_DOCS.md` § Style and FX — `CrtPowerFx.cancel()` API, which overlay paths call it (`hide_prompt_immediate`, skip/dismiss/interrupt; **not** `cancel_pending_line`), `UiPolygonHotspot.background_path`, hub first-visit map-click gate. `AXEL_SCENES_ARC2.md` + `AXEL_SCENES_BLUEPRINT.md` §2.1 aligned.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Documentation only.
+- Verification: Cross-refs match `crt_power_fx.gd`, `TopDialogueOverlay.gd`, `2.1_LockerHub.gd` / `.tscn`.
+
+### UiPolygonHotspot — fix duplicate editor green polygon
+- Request: After moving the map collision polygon in 2.1, a second green polygon stayed off-screen in the editor.
+- Implementation: `_get_screen_polygon()` now uses the collision shape’s full global transform (matches Godot’s gizmo). Default `show_editor_preview = false` so only the `CollisionPolygon2D` handles show in editor (no script-drawn ghost). Re-seeded 2.1 map quad over the MAP paper on the art.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/ui_polygon_hotspot.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: One visible polygon in editor; tune by dragging **vertex handles** on `CollisionPolygon2D` (keep node at origin). Runtime hover/click follow the same shape.
+- Verification: Open `2.1_LockerHub.tscn` — no stray green shape in gray margins; F6 hover/click on MAP only.
+
+### Scene 2.1 locker hub — map polygon hotspot
+- Request: Map should open only when clicking the map area on the locker art, with subtle hover feedback; polygon editable in the editor.
+- Implementation: Added reusable `UiPolygonHotspot` (`scenes/ui/ui_polygon_hotspot.gd`) — texture-pixel `CollisionPolygon2D`, cover-fit sync to `TextureRect`, custom `_has_point` hit test, hover tint, and `activated` signal. Wired `2.1_LockerHub` to use `MapHotspot` instead of full-screen background clicks; background mouse filter set to ignore.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/ui_polygon_hotspot.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Hovering the map polygon shows a faint red wash and pointing-hand cursor; click opens `map.png`. Clicks elsewhere on the art do nothing. Hotspot disables after the map is shown.
+- Verification: F6 on `2.1_LockerHub` — tune `MapHotspot/PolygonAnchor/CollisionPolygon2D` vertex handles in editor; confirm hover/click only inside polygon.
+
 ### Scene 1.2 corridor — camera crop top/bottom (~5%)
 - Request: Trim thin red lines at top and bottom while walking in 1.2 only; camera-only, no viewport/layout changes.
 - Implementation: Nudged `Camera2D` vertical limits in `1.2_Corridor.tscn` by ~45px (~5% of ~900px visible height): `limit_top` `-15` → `30`, `limit_bottom` `730` → `685`. `fixed_x`, `limit_left`, and `limit_right` unchanged.
@@ -3231,3 +3288,67 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: F6 on 1.1/1.2 in a floating window — debug scale changes actual game resolution per scene; menu/combat restore 1400×900 on exit. Do not change global Project Settings viewport for per-scene debug.
 - Verification: F6 corridor with debug_scale 1.33 in floating window — sharper/larger play area; background/colliders/player stay aligned. Stop play — window returns to prior size.
+
+### Dialogue skip — click / E / Space / Enter ends line
+- Request: Anywhere in the game, clicking the screen or pressing E, Enter, or Spacebar while dialogue is playing should fast-forward and end it.
+- Implementation: Extended `TopDialogueOverlay.gd` skip input from Tab-only typewriter skip to full line dismiss on Tab, E, Space, Enter, and left-click/touch; added `skip_current_line()`, `await_hold()`, and skip-state helpers for multi-beat scene scripts. Updated Arc 1 exterior pathetic sequence, corridor locker line, locker hub first-visit lines, and FX preview to use skippable holds.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlayFxPreview.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/tools/bots/README.md`
+  - `AXEL/axel_project/tools/bots/playthrough_dialogue_loop.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: While the bottom dialogue bar is visible, skip input shows the full line instantly, skips the hold, hides the bar, and aborts chained multi-line sequences; skip input is consumed so it does not trigger door/locker interact on the same press.
+- Verification: Manual F6 on scenes with dialogue; optional headless `playthrough_dialogue_loop.gd` (Tab skip path still valid).
+
+### Dialogue advance — two-step press (5× type then advance)
+- Request: Refine dialogue skip — first press should 5× the typewriter; only when text is complete should a second press scramble to the next line or play CRT off (not instant dismiss).
+- Implementation: Replaced instant `skip_current_line()` with `LinePhase` state machine in `TopDialogueOverlay.gd`: typing press sets 5× speed; ready press sets advance (scramble via `show_lines()` or `hide_line()` CRT off). Added `show_lines()`, `await_line_advance()`, `is_line_ready()`. Removed `skip_current_line`, `await_hold`, `was_dialogue_skipped`, `reset_dialogue_skip`. Updated Arc 1 exterior pathetic beat, corridor locker line, locker hub first visit, FX preview. Docs aligned in `AI_DOCS.md` and `SCENE_BUILDER_AGENT_SPEC.md`.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlayFxPreview.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Each line is player-paced — boost typing, then advance. Multi-line sequences use scramble between lines and CRT off only on the last line. No automatic hold timers between beats.
+- Verification: Manual F6 — school exterior pathetic sequence, corridor spawn/locker lines, locker hub first visit; FX preview Space replay.
+
+### Corridor locker hub — 1.2 interact + 2.1 hub scene
+- Request: Implement corridor → locker hub flow (plan: locker interact, real hub, map click, four destinations, X exit, persistence); follow-up fixes for dialogue timing, debug saves, line swap, and exit button visibility.
+- Implementation: Registered `GameManager` autoload with `user://axel_game_state.json` persistence (`memoryScenes`, corridor once-ever flags, transient `corridor_return_pos`). Additive `1.2_Corridor` — `LockerInteractArea`, `InteractPromptOverlay`, smell + locker once-ever lines, `[E]` opens hub. Replaced `2.1_LockerHub` placeholder with no-player hub (`2.1_Locker.png`, map click-swap, four destination buttons, red enlarged `X`). `TopDialogueOverlay` gained `cancel_pending_line()` / `is_bar_visible()` for smell→locker `type_line()` glitch swap without CRT off/on. Debug builds skip save load/write for playtest. `[E]` shows on zone enter (may stack over dialogue bar).
+- Files changed:
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_LockerHub.tscn`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/exports/Drawings/map.png`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Player can open locker hub from corridor; first hub visit plays ARC2 rewrite + memory; map swap and destinations work; `X` returns to corridor at saved spot. Release builds persist once-ever lines; editor F6 always starts fresh narrative flags.
+- Verification: Manual F6 — corridor locker interact, hub first-visit dialogue, map click, destination buttons, `X` return position; quit/relaunch in exported build for persistence.
+- Notes: Basement hub entry still deferred. `LockerInteractArea` polygon may need art tuning in editor.
+
+### Scene 1.2 corridor — static BackgroundCamera (no vertical dip)
+- Request: Fix downward camera dip and red top/bottom bands in 1.2 only; full corridor edge-to-edge, no letterbox.
+- Implementation: Replaced `camera_follow_vertical.gd` + hand-tuned `limit_top`/`limit_bottom` with `background_camera_controller.gd` (`STATIC_LOCKED`, `COVER`). Removed duplicate cover-fit math from `1.2_Corridor.gd`; colliders sync via `Camera2D.layout_applied`. Preserved horizontal framing with `static_center.x = 560` (legacy `fixed_x`). Reverses deferred BackgroundCamera migration for 1.2 only.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Camera stays locked; whole corridor visible at once; no vertical pan/clamp dip; limits derived from PNG `world_rect`.
+- Verification: Manual F6 on `1.2_Corridor` — walk full corridor; confirm no dip, no red bands, edge-to-edge fill, colliders aligned.

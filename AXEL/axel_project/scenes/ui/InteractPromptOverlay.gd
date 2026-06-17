@@ -71,12 +71,12 @@ func hide_prompt() -> void:
 ## Instant hide for scene transitions; skips CRT tweens so unload cannot race power_off.
 func hide_prompt_immediate() -> void:
 	_anim_token += 1
+	CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
 	_is_active = false
 	_crt_settled = false
 	_root.visible = false
 	_root.modulate.a = 0.0
 	set_process(false)
-	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
 
 
 func is_prompt_visible() -> bool:

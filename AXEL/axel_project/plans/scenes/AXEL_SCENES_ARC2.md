@@ -27,6 +27,8 @@
 | Go to the teacher's lounge         | Teachers' Lounge                 |
 | ENTER THE BASEMENT *(red, locked)* | Basement Blocked / Basement Door |
 
+**Implemented (Godot):** `2.1_LockerHub.tscn` + `2.1_LockerHub.gd` — four destinations above (basement omitted); `MapHotspot` (`UiPolygonHotspot`, `background_path = ../Background`) on the MAP paper → swaps background to `map.png` (hover tint + click only inside polygon; clicks ignored during first-visit dialogue); red `X` exit to corridor. Reachable from `1.2_Corridor.tscn` locker interact zone. First-visit lines use `TopDialogueOverlay.show_line()`; player can skip with click / E / Space / Enter while the bar is up (`CrtPowerFx.cancel()` on skip — no session freeze). **Tune map hit area:** `MapHotspot/PolygonAnchor/CollisionPolygon2D` vertex handles in texture-pixel space.
+
 
 ---
 

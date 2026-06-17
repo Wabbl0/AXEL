@@ -5,7 +5,8 @@
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
 [ext_resource type="Texture2D" uid="uid://cnnga4avp6u0u" path="res://exports/Drawings/1.2_Corridor.png" id="4_corridor_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
-[ext_resource type="Script" uid="uid://buxd5usryyset" path="res://scenes/Arc_1/camera_follow_vertical.gd" id="14_camera_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="11_interact_prompt"]
+[ext_resource type="Script" path="res://scenes/core/background_camera_controller.gd" id="14_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="15_bg_lock"]
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="16_exploration_viewport"]
 
@@ -79,15 +80,21 @@ position = Vector2(42.285522, 84.7215)
 shape = SubResource("RectangleShape2D_upper_block")
 debug_color = Color(0.49424207, 0.87887543, 0.9511325, 0.41960785)
 
+[node name="LockerInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1200780101]
+position = Vector2(1172, 620)
+monitorable = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/LockerInteractArea" unique_id=1200780102]
+position = Vector2(644.89685, 107.13535)
+scale = Vector2(1.1545798, 1.2652589)
+polygon = PackedVector2Array(-280, -60, -45.787476, -58.608032, -40.29297, 177.6557, -280.21973, 175.82416)
+
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]
-position = Vector2(560, 360)
-limit_left = 0
-limit_top = 20
-limit_right = 1280
-limit_bottom = 695
 script = ExtResource("14_camera_script")
-target_path = NodePath("../PlayerLayer/Player")
-fixed_x = 560.0
+background_path = NodePath("WalkableWorld/Background")
+fit_mode = 0
+camera_mode = 0
+static_center = Vector2(560, 0)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=558325097]
 layer = 100
@@ -97,7 +104,7 @@ follow_viewport_enabled = true
 position = Vector2(73, 271.00003)
 scale = Vector2(3, 3)
 script = ExtResource("2_player_script")
-speed = 362.0
+speed = 253.4
 sprite_sheet = ExtResource("3_player_sheet")
 animation_fps = 5.0
 collision_polygon_epsilon = 4.0
@@ -123,3 +130,5 @@ position = Vector2(0, 41.46344)
 shape = SubResource("CircleShape2D_player")
 
 [node name="TopDialogueOverlay" parent="." unique_id=529892493 instance=ExtResource("10_top_dialogue")]
+
+[node name="InteractPromptOverlay" parent="." unique_id=1738398092 instance=ExtResource("11_interact_prompt")]

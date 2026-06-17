@@ -15,7 +15,7 @@ todos:
     content: "1.2_Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, static full-bleed background (viewport cover-fit), corridor_large player profile (3× scale, speed 362, left spawn)."
     status: pending
   - id: scene-locker-hub
-    content: "LockerHub.tscn (scene_3): hub.png bg that swaps to map.png on click Area2D, five destination choices plus red basement entry, add_memory_once('scene_3') on enter."
+    content: "LockerHub.tscn (scene_3): hub.png bg; MapHotspot (UiPolygonHotspot) on map paper swaps to map.png on click, five destination choices plus red basement entry, add_memory_once('scene_3') on enter."
     status: pending
   - id: scene-basement-blocked-temp
     content: "BasementBlockedTemp.tscn (basement_blocked_temp): dialog-only sealed-off message with Go back to LockerHub."
@@ -161,25 +161,25 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 ### 1.2 `1.2_Corridor.tscn` (`scene_2`)
 - Location label: `CORRIDOR`
 - Viewport: `ExplorationViewport` child — `design_viewport = Vector2i(1920, 1200)` (matches 2400×1500 art aspect; 1:1 cover-fit, no side crop). Restores global 1400×900 on exit. Debug: env `AXEL_DEBUG_VIEWPORT_SCALE`.
-- Background: `exports/Drawings/1.2_Corridor.png` on `WalkableWorld/Background` (viewport cover-fit in `1.2_Corridor.gd`, deferred after resize; no push-in tween).
+- Background: `exports/Drawings/1.2_Corridor.png` on `WalkableWorld/Background` (cover-fit via `BackgroundCamera` + `BackgroundLayout.apply`; no push-in tween).
 - Player: `PlayerLayer` (layer 100), `corridor_large` profile — scale `3.0`, speed `362`; spawn ~`(73, 271)`.
-- Camera: `Camera2D` + `camera_follow_vertical.gd` (same pattern as 1.1 — fixed X, smooth vertical follow on `PlayerLayer/Player`). Manual crop (legacy): `fixed_x = 560`, `limit_top = 20`, `limit_bottom = 695`, `limit_left = 0` — hides void outside cover-fit art; do not change `limit_left` without approval.
-- Colliders: `WalkableWorld/EnvironmentColliders` in **texture-pixel space** (`StaticBody2D` at collision center, shape at `(0,0)`); `1.2_Corridor.gd` syncs collider `position`/`scale` with cover-fit background on load (legacy — not `BackgroundCamera`).
-- Dialogue: opening line via `TopDialogueOverlay` (rewrite in `AXEL_SCENES_ARC1.md`).
-- Choices: `Go to your locker` -> `LockerHub`, `Turn away` -> `Ending1` (not wired in current minimal scene).
+- Camera: `Camera2D` + `background_camera_controller.gd` (`STATIC_LOCKED`, `COVER`) — limits/zoom from PNG `world_rect` via `BackgroundLayout.apply`; `static_center.x = 560` preserves legacy horizontal framing. No vertical follow (whole corridor always in view).
+- Colliders: `WalkableWorld/EnvironmentColliders` in **texture-pixel space** (`StaticBody2D` at collision center, shape at `(0,0)`); `1.2_Corridor.gd` syncs on `Camera2D.layout_applied` (scale/position from `BackgroundCamera`).
+- Dialogue: opening smell line once-ever via `TopDialogueOverlay` (rewrite in `AXEL_SCENES_ARC1.md`). Locker interact: `LockerInteractArea` under `EnvironmentColliders` → proximity line once-ever → `[E]` chip (1.1 door pattern) → `2.1_LockerHub.tscn`; return restores saved player position.
+- Choices (deferred): `Turn away` -> `Ending1` not wired.
 - Animations: optional future ambient FX only.
 
 ---
 
 ## Arc 2 - Hub
 
-### 2.1 `LockerHub.tscn` (`scene_3`)
+### 2.1 `2.1_LockerHub.tscn` (`scene_3`) — **shipped**
 - Location label: `YOUR LOCKER`
-- Background: `hub.png`; on click the background swaps to `map.png` (JS lines 497-503).
-- Dialogue: "You are in your sanctuary. There's a picture of the two of you on the locker door. The map shows four circled locations. The basement entrance has been blacked out."
-- Choices: Cafeteria / Classroom / Backyard / Teachers' lounge / `ENTER THE BASEMENT` (red, routes to `basement_entry` once unlocked, else `BasementBlockedTemp`).
-- Animations: glitch-flash on the memory counter when entered the first time (`addMemoryOnce("scene_3")`); `Area2D` on the locker door -> swaps texture to `map.png`.
-- Logic note: the JS `isSceneInteractionLocked` check means in Godot we gray out Kitchen/Backyard/Teachers entries until their prerequisites are met. Easier to implement by making the target scene itself reject entry and bounce back, but keep button styling in `ChoiceButton.gd`.
+- Background: `exports/Drawings/2.1_Locker.png`; **`MapHotspot`** (`UiPolygonHotspot`, `background_path = ../Background` + `PolygonAnchor/CollisionPolygon2D` in texture-pixel space) — hover + click on MAP paper swaps to `exports/Drawings/map.png` (placeholder until final map art). Map clicks ignored during first-visit dialogue; hotspot disables after map opens.
+- Dialogue: ARC2 `[REWRITE]` on first visit; `GameManager.add_memory_once("scene_3")`.
+- Choices: Cafeteria (`3.1_Cafeteria.tscn`), Classroom (`6.1_Classroom.tscn`), Backyard (`4.1_Backyard.tscn`), Teachers' lounge (`5.1_TeachersLounge.tscn`) — disable button when target scene missing. **No basement button** this milestone (`2.2` / `SceneRouter` deferred).
+- Exit: red `X` bottom-right (root-level, visible on locker + map views) → `1.2_Corridor.tscn` at saved `corridor_return_pos`.
+- No player node; no embedded post-FX. Script: `2.1_LockerHub.gd`.
 
 ### 2.2 `BasementBlockedTemp.tscn` (`basement_blocked_temp`)
 - Location label: `BASEMENT`

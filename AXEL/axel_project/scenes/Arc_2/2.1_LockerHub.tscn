@@ -1,15 +1,102 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://7iwlp6l4dus3"]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" uid="uid://dynt7uaxwltd2" path="res://scenes/Arc_2/2.1_LockerHub.gd" id="1_hub_script"]
+[ext_resource type="Texture2D" uid="uid://dhb1hfv26e0vx" path="res://exports/Drawings/2.1_Locker.png" id="2_hub_bg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
+[ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="4_font"]
+[ext_resource type="Script" uid="uid://dlv3mwtkwxemi" path="res://scenes/ui/ui_polygon_hotspot.gd" id="5_map_hotspot"]
 
-[node name="ScenePlaceholder" type="Control"]
+[node name="LockerHub" type="Control" unique_id=708112209]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_scene_placeholder")
-scene_id = "2.1"
-location_label = "YOUR LOCKER"
-dialogue = PackedStringArray("Oh look, a map of the school.", "[beat]", "Was your memory so bad you needed a map of the school?")
+script = ExtResource("1_hub_script")
+
+[node name="Background" type="TextureRect" parent="." unique_id=2110676884]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_hub_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="MapHotspot" type="Control" parent="." unique_id=1249388187]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("5_map_hotspot")
+background_path = NodePath("../Background")
+
+[node name="PolygonAnchor" type="Node2D" parent="MapHotspot" unique_id=263982413]
+position = Vector2(0, -83.20636)
+scale = Vector2(0.32839224, 0.32839224)
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="MapHotspot/PolygonAnchor" unique_id=1115557148]
+position = Vector2(-1540.4374, -1081.7896)
+scale = Vector2(3.048497, 3.048497)
+polygon = PackedVector2Array(911.5232, 647.7623, 1013.4282, 635.8104, 1073.5232, 628.7623, 1078.5232, 805.7623, 916.5232, 787.7623)
+
+[node name="Chrome" type="Control" parent="." unique_id=2074628156]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="LocationLabel" type="Label" parent="Chrome" unique_id=222401530]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 420.0
+offset_bottom = 58.0
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 34
+text = "YOUR LOCKER"
+
+[node name="ChoicesPanel" type="VBoxContainer" parent="Chrome" unique_id=1335969238]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -260.0
+offset_right = 360.0
+offset_bottom = -24.0
+grow_vertical = 0
+theme_override_constants/separation = 10
+
+[node name="ExitButton" type="Button" parent="." unique_id=413805758]
+z_index = 2
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -82.0
+offset_top = -82.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_colors/font_pressed_color = Color(0.75, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.25, 0.25, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 36
+text = "X"
+
+[node name="TopDialogueOverlay" parent="." unique_id=1669271628 instance=ExtResource("3_top_dialogue")]

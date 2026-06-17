@@ -96,6 +96,8 @@ Root (Node2D + scene script)
 └── InteractPromptOverlay (instanced)
 ```
 
+**Dialogue:** Use the instanced `TopDialogueOverlay`; player movement stays unlocked. API and two-step advance (5× typing boost, then press to scramble next line or CRT off): `plans/core/AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. Smell→locker swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`.
+
 ### Camera2D exports (`BackgroundCamera`)
 
 | Export | Default | Purpose |

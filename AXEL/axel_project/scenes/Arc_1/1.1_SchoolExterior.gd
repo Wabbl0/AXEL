@@ -33,8 +33,6 @@ const _SECOND_DIALOGUE_DISTANCE := 50.0
 const _FIRST_DIALOGUE_LINE := "You promised, you'd never come back."
 const _SECOND_DIALOGUE_LINE := "Yet, here we are..."
 const _THIRD_DIALOGUE_LINE := "Pathetic."
-const _PATHETIC_BEAT_SEC := 2.0
-const _SECOND_LINE_TAIL_HOLD_SEC := 2.0
 
 var _is_transitioning := false
 var _unlock_position: Vector2 = Vector2.ZERO
@@ -80,13 +78,9 @@ func _process(_delta: float) -> void:
 
 
 func _play_second_then_pathetic() -> void:
-	if not _top_dialogue.has_method("type_line"):
+	if not _top_dialogue.has_method("show_lines"):
 		return
-	await _top_dialogue.type_line(_SECOND_DIALOGUE_LINE)
-	await get_tree().create_timer(_PATHETIC_BEAT_SEC).timeout
-	await _top_dialogue.type_line(_THIRD_DIALOGUE_LINE)
-	await get_tree().create_timer(_SECOND_LINE_TAIL_HOLD_SEC).timeout
-	await _top_dialogue.hide_line()
+	await _top_dialogue.show_lines([_SECOND_DIALOGUE_LINE, _THIRD_DIALOGUE_LINE])
 
 
 func _run_forced_intro_sequence() -> void:

@@ -44,7 +44,7 @@ func _refresh_status() -> void:
 	_status.text = (
 		"TopDialogueOverlay FX Preview (defaults: chrome + glitch + CRT ON)\n"
 		+ "1 cursor: %s  |  2 slide: %s  |  3 chrome: %s  |  4 glitch: %s  |  5 pulse: %s  |  6 CRT: %s\n"
-		+ "[Space] replay sample (CRT on -> line2 -> 2s beat -> Pathetic. -> CRT off)"
+		+ "[Space] replay sample (CRT on -> line1 -> advance -> scramble -> line2 -> advance -> CRT off)"
 	) % [
 		_on_off(_overlay.fx_cursor),
 		_on_off(_overlay.fx_slide_up),
@@ -63,9 +63,5 @@ func _play_sample() -> void:
 	if _playing:
 		return
 	_playing = true
-	await _overlay.type_line("Yet, here we are...")
-	await get_tree().create_timer(2.0).timeout
-	await _overlay.type_line("Pathetic.")
-	await get_tree().create_timer(1.0).timeout
-	await _overlay.hide_line()
+	await _overlay.show_lines(["Yet, here we are...", "Pathetic."])
 	_playing = false

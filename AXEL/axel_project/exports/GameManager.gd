@@ -3,8 +3,6 @@
 
 extends Node
 
-class_name GameManager
-
 func _debug_log(hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
 	var file := FileAccess.open("C:/Users/valtt/OneDrive/Godot/logs/debug/debug-7980eb.log", FileAccess.READ_WRITE)
 	if file == null:
@@ -35,6 +33,13 @@ var game_data: Dictionary = {}
 var game_state: Dictionary = {}
 var current_scene_id: String = ""
 
+const SAVE_PATH := "user://axel_game_state.json"
+const INVALID_RETURN_POS := Vector2(1.0e20, 1.0e20)
+
+var corridor_locker_line_seen: bool = false
+var corridor_spawn_line_seen: bool = false
+var corridor_return_pos: Vector2 = INVALID_RETURN_POS
+
 # References to UI elements in Arc_1/1.1_SchoolExterior.tscn
 @onready var location_label: Label = get_node_or_null("%LocationName") as Label
 @onready var story_text: Label = get_node_or_null("%StoryContent") as Label
@@ -55,9 +60,22 @@ func _ready():
 		"node_type": get_class()
 	})
 	#endregion
+	_load_persistent_state()
+	if not _legacy_ui_ready():
+		return
+	home_button.pressed.connect(_on_home_pressed)
+	load_game_data()
+	if game_data.is_empty():
+		return
+	if game_state.is_empty():
+		initialize_game_state()
+	load_scene(game_data["gameMetadata"]["startScene"])
+
+
+func _legacy_ui_ready() -> bool:
 	if home_button == null or location_label == null or story_text == null or background_image == null or choices_container == null or memory_label == null or inventory_label == null:
 		#region agent log
-		_debug_log("H2", "GameManager.gd:_ready", "Required UI nodes missing", {
+		_debug_log("H2", "GameManager.gd:_ready", "Legacy HTML UI nodes missing; running state-only autoload", {
 			"home_button_null": home_button == null,
 			"location_label_null": location_label == null,
 			"story_text_null": story_text == null,
@@ -67,15 +85,112 @@ func _ready():
 			"inventory_label_null": inventory_label == null
 		})
 		#endregion
-		push_warning("GameManager initialized without required UI nodes. Attach this script to scenes/Arc_1/1.1_SchoolExterior.tscn root (or provide matching unique node names).")
-		return
+		return false
+	return true
 
-	home_button.pressed.connect(_on_home_pressed)
-	load_game_data()
-	if game_data.is_empty():
+
+func _default_game_state() -> Dictionary:
+	return {
+		"inventory": [],
+		"memories": 0,
+		"memoryScenes": {},
+		"flags": {
+			"hasFlashlight": false,
+			"hasName": false,
+			"hasKey": false,
+			"hasShovel": false,
+			"deskSequencePlayed": false,
+			"knowsName": false,
+			"isDead": false,
+		},
+	}
+
+
+func _persistence_enabled() -> bool:
+	# Debug/editor playtests start fresh so once-ever dialogue can be re-tested.
+	return not OS.is_debug_build()
+
+
+func _load_persistent_state() -> void:
+	game_state = _default_game_state()
+	corridor_locker_line_seen = false
+	corridor_spawn_line_seen = false
+	if not _persistence_enabled():
+		print("GameManager: debug build — ignoring saved narrative state.")
 		return
-	initialize_game_state()
-	load_scene(game_data["gameMetadata"]["startScene"])
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if file == null:
+		push_warning("GameManager: could not read save file at %s" % SAVE_PATH)
+		return
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if parsed == null or not parsed is Dictionary:
+		push_warning("GameManager: save file is not valid JSON.")
+		return
+	var data: Dictionary = parsed
+	if data.has("game_state") and data["game_state"] is Dictionary:
+		game_state = _merge_game_state(_default_game_state(), data["game_state"])
+	corridor_locker_line_seen = bool(data.get("corridor_locker_line_seen", false))
+	corridor_spawn_line_seen = bool(data.get("corridor_spawn_line_seen", false))
+
+
+func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
+	var merged := defaults.duplicate(true)
+	for key in saved.keys():
+		if key == "flags" and saved["flags"] is Dictionary and defaults.has("flags"):
+			var flags: Dictionary = (defaults["flags"] as Dictionary).duplicate(true)
+			for flag_key in (saved["flags"] as Dictionary).keys():
+				flags[flag_key] = saved["flags"][flag_key]
+			merged["flags"] = flags
+		elif defaults.has(key):
+			merged[key] = saved[key]
+	return merged
+
+
+func _save_persistent_state() -> void:
+	if not _persistence_enabled():
+		return
+	var data := {
+		"game_state": game_state,
+		"corridor_locker_line_seen": corridor_locker_line_seen,
+		"corridor_spawn_line_seen": corridor_spawn_line_seen,
+	}
+	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file == null:
+		push_warning("GameManager: could not write save file at %s" % SAVE_PATH)
+		return
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+
+
+func has_memory_scene(scene_key: String) -> bool:
+	return game_state.get("memoryScenes", {}).has(scene_key)
+
+
+func set_corridor_locker_line_seen(value: bool = true) -> void:
+	corridor_locker_line_seen = value
+	_save_persistent_state()
+
+
+func set_corridor_spawn_line_seen(value: bool = true) -> void:
+	corridor_spawn_line_seen = value
+	_save_persistent_state()
+
+
+func set_corridor_return_pos(pos: Vector2) -> void:
+	corridor_return_pos = pos
+
+
+func has_corridor_return_pos() -> bool:
+	return corridor_return_pos != INVALID_RETURN_POS
+
+
+func take_corridor_return_pos() -> Vector2:
+	var pos := corridor_return_pos
+	corridor_return_pos = INVALID_RETURN_POS
+	return pos
 
 func load_game_data():
 	"""Load game data from JSON file"""
@@ -114,8 +229,10 @@ func load_game_data():
 
 func initialize_game_state():
 	"""Initialize game state from template"""
-	# Create a deep copy of default state
-	game_state = game_data["gameState"].duplicate(true)
+	if not game_data.is_empty() and game_data.has("gameState"):
+		game_state = game_data["gameState"].duplicate(true)
+	else:
+		game_state = _default_game_state()
 	print("✓ Game state initialized")
 
 # ============================================================
@@ -213,6 +330,8 @@ func handle_puzzle_input(player_answer: String, puzzle_scene: Dictionary):
 
 func display_choices(choices: Array, is_locked: bool = false):
 	"""Render choice buttons"""
+	if choices_container == null:
+		return
 	# Clear existing choices
 	for child in choices_container.get_children():
 		child.queue_free()
@@ -245,6 +364,8 @@ func display_choices(choices: Array, is_locked: bool = false):
 
 func update_location_display(location_name: String):
 	"""Update location name in status bar"""
+	if location_label == null:
+		return
 	if location_name.is_empty():
 		location_label.text = "LOCATION: ..."
 	else:
@@ -252,6 +373,8 @@ func update_location_display(location_name: String):
 
 func update_story_text(text: String):
 	"""Update main story text"""
+	if story_text == null:
+		return
 	story_text.text = text
 	
 	# Add glitch effect if needed (memory unlock)
@@ -259,6 +382,8 @@ func update_story_text(text: String):
 
 func update_background(image_path: String):
 	"""Load and display background image"""
+	if background_image == null:
+		return
 	if image_path.is_empty():
 		background_image.texture = null
 		background_image.hide()
@@ -275,6 +400,8 @@ func update_background(image_path: String):
 
 func update_ui_state():
 	"""Update inventory and memory display"""
+	if memory_label == null or inventory_label == null:
+		return
 	memory_label.text = "%d/5" % [game_state["memories"]]
 	
 	var inv_text = ""
@@ -332,6 +459,7 @@ func set_flag(flag_name: String, value: bool):
 	"""Set a game flag"""
 	if game_state["flags"].has(flag_name):
 		game_state["flags"][flag_name] = value
+		_save_persistent_state()
 		state_changed.emit()
 		print("→ Flag '%s' = %s" % [flag_name, value])
 
@@ -345,6 +473,7 @@ func add_inventory_item(_item_key: String, display_name: String):
 	"""Add item to inventory"""
 	if not display_name in game_state["inventory"]:
 		game_state["inventory"].append(display_name)
+		_save_persistent_state()
 		update_ui_state()
 		inventory_changed.emit(game_state["inventory"])
 		print("→ Added to inventory: " + display_name)
@@ -353,6 +482,7 @@ func add_memory_once(scene_key: String):
 	"""Add a memory (only once per scene)"""
 	if not game_state["memoryScenes"].has(scene_key):
 		game_state["memoryScenes"][scene_key] = true
+		_save_persistent_state()
 		add_memory()
 
 func add_memory():

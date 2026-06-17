@@ -11,6 +11,8 @@ const CRT_OFF_AFTERGLOW_SEC := 0.12
 const CRT_BEAM_ALPHA := 0.95
 const CRT_BLOOM_ALPHA := 0.85
 
+static var _crt_tokens: Dictionary = {}
+
 
 class Options:
 	var enable_beam := true
@@ -32,6 +34,66 @@ static func compact_chip_options() -> Options:
 
 static func _host_valid(host: Node) -> bool:
 	return host != null and is_instance_valid(host) and host.get_tree() != null
+
+
+static func _host_key(host: Node) -> int:
+	return host.get_instance_id()
+
+
+static func _bump_token(host: Node) -> int:
+	var key := _host_key(host)
+	var next := int(_crt_tokens.get(key, 0)) + 1
+	_crt_tokens[key] = next
+	return next
+
+
+static func _token_valid(host: Node, session: int) -> bool:
+	return _host_valid(host) and int(_crt_tokens.get(_host_key(host), 0)) == session
+
+
+static func _kill_crt_tweens(host: Node, targets: Array) -> void:
+	if not _host_valid(host):
+		return
+	for tween in host.get_tree().get_processed_tweens():
+		if not tween.is_valid():
+			continue
+		var bound: Node = tween.get_bound_node()
+		if bound == host:
+			tween.kill()
+			continue
+		for target in targets:
+			if bound == target:
+				tween.kill()
+				break
+
+
+static func _await_tween(host: Node, session: int, tween: Tween) -> void:
+	while tween.is_valid() and tween.is_running():
+		if not _token_valid(host, session):
+			tween.kill()
+			return
+		await host.get_tree().process_frame
+
+
+## Kills in-flight CRT tweens, invalidates awaiting power_on/power_off, and resets visuals off.
+static func cancel(
+	host: Node,
+	fade_root: Control,
+	panel: Control,
+	beam: CanvasItem,
+	bloom: CanvasItem,
+) -> void:
+	if host == null:
+		return
+	_bump_token(host)
+	if not _host_valid(host):
+		return
+	_kill_crt_tweens(host, [fade_root, panel, beam, bloom])
+	reset_visual(fade_root, panel, beam, bloom)
+	if is_instance_valid(fade_root):
+		fade_root.modulate.a = 0.0
+	if is_instance_valid(panel):
+		panel.scale = Vector2.ZERO
 
 
 static func reset_pivot(panel: Control) -> void:
@@ -69,9 +131,10 @@ static func power_on(
 ) -> void:
 	if not _host_valid(host):
 		return
+	var session := _bump_token(host)
 	var o := opts if opts != null else default_options()
 	await host.get_tree().process_frame
-	if not _host_valid(host):
+	if not _token_valid(host, session):
 		return
 	reset_pivot(panel)
 	panel.scale = Vector2.ZERO
@@ -90,8 +153,8 @@ static func power_on(
 	if o.enable_beam:
 		tw_bright.tween_property(beam, "modulate:a", CRT_BEAM_ALPHA, CRT_OFF_AFTERGLOW_SEC)
 	tw_bright.tween_property(bloom, "modulate:a", o.bloom_surge_peak, CRT_OFF_AFTERGLOW_SEC)
-	await tw_bright.finished
-	if not _host_valid(host):
+	await _await_tween(host, session, tw_bright)
+	if not _token_valid(host, session):
 		return
 
 	var tw_grow := host.create_tween().set_parallel(true)
@@ -103,15 +166,15 @@ static func power_on(
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if o.enable_beam:
 		tw_grow.tween_property(beam, "modulate:a", CRT_BEAM_ALPHA, CRT_OFF_SHRINK_SEC * 0.3)
-	await tw_grow.finished
-	if not _host_valid(host):
+	await _await_tween(host, session, tw_grow)
+	if not _token_valid(host, session):
 		return
 
 	var tw_flash := host.create_tween()
 	tw_flash.tween_property(bloom, "modulate:a", o.bloom_flash_peak, CRT_OFF_FLASH_SEC * 0.4)
 	tw_flash.tween_property(bloom, "modulate:a", 0.0, CRT_OFF_FLASH_SEC * 0.6)
-	await tw_flash.finished
-	if not _host_valid(host):
+	await _await_tween(host, session, tw_flash)
+	if not _token_valid(host, session):
 		return
 
 	var tw_expand := host.create_tween().set_parallel(true)
@@ -123,8 +186,8 @@ static func power_on(
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if o.enable_beam:
 		tw_expand.tween_property(beam, "modulate:a", 0.0, CRT_OFF_COLLAPSE_SEC * 0.25)
-	await tw_expand.finished
-	if not _host_valid(host):
+	await _await_tween(host, session, tw_expand)
+	if not _token_valid(host, session):
 		return
 	reset_visual(fade_root, panel, beam, bloom)
 
@@ -140,9 +203,10 @@ static func power_off(
 ) -> void:
 	if not _host_valid(host):
 		return
+	var session := _bump_token(host)
 	var o := opts if opts != null else default_options()
 	await host.get_tree().process_frame
-	if not _host_valid(host):
+	if not _token_valid(host, session):
 		return
 	reset_pivot(panel)
 
@@ -155,15 +219,15 @@ static func power_off(
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	if o.enable_beam:
 		tw_collapse.tween_property(beam, "modulate:a", CRT_BEAM_ALPHA, CRT_OFF_COLLAPSE_SEC * 0.25)
-	await tw_collapse.finished
-	if not _host_valid(host):
+	await _await_tween(host, session, tw_collapse)
+	if not _token_valid(host, session):
 		return
 
 	var tw_flash := host.create_tween()
 	tw_flash.tween_property(bloom, "modulate:a", o.bloom_flash_peak, CRT_OFF_FLASH_SEC * 0.4)
 	tw_flash.tween_property(bloom, "modulate:a", 0.0, CRT_OFF_FLASH_SEC * 0.6)
-	await tw_flash.finished
-	if not _host_valid(host):
+	await _await_tween(host, session, tw_flash)
+	if not _token_valid(host, session):
 		return
 
 	var tw_shrink := host.create_tween().set_parallel(true)
@@ -175,8 +239,8 @@ static func power_off(
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	if o.enable_beam:
 		tw_shrink.tween_property(beam, "modulate:a", CRT_BEAM_ALPHA, CRT_OFF_SHRINK_SEC * 0.3)
-	await tw_shrink.finished
-	if not _host_valid(host):
+	await _await_tween(host, session, tw_shrink)
+	if not _token_valid(host, session):
 		return
 
 	var tw_dark := host.create_tween().set_parallel(true)
@@ -185,7 +249,7 @@ static func power_off(
 	if o.enable_beam:
 		tw_dark.tween_property(beam, "modulate:a", 0.0, CRT_OFF_AFTERGLOW_SEC)
 	tw_dark.tween_property(bloom, "modulate:a", 0.0, CRT_OFF_AFTERGLOW_SEC)
-	await tw_dark.finished
-	if not _host_valid(host):
+	await _await_tween(host, session, tw_dark)
+	if not _token_valid(host, session):
 		return
 	reset_visual(fade_root, panel, beam, bloom)
