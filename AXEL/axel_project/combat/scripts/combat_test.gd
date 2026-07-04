@@ -363,6 +363,12 @@ func _suppress_combat_root_legacy_labels() -> void:
 			legacy.visible = false
 
 
+## Portrait gets slightly wider side panels so ITEMS/HISTORY labels truncate
+## less; the grid re-fits via the center-width clamp.
+func _narrow_side_panel_fraction() -> float:
+	return 0.21 if size.y > size.x else 0.18
+
+
 func _get_center_column_interior_width(default_w: float) -> float:
 	if _center_column != null and _center_column.size.x >= 64.0:
 		return _center_column.size.x
@@ -370,7 +376,7 @@ func _get_center_column_interior_width(default_w: float) -> float:
 		var play_w := size.x * (LAYOUT_SIDE_RIGHT_END - LAYOUT_SIDE_START)
 		var side_w := size.x * (LAYOUT_SIDE_END - LAYOUT_SIDE_START)
 		if size.x < RESPONSIVE_NARROW_W:
-			side_w = size.x * 0.18
+			side_w = size.x * _narrow_side_panel_fraction()
 		return maxf(play_w - 2.0 * side_w - 2.0 * GRID_COLUMN_GAP, 260.0)
 	return maxf(default_w, 260.0)
 
@@ -1260,7 +1266,13 @@ func _side_panel_title_style() -> StyleBoxFlat:
 
 func _style_side_panel_header(header: Label) -> void:
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header.add_theme_font_size_override("font_size", SIDE_PANEL_HEADER_FONT)
+	var header_font := SIDE_PANEL_HEADER_FONT
+	if size.x > 0.0 and size.x < RESPONSIVE_NARROW_W:
+		header_font = 24
+	header.add_theme_font_size_override("font_size", header_font)
+	# Never let a long header (e.g. "ITEMS (0/7)") inflate the panel's minimum
+	# width past its allotted slot; that pushes the panel off-screen.
+	header.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_theme_color_override("font_color", Color(0.88, 0.4, 0.4, 1.0))
 
 
@@ -1271,7 +1283,7 @@ func _bind_history_spin_list_from_panel(panel: PanelContainer) -> void:
 	if existing != null:
 		_history_spin_list = existing
 		return
-	var header := panel.get_meta("header") as Label
+	var header := _side_panel_header(panel)
 	if header != null:
 		_style_side_panel_header(header)
 	var list_root := panel.get_meta("list") as VBoxContainer
@@ -1289,13 +1301,29 @@ func _apply_side_panel_typography() -> void:
 		if panel == null:
 			continue
 		panel.add_theme_stylebox_override("panel", _side_panel_style())
-		var header := panel.get_meta("header") as Label
+		var header := _side_panel_header(panel)
 		if header != null:
 			_style_side_panel_header(header)
 		var header_strip := header.get_parent() as PanelContainer if header != null else null
 		if header_strip != null:
 			header_strip.add_theme_stylebox_override("panel", _side_panel_title_style())
 	_apply_item_picker_body_typography()
+
+
+## Resolve a side panel's header label from the scene tree. The "header" meta
+## is unreliable for panels baked into the .tscn by editor previews: serialized
+## Object metadata is deserialized as a detached copy of the label, so styling
+## it never affects the visible header.
+func _side_panel_header(panel: PanelContainer) -> Label:
+	if panel == null:
+		return null
+	var in_tree := panel.find_child("SectionHeader", true, false) as Label
+	if in_tree != null:
+		return in_tree
+	var meta_header := panel.get_meta("header") as Label if panel.has_meta("header") else null
+	if meta_header != null and is_instance_valid(meta_header) and meta_header.is_inside_tree():
+		return meta_header
+	return null
 
 
 func _apply_item_picker_body_typography() -> void:
@@ -1324,6 +1352,9 @@ func _style_item_picker_checkbox(cb: CheckBox, body_font: int = -1) -> void:
 	cb.add_theme_constant_override("icon_max_width", ITEM_PICKER_CHECKBOX_ICON_MAX)
 	cb.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Without trimming, long item names inflate the checkbox minimum width and
+	# push the ITEMS panel past the screen edge on narrow/portrait layouts.
+	cb.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
 
 func _make_side_panel_header_strip(header_text: String) -> PanelContainer:
@@ -1868,7 +1899,7 @@ func _apply_responsive_layout() -> void:
 
 	var side_w := size.x * (LAYOUT_SIDE_END - LAYOUT_SIDE_START)
 	if size.x < RESPONSIVE_NARROW_W:
-		side_w = size.x * 0.18
+		side_w = size.x * _narrow_side_panel_fraction()
 	var main_h := size.y * (main_y1 - main_y0)
 	var side_panel_h := maxf(main_h - BOTTOM_WINDOW_MARGIN, 120.0)
 	if _spin_history_panel != null:
@@ -2128,7 +2159,7 @@ func _build_item_picker() -> void:
 	var existing_panel := get_node_or_null("PlayArea/PlayRow/ItemPickerPanel") as PanelContainer
 	if existing_panel != null:
 		_item_picker_panel = existing_panel
-		_item_picker_title = _item_picker_panel.get_meta("header") as Label
+		_item_picker_title = _side_panel_header(_item_picker_panel)
 		_apply_item_picker_body_typography()
 		return
 	_item_picker_panel = _make_side_panel("ITEMS")
