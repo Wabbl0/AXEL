@@ -28,13 +28,14 @@ var _first_visit_dialogue_running := false
 
 func _ready() -> void:
 	_location_label.text = "YOUR LOCKER"
-	AxelUiButtons.apply_terminal_style(_exit_button, 36, 72.0)
+	AxelUiButtons.apply_terminal_style(_exit_button, 36, 72.0, false)
 	_exit_button.custom_minimum_size.x = 72.0
 	if TouchControls.is_touch_ui_enabled():
 		# Keep the exit X clear of the bottom dialogue bar on touch screens.
 		_exit_button.offset_top -= 170.0
 		_exit_button.offset_bottom -= 170.0
 	_exit_button.pressed.connect(_on_exit_pressed)
+	call_deferred("_hoist_chrome_above_post_fx")
 	_map_hotspot.activated.connect(_on_map_hotspot_activated)
 	_load_textures()
 	_build_destination_buttons()
@@ -60,7 +61,7 @@ func _build_destination_buttons() -> void:
 		button.text = destination["label"]
 		button.custom_minimum_size = Vector2(320.0, 42.0)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		AxelUiButtons.apply_terminal_style(button, 34 if touch_ui else 28, 72.0 if touch_ui else 56.0)
+		AxelUiButtons.apply_terminal_style(button, 42 if touch_ui else 28, 76.0 if touch_ui else 56.0, false)
 		var scene_path: String = destination["path"]
 		if ResourceLoader.exists(scene_path):
 			button.pressed.connect(func() -> void:
@@ -70,6 +71,13 @@ func _build_destination_buttons() -> void:
 			button.disabled = true
 		_choices_panel.add_child(button)
 	call_deferred("_fit_choices_panel")
+
+
+## Navigation must stay readable above the noir/scanline/CRT filters, like the
+## dialogue bar does; under them the red-on-black palette turns to mud.
+func _hoist_chrome_above_post_fx() -> void:
+	AxelUiButtons.hoist_above_post_fx(_choices_panel)
+	AxelUiButtons.hoist_above_post_fx(_exit_button)
 
 
 ## The authored panel rect is too small for touch-sized buttons; grow it to fit
