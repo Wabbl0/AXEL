@@ -24,10 +24,16 @@ var _anim_token := 0
 var _crt_opts = CrtPowerFx.compact_chip_options()
 
 
+const TOUCH_CHIP_FONT_SIZE := 44
+
 func _ready() -> void:
 	layer = 111
 	add_to_group(&"axel_interact_prompt")
-	_label.text = touch_label if TouchControls.is_touch_ui_enabled() else key_label
+	if TouchControls.is_touch_ui_enabled():
+		_label.text = touch_label
+		_label.add_theme_font_size_override("font_size", TOUCH_CHIP_FONT_SIZE)
+	else:
+		_label.text = key_label
 	_root.visible = false
 	_root.modulate.a = 0.0
 	_beam.visible = false
@@ -128,6 +134,9 @@ func _run_hide_async() -> void:
 	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
 
 
+const SCREEN_CLAMP_MARGIN_PX := 10.0
+
+
 func _update_screen_position() -> void:
 	var viewport := get_viewport()
 	if viewport == null:
@@ -136,7 +145,13 @@ func _update_screen_position() -> void:
 	var panel_size := _panel.size
 	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
 		panel_size = _panel.get_combined_minimum_size()
-	_chip_root_position(screen_pos + screen_offset - panel_size * 0.5)
+	var pos := screen_pos + screen_offset - panel_size * 0.5
+	# Keep the chip fully on screen (portrait zoom can push world anchors
+	# against the viewport edges).
+	var view_size := viewport.get_visible_rect().size
+	pos.x = clampf(pos.x, SCREEN_CLAMP_MARGIN_PX, maxf(view_size.x - panel_size.x - SCREEN_CLAMP_MARGIN_PX, SCREEN_CLAMP_MARGIN_PX))
+	pos.y = clampf(pos.y, SCREEN_CLAMP_MARGIN_PX, maxf(view_size.y - panel_size.y - SCREEN_CLAMP_MARGIN_PX, SCREEN_CLAMP_MARGIN_PX))
+	_chip_root_position(pos)
 
 
 func _chip_root_position(pos: Vector2) -> void:
