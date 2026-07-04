@@ -146,11 +146,14 @@ func _update_screen_position() -> void:
 	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
 		panel_size = _panel.get_combined_minimum_size()
 	var pos := screen_pos + screen_offset - panel_size * 0.5
-	# Keep the chip fully on screen (portrait zoom can push world anchors
-	# against the viewport edges).
+	# Keep the chip fully on screen (portrait zoom can push world anchors against
+	# the viewport edges) and above the virtual joystick zone, where touches are
+	# captured by the stick instead of the chip.
 	var view_size := viewport.get_visible_rect().size
+	var bottom_reserved: float = TouchControls.get_reserved_bottom_px()
+	var max_y := maxf(view_size.y - bottom_reserved - panel_size.y - SCREEN_CLAMP_MARGIN_PX, SCREEN_CLAMP_MARGIN_PX)
 	pos.x = clampf(pos.x, SCREEN_CLAMP_MARGIN_PX, maxf(view_size.x - panel_size.x - SCREEN_CLAMP_MARGIN_PX, SCREEN_CLAMP_MARGIN_PX))
-	pos.y = clampf(pos.y, SCREEN_CLAMP_MARGIN_PX, maxf(view_size.y - panel_size.y - SCREEN_CLAMP_MARGIN_PX, SCREEN_CLAMP_MARGIN_PX))
+	pos.y = clampf(pos.y, SCREEN_CLAMP_MARGIN_PX, max_y)
 	_chip_root_position(pos)
 
 
