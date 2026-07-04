@@ -52,6 +52,26 @@ software drivers. A VNC desktop is also available on `DISPLAY=:1`.
   wraps Xvfb + software rendering and delegates to `res://tools/capture_scene.gd`.
   Example: `tools/capture_scene.sh res://scenes/Main_Menu/0.1_MainMenu.tscn out/menu.png 40 1280x720`.
 
+### Mobile portrait / touch controls
+
+The project targets iPhone portrait (base canvas 720x1560, `canvas_items` +
+`expand` stretch). Touch UI (fixed bottom-center virtual joystick from the
+`TouchControls` autoload, `[TAP]` interact chips) activates on real mobile /
+web-mobile targets, or anywhere when the env var `AXEL_FORCE_TOUCH=1` is set.
+
+- Portrait desktop test run: `DISPLAY=:1 AXEL_FORCE_TOUCH=1 godot --path AXEL/axel_project`
+  (window opens 396x858; mouse clicks/drags emulate touch).
+- Touch playthrough bot (headless, exit 0 on success):
+  `godot --headless --path AXEL/axel_project -s res://tools/bots/playthrough_touch_joystick.gd`
+  (joystick visibility, drag-to-walk, steer to door, tap-to-interact transition).
+- Portrait captures: pass a portrait resolution to the capture script, e.g.
+  `AXEL_FORCE_TOUCH=1 tools/capture_scene.sh res://scenes/Arc_1/1.2_Corridor.tscn out.png 90 390x844`.
+- Web (iPhone Safari) build: `godot --headless --path AXEL/axel_project --export-release Web ../web_export/index.html`
+  (requires web export templates in `~/.local/share/godot/export_templates/4.6.3.stable/`;
+  the preset is a `nothreads` build so it runs without cross-origin-isolation headers).
+  Serve `AXEL/web_export/` statically and open it in Safari/Chrome; a mobile
+  user agent (or any touch-capable browser) enables the touch UI.
+
 ### Notes
 
 - `tools/cmd/godot.cmd` is a Windows-only launcher; on Linux call `godot` directly.
