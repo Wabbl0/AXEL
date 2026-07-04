@@ -40,8 +40,15 @@ static func detect_touch_ui() -> bool:
 		return true
 	# Note: DisplayServer.is_touchscreen_available() is NOT usable here — the
 	# project enables pointing/emulate_touch_from_mouse, which makes it return
-	# true on every desktop. Feature tags identify real handheld targets.
-	return OS.has_feature("web_android") or OS.has_feature("web_ios")
+	# true on every desktop. Feature tags / JS capability identify touch targets.
+	if OS.has_feature("web_android") or OS.has_feature("web_ios"):
+		return true
+	if OS.has_feature("web"):
+		var result = JavaScriptBridge.eval(
+			"(('ontouchstart' in window) || (navigator.maxTouchPoints > 0)) ? 1 : 0", true
+		)
+		return int(result) == 1
+	return false
 
 
 func _ready() -> void:
@@ -74,6 +81,20 @@ func is_point_in_stick_zone(pos: Vector2) -> bool:
 	if not _enabled or _stick_root == null or not _stick_root.visible:
 		return false
 	return _is_inside_grab_zone(pos)
+
+
+## Screen-space center of the joystick base (canvas units). Used by tests.
+func get_stick_center() -> Vector2:
+	return _center
+
+
+## Joystick base radius in canvas units. Used by tests.
+func get_stick_radius() -> float:
+	return _radius
+
+
+func is_stick_shown() -> bool:
+	return _enabled and _stick_root != null and _stick_root.visible
 
 
 ## Vertical canvas space reserved by the joystick at the bottom of the screen.

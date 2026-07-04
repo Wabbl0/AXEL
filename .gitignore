@@ -6,3 +6,6 @@
 
 # Logs
 *.log
+
+# Godot web export build output
+AXEL/web_export/
