@@ -26,6 +26,7 @@ var _crt_opts = CrtPowerFx.compact_chip_options()
 
 func _ready() -> void:
 	layer = 111
+	add_to_group(&"axel_interact_prompt")
 	_label.text = touch_label if TouchControls.is_touch_ui_enabled() else key_label
 	_root.visible = false
 	_root.modulate.a = 0.0

@@ -136,7 +136,20 @@ func _is_advance_event(event: InputEvent) -> bool:
 		if not touch_event.pressed:
 			return false
 		# Touches meant for the virtual joystick never advance dialogue.
-		return not TouchControls.is_point_in_stick_zone(touch_event.position)
+		if TouchControls.is_point_in_stick_zone(touch_event.position):
+			return false
+		# Taps on a visible interact chip belong to the interaction, not the bar.
+		return not _touch_hits_interact_prompt(touch_event.position)
+	return false
+
+
+func _touch_hits_interact_prompt(screen_pos: Vector2) -> bool:
+	var tree := get_tree()
+	if tree == null:
+		return false
+	for prompt in tree.get_nodes_in_group(&"axel_interact_prompt"):
+		if prompt.has_method("is_point_on_chip") and prompt.is_point_on_chip(screen_pos):
+			return true
 	return false
 
 
