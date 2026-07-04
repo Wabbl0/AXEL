@@ -28,6 +28,12 @@ var _first_visit_dialogue_running := false
 
 func _ready() -> void:
 	_location_label.text = "YOUR LOCKER"
+	AxelUiButtons.apply_terminal_style(_exit_button, 36, 72.0)
+	_exit_button.custom_minimum_size.x = 72.0
+	if TouchControls.is_touch_ui_enabled():
+		# Keep the exit X clear of the bottom dialogue bar on touch screens.
+		_exit_button.offset_top -= 170.0
+		_exit_button.offset_bottom -= 170.0
 	_exit_button.pressed.connect(_on_exit_pressed)
 	_map_hotspot.activated.connect(_on_map_hotspot_activated)
 	_load_textures()
@@ -48,11 +54,13 @@ func _load_textures() -> void:
 func _build_destination_buttons() -> void:
 	for child in _choices_panel.get_children():
 		child.queue_free()
+	var touch_ui := TouchControls.is_touch_ui_enabled()
 	for destination in DESTINATIONS:
 		var button := Button.new()
 		button.text = destination["label"]
 		button.custom_minimum_size = Vector2(320.0, 42.0)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		AxelUiButtons.apply_terminal_style(button, 34 if touch_ui else 28, 72.0 if touch_ui else 56.0)
 		var scene_path: String = destination["path"]
 		if ResourceLoader.exists(scene_path):
 			button.pressed.connect(func() -> void:
@@ -60,8 +68,23 @@ func _build_destination_buttons() -> void:
 			)
 		else:
 			button.disabled = true
-			button.modulate = Color(0.45, 0.45, 0.45, 1.0)
 		_choices_panel.add_child(button)
+	call_deferred("_fit_choices_panel")
+
+
+## The authored panel rect is too small for touch-sized buttons; grow it to fit
+## the content and, on touch UI, keep it clear of the bottom dialogue bar so
+## destinations stay tappable while dialogue is showing.
+func _fit_choices_panel() -> void:
+	if not is_instance_valid(_choices_panel):
+		return
+	var touch_ui := TouchControls.is_touch_ui_enabled()
+	var bottom_clear := 170.0 if touch_ui else 24.0
+	var needed := _choices_panel.get_combined_minimum_size()
+	_choices_panel.offset_bottom = -bottom_clear
+	_choices_panel.offset_top = -(bottom_clear + needed.y)
+	if touch_ui:
+		_choices_panel.offset_right = _choices_panel.offset_left + maxf(needed.x, 480.0)
 
 
 func _play_first_visit_dialogue() -> void:

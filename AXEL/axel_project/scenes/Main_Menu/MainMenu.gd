@@ -5,6 +5,8 @@ extends Control
 @onready var quit_button: Button = %QuitButton
 
 func _ready() -> void:
+	for button in [start_button, continue_button, quit_button]:
+		AxelUiButtons.apply_terminal_style(button, 30, 56.0)
 	start_button.pressed.connect(_on_start_pressed)
 	continue_button.disabled = true
 	continue_button.pressed.connect(_on_continue_pressed)
