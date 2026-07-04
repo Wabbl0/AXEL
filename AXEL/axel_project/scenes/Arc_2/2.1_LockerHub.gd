@@ -86,8 +86,10 @@ func _hoist_chrome_above_post_fx() -> void:
 func _fit_choices_panel() -> void:
 	if not is_instance_valid(_choices_panel):
 		return
+	# Clear the bottom dialogue bar (136px min + gap) so all destinations stay
+	# visible and tappable while dialogue is showing.
 	var touch_ui := TouchControls.is_touch_ui_enabled()
-	var bottom_clear := 170.0 if touch_ui else 24.0
+	var bottom_clear := 170.0 if touch_ui else 150.0
 	var needed := _choices_panel.get_combined_minimum_size()
 	_choices_panel.offset_bottom = -bottom_clear
 	_choices_panel.offset_top = -(bottom_clear + needed.y)
