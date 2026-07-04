@@ -68,7 +68,12 @@ func _ready() -> void:
 	set_process_input(true)
 	set_process(fx_cursor)
 	get_viewport().size_changed.connect(_lock_bottom_layout)
+	TouchControls.stick_visibility_changed.connect(_on_stick_visibility_changed)
 	_begin_layout()
+
+
+func _on_stick_visibility_changed(_stick_visible: bool) -> void:
+	_lock_bottom_layout()
 
 
 func _begin_layout() -> void:
@@ -83,8 +88,11 @@ func _lock_bottom_layout() -> void:
 	_fade_root.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_fade_root.offset_left = SIDE_INSET_PX
 	_fade_root.offset_right = -SIDE_INSET_PX
-	_rest_offset_bottom = -bottom_gap_px
-	_rest_offset_top = -(bottom_gap_px + bar_h)
+	# On touch UI the fixed bottom-center joystick owns the bottom of the screen;
+	# park the bar directly above it so text is never covered by the stick.
+	var gap := bottom_gap_px + TouchControls.get_reserved_bottom_px()
+	_rest_offset_bottom = -gap
+	_rest_offset_top = -(gap + bar_h)
 	_fade_root.offset_bottom = _rest_offset_bottom
 	_fade_root.offset_top = _rest_offset_top
 	_reset_crt_visual()
@@ -125,7 +133,10 @@ func _is_advance_event(event: InputEvent) -> bool:
 		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
 	if event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
-		return touch_event.pressed
+		if not touch_event.pressed:
+			return false
+		# Touches meant for the virtual joystick never advance dialogue.
+		return not TouchControls.is_point_in_stick_zone(touch_event.position)
 	return false
 
 

@@ -31,6 +31,14 @@ const DEFAULT_MAX_AUTO_ZOOM := 4.0
 ## When set (finite), static_locked centers here instead of art rect center.
 @export var static_center: Vector2 = Vector2.INF
 
+@export_group("Portrait (mobile)")
+## In portrait viewports the camera follows the target zoomed-in on the player.
+@export var portrait_follow_enabled: bool = true
+## Base zoom applied in portrait so the player reads large on a phone screen.
+## The effective zoom never drops below the minimum needed to keep the camera
+## view inside the art rect (top/bottom map bounds can never show).
+@export var portrait_player_zoom: float = 2.0
+
 signal layout_applied(scale_factor: float, bg_position: Vector2, world_rect: Rect2)
 
 var _target: Node2D
@@ -42,13 +50,34 @@ var _viewport_size: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	if not target_path.is_empty():
 		_target = get_node_or_null(target_path) as Node2D
+	if _target == null:
+		_target = _find_player_fallback()
 	_run_pipeline()
 	call_deferred("_run_pipeline")
+	get_viewport().size_changed.connect(_run_pipeline)
 	make_current()
 
 
+func _find_player_fallback() -> Node2D:
+	var tree := get_tree()
+	if tree == null:
+		return null
+	return tree.get_first_node_in_group(&"axel_player") as Node2D
+
+
+func is_portrait_view() -> bool:
+	var size := Layout.get_viewport_size(self)
+	return size.y > size.x
+
+
+func _effective_mode() -> CameraMode:
+	if portrait_follow_enabled and is_portrait_view() and is_instance_valid(_target):
+		return CameraMode.MOVABLE_FOLLOW
+	return camera_mode
+
+
 func _physics_process(delta: float) -> void:
-	if camera_mode != CameraMode.MOVABLE_FOLLOW:
+	if _effective_mode() != CameraMode.MOVABLE_FOLLOW:
 		return
 	if not is_instance_valid(_target):
 		return
@@ -78,8 +107,15 @@ func _run_pipeline() -> void:
 		return
 	_world_rect = world_rect
 	_inset_rect = _rect_with_margin(world_rect, margin_px)
+	var mode := _effective_mode()
+	# Seed the zoom before apply_limits: compute_auto_zoom only raises it further
+	# when the view would otherwise poke past the art rect.
+	if mode == CameraMode.MOVABLE_FOLLOW and portrait_follow_enabled and is_portrait_view():
+		zoom = Vector2.ONE * maxf(portrait_player_zoom, 0.01)
+	else:
+		zoom = Vector2.ONE
 	apply_limits(
-		self, world_rect, camera_mode, _target, margin_px, _viewport_size, static_center, max_auto_zoom
+		self, world_rect, mode, _target, margin_px, _viewport_size, static_center, max_auto_zoom
 	)
 	_inset_rect = _rect_with_margin(world_rect, margin_px)
 

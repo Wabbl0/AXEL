@@ -84,6 +84,7 @@ func clear_scripted_velocity() -> void:
 	_scripted_velocity = Vector2.ZERO
 
 func _ready() -> void:
+	add_to_group(&"axel_player")
 	_last_step_position = global_position
 	if sprite_sheet == null:
 		sprite_sheet = _try_load_default_sprite_sheet()
@@ -573,18 +574,15 @@ func _physics_process(_delta: float) -> void:
 			_update_animation(Vector2.ZERO)
 		return
 
-	var direction := Vector2.ZERO
+	var direction := Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down")
 
-	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A):
-		direction.x -= 1.0
-	if Input.is_action_pressed("ui_right") or Input.is_key_pressed(KEY_D):
-		direction.x += 1.0
-	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W):
-		direction.y -= 1.0
-	if Input.is_action_pressed("ui_down") or Input.is_key_pressed(KEY_S):
-		direction.y += 1.0
+	# Virtual joystick (mobile) overrides keyboard when actively held; analog magnitude
+	# scales walk speed for finer control.
+	var touch_vector: Vector2 = TouchControls.get_move_vector()
+	if touch_vector != Vector2.ZERO:
+		direction = touch_vector
 
-	velocity = direction.normalized() * speed if direction != Vector2.ZERO else Vector2.ZERO
+	velocity = direction.limit_length(1.0) * speed if direction != Vector2.ZERO else Vector2.ZERO
 	move_and_slide()
 	_report_walk_steps_for_cadence()
 	_update_animation(direction)

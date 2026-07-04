@@ -1764,6 +1764,10 @@ func _layout_combat() -> void:
 	var host_w := maxf(_grid_host.size.x, _center_column.size.x)
 	if host_w < 64.0:
 		host_w = maxf(_center_column.get_combined_minimum_size().x, 260.0)
+	# Clamp to the width actually available between the side panels. Without this,
+	# a wide first pass leaks into _grid_host.custom_minimum_size and the grid can
+	# never shrink back down on narrow (portrait/mobile) viewports.
+	host_w = minf(host_w, _available_center_width())
 	var footer_stack_h := _get_center_column_footer_stack_height()
 	var center_col_h := maxf(_center_column.size.y, GRID_HOST_MIN_HEIGHT)
 	var max_host_h := maxf(center_col_h - footer_stack_h, GRID_HOST_MIN_HEIGHT)
@@ -1843,8 +1847,13 @@ func _layout_execute_button_to_grid_width(grid_w: float) -> void:
 func _apply_responsive_layout() -> void:
 	if _play_area == null:
 		return
-	_place_control_rect(meta_box, LAYOUT_SIDE_START, LAYOUT_CORNER_Y0, LAYOUT_TOP_BOX_END, LAYOUT_CORNER_Y1)
-	_place_control_rect(goal_box, LAYOUT_GOAL_BOX_START, LAYOUT_CORNER_Y0, LAYOUT_GOAL_BOX_END, LAYOUT_CORNER_Y1)
+	# Portrait (mobile) gives the corner HUD boxes more width so seed/goal
+	# readouts do not clip on narrow screens.
+	var is_portrait := size.y > size.x
+	var top_box_end := 0.30 if is_portrait else LAYOUT_TOP_BOX_END
+	var goal_box_start := 0.62 if is_portrait else LAYOUT_GOAL_BOX_START
+	_place_control_rect(meta_box, LAYOUT_SIDE_START, LAYOUT_CORNER_Y0, top_box_end, LAYOUT_CORNER_Y1)
+	_place_control_rect(goal_box, goal_box_start, LAYOUT_CORNER_Y0, LAYOUT_GOAL_BOX_END, LAYOUT_CORNER_Y1)
 	var economics_x0 := LAYOUT_CENTER_HUD_START
 	var economics_x1 := LAYOUT_CENTER_HUD_END
 	if size.x >= RESPONSIVE_NARROW_W:
@@ -1872,6 +1881,18 @@ func _apply_responsive_layout() -> void:
 		_grid_host.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_apply_side_panel_typography()
 	_refresh_history_row_typography()
+
+
+## Width left for the center column once visible side panels take their share.
+func _available_center_width() -> float:
+	if _play_area == null or _play_area.size.x < 64.0:
+		return maxf(_get_center_column_interior_width(260.0), 160.0)
+	var available := _play_area.size.x
+	for panel in [_spin_history_panel, _item_picker_panel]:
+		var side := panel as Control
+		if side != null and side.visible:
+			available -= maxf(side.custom_minimum_size.x, 0.0) + GRID_COLUMN_GAP
+	return maxf(available, 160.0)
 
 
 func _get_center_column_footer_stack_height() -> float:

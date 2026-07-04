@@ -91,7 +91,8 @@ polygon = PackedVector2Array(-280, -60, -45.787476, -58.608032, -40.29297, 177.6
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]
 script = ExtResource("14_camera_script")
-background_path = NodePath("WalkableWorld/Background")
+background_path = NodePath("../WalkableWorld/Background")
+target_path = NodePath("../PlayerLayer/Player")
 static_center = Vector2(560, 0)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=558325097]

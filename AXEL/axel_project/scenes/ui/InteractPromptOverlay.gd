@@ -5,7 +5,11 @@ const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 ## World-anchored interact key chip; CRT on/off uses compact opts (no white beam wash).
 
 @export var key_label := "[E]"
+@export var touch_label := "[TAP]"
 @export var screen_offset := Vector2(0.0, -52.0)
+
+## Extra padding (canvas px) around the chip rect for finger-friendly tap tests.
+const TOUCH_HIT_PAD_PX := 24.0
 
 @onready var _root: Control = $ViewportRoot/ChipRoot
 @onready var _panel: PanelContainer = $ViewportRoot/ChipRoot/BarPanel
@@ -22,7 +26,7 @@ var _crt_opts = CrtPowerFx.compact_chip_options()
 
 func _ready() -> void:
 	layer = 111
-	_label.text = key_label
+	_label.text = touch_label if TouchControls.is_touch_ui_enabled() else key_label
 	_root.visible = false
 	_root.modulate.a = 0.0
 	_beam.visible = false
@@ -81,6 +85,14 @@ func hide_prompt_immediate() -> void:
 
 func is_prompt_visible() -> bool:
 	return _is_active and _root.visible and _root.modulate.a > 0.01
+
+
+## Tap hit test against the visible chip (padded); used for touch interact.
+func is_point_on_chip(screen_pos: Vector2) -> bool:
+	if not is_prompt_visible():
+		return false
+	var rect := _panel.get_global_rect().grow(TOUCH_HIT_PAD_PX)
+	return rect.has_point(screen_pos)
 
 
 func _run_show_async() -> void:

@@ -13,6 +13,11 @@ var _previous_content_scale: Vector2i = Vector2i.ZERO
 
 
 func _ready() -> void:
+	# On touch devices (phone / web-mobile) the OS owns the window and the
+	# project-level portrait scale must win; per-scene desktop window resizing
+	# would fight the real screen size.
+	if TouchControls.is_touch_ui_enabled():
+		return
 	var root: Window = get_tree().root
 	_previous_window_size = root.size
 	_previous_content_scale = root.content_scale_size
@@ -22,6 +27,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if TouchControls.is_touch_ui_enabled():
+		return
 	var root: Window = get_tree().root
 	if _previous_content_scale.x > 0 and _previous_content_scale.y > 0:
 		root.content_scale_size = _previous_content_scale

@@ -65,12 +65,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	if not (event is InputEventKey):
-		return false
-	var key_event := event as InputEventKey
-	if not key_event.pressed or key_event.echo:
-		return false
-	return key_event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if event.is_action_pressed(&"interact"):
+		return true
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if not touch_event.pressed:
+			return false
+		if TouchControls.is_point_in_stick_zone(touch_event.position):
+			return false
+		if is_instance_valid(_interact_prompt) and _interact_prompt.is_point_on_chip(touch_event.position):
+			return true
+		return TouchInteract.touch_hits_area(get_viewport(), touch_event.position, _locker_interact_area)
+	return false
 
 
 func _is_player_near_locker() -> bool:
