@@ -19,6 +19,9 @@ size = Vector2(38.5, 1515)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
 size = Vector2(2413.9194, 90)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
+size = Vector2(80, 1200)
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
 
@@ -66,11 +69,18 @@ position = Vector2(-20.14652, 0)
 shape = SubResource("RectangleShape2D_wall_vertical")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=158922864]
-position = Vector2(2364, 763)
+position = Vector2(2700, 763)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=1612973167]
 position = Vector2(58.608154, 0)
 shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="ExitTrigger" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1200780201]
+position = Vector2(2390, 763)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExitTrigger" unique_id=1200780202]
+shape = SubResource("RectangleShape2D_exit_trigger")
 
 [node name="LockerWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1200780001]
 position = Vector2(1172, 659)
@@ -91,7 +101,7 @@ polygon = PackedVector2Array(-280, -60, -45.787476, -58.608032, -40.29297, 177.6
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]
 script = ExtResource("14_camera_script")
-background_path = NodePath("WalkableWorld/Background")
+background_path = NodePath("../WalkableWorld/Background")
 static_center = Vector2(560, 0)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=558325097]

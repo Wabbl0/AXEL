@@ -3,8 +3,9 @@ extends CanvasLayer
 const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 
 ## Non-blocking bottom-centered dialogue bar; does not pause physics or capture input.
-## While visible: Tab / E / Space / Enter / click during typing → 5× typewriter speed.
-## When the line is fully shown, the same inputs advance (scramble to next line or CRT off).
+## While typing: Tab / E / Space / Enter / click → instantly reveal the full line.
+## When fully shown: same inputs advance immediately; otherwise auto-advance after a
+## word-count reading timer, or ~2s after an instant skip reveal.
 
 enum LinePhase {
 	NONE,
@@ -15,7 +16,10 @@ enum LinePhase {
 const FADE_IN_SEC := 0.22
 const FADE_OUT_SEC := 0.22
 const DEFAULT_CHARS_PER_SEC := 28.0
-const TYPEWRITER_BOOST := 5.0
+const AUTO_ADVANCE_READING_BASE_SEC := 3.0
+const AUTO_ADVANCE_READING_SQRT_COEFFICIENT := 0.5774
+const AUTO_ADVANCE_SKIP_GRACE_SEC := 2.0
+const AUTO_ADVANCE_READING_MAX_SEC := 20.0
 const SLIDE_OFFSET := 12.0
 const SIDE_INSET_PX := 28.0
 const CURSOR_GLYPH := "\u2588"
@@ -41,9 +45,11 @@ const BAR_MIN_HEIGHT := 136.0
 @onready var _label: Label = $ViewportRoot/RootMargin/BarPanel/InnerPanel/LineLabel
 
 var _line_phase := LinePhase.NONE
-var _typewriter_speed_mult := 1.0
 var _advance_requested := false
+var _skip_requested := false
 var _skip_input_enabled := true
+var _active_line_text := ""
+var _active_line_start_ms := 0
 var _line_token := 0
 var _panel_style: StyleBoxFlat
 var _inner_style: StyleBoxFlat
@@ -133,7 +139,7 @@ func _is_advance_event(event: InputEvent) -> bool:
 func _handle_line_input() -> bool:
 	match _line_phase:
 		LinePhase.TYPING:
-			_typewriter_speed_mult = TYPEWRITER_BOOST
+			_skip_requested = true
 			return true
 		LinePhase.READY:
 			_advance_requested = true
@@ -145,21 +151,48 @@ func is_line_ready() -> bool:
 	return _line_phase == LinePhase.READY
 
 
-## Waits until the player presses advance while the current line is fully shown.
+## Waits until the player presses advance or the auto-advance deadline is reached.
 func await_line_advance() -> void:
 	var token := _line_token
-	await _wait_for_advance(token)
+	await _wait_for_advance(token, _compute_advance_deadline_ms())
 
 
-func _wait_for_advance(token: int) -> void:
+func _reading_duration_sec(text: String) -> float:
+	var word_count := text.split(" ", false).size()
+	var extra_words := maxf(word_count - 1, 0)
+	return clampf(
+		AUTO_ADVANCE_READING_BASE_SEC + AUTO_ADVANCE_READING_SQRT_COEFFICIENT * sqrt(extra_words),
+		AUTO_ADVANCE_READING_BASE_SEC,
+		AUTO_ADVANCE_READING_MAX_SEC,
+	)
+
+
+func _compute_advance_deadline_ms() -> int:
+	if _skip_requested:
+		return Time.get_ticks_msec() + int(AUTO_ADVANCE_SKIP_GRACE_SEC * 1000.0)
+	return _active_line_start_ms + int(_reading_duration_sec(_active_line_text) * 1000.0)
+
+
+func _wait_for_advance(token: int, deadline_ms: int) -> void:
 	if not _line_alive(token):
 		return
 	if _line_phase != LinePhase.READY:
 		return
 	_advance_requested = false
 	while _line_alive(token) and not _advance_requested:
+		if Time.get_ticks_msec() >= deadline_ms:
+			break
 		await get_tree().process_frame
 	_advance_requested = false
+
+
+func _await_or_skip(duration_sec: float, allow_skip: bool) -> bool:
+	var end_ms := Time.get_ticks_msec() + int(duration_sec * 1000.0)
+	while Time.get_ticks_msec() < end_ms:
+		if allow_skip and _skip_requested:
+			return true
+		await get_tree().process_frame
+	return false
 
 
 func _set_ignore_mouse_recursive(n: Node) -> void:
@@ -241,8 +274,8 @@ func _scramble_glitch(length: int) -> void:
 func interrupt_line() -> void:
 	_line_token += 1
 	_line_phase = LinePhase.NONE
-	_typewriter_speed_mult = 1.0
 	_advance_requested = false
+	_skip_requested = false
 	_cursor_active = false
 	_stop_border_pulse()
 	_cancel_crt_power()
@@ -258,8 +291,8 @@ func interrupt_line() -> void:
 func cancel_pending_line() -> void:
 	_line_token += 1
 	_line_phase = LinePhase.NONE
-	_typewriter_speed_mult = 1.0
 	_advance_requested = false
+	_skip_requested = false
 	_cursor_active = false
 	_stop_border_pulse()
 
@@ -270,6 +303,16 @@ func is_bar_visible() -> bool:
 
 func _line_alive(token: int) -> bool:
 	return is_instance_valid(self) and token == _line_token
+
+
+## Snapshot for callers running their own fire-and-forget line (e.g. a scripted
+## intro line that must not stomp on a newer, movement-triggered sequence).
+func current_line_token() -> int:
+	return _line_token
+
+
+func is_line_token_current(token: int) -> bool:
+	return _line_alive(token)
 
 
 func _cancel_crt_power() -> void:
@@ -297,8 +340,8 @@ func show_lines(
 
 	_line_token += 1
 	var token := _line_token
-	_typewriter_speed_mult = 1.0
 	_advance_requested = false
+	_skip_requested = false
 	_skip_input_enabled = allow_skip
 	_apply_chrome()
 
@@ -318,11 +361,10 @@ func show_lines(
 			if not _line_alive(token):
 				return
 
-		_typewriter_speed_mult = 1.0
 		await _run_typewriter(text, chars_per_sec, allow_skip, token)
 		if not _line_alive(token):
 			return
-		await _wait_for_advance(token)
+		await _wait_for_advance(token, _compute_advance_deadline_ms())
 		if not _line_alive(token):
 			return
 
@@ -354,8 +396,8 @@ func type_line(
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
-	_typewriter_speed_mult = 1.0
 	_advance_requested = false
+	_skip_requested = false
 	_skip_input_enabled = allow_skip
 	var is_swap := (
 		fx_line_swap_glitch
@@ -379,6 +421,9 @@ func _run_typewriter(
 	token: int = -1,
 ) -> void:
 	var n := full_text.length()
+	_active_line_text = full_text
+	_active_line_start_ms = Time.get_ticks_msec()
+	_skip_requested = false
 	if n == 0:
 		_line_phase = LinePhase.READY
 		return
@@ -393,6 +438,8 @@ func _run_typewriter(
 			_stop_border_pulse()
 			_line_phase = LinePhase.NONE
 			return
+		if allow_skip and _skip_requested:
+			break
 		var revealed := full_text.substr(0, i)
 		_cursor_text = revealed
 		if fx_cursor:
@@ -401,15 +448,12 @@ func _run_typewriter(
 		else:
 			_cursor_active = false
 			_label.text = revealed
-		var step_delay := delay
-		if allow_skip:
-			step_delay = delay / maxf(_typewriter_speed_mult, 1.0)
-		await get_tree().create_timer(step_delay).timeout
+		if await _await_or_skip(delay, allow_skip):
+			break
 
 	_cursor_active = false
 	_label.text = full_text
 	_stop_border_pulse()
-	_typewriter_speed_mult = 1.0
 	_line_phase = LinePhase.READY
 
 

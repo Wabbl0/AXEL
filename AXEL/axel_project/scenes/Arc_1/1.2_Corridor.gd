@@ -5,9 +5,11 @@ extends Node2D
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
 
 const LOCKER_HUB_SCENE := "res://scenes/Arc_2/2.1_LockerHub.tscn"
+const BASEMENT_DOOR_SCENE := "res://scenes/Arc_2/2.2_BasementDoor.tscn"
 const LOCKER_LINE := "This was your locker."
 
 var _locker_interact_area: Area2D
+var _exit_trigger: Area2D
 var _spawn_line_active := false
 var _is_transitioning := false
 var _locker_zone_active := false
@@ -22,6 +24,11 @@ func _ready() -> void:
 	if is_instance_valid(_locker_interact_area):
 		_locker_interact_area.body_entered.connect(_on_locker_body_entered)
 		_locker_interact_area.body_exited.connect(_on_locker_body_exited)
+	_exit_trigger = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/ExitTrigger"
+	) as Area2D
+	if is_instance_valid(_exit_trigger):
+		_exit_trigger.body_entered.connect(_on_exit_trigger_body_entered)
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	call_deferred("_restore_player_position_if_needed")
@@ -169,15 +176,29 @@ func _hide_locker_interact_prompt() -> void:
 
 
 func _begin_locker_transition() -> void:
+	_begin_scene_transition(LOCKER_HUB_SCENE)
+
+
+func _on_exit_trigger_body_entered(body: Node) -> void:
+	if body != _player or _is_transitioning:
+		return
+	call_deferred("_begin_basement_transition")
+
+
+func _begin_basement_transition() -> void:
+	_begin_scene_transition(BASEMENT_DOOR_SCENE)
+
+
+func _begin_scene_transition(scene_path: String) -> void:
 	if not is_instance_valid(_player):
 		return
 	_is_transitioning = true
 	GameManager.set_corridor_return_pos(_player.global_position)
 	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
 		_interact_prompt.hide_prompt_immediate()
-	var err := get_tree().change_scene_to_file(LOCKER_HUB_SCENE)
+	var err := get_tree().change_scene_to_file(scene_path)
 	if err != OK:
-		push_error("Failed to change scene to %s (error %d)." % [LOCKER_HUB_SCENE, err])
+		push_error("Failed to change scene to %s (error %d)." % [scene_path, err])
 		_is_transitioning = false
 		if is_instance_valid(AxelPostFxStack):
 			AxelPostFxStack.apply_to_scene(get_tree().current_scene)

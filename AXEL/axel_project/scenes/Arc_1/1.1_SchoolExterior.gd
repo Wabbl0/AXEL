@@ -39,6 +39,16 @@ var _unlock_position: Vector2 = Vector2.ZERO
 var _second_dialogue_fired := false
 var _watching_movement := false
 
+## Background_1_1's hand-tuned position/scale before the camera migration to
+## background_camera_controller.gd. EnvironmentColliders (walls/trees/rocks/doors)
+## were hand-placed to match this exact old placement, so they are re-mapped
+## into the camera's live cover-fit placement using this as the baseline —
+## this keeps colliders correct at any window size, not just today's.
+const _OLD_BG_POSITION := Vector2(32.0, -297.0)
+const _OLD_BG_SCALE := Vector2(0.33494318, 0.32130682)
+const INTRO_HIDE_MARGIN_X := 250.0
+const INTRO_HIDE_MARGIN_Y := 350.0
+
 
 func _ready() -> void:
 	_door_interact_area = get_node_or_null(
@@ -48,6 +58,8 @@ func _ready() -> void:
 		_door_interact_area.body_entered.connect(_on_door_interact_body_entered)
 		_door_interact_area.body_exited.connect(_on_door_interact_body_exited)
 	set_process_unhandled_input(true)
+	$Camera2D.layout_applied.connect(_on_background_layout_applied)
+	_sync_environment_colliders_from_current_background()
 	_configure_leaf_occlusion_masks()
 	if _should_skip_intro():
 		_intro_state = IntroState.PLAYER_FREE
@@ -93,7 +105,13 @@ func _run_forced_intro_sequence() -> void:
 
 	AxelEventFx.start_interface_distortion()
 
+	var stones_target := _left_stones_stand_target()
+	var hidden_spawn := stones_target - Vector2(INTRO_HIDE_MARGIN_X, INTRO_HIDE_MARGIN_Y)
+	if is_instance_valid(_player):
+		_player.global_position = hidden_spawn
+
 	_run_intro_glitch_burst(_GLITCH_BURST_SEC)
+	await _scripted_walk_down_to_road(stones_target)
 	await _scripted_walk_to_left_stones()
 
 	if is_instance_valid(_left_wall_collision):
@@ -101,15 +119,35 @@ func _run_forced_intro_sequence() -> void:
 
 	await AxelEventFx.stop_interface_distortion()
 
-	if _top_dialogue.has_method("type_line"):
-		await _top_dialogue.type_line(_FIRST_DIALOGUE_LINE)
-
 	_unlock_position = _player.global_position
 	_enable_player_control()
 	_intro_state = IntroState.PLAYER_FREE
 	_watching_movement = true
 	AxelEventFx.set_cadence_enabled(true)
 	_refresh_door_interact_prompt()
+
+	_play_first_dialogue_line()
+
+
+func _play_first_dialogue_line() -> void:
+	if not _top_dialogue.has_method("type_line"):
+		return
+
+	var has_token_guard := _top_dialogue.has_method("current_line_token") and \
+		_top_dialogue.has_method("is_line_token_current")
+	var token: int = _top_dialogue.call("current_line_token") if has_token_guard else -1
+
+	await _top_dialogue.type_line(_FIRST_DIALOGUE_LINE)
+	if has_token_guard and not _top_dialogue.call("is_line_token_current", token):
+		return
+
+	if _top_dialogue.has_method("await_line_advance"):
+		await _top_dialogue.await_line_advance()
+	if has_token_guard and not _top_dialogue.call("is_line_token_current", token):
+		return
+
+	if _top_dialogue.has_method("hide_line"):
+		await _top_dialogue.hide_line()
 
 
 func _run_intro_glitch_burst(duration_sec: float) -> void:
@@ -130,11 +168,21 @@ func _enable_player_control() -> void:
 		_player.set_input_enabled(true)
 
 
+func _scripted_walk_down_to_road(stones_target: Vector2) -> void:
+	var road_target := Vector2(stones_target.x - INTRO_HIDE_MARGIN_X, stones_target.y)
+	await _scripted_walk_to(road_target)
+
+
 func _scripted_walk_to_left_stones() -> void:
-	if not is_instance_valid(_player) or not is_instance_valid(_rocks_left):
+	if not is_instance_valid(_rocks_left):
+		return
+	await _scripted_walk_to(_left_stones_stand_target())
+
+
+func _scripted_walk_to(target: Vector2) -> void:
+	if not is_instance_valid(_player):
 		return
 
-	var target := _left_stones_stand_target()
 	var base_speed := float(_player.get("speed")) if _player.get("speed") != null else 180.0
 	var move_speed := base_speed * _SCRIPTED_WALK_SPEED_SCALE
 	var frames := 0
@@ -314,6 +362,40 @@ func _configure_leaf_occlusion_masks() -> void:
 		y_cutoffs[1],
 		_LEAF_GATE_SOFTNESS,
 	)
+
+
+func _sync_environment_colliders_from_current_background() -> void:
+	var background := get_node_or_null("Background_1_1") as Sprite2D
+	if background == null:
+		return
+	_sync_environment_colliders(background.scale.x, background.position)
+
+
+func _on_background_layout_applied(
+	scale_factor: float, bg_position: Vector2, _world_rect: Rect2
+) -> void:
+	_sync_environment_colliders(scale_factor, bg_position)
+
+
+func _sync_environment_colliders(new_scale_factor: float, new_bg_position: Vector2) -> void:
+	var env := get_node_or_null("EnvironmentColliders") as Node2D
+	if env == null:
+		return
+	var env_scale := Vector2(
+		new_scale_factor / _OLD_BG_SCALE.x, new_scale_factor / _OLD_BG_SCALE.y
+	)
+	env.position = new_bg_position - env_scale * _OLD_BG_POSITION
+	env.scale = env_scale
+	call_deferred("_wake_static_colliders")
+
+
+func _wake_static_colliders() -> void:
+	var env := get_node_or_null("EnvironmentColliders")
+	if env == null:
+		return
+	for child in env.get_children():
+		if child is StaticBody2D:
+			child.position = child.position
 
 
 func _trunk_line_y_cutoff(trunk_body: StaticBody2D) -> float:

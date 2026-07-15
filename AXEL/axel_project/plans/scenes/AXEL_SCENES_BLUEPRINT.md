@@ -18,7 +18,7 @@ todos:
     content: "LockerHub.tscn (scene_3): hub.png bg; MapHotspot (UiPolygonHotspot) on map paper swaps to map.png on click, five destination choices plus red basement entry, add_memory_once('scene_3') on enter."
     status: pending
   - id: scene-basement-blocked-temp
-    content: "BasementBlockedTemp.tscn (basement_blocked_temp): dialog-only sealed-off message with Go back to LockerHub."
+    content: "2.2_BasementDoor.tscn (basement_door): walkable exploration room with chained-door placeholder, once-ever Not yet line on [E], Corridor right-edge entry and left-edge return."
     status: pending
   - id: scene-cafeteria
     content: "Cafeteria.tscn (loc_cafeteria): cafeteria.png bg, ghostly figure sprite with idle float, three choices (table/kitchen/return)."
@@ -181,12 +181,13 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 - Exit: red `X` bottom-right (root-level, visible on locker + map views) → `1.2_Corridor.tscn` at saved `corridor_return_pos`.
 - No player node; no embedded post-FX. Script: `2.1_LockerHub.gd`.
 
-### 2.2 `BasementBlockedTemp.tscn` (`basement_blocked_temp`)
+### 2.2 `2.2_BasementDoor.tscn` (`basement_door`) — **shipped**
 - Location label: `BASEMENT`
-- No background.
-- Dialogue: "The basement is sealed off for now. Come back later."
-- Choice: `Go back` -> `LockerHub`.
-- Animations: none - this is a dialog-only gate shown before the player has satisfied prerequisites.
+- Background: placeholder `exports/Drawings/2.2_BasementDoor.png` (flat dark grey; swap for final art later).
+- Walkable exploration scene: chained-door placeholder polygons, floor divider at Y≈474, door `[E]` interact once-ever (`"Not yet."` / `GameManager.basement_door_line_seen`).
+- Entry: `1.2_Corridor.tscn` right-edge `ExitTrigger` (auto, no `[E]`).
+- Exit: left-edge `ExitTrigger` → `1.2_Corridor.tscn` at saved `corridor_return_pos`.
+- No embedded post-FX. Script: `2.2_BasementDoor.gd`. Replaces `2.2_BasementBlockedTemp.tscn`.
 
 ---
 

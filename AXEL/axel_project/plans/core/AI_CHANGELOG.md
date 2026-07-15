@@ -3352,3 +3352,123 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Camera stays locked; whole corridor visible at once; no vertical pan/clamp dip; limits derived from PNG `world_rect`.
 - Verification: Manual F6 on `1.2_Corridor` — walk full corridor; confirm no dip, no red bands, edge-to-edge fill, colliders aligned.
+
+## 2026-07-14
+
+### Upgrade Godot editor to 4.7
+
+- Request: User downloaded Godot 4.7 into the repo root alongside the 4.6.3 executable; update repo references to the new version and note any 4.7 changes relevant to AXEL.
+- Implementation: Pointed `tools/cmd/godot.cmd`, `tools/Godot.code-workspace`, `.vscode/settings.json`, `AXEL/.vscode/settings.json`, and `README.md` at `Godot_v4.7-stable_win64.exe` (console variant too). Left the 4.6.3 binaries in place (user did not ask for removal). `project.godot` `config/features` still lists `"4.6"`; left as-is since 4.7 opens/runs 4.6-tagged projects without issue.
+- Files changed:
+  - `tools/cmd/godot.cmd`
+  - `tools/Godot.code-workspace`
+  - `.vscode/settings.json`
+  - `AXEL/.vscode/settings.json`
+  - `README.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: CLI wrappers and editor integration now launch Godot 4.7; no AXEL script/shader changes required. Reviewed 4.7 breaking-change list (audio spectrum analyzer API, keyboard/mouse device ID renumbering, shader preprocessor macro restrictions, particle angular velocity, Android OBB removal) — AXEL uses none of these (no `AudioEffectSpectrumAnalyzer`, no hardcoded input device IDs, no 3D particles with rotation, not exporting Android OBB). One project shader (`white_sprite.gdshader`) uses a simple `#define` constant, which is unaffected.
+- Verification: `Godot_v4.7-stable_win64_console.exe --version` → `4.7.stable.official.5b4e0cb0f`; `tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd` → `Determinism check OK (100 spins, seed 12345)`.
+- Notes: Historical changelog entries still cite 4.6.2/4.6.3 console invocations where recorded at implementation time. No AXEL-specific new features from 4.7 (HDR output, AreaLight3D, VirtualJoystick, MeshLibrary editor, Asset Store redesign) are directly applicable, since AXEL is a 2D Windows-focused project without 3D lighting, mobile touch controls, or GridMap usage.
+
+### Corridor camera re-checks viewport size on resize
+
+- Request: Fix 1.2 Corridor camera framing in the docked editor Game panel — corridor art appeared in a small bottom-right rectangle with large red/dark-red borders; movement still worked.
+- Implementation: Ported only the resize-recheck line from `cursor/mobile-portrait-touch-ef45` into `background_camera_controller.gd` — `get_viewport().size_changed.connect(_run_pipeline)` in `_ready()` so zoom/limits recompute when the viewport size changes (e.g. after embedded Game panel settles). No portrait follow/zoom behavior brought over; pipeline still derives limits from `Layout.get_viewport_size()` — no manual `limit_*` / `fixed_x` tuning.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/background_camera_controller.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: BackgroundCamera scenes (including 1.2 Corridor) should fill the window correctly in docked and floating Play modes; resizing the window keeps framing correct. Desktop behavior unchanged aside from resize recalculation.
+- Verification: Headless smoke — `tools\cmd\godot.cmd --headless --path AXEL/axel_project --quit-after 2 res://scenes/Arc_1/1.2_Corridor.tscn` exits 0. Manual: F6 docked + floating Play on `1.2_Corridor` — confirm full-window fill, movement, no portrait UI/zoom.
+- Notes: `exploration_viewport.gd` resize caveat (embedded panel ignores design size) unchanged; fix is camera-side recheck only. Mobile branch left untouched.
+
+### Flexible window resolution + 3:2 aspect (Phase 1 — global)
+
+- Request: Game window should support any resolution/size the player picks, always keeping a 3:2 gameplay aspect (letterboxed), instead of the old per-scene fixed window size. Prepare for a future resolution settings screen (do not build the screen now). Playtest at 1920x1280.
+- Implementation: Switched window sizing from per-scene OS-window forcing to Godot's project-wide Keep-aspect scaling. `project.godot` `[window]`: base `size/viewport_width/height` = `1920x1280` (true 3:2, was 1400x900), `content_scale_aspect=1` (Keep, was 4/Expand); left `content_scale_mode=1` (CanvasItems) and resizability unchanged (single-lever change vs the reverted 2026-05-19 attempt that also changed scale mode + resizable and broke 1.1). Gutted `exploration_viewport.gd` to an inert stub — removed `_ready()`/`_exit_tree()` window/content-scale overrides and helper funcs; kept the node + `design_viewport`/`debug_scale` exports so 1.1/1.2 still load without `.tscn` edits. `background_camera_controller.gd` unchanged (its `size_changed` listener from the prior entry already recomputes cover-fit at any window size).
+- Files changed:
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scenes/core/exploration_viewport.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_LAYOUT_RULES.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Window is now freely resizable; gameplay stays 3:2 with automatic letterbox bars when the window is a different shape. 1.2 Corridor (and future BackgroundCamera scenes) fill the 3:2 area at any window size. Combat/menus inherit the same global Keep-aspect (may show letterbox bars off-3:2). Supersedes the "global stays 1400x900, resize per scene" rule; overrides the AI_DOCS legacy per-scene window note with approval.
+- Verification: Headless smoke on 1.2 Corridor (see Phase 2 entry for combined run); manual F6 docked + floating at multiple window sizes.
+- Notes: 1.1 School Exterior handled separately in Phase 2 (older `camera_follow_vertical.gd` camera needed migration first, since this exact global-resolution area broke 1.1 before). No settings-screen UI built yet — global Keep-aspect + resizable window prepares for it.
+
+### Flexible window resolution + 3:2 aspect (Phase 2 — 1.1 camera migration)
+
+- Request: With the new global 3:2 aspect (Phase 1), make 1.1 School Exterior zoom so no area outside the background art is ever visible. User approved the camera swap and accepted that hand-placed colliders will need manual editor re-alignment afterward.
+- Implementation: Migrated `1.1_SchoolExterior.tscn` `Camera2D` from `camera_follow_vertical.gd` (fixed X + manual `limit_left/top/right/bottom`) to `background_camera_controller.gd` (`BackgroundCamera`): `camera_mode=1` (MOVABLE_FOLLOW), `fit_mode` default COVER, `background_path=../Background_1_1`, `target_path=../PlayerLayer/Player`; removed the hand-tuned `fixed_x`/`limit_*`. COVER + auto-zoom guarantees the art always fills the 3:2 view (no void fringe). Kept `camera_follow_vertical.gd` on disk (now unreferenced) for rollback. Did NOT reparent the player to `WalkableWorld/Player` — the working 1.2 scene keeps the `PlayerLayer` CanvasLayer (layer=100, follow_viewport) to stay drawn above noir, so 1.1 keeps the same proven structure; the deferred "world-space player" migration remains deferred.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 1.1 now uses art-derived camera limits and auto-zoom (COVER), following the player in X and Y (previously fixed-X, vertical-only). Because `BackgroundCamera` re-fits `Background_1_1` at runtime (cover-fit scale/position) and 1.1's colliders are NOT auto-synced to the background (unlike 1.2), walls/tree/rock/door colliders and the player spawn/intro-walk targets will be misaligned until re-tuned by hand in the editor. Expected and accepted.
+- Verification: Headless — `1.1_SchoolExterior.tscn` (with `AXEL_SKIP_INTRO=1`) and `1.1_SchoolExterior_Playtest.tscn` both start clean, exit 0, no errors/null warnings (no repeat of the prior "would not start"). `1.2_Corridor.tscn` also exits 0 under the new global settings.
+- Follow-up (manual, user): verify leaf-occlusion fade near trees and that the player still draws above the noir overlay; confirm no background edge/void is visible at various window sizes and 3:2.
+
+### Flexible window resolution + 3:2 aspect (Phase 2b — 1.1 collider auto-sync)
+
+- Request: After the Phase 2 camera swap, player couldn't walk all the way down (blocked by something), and the spawn point/background looked vertically offset — user wants the new global resize system to fully work on 1.1, not a one-time manual drag fix.
+- Root cause: `Background_1_1` was hand-placed (`position=(32,-297)`, `scale≈(0.335,0.321)`) for the old fixed-window setup. `background_camera_controller.gd` now repositions/rescales that sprite live (cover-fit) every run, but `EnvironmentColliders` (walls, tree lines, rocks, stump, doors — all hand-placed to match the *old* sprite placement) never moved, so colliders no longer lined up with the new, bigger/shifted art — the old `BottomWall` sat partway inside the new (larger) art instead of at its true bottom edge.
+- Implementation: Ported `1.2_Corridor.gd`'s `layout_applied` collider-sync pattern into `1.1_SchoolExterior.gd`, generalized for 1.1's non-zero old baseline. On `Camera2D.layout_applied` (and once synchronously in `_ready()` using the background's already-applied transform, so the skip-intro spawn calculation isn't stale), computes `env_scale = new_scale_factor / _OLD_BG_SCALE` and `env_position = new_bg_position - env_scale * _OLD_BG_POSITION`, then applies to `EnvironmentColliders` as a single container transform — this remaps the entire hand-placed collider subtree (which was baked in "old-world-space") into the live cover-fit space without editing any individual wall/tree/door coordinate. Stays correct at any future window size/resolution, matching the point of the flexible-resolution system (not just today's fixed values).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Walls/trees/rocks/doors and the `_left_stones_stand_target()` intro-walk target now track the live background placement; player should no longer be blocked short of the true map edges, and ground should sit under the spawn point correctly.
+- Verification: Wrote and ran a temporary headless diagnostic (instantiate scene, read `Background_1_1`/`EnvironmentColliders` transforms and key collider global positions after a few frames, deleted after use) — confirmed `BottomWall` lands within ~0.6px of the background's computed `world_rect` bottom edge and `TopWall` within ~0.7px of the top edge, proving the remap formula is correct and scale-independent. Headless scene load also exits 0 with no errors.
+- Notes: The player's raw off-screen starting position (used only as a walk-FROM point during the non-skip intro, before scripting a walk to `_left_stones_stand_target()`) was left unconverted — low priority since it's immediately walked away from; flag if it looks visually wrong on a fresh (non-skip-intro) playthrough.
+
+### 1.1 player walks a fixed-height road
+
+- Request: Camera follow behavior in 1.1 is good; player should instead walk straight along the road left/right, with the character's feet fixed at world Y=385 (not free vertical movement).
+- Implementation: Added a reusable `@export var locked_feet_y: float = -1.0` to `scripts/Player.gd` (default disabled). When set, `_apply_locked_feet_y()` runs after `move_and_slide()` in `_physics_process()` (both normal input and scripted-velocity paths) — computes the current feet-to-body offset via the existing `_get_collision_feet_anchor_y()` helper and snaps `global_position.y` so the feet land exactly on `locked_feet_y` every frame, while horizontal movement is untouched. Set `locked_feet_y = 385.0` on `1.1_SchoolExterior.tscn`'s `Player` node only; no change for 1.2 or other scenes (defaults stay off).
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: In 1.1, pressing up/down no longer moves the player visually — feet stay glued to Y=385 while left/right movement works normally. Applies uniformly to both free-roam and the scripted intro walk-to-stones.
+- Verification: Headless smoke on `1.1_SchoolExterior.tscn` and `1.2_Corridor.tscn` — both exit 0, no errors.
+- Notes: If the scripted intro walk to the rocks looks odd sliding at a fixed height, flag it — may want to disable the lock during that one sequence.
+
+## 2026-07-15
+
+### Dialogue bar: skip-to-reveal + auto-advance timer (doc backfill)
+
+- Request: Catch up docs/changelog for AXEL changes made in earlier chats that were never logged.
+- Implementation: Found `TopDialogueOverlay.gd` already had an unlogged behavior change in the working tree — replaced the old "5× typewriter speed boost" skip with an instant full-line reveal (`_skip_requested` breaks the per-character loop). Added an auto-advance deadline (`_compute_advance_deadline_ms()`): normally `AUTO_ADVANCE_READING_BASE_SEC` (3s) + `AUTO_ADVANCE_READING_SQRT_COEFFICIENT` (0.5774) × sqrt(extra words), capped at `AUTO_ADVANCE_READING_MAX_SEC` (20s); after an instant skip-reveal, a flat `AUTO_ADVANCE_SKIP_GRACE_SEC` (2s) grace instead. `_wait_for_advance()` now breaks on either a manual advance press or this deadline, so a line can never block forever. `allow_skip=false` still ignores skip-reveal + manual advance input entirely, but the reading-timer auto-advance still applies. No gameplay code was changed in this pass — only the docs were brought in sync with the existing code.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None (docs only) — the running behavior (auto-advance + instant skip-reveal) was already live; this just documents it.
+- Verification: Re-read `TopDialogueOverlay.gd` end-to-end and confirmed the description above matches the current implementation.
+- Notes: Recommend a manual check next playtest: let a line sit untouched and confirm it auto-advances; press advance mid-type and confirm it snaps straight to the full line.
+
+### Corridor 1.2: fix Camera2D background_path (camera framing)
+
+- Request: Fix scene 1.2 showing flat dark-red empty area — only a sliver of corridor art visible bottom-right.
+- Implementation: Corrected `Camera2D.background_path` from `WalkableWorld/Background` to `../WalkableWorld/Background` so the sibling-relative path resolves; restores auto-framing via `background_camera_controller.gd` and `layout_applied` wall resync.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+- Behavior impact: Corridor background should fill and center the screen (like 1.1); colliders may resync live for the first time — nudge only if misaligned.
+- Verification: Headless load `res://scenes/Arc_1/1.2_Corridor.tscn` exit 0, no errors; visual framing + collider walk-through still needs in-editor check.
+- Notes: Legacy scene — scoped wiring fix only; no script or collider changes unless recheck finds mismatch.
+
+### Corridor 1.2: right exit + walkable 2.2 Basement Door room
+
+- Request: Open the Corridor's right side so the player can walk off-screen into a real walkable basement door room (replacing the black-popup placeholder); door shows `"Not yet."` once on `[E]`; left-edge return to Corridor.
+- Implementation: Moved `RightWall` right in `1.2_Corridor.tscn` and added `ExitTrigger` `Area2D`; `1.2_Corridor.gd` auto-transitions to `2.2_BasementDoor.tscn` on player entry (shared `_begin_scene_transition()` with locker hub). Built new walkable `2.2_BasementDoor.tscn` + `2.2_BasementDoor.gd` with placeholder background, chained-door polygons, floor divider line + collision, door `[E]` interact gated by `GameManager.basement_door_line_seen`, left `ExitTrigger` return to corridor at saved `corridor_return_pos`. Renamed/replaced `2.2_BasementBlockedTemp.tscn`. Added `basement_door_line_seen` persistence to `GameManager.gd`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_BasementDoor.gd`
+  - `AXEL/axel_project/exports/Drawings/2.2_BasementDoor.png`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Walking right in Corridor auto-loads the basement room; `[E]` at chained door plays `"Not yet."` once; walking left returns to Corridor at prior position. Locker Hub unchanged (still no basement button).
+- Verification: Headless scene load on `1.2_Corridor.tscn` and `2.2_BasementDoor.tscn`; manual walk-through per acceptance checklist.
+- Notes: Placeholder flat-grey background; swap `2.2_BasementDoor.png` for final art later. Approved legacy change to `1.2_Corridor.tscn` `RightWall` only.

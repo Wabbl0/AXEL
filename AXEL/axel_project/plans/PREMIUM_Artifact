@@ -1,0 +1,14 @@
+PREMIUM PLAN
+AXEL — plan only. Do not implement or edit files.
+Tool rule: Do NOT read, grep, search, or explore the codebase.
+Use ONLY the EXPLORATION ARTIFACT below. If a path, line, or behavior is missing or unclear, ask me in one batched question list — do not verify in the repo yourself.
+@AXEL/axel_project/plans/core/AI_DOCS.md (canon only — no file hunting)
+--- EXPLORATION ARTIFACT ---
+<paste block from Auto explore chat>
+--- END ARTIFACT ---
+Deliver:
+1. Numbered implementation steps (file + concrete change; no full code unless one line is essential)
+2. Acceptance criteria (what I should see in-game after the fix)
+3. Manual test checklist (≤5 steps)
+4. Residual risks / rollback note
+Keep scope minimal. One batched question list only if truly blocked.

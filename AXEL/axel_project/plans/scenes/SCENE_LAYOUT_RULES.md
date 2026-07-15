@@ -39,16 +39,16 @@ Large scenes use per-scene tagged profiles:
 - `library_large`: player scale `0.78`, speed `145`
 - `default`: player scale `1.00`, speed `180`
 
-## Per-scene exploration viewport (Arc 1 legacy — 1.1 / 1.2)
+## Window resolution and aspect (project-wide)
 
-Global `project.godot` stays at **1400×900** (do not change without approval — prior 1280×720 experiment broke 1.1). Arc 1 scenes instead resize the OS window on enter via `scenes/core/exploration_viewport.gd`:
+Window size/aspect is handled globally in `project.godot`, not per scene:
 
-- Add child node `ExplorationViewport` with `@export design_viewport: Vector2i` matching background PNG aspect so cover-fit is 1:1 (no side crop / post-FX void fringe).
-- **1.2:** `Vector2i(1920, 1200)` — matches `1.2_Corridor.png` (2400×1500, 1.6:1).
-- **1.1:** `Vector2i(1400, 1400)` — square window for ~3520² school exterior art.
-- **Debug scale:** `@export debug_scale` or env `AXEL_DEBUG_VIEWPORT_SCALE` (e.g. `1.33` → 2560×1600 on 1.2).
-- Restores previous window size on `_exit_tree` so combat/menu unchanged.
-- **1.2 layout:** `_apply_background_layout()` in `1.2_Corridor.gd` must run deferred after resize. User-facing resolution/scale settings autoload is a separate future task.
+- **Base resolution `1920×1280` (true 3:2)** with `content_scale_aspect=1` (Keep). The window is free to be any resolution/size; gameplay stays 3:2 and Godot auto-letterboxes (black bars) when the window is a different shape.
+- The `BackgroundCamera` (`scenes/core/background_camera_controller.gd`) recomputes zoom/limits on `size_changed`, so cover-fit stays correct at any window size and after a future resolution-settings screen.
+- `scenes/core/exploration_viewport.gd` is now **inert** (kept only so 1.1 / 1.2 still load). It no longer forces the OS window per scene; `design_viewport` / `debug_scale` exports have no runtime effect.
+- A user-facing resolution/scale settings screen is a separate future task; the global Keep-aspect + resizable window prepares for it.
+
+Historical note: an earlier fixed-resolution attempt (`1280×720`, Viewport scaling, non-resizable) broke 1.1. This approach keeps CanvasItems scaling and only sets base size + Keep aspect, and 1.1 is migrated to `BackgroundCamera` (see below) rather than left on manual limits.
 
 ## Background and camera pipeline (new PNG scenes)
 

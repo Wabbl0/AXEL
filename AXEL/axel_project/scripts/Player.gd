@@ -46,6 +46,9 @@ const _MIKE_FRAME_COUNT := 13
 @export var collision_inward_margin: float = 1.5
 ## Fraction of frame height kept for collision, measured from the feet up (0.5 = lower half / waist cut).
 @export_range(0.2, 1.0) var collision_lower_body_ratio: float = 0.5
+## When >= 0, snaps this player's feet to a fixed world Y every physics frame (walk left/right
+## along a road at a constant height). Horizontal movement is unaffected. -1 = disabled.
+@export var locked_feet_y: float = -1.0
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite
 @onready var shadow_outline: AnimatedSprite2D = $ShadowOutline
@@ -567,6 +570,7 @@ func _physics_process(_delta: float) -> void:
 		if _scripted_velocity != Vector2.ZERO:
 			velocity = _scripted_velocity
 			move_and_slide()
+			_apply_locked_feet_y()
 			_update_animation(_scripted_velocity)
 		else:
 			velocity = Vector2.ZERO
@@ -586,8 +590,19 @@ func _physics_process(_delta: float) -> void:
 
 	velocity = direction.normalized() * speed if direction != Vector2.ZERO else Vector2.ZERO
 	move_and_slide()
+	_apply_locked_feet_y()
 	_report_walk_steps_for_cadence()
 	_update_animation(direction)
+
+
+func _apply_locked_feet_y() -> void:
+	if locked_feet_y < 0.0:
+		return
+	var feet_y := _get_collision_feet_anchor_y()
+	if feet_y <= -1.0e9:
+		return
+	var offset := feet_y - global_position.y
+	global_position.y = locked_feet_y - offset
 
 
 func _report_walk_steps_for_cadence() -> void:

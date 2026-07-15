@@ -1,0 +1,32 @@
+PRE-PLAN
+AXEL — explore only. Do not implement or edit files.
+What I want (player/game terms):
+<What should happen? When? Example: first night in school yard → one glitch + one line, once per run.>
+Where I think it happens (optional — skip if unsure):
+<school outside / combat screen / dialogue box / not sure>
+What exists today (optional):
+<what already works or "nothing yet" / not sure>
+Please figure out for me:
+1. Which area (combat / scenes / narrative / vfx-overworld) and why.
+2. Where handled today — plain English, then 3–5 file paths.
+3. Canon risks (per AI_DOCS).
+4. Simple recommended approach (beginner-friendly steps).
+5. Any ambiguity — resolve via AskQuestion (yes/no or A/B; batch questions). Ask enough that nothing important is assumed.
+Keep explanations non-jargon; define Godot terms briefly when used.
+Questionnaire rule:
+- Use Cursor AskQuestion for ambiguities before the artifact.
+- Do not post --- EXPLORATION ARTIFACT --- until I have answered (or there were none).
+- After answers, print the artifact once. Record outcomes under Decisions: — not as unanswered bullets.
+When ready, end your reply with this block only (fill every field; quote line refs or node names where you read code):
+--- EXPLORATION ARTIFACT ---
+Area: <combat | scenes | narrative | vfx-overworld>
+Symptom: <what the player sees>
+Likely cause: <1–2 sentences>
+Files (verified):
+  - <path> — <role> — <relevant lines, nodes, or values>
+  - ...
+Canon risks: <from AI_DOCS, or "none">
+Draft approach: <3–5 beginner steps; no code yet>
+Decisions: <Q → answer from questionnaire; or "none — no ambiguities">
+Do-not-touch: <what must stay as-is>
+--- END ARTIFACT ---

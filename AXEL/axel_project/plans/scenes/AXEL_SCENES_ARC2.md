@@ -32,7 +32,7 @@
 
 ---
 
-### 2.2 Basement Blocked — temporary gate (`basement_blocked_temp`)
+### 2.2 Basement Door — walkable gate (`basement_door`)
 
 **Location label:** `BASEMENT`
 
@@ -44,12 +44,6 @@
 
 > Not yet.
 
-**Choices:**
-
-
-| Button label | Target     |
-| ------------ | ---------- |
-| Go back      | Locker Hub |
-
+**Implemented (Godot):** `2.2_BasementDoor.tscn` + `2.2_BasementDoor.gd` — walkable exploration room with placeholder flat background, chained-steel-door placeholder art, floor/wall divider line, `[E]` interact near door (once-ever `"Not yet."` via `GameManager.basement_door_line_seen`), left-edge `ExitTrigger` auto-return to `1.2_Corridor.tscn` at saved `corridor_return_pos`. Reachable from `1.2_Corridor.tscn` right-edge `ExitTrigger` (approved `RightWall` move). Replaces dialog-only `2.2_BasementBlockedTemp.tscn`. No embedded post-FX.
 
 ---

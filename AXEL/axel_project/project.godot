@@ -37,8 +37,8 @@ rendering_device/driver.windows="d3d12"
 
 [window]
 
-size/viewport_width=1400
-size/viewport_height=900
+size/viewport_width=1920
+size/viewport_height=1280
 content_scale_mode=1
-content_scale_aspect=4
+content_scale_aspect=1
 content_scale_factor=1.0

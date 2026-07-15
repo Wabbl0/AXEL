@@ -38,6 +38,7 @@ const INVALID_RETURN_POS := Vector2(1.0e20, 1.0e20)
 
 var corridor_locker_line_seen: bool = false
 var corridor_spawn_line_seen: bool = false
+var basement_door_line_seen: bool = false
 var corridor_return_pos: Vector2 = INVALID_RETURN_POS
 
 # References to UI elements in Arc_1/1.1_SchoolExterior.tscn
@@ -115,6 +116,7 @@ func _load_persistent_state() -> void:
 	game_state = _default_game_state()
 	corridor_locker_line_seen = false
 	corridor_spawn_line_seen = false
+	basement_door_line_seen = false
 	if not _persistence_enabled():
 		print("GameManager: debug build — ignoring saved narrative state.")
 		return
@@ -134,6 +136,7 @@ func _load_persistent_state() -> void:
 		game_state = _merge_game_state(_default_game_state(), data["game_state"])
 	corridor_locker_line_seen = bool(data.get("corridor_locker_line_seen", false))
 	corridor_spawn_line_seen = bool(data.get("corridor_spawn_line_seen", false))
+	basement_door_line_seen = bool(data.get("basement_door_line_seen", false))
 
 
 func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
@@ -156,6 +159,7 @@ func _save_persistent_state() -> void:
 		"game_state": game_state,
 		"corridor_locker_line_seen": corridor_locker_line_seen,
 		"corridor_spawn_line_seen": corridor_spawn_line_seen,
+		"basement_door_line_seen": basement_door_line_seen,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -176,6 +180,11 @@ func set_corridor_locker_line_seen(value: bool = true) -> void:
 
 func set_corridor_spawn_line_seen(value: bool = true) -> void:
 	corridor_spawn_line_seen = value
+	_save_persistent_state()
+
+
+func set_basement_door_line_seen(value: bool = true) -> void:
+	basement_door_line_seen = value
 	_save_persistent_state()
 
 

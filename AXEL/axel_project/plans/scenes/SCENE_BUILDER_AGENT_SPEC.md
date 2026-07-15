@@ -138,9 +138,9 @@ After `_ready`, headless smoke MUST call `QaCanonValidators.collect_background_c
 
 When a shipped scene has a long intro or setup sequence, add an **inherited** child `.tscn` that instances the canonical scene and overrides only playtest flags (e.g. `skip_intro = true` on the root script). Do **not** duplicate the full scene tree. Example: `1.1_SchoolExterior_Playtest.tscn` → instances `1.1_SchoolExterior.tscn`. Layout edits belong on the base scene; child overrides are for playtest-only deltas.
 
-## Arc 1 legacy viewport (approved — 1.1 / 1.2)
+## Window resolution and aspect (project-wide)
 
-`1.1_SchoolExterior.tscn` and `1.2_Corridor.tscn` each include an `ExplorationViewport` child (`scenes/core/exploration_viewport.gd`) with per-scene `design_viewport` (1.1 = `1400×1400`, 1.2 = `1920×1200`). Do **not** change global `project.godot` window size for these scenes. Pick `design_viewport` from PNG aspect so cover-fit matches 1:1. Optional debug scale: env `AXEL_DEBUG_VIEWPORT_SCALE`.
+Window size/aspect is global in `project.godot`: base `1920×1280` (true 3:2) with `content_scale_aspect=1` (Keep). The window can be any resolution; gameplay stays 3:2 and auto-letterboxes. New scenes do **not** need a per-scene `design_viewport` — they inherit the global base. `scenes/core/exploration_viewport.gd` is inert (kept so 1.1 / 1.2 still load) and no longer resizes the OS window.
 
 ## Deferred migration — Arc 1 scenes 1.1 / 1.2
 

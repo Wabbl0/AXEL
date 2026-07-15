@@ -5,11 +5,11 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="11_top_dialogue"]
 [ext_resource type="Script" uid="uid://bj16cjcb4p1kx" path="res://scenes/Arc_1/1.1_SchoolExterior.gd" id="12_school_ext"]
 [ext_resource type="Texture2D" uid="uid://cwowj33yu3igx" path="res://exports/Drawings/1.1_SchoolExterior.png" id="13_bg_drawing"]
-[ext_resource type="Script" uid="uid://buxd5usryyset" path="res://scenes/Arc_1/camera_follow_vertical.gd" id="14_camera_script"]
+[ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="14_camera_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="15_interact_prompt"]
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="16_leaf_zone"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="17_bg_lock"]
-[ext_resource type="Script" path="res://scenes/core/exploration_viewport.gd" id="18_exploration_viewport"]
+[ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="18_exploration_viewport"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(1279, 32)
@@ -21,7 +21,7 @@ size = Vector2(29.5, 1096)
 size = Vector2(29.5, 741.5449)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_b508v"]
-size = Vector2(215, 25)
+size = Vector2(137.5, 27.5)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 16.0
@@ -29,7 +29,7 @@ radius = 16.0
 [node name="1_1_SchoolExterior" type="Node2D" unique_id=521734377]
 script = ExtResource("12_school_ext")
 
-[node name="ExplorationViewport" type="Node" parent="."]
+[node name="ExplorationViewport" type="Node" parent="." unique_id=1009016003]
 script = ExtResource("18_exploration_viewport")
 design_viewport = Vector2i(1400, 1400)
 
@@ -44,13 +44,10 @@ metadata/_edit_lock_ = true
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339485]
 position = Vector2(549, 400)
-limit_left = 59
-limit_top = -241
-limit_right = 1200
-limit_bottom = 812
 script = ExtResource("14_camera_script")
+background_path = NodePath("../Background_1_1")
+camera_mode = 1
 target_path = NodePath("../PlayerLayer/Player")
-fixed_x = 549.0
 
 [node name="EnvironmentColliders" type="Node2D" parent="." unique_id=1768690352]
 
@@ -141,7 +138,7 @@ shape = SubResource("RectangleShape2D_wall_vertical_left")
 position = Vector2(1264, 360)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=455161837]
-position = Vector2(-337.75, 86.5)
+position = Vector2(-345.75, 86.5)
 shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="CollisionShape2D2" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=1919725186]
@@ -151,6 +148,11 @@ shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="CollisionShape2D3" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=175384946]
 position = Vector2(-61.5, -551.5)
+rotation = 1.5707964
+shape = SubResource("RectangleShape2D_b508v")
+
+[node name="CollisionShape2D4" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=1226458457]
+position = Vector2(-352.25, 59.25)
 rotation = 1.5707964
 shape = SubResource("RectangleShape2D_b508v")
 
@@ -177,7 +179,6 @@ follow_viewport_enabled = true
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=304166626]
 unique_name_in_owner = true
 z_index = 20
-position = Vector2(-200, 402)
 scale = Vector2(1.2, 1.2)
 script = ExtResource("2_elx0u")
 speed = 180.0

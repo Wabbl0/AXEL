@@ -44,6 +44,7 @@ func _ready() -> void:
 		_target = get_node_or_null(target_path) as Node2D
 	_run_pipeline()
 	call_deferred("_run_pipeline")
+	get_viewport().size_changed.connect(_run_pipeline)
 	make_current()
 
 
