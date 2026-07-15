@@ -5,7 +5,7 @@ const DOOR_LINE := "Not yet."
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
-@onready var _player: CharacterBody2D = $WalkableWorld/Player
+@onready var _player: CharacterBody2D = $PlayerLayer/Player
 
 var _door_interact_area: Area2D
 var _exit_trigger: Area2D
@@ -129,7 +129,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var env := $WalkableWorld/EnvironmentColliders
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
-	var player_node := $WalkableWorld/Player
+	var player_node := $PlayerLayer/Player
 	if not _player_spawn_applied:
 		player_node.global_position = env.to_global(Vector2(250.0, 550.0))
 		_player_spawn_applied = true

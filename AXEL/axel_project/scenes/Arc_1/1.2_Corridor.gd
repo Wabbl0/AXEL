@@ -7,6 +7,7 @@ extends Node2D
 const LOCKER_HUB_SCENE := "res://scenes/Arc_2/2.1_LockerHub.tscn"
 const BASEMENT_DOOR_SCENE := "res://scenes/Arc_2/2.2_BasementDoor.tscn"
 const LOCKER_LINE := "This was your locker."
+const EXIT_RETURN_MARGIN_PX := 96.0
 
 var _locker_interact_area: Area2D
 var _exit_trigger: Area2D
@@ -176,7 +177,9 @@ func _hide_locker_interact_prompt() -> void:
 
 
 func _begin_locker_transition() -> void:
-	_begin_scene_transition(LOCKER_HUB_SCENE)
+	if not is_instance_valid(_player):
+		return
+	_begin_scene_transition(LOCKER_HUB_SCENE, _player.global_position)
 
 
 func _on_exit_trigger_body_entered(body: Node) -> void:
@@ -186,14 +189,37 @@ func _on_exit_trigger_body_entered(body: Node) -> void:
 
 
 func _begin_basement_transition() -> void:
-	_begin_scene_transition(BASEMENT_DOOR_SCENE)
+	if not is_instance_valid(_player):
+		return
+	_begin_scene_transition(BASEMENT_DOOR_SCENE, _safe_basement_return_pos())
 
 
-func _begin_scene_transition(scene_path: String) -> void:
+func _safe_basement_return_pos() -> Vector2:
+	# The player is standing inside/at the edge of ExitTrigger when this fires. Saving that
+	# exact spot would put them right back inside the trigger on return, instantly re-firing
+	# the transition (infinite reload loop / "stuck" player). Nudge left of the trigger instead.
+	var pos := _player.global_position
+	var left_edge := _exit_trigger_left_edge_x()
+	if left_edge > -INF:
+		pos.x = minf(pos.x, left_edge - EXIT_RETURN_MARGIN_PX)
+	return pos
+
+
+func _exit_trigger_left_edge_x() -> float:
+	if not is_instance_valid(_exit_trigger):
+		return -INF
+	var shape := _exit_trigger.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape == null or not (shape.shape is RectangleShape2D):
+		return -INF
+	var half_width: float = (shape.shape as RectangleShape2D).size.x * 0.5
+	return _exit_trigger.to_global(Vector2(shape.position.x - half_width, shape.position.y)).x
+
+
+func _begin_scene_transition(scene_path: String, return_pos: Vector2) -> void:
 	if not is_instance_valid(_player):
 		return
 	_is_transitioning = true
-	GameManager.set_corridor_return_pos(_player.global_position)
+	GameManager.set_corridor_return_pos(return_pos)
 	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
 		_interact_prompt.hide_prompt_immediate()
 	var err := get_tree().change_scene_to_file(scene_path)

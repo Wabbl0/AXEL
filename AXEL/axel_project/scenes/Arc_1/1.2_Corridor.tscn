@@ -16,11 +16,11 @@ size = Vector2(2368.0889, 24)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
 size = Vector2(38.5, 1515)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
+size = Vector2(80, 1520.1465)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
 size = Vector2(2413.9194, 90)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
-size = Vector2(80, 1200)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -80,6 +80,7 @@ position = Vector2(2390, 763)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExitTrigger" unique_id=1200780202]
+position = Vector2(0, -8.421326)
 shape = SubResource("RectangleShape2D_exit_trigger")
 
 [node name="LockerWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1200780001]
