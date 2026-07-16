@@ -1,15 +1,128 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=14 format=3]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" path="res://scenes/Arc_2/2.1_Cafeteria.gd" id="1_cafeteria"]
+[ext_resource type="Script" path="res://scripts/Player.gd" id="2_player_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
+[ext_resource type="Texture2D" path="res://exports/Drawings/2.1_Cafeteria.png" id="4_cafeteria_bg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
+[ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
+[ext_resource type="Script" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
+[ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 
-[node name="ScenePlaceholder" type="Control"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_scene_placeholder")
-scene_id = "3.1"
-location_label = "CAFETERIA"
-dialogue = PackedStringArray("Even through all the chaos you can hear the chattering students of the past.")
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
+size = Vector2(3600, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
+size = Vector2(40, 2600)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_table_interact"]
+size = Vector2(420, 320)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kitchen_interact"]
+size = Vector2(520, 400)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_return_interact"]
+size = Vector2(220, 420)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
+radius = 5.5
+
+[node name="2_1_Cafeteria" type="Node2D"]
+script = ExtResource("1_cafeteria")
+
+[node name="WalkableWorld" type="Node2D" parent="."]
+
+[node name="Background" type="Sprite2D" parent="WalkableWorld"]
+z_index = -100
+texture_filter = 1
+texture = ExtResource("4_cafeteria_bg")
+centered = false
+script = ExtResource("8_bg_lock")
+metadata/_edit_lock_ = true
+
+[node name="EnvironmentColliders" type="Node2D" parent="WalkableWorld"]
+
+[node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(1754, 20)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall"]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(1754, 2460)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall"]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(20, 1240)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall"]
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(3488, 1240)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall"]
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="TableInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(1754, 1300)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableInteractArea"]
+shape = SubResource("RectangleShape2D_table_interact")
+
+[node name="KitchenInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(3000, 1100)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/KitchenInteractArea"]
+shape = SubResource("RectangleShape2D_kitchen_interact")
+
+[node name="ReturnInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(180, 1900)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ReturnInteractArea"]
+shape = SubResource("RectangleShape2D_return_interact")
+
+[node name="Player" type="CharacterBody2D" parent="WalkableWorld"]
+z_index = 10
+position = Vector2(1754, 1900)
+scale = Vector2(3, 3)
+script = ExtResource("2_player_script")
+speed = 253.0
+sprite_sheet = ExtResource("3_player_sheet")
+animation_fps = 5.0
+collision_polygon_epsilon = 4.0
+collision_alpha_shrink_pixels = 4
+collision_inward_margin = 4.0
+collision_lower_body_ratio = 0.42
+
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="WalkableWorld/Player"]
+position = Vector2(0, 37.80487)
+
+[node name="ShadowOutline" type="AnimatedSprite2D" parent="WalkableWorld/Player"]
+modulate = Color(0, 0, 0, 0.55)
+z_index = -1
+position = Vector2(1, 38.58539)
+scale = Vector2(1.08, 1.08)
+
+[node name="FallbackBody" type="Polygon2D" parent="WalkableWorld/Player"]
+position = Vector2(0, 47.561035)
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/Player"]
+position = Vector2(0, 41.46344)
+shape = SubResource("CircleShape2D_player")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("7_camera_script")
+background_path = NodePath("../WalkableWorld/Background")
+margin_px = 12.0
+target_path = NodePath("../WalkableWorld/Player")
+
+[node name="TopDialogueOverlay" parent="." instance=ExtResource("5_top_dialogue")]
+
+[node name="InteractPromptOverlay" parent="." instance=ExtResource("6_interact_prompt")]

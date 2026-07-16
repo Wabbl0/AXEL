@@ -1,131 +1,107 @@
-# AXEL — Scene Dialogues: Arc 4 — Backyard
+# AXEL — Scene Dialogues: Arc 4 — Teachers' Lounge
 
 ---
 
-### 4.1 Backyard — default state (`loc_yard`)
+### 4.1 Teachers' Lounge (`loc_teachers`)
 
-**Location label:** `BACKYARD`
+**Location label:** `TEACHERS' LOUNGE`
 
 **Dialogue [SOURCE]:**
 
-> The corner at the back of the school. The wall has a weird graffiti on it. You still smell the teen rebelry around.
+> The air is stale. You always wondered what the teachers were doing behind closed doors.
 
 **[REWRITE]:**
 
-> The spirit of rebellion is still present here. Nice graffiti.
+> You always wondered what the teachers were doing behind closed doors.
 >
 > [beat]
 >
-> You could never be this talented.
+> Pervert.
 
 **Choices:**
 
 
-| Button label      | Target        |
-| ----------------- | ------------- |
-| Smoke a cigarette | Backyard Hint |
-| Return to locker  | Locker Hub    |
+| Button label                                                             | Target                         |
+| ------------------------------------------------------------------------ | ------------------------------ |
+| Return to locker                                                         | Locker Hub                     |
+| *(Hidden — click on scene advances memory sequence before key is found)* | → Teachers Memory → Key Pickup |
 
-
-> **Note:** On first visit (before yard memory plays), clicking anywhere on the scene advances the click sequence below instead of triggering the buttons normally.
 
 ---
 
-### 4.1b Backyard — Click step 1: Memory flash (`loc_yard_memory` text)
+### 4.2 Teachers' Lounge Memory (`loc_teachers_memory`)
 
-**Location label:** `BACKYARD`
-*(Glitch flash 250ms, then this text replaces scene text — sourced from `story.loc_yard_memory.text`)*
+**Location label:** `TEACHERS' LOUNGE`
+*(Plays as embedded click step within Teachers' Lounge — glitch flash 250ms before text swaps)*
 
 **Dialogue [SOURCE]:**
 
-> Your friend looks gaunt. 'Just to make sure you don't steal my lighter again I'm going to write my name on it.'
+> The cop asked, 'When did you last see him?' You answered: 'That day at lunch. I thought they went home.' You lied. You knew exactly where THEY were.
 
 **[REWRITE]:**
 
-> "Oh. Sorry. I'll go," they say.
+> "So, when did you see him last?" the police officer asked.
 >
-> "No. I don't mind."
+> "That day during lunch. I mean I guess he was in the same classes as me."
 >
-> "Haven't seen you in school for awhile."
+> "You guess?"
 >
-> "Didn't think you'd notice.
->
-> "What does that mean?"
->
-> "Nothing."
+> "He's so - silent. I barely notice him anymore."
 >
 > [beat]
 >
-> "Are we still friends?"
+> Liar. You knew exactly where he was.
 
 ---
 
-### 4.1c Backyard — Click step 2: Name reveal (inline JS `yardRevealText`)
+### 4.3 Key Wall (`loc_key_wall`)
 
-**Location label:** `BACKYARD`
-*(No glitch — text swaps directly. This line lives in `loadScene()` JS, not in the `story` object)*
-
-**Dialogue [SOURCE]:**
-
-> YOU look down. There it is. A lighter with the name "AXEL" written on it.
-
-**[REWRITE]:**
-
-> You light up your cigarette.
->
-> Tastes of tar and regret.
->
-> Yum.
-
----
-
-### 4.1d Backyard — Named scene (`loc_yard_memory`)
-
-**Location label:** `BACKYARD`
-*(This is the actual `story.loc_yard_memory` scene object — same text as 4.1b, but reached via the "Remember the name" button after the sequence)*
+**Location label:** `TEACHERS' LOUNGE`
+*(Currently unreachable via normal navigation — reserved for future use)*
 
 **Dialogue [SOURCE]:**
 
-> Your friend looks gaunt. 'Just to make sure you don't steal my lighter again I'm going to write my name on it.
+> Most hooks are empty. One rusty key still hangs.
 
 **[REWRITE]:**
 
-> x
+> There's a key.
+>
+> Why hasn't anyone nicked it yet?
 
 **Choices:**
 
 
-| Button label      | Target     |
-| ----------------- | ---------- |
-| Remember the name | Locker Hub |
+| Button label | Condition  | Target           |
+| ------------ | ---------- | ---------------- |
+| Take the key | No key yet | Key Pickup       |
+| Turn back    | —          | Teachers' Lounge |
 
 
 ---
 
-### 4.2 Backyard Hint / Intermission (`loc_yard_hint`)
+### 4.4 Teachers' Lounge — Key Pickup (`action_get_key`)
 
-**Location label:** `INTERMISSION`
+**Location label:** `TEACHERS' LOUNGE`
 
-**Dialogue [DYNAMIC — chosen at runtime from `getSmokingHintText()`]:**
+**Dialogue [SOURCE]:**
 
+> You take the key. A bit of tape reads: 'BASEMENT'.
 
-| Condition          | Line [SOURCE]                                                         |
-| ------------------ | --------------------------------------------------------------------- |
-| No flashlight      | The basement is bound to be dark. I need something to light the way   |
-| No name            | I remember their face. But their name escapes me                      |
-| No key             | The basement is bound to be locked. I better look around for the key. |
-| Memories < 5       | I should look around more. There's something I'm forgetting.          |
-| All conditions met | I'm ready.                                                            |
+**[REWRITE]:**
 
-
-**[REWRITE any hint lines you want to change:]**
+> You take the key.
+>
+> [beat]
+>
+> Like a good little boy.
 
 **Choices:**
 
 
-| Button label | Target   |
-| ------------ | -------- |
-| Continue     | Backyard |
+| Button label | Target           |
+| ------------ | ---------------- |
+| Nice         | Teachers' Lounge |
 
 
 ---

@@ -27,10 +27,10 @@ PROFILE_BY_SCENE_KEY = {
 # never simplified aliases (e.g. `Corridor.tscn`).
 CANONICAL_BY_SCENE_ID: Dict[str, Dict[str, str]] = {
     "scene_2": {"scene_file": "1.2_Corridor.tscn", "arc_dir": "Arc_1"},
-    "loc_classroom": {"scene_file": "6.1_Classroom.tscn", "arc_dir": "Arc_6"},
-    "loc_desk": {"scene_file": "6.2_ClassroomDesk.tscn", "arc_dir": "Arc_6"},
-    "loc_board": {"scene_file": "6.3_ClassroomBoard.tscn", "arc_dir": "Arc_6"},
-    "loc_board_success": {"scene_file": "6.4_ClassroomBoardSuccess.tscn", "arc_dir": "Arc_6"},
+    "loc_classroom": {"scene_file": "5.1_Classroom.tscn", "arc_dir": "Arc_5"},
+    "loc_desk": {"scene_file": "5.2_ClassroomDesk.tscn", "arc_dir": "Arc_5"},
+    "loc_board": {"scene_file": "5.3_ClassroomBoard.tscn", "arc_dir": "Arc_5"},
+    "loc_board_success": {"scene_file": "5.4_ClassroomBoardSuccess.tscn", "arc_dir": "Arc_5"},
 }
 
 
@@ -39,10 +39,10 @@ def _load_asset_catalog() -> Dict[str, object]:
 
 
 def _arc_dir_from_section(section: str) -> str:
-    # `1.2` -> `Arc_1`; `8.6` -> `Endings`; `0.1` -> `Main_Menu`.
+    # `1.2` -> `Arc_1`; `7.6` -> `Endings`; `0.1` -> `Main_Menu`.
     if section.startswith("0."):
         return "Main_Menu"
-    if section.startswith("8."):
+    if section.startswith("7."):
         return "Endings"
     major = section.split(".", 1)[0]
     return f"Arc_{major}"

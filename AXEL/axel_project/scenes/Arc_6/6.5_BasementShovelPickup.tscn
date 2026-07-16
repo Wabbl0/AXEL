@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "7.5"
+scene_id = "6.5"
 location_label = "FOUND"
 dialogue = PackedStringArray("The same old shovel still here.")

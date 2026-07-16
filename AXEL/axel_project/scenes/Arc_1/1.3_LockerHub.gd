@@ -1,15 +1,15 @@
 extends Control
 
-const HUB_BG_PATH := "res://exports/Drawings/2.1_Locker.png"
+const HUB_BG_PATH := "res://exports/Drawings/1.3_Locker.png"
 const MAP_BG_PATH := "res://exports/Drawings/map.png"
 const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const MEMORY_KEY := "scene_3"
 
 const DESTINATIONS: Array[Dictionary] = [
-	{"label": "Go to the cafeteria", "path": "res://scenes/Arc_3/3.1_Cafeteria.tscn"},
-	{"label": "Go to the classroom", "path": "res://scenes/Arc_6/6.1_Classroom.tscn"},
-	{"label": "Go to the backyard", "path": "res://scenes/Arc_4/4.1_Backyard.tscn"},
-	{"label": "Go to the teacher's lounge", "path": "res://scenes/Arc_5/5.1_TeachersLounge.tscn"},
+	{"label": "Go to the cafeteria", "path": "res://scenes/Arc_2/2.1_Cafeteria.tscn"},
+	{"label": "Go to the classroom", "path": "res://scenes/Arc_5/5.1_Classroom.tscn"},
+	{"label": "Go to the backyard", "path": "res://scenes/Arc_3/3.1_Backyard.tscn"},
+	{"label": "Go to the teacher's lounge", "path": "res://scenes/Arc_4/4.1_TeachersLounge.tscn"},
 ]
 
 @onready var _background: TextureRect = $Background

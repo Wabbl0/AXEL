@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://exports/Drawings/2.2_BasementDoor.png"
+source_file="res://exports/Drawings/1.4_BasementDoor.png"
 dest_files=["res://.godot/imported/2.2_BasementDoor.png-da85cf47415c1f8ffee737e36c1e5ed7.ctex"]
 
 [params]

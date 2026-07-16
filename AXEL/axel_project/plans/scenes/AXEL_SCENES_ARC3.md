@@ -1,118 +1,131 @@
-# AXEL — Scene Dialogues: Arc 3 — Cafeteria
+# AXEL — Scene Dialogues: Arc 3 — Backyard
 
 ---
 
-### 3.1 Cafeteria (`loc_cafeteria`)
+### 3.1 Backyard — default state (`loc_yard`)
 
-**Location label:** `CAFETERIA`
+**Location label:** `BACKYARD`
 
 **Dialogue [SOURCE]:**
 
-> Tables are overturned. The air reeks of rancid grease. In the middle of the hall you see a ghostly figure sitting alone at an intact table. The kitchen area is dark.
+> The corner at the back of the school. The wall has a weird graffiti on it. You still smell the teen rebelry around.
 
 **[REWRITE]:**
 
-> Even through all the chaos you can hear the chattering students of the past.
+> The spirit of rebellion is still present here. Nice graffiti.
+>
+> [beat]
+>
+> You could never be this talented.
 
 **Choices:**
 
 
-| Button label        | Target           |
-| ------------------- | ---------------- |
-| Approach Your table | Cafeteria Memory |
-| Search the kitchen  | Kitchen          |
-| Return to locker    | Locker Hub       |
+| Button label      | Target        |
+| ----------------- | ------------- |
+| Smoke a cigarette | Backyard Hint |
+| Return to locker  | Locker Hub    |
 
+
+> **Note:** On first visit (before yard memory plays), clicking anywhere on the scene advances the click sequence below instead of triggering the buttons normally.
 
 ---
 
-### 3.2 Cafeteria Memory (`loc_cafeteria_memory`)
+### 3.1b Backyard — Click step 1: Memory flash (`loc_yard_memory` text)
 
-**Location label:** `CAFETERIA`
-*(Memory — glitch flash on enter, no interaction area)*
+**Location label:** `BACKYARD`
+*(Glitch flash 250ms, then this text replaces scene text — sourced from `story.loc_yard_memory.text`)*
 
 **Dialogue [SOURCE]:**
 
-> You are sitting at the same table. The popular kids invite you over. Your friend whispers, 'Don't go.' You stand up, laugh and shout loud: 'Sorry, I can't deal with your whining.' You leave them alone.
+> Your friend looks gaunt. 'Just to make sure you don't steal my lighter again I'm going to write my name on it.'
 
 **[REWRITE]:**
 
-> "Do you think I'm a bad person?"
+> "Oh. Sorry. I'll go," they say.
+>
+> "No. I don't mind."
+>
+> "Haven't seen you in school for awhile."
+>
+> "Didn't think you'd notice.
+>
+> "What does that mean?"
+>
+> "Nothing."
 >
 > [beat]
 >
-> You answer, "No."
+> "Are we still friends?"
+
+---
+
+### 3.1c Backyard — Click step 2: Name reveal (inline JS `yardRevealText`)
+
+**Location label:** `BACKYARD`
+*(No glitch — text swaps directly. This line lives in `loadScene()` JS, not in the `story` object)*
+
+**Dialogue [SOURCE]:**
+
+> YOU look down. There it is. A lighter with the name "AXEL" written on it.
+
+**[REWRITE]:**
+
+> You light up your cigarette.
 >
-> [beat]
+> Tastes of tar and regret.
 >
-> "I just - don't have the energy. To be around you."
->
-> [beat]
->
-> "Sorry."
->
-> "Oh," they sigh.
->
-> [beat]
->
-> "No. I understand."
+> Yum.
+
+---
+
+### 3.1d Backyard — Named scene (`loc_yard_memory`)
+
+**Location label:** `BACKYARD`
+*(This is the actual `story.loc_yard_memory` scene object — same text as 3.1b, but reached via the "Remember the name" button after the sequence)*
+
+**Dialogue [SOURCE]:**
+
+> Your friend looks gaunt. 'Just to make sure you don't steal my lighter again I'm going to write my name on it.
+
+**[REWRITE]:**
+
+> x
 
 **Choices:**
 
 
-| Button label | Target    |
-| ------------ | --------- |
-| Go back      | Cafeteria |
+| Button label      | Target     |
+| ----------------- | ---------- |
+| Remember the name | Locker Hub |
 
 
 ---
 
-### 3.3 Kitchen (`loc_kitchen`)
+### 3.2 Backyard Hint / Intermission (`loc_yard_hint`)
 
-**Location label:** `KITCHEN`
+**Location label:** `INTERMISSION`
 
-**Dialogue [SOURCE]:**
+**Dialogue [DYNAMIC — chosen at runtime from `getSmokingHintText()`]:**
 
-> The kitchen is rotting at the seams. You see the rot pile up in the air. The smell is horrendus.
 
-**[REWRITE]:**
+| Condition          | Line [SOURCE]                                                         |
+| ------------------ | --------------------------------------------------------------------- |
+| No flashlight      | The basement is bound to be dark. I need something to light the way   |
+| No name            | I remember their face. But their name escapes me                      |
+| No key             | The basement is bound to be locked. I better look around for the key. |
+| Memories < 5       | I should look around more. There's something I'm forgetting.          |
+| All conditions met | I'm ready.                                                            |
 
-> Everything is rotten here. Everything.
->
-> [beat]
->
-> This includes you.
+
+**[REWRITE any hint lines you want to change:]**
 
 **Choices:**
 
 
-| Button label                                                                            | Target                    |
-| --------------------------------------------------------------------------------------- | ------------------------- |
-| Turn back                                                                               | Cafeteria                 |
-| *(Hidden — click on scene image triggers flashlight pickup before flashlight is found)* | Kitchen Flashlight Pickup |
+| Button label | Target   |
+| ------------ | -------- |
+| Continue     | Backyard |
 
 
 ---
-
-### 3.4 Kitchen — Flashlight Pickup (`action_get_flashlight`)
-
-**Location label:** `KITCHEN`
-
-**Dialogue [SOURCE]:**
-
-> Your hand hits cold metal. You found an industrial flashlight!
-
-**[REWRITE]:**
-
-> Let there be light!
-
-**Choices:**
-
-
-| Button label | Target    |
-| ------------ | --------- |
-| Nice         | Cafeteria |
-
-
----
-

@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "8.1"
+scene_id = "7.1"
 location_label = "ENDING #1"
 dialogue = PackedStringArray("Coward", "Coward", "Coward", "Coward", "...")

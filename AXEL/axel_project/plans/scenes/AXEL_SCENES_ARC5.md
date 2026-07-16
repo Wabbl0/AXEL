@@ -1,107 +1,128 @@
-# AXEL — Scene Dialogues: Arc 5 — Teachers' Lounge
+# AXEL — Scene Dialogues: Arc 5 — Classroom
 
 ---
 
-### 5.1 Teachers' Lounge (`loc_teachers`)
+### 5.1 Classroom (`loc_classroom`)
 
-**Location label:** `TEACHERS' LOUNGE`
+**Location label:** `CLASSROOM`
 
 **Dialogue [SOURCE]:**
 
-> The air is stale. You always wondered what the teachers were doing behind closed doors.
+> Dust dances in the beams of light. In the back row one desk sits apart from the others. A chalkboard stands at the front.
 
 **[REWRITE]:**
 
-> You always wondered what the teachers were doing behind closed doors.
+> This is where the shit went down.
 >
-> [beat]
+> If shit going down is you, highly caffinated, ignoring your teachers and usually skipping class to go for a smoke.
 >
-> Pervert.
+> How did you ever get anywhere in life?
 
 **Choices:**
 
 
-| Button label                                                             | Target                         |
-| ------------------------------------------------------------------------ | ------------------------------ |
-| Return to locker                                                         | Locker Hub                     |
-| *(Hidden — click on scene advances memory sequence before key is found)* | → Teachers Memory → Key Pickup |
+| Button label      | Target          |
+| ----------------- | --------------- |
+| Inspect the desk  | Classroom Desk  |
+| Look at the board | Classroom Board |
+| Return to locker  | Locker Hub      |
 
 
 ---
 
-### 5.2 Teachers' Lounge Memory (`loc_teachers_memory`)
+### 5.2 Classroom — Desk (`loc_desk`)
 
-**Location label:** `TEACHERS' LOUNGE`
-*(Plays as embedded click step within Teachers' Lounge — glitch flash 250ms before text swaps)*
+**Location label:** `CLASSROOM`
 
-**Dialogue [SOURCE]:**
+**Animation sequence (plays once on first visit):**
 
-> The cop asked, 'When did you last see him?' You answered: 'That day at lunch. I thought they went home.' You lied. You knew exactly where THEY were.
+
+| Timestamp    | Background image              | Story text                      |
+| ------------ | ----------------------------- | -------------------------------- |
+| t = 0 ms     | `desk_empty.jpg`              | *(blank)*                       |
+| t = 650 ms   | `desk_hand.png` + shake + dim | *(blank)*                       |
+| t = 1 000 ms | `desk.png`                    | *(blank)*                       |
+| t = 1 300 ms | `desk.png`                    | Final dialogue revealed (below) |
+
+
+**Final dialogue [SOURCE]:**
+
+> This is THEIR desk. You remember. It was a dare.
 
 **[REWRITE]:**
 
-> "So, when did you see him last?" the police officer asked.
+> It's THEIR desk.
 >
-> "That day during lunch. I mean I guess he was in the same classes as me."
->
-> "You guess?"
->
-> "He's so - silent. I barely notice him anymore."
+> You said it was a dare.
 >
 > [beat]
 >
-> Liar. You knew exactly where he was.
-
----
-
-### 5.3 Key Wall (`loc_key_wall`)
-
-**Location label:** `TEACHERS' LOUNGE`
-*(Currently unreachable via normal navigation — reserved for future use)*
-
-**Dialogue [SOURCE]:**
-
-> Most hooks are empty. One rusty key still hangs.
-
-**[REWRITE]:**
-
-> There's a key.
->
-> Why hasn't anyone nicked it yet?
+> I'd spit on you if I could.
 
 **Choices:**
 
 
-| Button label | Condition  | Target           |
-| ------------ | ---------- | ---------------- |
-| Take the key | No key yet | Key Pickup       |
-| Turn back    | —          | Teachers' Lounge |
+| Button label  | Target    |
+| ------------- | --------- |
+| Close the lid | Classroom |
 
 
 ---
 
-### 5.4 Teachers' Lounge — Key Pickup (`action_get_key`)
+### 5.3 Classroom — Board (`loc_board`)
 
-**Location label:** `TEACHERS' LOUNGE`
+**Location label:** `CLASSROOM`
 
 **Dialogue [SOURCE]:**
 
-> You take the key. A bit of tape reads: 'BASEMENT'.
+> On the board is code: 'if (name == ____) { remember(); }'. Do you know the name?
 
 **[REWRITE]:**
 
-> You take the key.
+> On the board there are weird ass symbols and equations.
 >
-> [beat]
+> You can only make out one question:
 >
-> Like a good little boy.
+> "[something relevant that is only learned through playing the slots]"
+
+**Input:** Text field — correct answer: `AXEL` (case-insensitive, trimmed)
+
+**Fail text [SOURCE]:**
+
+> The board doesn't respond.
+
+**[REWRITE fail text]:**
+
+> Nah.
 
 **Choices:**
 
 
-| Button label | Target           |
-| ------------ | ---------------- |
-| Nice         | Teachers' Lounge |
+| Button label | Target    |
+| ------------ | --------- |
+| Turn back    | Classroom |
+
+
+---
+
+### 5.4 Classroom — Board Success (`loc_board_success`)
+
+**Location label:** `CLASSROOM`
+
+**Dialogue [SOURCE]:**
+
+> At least YOU remember that much.
+
+**[REWRITE]:**
+
+> x
+
+**Choices:**
+
+
+| Button label  | Target     |
+| ------------- | ---------- |
+| Take the name | Locker Hub |
 
 
 ---

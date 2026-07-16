@@ -1,7 +1,7 @@
 {
   "scene_id": "loc_classroom",
-  "scene_file": "6.1_Classroom.tscn",
-  "arc_dir": "Arc_6",
+  "scene_file": "5.1_Classroom.tscn",
+  "arc_dir": "Arc_5",
   "scene_key": "classroom.tscn",
   "profile": "classroom_large",
   "player": {

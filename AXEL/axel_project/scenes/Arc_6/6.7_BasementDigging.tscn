@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "7.7"
+scene_id = "6.7"
 location_label = "DIGGING"
 dialogue = PackedStringArray("As you keep digging.", "A memory surfaces.")

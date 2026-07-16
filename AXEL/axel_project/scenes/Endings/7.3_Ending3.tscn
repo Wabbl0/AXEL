@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "8.3"
+scene_id = "7.3"
 location_label = "ENDING #3"
 dialogue = PackedStringArray("His eyes won't return yours.", "It's not complete.")

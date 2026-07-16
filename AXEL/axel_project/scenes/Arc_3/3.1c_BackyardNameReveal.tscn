@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "4.1c"
+scene_id = "3.1c"
 location_label = "BACKYARD"
 dialogue = PackedStringArray("You light up your cigarette.", "Tastes of tar and regret.", "Yum.")

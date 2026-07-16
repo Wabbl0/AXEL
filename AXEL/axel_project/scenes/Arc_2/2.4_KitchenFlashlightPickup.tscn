@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "3.4"
+scene_id = "2.4"
 location_label = "KITCHEN"
 dialogue = PackedStringArray("Let there be light!")

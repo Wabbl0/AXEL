@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://7iwlp6l4dus3"]
 
-[ext_resource type="Script" uid="uid://dynt7uaxwltd2" path="res://scenes/Arc_2/2.1_LockerHub.gd" id="1_hub_script"]
-[ext_resource type="Texture2D" uid="uid://dhb1hfv26e0vx" path="res://exports/Drawings/2.1_Locker.png" id="2_hub_bg"]
+[ext_resource type="Script" uid="uid://dynt7uaxwltd2" path="res://scenes/Arc_1/1.3_LockerHub.gd" id="1_hub_script"]
+[ext_resource type="Texture2D" uid="uid://dhb1hfv26e0vx" path="res://exports/Drawings/1.3_Locker.png" id="2_hub_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
 [ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="4_font"]
 [ext_resource type="Script" uid="uid://dlv3mwtkwxemi" path="res://scenes/ui/ui_polygon_hotspot.gd" id="5_map_hotspot"]

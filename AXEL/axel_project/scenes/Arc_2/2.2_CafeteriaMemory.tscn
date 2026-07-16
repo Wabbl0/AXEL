@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "3.2"
+scene_id = "2.2"
 location_label = "CAFETERIA"
 dialogue = PackedStringArray("\"Do you think I'm a bad person?\"", "[beat]", "You answer, \"No.\"", "[beat]", "\"I just - don't have the energy. To be around you.\"", "[beat]", "\"Sorry.\"", "\"Oh.\"", "[beat]", "\"No. I understand.\"")

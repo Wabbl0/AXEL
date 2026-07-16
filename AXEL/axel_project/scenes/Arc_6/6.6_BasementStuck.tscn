@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "7.6"
+scene_id = "6.6"
 location_label = "NO RETURN"
 dialogue = PackedStringArray("I'm not letting you.")

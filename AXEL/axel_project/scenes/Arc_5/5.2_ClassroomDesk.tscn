@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "6.2"
+scene_id = "5.2"
 location_label = "CLASSROOM"
 dialogue = PackedStringArray("It's THEIR desk.", "You said it was a dare.", "[beat]", "I'd spit on you if I could.")

@@ -184,9 +184,9 @@ files alongside the canonical one and silently desyncing the project.
 Rules:
 
 1. Canonical filename pattern is `<arc>.<index>_<Name>.tscn` (for example
-   `1.2_Corridor.tscn`, `6.1_Classroom.tscn`, `8.6_Epilogue.tscn`).
+   `1.2_Corridor.tscn`, `5.1_Classroom.tscn`, `7.6_Epilogue.tscn`).
 2. Scenes live under their `Arc_<N>/` folder (or `Endings/`, `Main_Menu/` for
-   the special prefixes `8.x` and `0.x`).
+   the special prefixes `7.x` and `0.x`).
 3. When generating output for a known scene, the agent MUST:
    - resolve the canonical filename + folder before writing,
    - overwrite the existing placeholder at the canonical path, and

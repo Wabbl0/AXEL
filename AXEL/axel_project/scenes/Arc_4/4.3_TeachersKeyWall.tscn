@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "5.3"
+scene_id = "4.3"
 location_label = "TEACHERS' LOUNGE"
 dialogue = PackedStringArray("There's a key.", "Why hasn't anyone nicked it yet?")

@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "3.3"
+scene_id = "2.3"
 location_label = "KITCHEN"
 dialogue = PackedStringArray("Everything is rotten here. Everything.", "[beat]", "This includes you.")

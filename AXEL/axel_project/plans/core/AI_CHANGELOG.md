@@ -3472,3 +3472,81 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Walking right in Corridor auto-loads the basement room; `[E]` at chained door plays `"Not yet."` once; walking left returns to Corridor at prior position. Locker Hub unchanged (still no basement button).
 - Verification: Headless scene load on `1.2_Corridor.tscn` and `2.2_BasementDoor.tscn`; manual walk-through per acceptance checklist.
 - Notes: Placeholder flat-grey background; swap `2.2_BasementDoor.png` for final art later. Approved legacy change to `1.2_Corridor.tscn` `RightWall` only.
+
+## 2026-07-16
+
+### Renumber scenes: Locker Hub/Basement Door fold into Arc 1, later arcs shift down
+
+- Request: Make the in-editor scene numbering match the story order used in the docs — fold Locker Hub / Basement Door into Arc 1 (as `1.3`/`1.4`) and shift every later arc down by one, so `Arc_2`..`Arc_7` become `Arc_1`..`Arc_6` and `Endings` become `7.1`–`7.6` instead of `8.1`–`8.6`.
+- Implementation: Renamed (via `git mv`, preserving history) every numbered scene file and its `.gd`/`.uid` sidecars into the new arc folders: `2.1_LockerHub` → `1.3_LockerHub`, `2.2_BasementDoor`/`2.2_BasementBlockedTemp` → `1.4_BasementDoor`/`1.4_BasementBlockedTemp` (all into `Arc_1`); `Arc_3` (Cafeteria) → `Arc_2`; `Arc_4` (Backyard) → `Arc_3`; `Arc_5` (Teachers' Lounge) → `Arc_4`; `Arc_6` (Classroom) → `Arc_5`; `Arc_7` (Basement) → `Arc_6`; `Endings` `8.1`–`8.6` → `7.1`–`7.6`. Updated the self-referencing `ext_resource` script path and root node name inside each moved `.tscn`, the `scene_id` placeholder property on the placeholder/ending scenes, and the hardcoded path constants in `1.2_Corridor.gd` (locker hub / basement door targets), `1.3_LockerHub.gd` (four destination-button paths), and `tools/scene_smoke_check.gd`. Cafeteria/Backyard/Teachers'/Classroom/Basement placeholder scenes have no scene-to-scene script wiring yet, so no other `.gd`/`.tscn` edits were needed there. Renumbered all narrative docs to match: `AXEL_SCENES_ARC1.md` (gains 1.3/1.4 sections), `AXEL_SCENES_ARC2.md`–`ARC7.md` (shifted content, `ARC8.md` deleted — its content is now `ARC7.md`), `AXEL_SCENES_NEW.md` index, `AXEL_SCENES_BLUEPRINT.md`, `ARTIST_BACKGROUND_LIST.md`, `SCENE_BUILDER_AGENT_SPEC.md` example filenames, and `tools/scene_builder/layout_planner.py` (`CANONICAL_BY_SCENE_ID` classroom entries + the `8.` → `Endings` section-prefix rule, now `7.`) plus its 4 stale `layout_drafts/*.json` header fields. Reapplied the earlier CRT red-edge fix on top of the move: removed `RoomOutline` from `1.4_BasementDoor.tscn` and set `Camera2D.margin_px = 12` (same root cause/fix as before — see the two entries above this one — just re-landed after the scene renumbering had reverted them).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/*` through `Arc_6/*` (renamed/renumbered contents), `AXEL/axel_project/scenes/Endings/*` (renumbered `7.1`–`7.6`)
+  - `AXEL/axel_project/tools/scene_smoke_check.gd`
+  - `AXEL/axel_project/tools/scene_builder/layout_planner.py`
+  - `AXEL/axel_project/tools/scene_builder/output/layout_drafts/loc_classroom_draft.json`, `loc_desk_draft.json`, `loc_board_draft.json`, `loc_board_success_draft.json`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md` through `ARC7.md` (`ARC8.md` deleted)
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_NEW.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/ARTIST_BACKGROUND_LIST.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDER_AGENT_SPEC.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Same runtime behavior as before (all scene transitions re-wired to the new paths); Basement Door's CRT red edge-frame fix is back in place. Background art PNG filenames under `exports/Drawings/` were deliberately left on their old numbers (e.g. `2.1_Locker.png`, `2.2_BasementDoor.png`) — renaming art assets was out of scope and existing `path=` references to them still resolve.
+- Verification: Headless `scene_smoke_check.gd` exit 0 (loads `0.1_MainMenu`, `1.1_SchoolExterior`, `1.2_Corridor`, `1.3_LockerHub`); `git status` clean rename detection (no orphaned old-path files); repo-wide grep for old `Arc_2/2.`–`Arc_7/7.`/`Endings/8.` path strings returns no hits outside this changelog's historical entries above.
+- Notes: If Godot's editor has any of the old-numbered scenes open in tabs from before this rename, close them without saving before reloading the project — resaving a stale tab path can recreate the old duplicate file on disk (this is what broke the previous attempt at this same rename).
+
+### Renumber Drawings art to match the Arc 1 fold-in (follow-up)
+
+- Request: The prior "Renumber scenes" entry above deliberately left `exports/Drawings/` art filenames on their pre-move numbers; user asked to finish the job and bring the pictures in line with the new scene numbering, then double-check the whole renumbering had landed everywhere.
+- Implementation: Renamed `exports/Drawings/2.1_Locker.png` → `1.3_Locker.png`, `2.2_BasementDoor.png` → `1.4_BasementDoor.png`, `3.1_Cafeteria.png` → `2.1_Cafeteria.png` (plus each `.png.import` sidecar, updating its `source_file=` field to the new name; `uid=` values kept unchanged). Updated the two live references to the renamed art: `1.3_LockerHub.gd`'s `HUB_BG_PATH` const and `1.3_LockerHub.tscn`'s `ext_resource` path (Locker), and `1.4_BasementDoor.tscn`'s `ext_resource` path (Basement Door); `2.1_Cafeteria.tscn` is still a bare placeholder with no background wired in yet, so no scene edit was needed for the Cafeteria art. Re-audited the rest of the prior renumbering pass and fixed the pieces that were still stale: the on-screen `scene_id` placeholder label in 25 placeholder scenes across `Arc_2`–`Arc_6` (e.g. `Arc_2/2.1_Cafeteria.tscn` still showed `"3.1"`) now matches each scene's real file number; three leftover mentions of the old `2.1_LockerHub.tscn`/`2.1_Locker.png`/`2.2_BasementDoor.png` paths inside `AXEL_SCENES_BLUEPRINT.md`'s prose and its frontmatter todo list. `layout_planner.py`, its 4 `layout_drafts/*.json` outputs, and `ARTIST_BACKGROUND_LIST.md` were already correct by the time of this pass (fixed either by the prior entry above or by Godot's own editor re-saving open scene tabs mid-session, per that entry's closing note).
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/1.3_Locker.png`, `.png.import` (renamed from `2.1_Locker.*`)
+  - `AXEL/axel_project/exports/Drawings/1.4_BasementDoor.png`, `.png.import` (renamed from `2.2_BasementDoor.*`)
+  - `AXEL/axel_project/exports/Drawings/2.1_Cafeteria.png`, `.png.import` (renamed from `3.1_Cafeteria.*`)
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`, `1.3_LockerHub.tscn`, `1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`, `2.2_CafeteriaMemory.tscn`, `2.3_Kitchen.tscn`, `2.4_KitchenFlashlightPickup.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`, `3.1b_BackyardClickStep1.tscn`, `3.1c_BackyardNameReveal.tscn`, `3.1d_BackyardNamedScene.tscn`, `3.2_BackyardHint.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`, `4.2_TeachersMemory.tscn`, `4.3_TeachersKeyWall.tscn`, `4.4_TeachersKeyPickup.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`, `5.2_ClassroomDesk.tscn`, `5.3_ClassroomBoard.tscn`, `5.4_ClassroomBoardSuccess.tscn`
+  - `AXEL/axel_project/scenes/Arc_6/6.1_BasementDoor.tscn` through `6.8_BasementCorpse.tscn` (all 8)
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Locker Hub and Basement Door now load their background art from the renamed paths (same images, same look) — purely a filename/label consistency fix, no gameplay or visual change. The 25 placeholder screens now display their correct scene number instead of a leftover one.
+- Verification: Re-read every renamed `.png.import` to confirm `source_file=` matches the new filename; spot-checked 10 of the 25 `scene_id` fixes with `Select-String`; repo-wide `rg` for the old Drawings filenames and old `scene_id` values returns no hits outside this changelog's historical entries.
+- Notes: `exports/Drawings/` still only has art for `1.1`, `1.2` (+ an alt `1.2_Corridor_New.png`), `1.3`, `1.4`, and `2.1` — the rest of the arcs have no art yet, per `ARTIST_BACKGROUND_LIST.md`.
+
+### CRT red fringe on Basement Door — per-scene `margin_px` (backfill)
+
+- Request: Fix red CRT edge outlines on the Basement Door room without changing global camera/CRT settings for every scene (same class of issue previously tuned on 1.1/1.2).
+- Implementation: On `1.4_BasementDoor.tscn` only — set `Camera2D.margin_px = 12` so `BackgroundCamera` insets art-derived limits (hides the CRT red fringe), and removed the decorative `RoomOutline` `Line2D` that was reading as an extra red frame under post-FX. No change to `background_camera_controller.gd` defaults (`DEFAULT_MARGIN_PX` stays `0`) and no CRT shader edits.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+- Behavior impact: Basement Door framing no longer shows a red CRT edge band; other scenes unchanged unless they set their own `margin_px`.
+- Verification: Visual check in editor/play; headless scene load still OK after renumber re-apply.
+- Notes: Same `margin_px=12` pattern later reused on `2.1_Cafeteria.tscn`. Logged here because the Jul 16 renumber entry referred to "two entries above" that were never written.
+
+### Build walkable 2.1 Cafeteria (new-scene pattern)
+
+- Request: Create the next scene under the new numbering, using new-scene parameters / global settings and `2.1_Cafeteria.png` as the background.
+- Implementation: Replaced the `ScenePlaceholder` stub with a full walkable exploration scene: `WalkableWorld/Background` (`2.1_Cafeteria.png` + locked-background script), texture-pixel wall colliders + three `[E]` interact zones (table / kitchen / return), `WalkableWorld/Player` (scale `3`, speed `253`), `BackgroundCamera` `STATIC_LOCKED`/`COVER` with `margin_px=12`, collider + spawn sync on `layout_applied`. Enter dialogue once (`TopDialogueOverlay`); zones load `2.2_CafeteriaMemory` / `2.3_Kitchen` (still placeholders) or return to `1.3_LockerHub`. Added `2.1_Cafeteria.tscn` to `tools/scene_smoke_check.gd`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/tools/scene_smoke_check.gd`
+- Behavior impact: Hub → Cafeteria is now a walkable room with the real cafeteria art; Memory/Kitchen targets still open placeholder scenes until those are built.
+- Verification: Headless `scene_smoke_check.gd` includes `2.1_Cafeteria.tscn` and passes (7 scenes).
+- Notes: Ghostly-figure idle float from the HTML blueprint is still TODO; zone rectangles are first-pass — nudge in editor if needed.
+
+### Docs catch-up after renumber + Cafeteria ship
+
+- Request: Update all docs from previous chats.
+- Implementation: Brought canon and scene plans in sync with shipped code — `AI_DOCS.md` (1.1 collider auto-sync + `locked_feet_y`, 1.2 right exit → 1.4, 1.3/1.4 hub/door notes, new-scene `margin_px` CRT trim, 2.1 Cafeteria walkable); ARC1/ARC2 Implemented notes; BLUEPRINT todos for locker/basement/cafeteria marked completed; artist list marks 1.4 Drawn.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/scenes/ARTIST_BACKGROUND_LIST.md`
+- Behavior impact: None (docs only).
+- Verification: Cross-checked against current `2.1_Cafeteria.gd`/`.tscn`, `1.4_BasementDoor.tscn`, and prior Jul 15–16 changelog entries.
+- Notes: Corridor/locker/basement renumber path wiring was already logged earlier today; this pass fills the gaps those entries left in canon.

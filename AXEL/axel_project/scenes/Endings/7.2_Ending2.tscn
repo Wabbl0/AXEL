@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "8.2"
+scene_id = "7.2"
 location_label = "ENDING #2"
 dialogue = PackedStringArray("The shadows consume you.", "You lose your footing.", "Is this how it ends?", "Really?", "I mean...", "Your fault for thinking you could see where you're stepping in pitch-black.", "If only you had a FLASHLIGHT.", "You know the tool that lights up dark places.", "Maybe it's in the kitchen. I don't know.", "Your dumb.")

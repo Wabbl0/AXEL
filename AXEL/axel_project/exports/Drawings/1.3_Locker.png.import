@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dglircrrpmjr4"
-path="res://.godot/imported/3.1_Cafeteria.png-79fec06e809702cce8fa1a9852b00724.ctex"
+uid="uid://dhb1hfv26e0vx"
+path="res://.godot/imported/2.1_Locker.png-500edd2849a0379848f087df2c9c0703.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://exports/Drawings/3.1_Cafeteria.png"
-dest_files=["res://.godot/imported/3.1_Cafeteria.png-79fec06e809702cce8fa1a9852b00724.ctex"]
+source_file="res://exports/Drawings/1.3_Locker.png"
+dest_files=["res://.godot/imported/2.1_Locker.png-500edd2849a0379848f087df2c9c0703.ctex"]
 
 [params]
 

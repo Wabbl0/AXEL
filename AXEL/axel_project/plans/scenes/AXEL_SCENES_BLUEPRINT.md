@@ -15,14 +15,14 @@ todos:
     content: "1.2_Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, static full-bleed background (viewport cover-fit), corridor_large player profile (3× scale, speed 362, left spawn)."
     status: pending
   - id: scene-locker-hub
-    content: "LockerHub.tscn (scene_3): hub.png bg; MapHotspot (UiPolygonHotspot) on map paper swaps to map.png on click, five destination choices plus red basement entry, add_memory_once('scene_3') on enter."
-    status: pending
+    content: "1.3_LockerHub.tscn (scene_3): 1.3_Locker.png bg; MapHotspot (UiPolygonHotspot) on map paper swaps to map.png on click, four destination buttons (basement omitted), add_memory_once('scene_3') on enter."
+    status: completed
   - id: scene-basement-blocked-temp
-    content: "2.2_BasementDoor.tscn (basement_door): walkable exploration room with chained-door placeholder, once-ever Not yet line on [E], Corridor right-edge entry and left-edge return."
-    status: pending
+    content: "1.4_BasementDoor.tscn (basement_door): walkable exploration room with 1.4_BasementDoor.png, once-ever Not yet line on [E], Corridor right-edge entry and left-edge return, margin_px=12."
+    status: completed
   - id: scene-cafeteria
-    content: "Cafeteria.tscn (loc_cafeteria): cafeteria.png bg, ghostly figure sprite with idle float, three choices (table/kitchen/return)."
-    status: pending
+    content: "2.1_Cafeteria.tscn (loc_cafeteria): walkable room with 2.1_Cafeteria.png, enter dialogue, [E] zones to Memory/Kitchen/Locker Hub (Memory+Kitchen still placeholders). Ghost float sprite still TODO."
+    status: completed
   - id: scene-cafeteria-memory
     content: "CafeteriaMemory.tscn (loc_cafeteria_memory): cafeteria_table.png bg, dialogue-only memory with glitch-in, add_memory_once, Go back choice."
     status: pending
@@ -165,56 +165,52 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 - Player: `PlayerLayer` (layer 100), `corridor_large` profile — scale `3.0`, speed `362`; spawn ~`(73, 271)`.
 - Camera: `Camera2D` + `background_camera_controller.gd` (`STATIC_LOCKED`, `COVER`) — limits/zoom from PNG `world_rect` via `BackgroundLayout.apply`; `static_center.x = 560` preserves legacy horizontal framing. No vertical follow (whole corridor always in view).
 - Colliders: `WalkableWorld/EnvironmentColliders` in **texture-pixel space** (`StaticBody2D` at collision center, shape at `(0,0)`); `1.2_Corridor.gd` syncs on `Camera2D.layout_applied` (scale/position from `BackgroundCamera`).
-- Dialogue: opening smell line once-ever via `TopDialogueOverlay` (rewrite in `AXEL_SCENES_ARC1.md`). Locker interact: `LockerInteractArea` under `EnvironmentColliders` → proximity line once-ever → `[E]` chip (1.1 door pattern) → `2.1_LockerHub.tscn`; return restores saved player position.
+- Dialogue: opening smell line once-ever via `TopDialogueOverlay` (rewrite in `AXEL_SCENES_ARC1.md`). Locker interact: `LockerInteractArea` under `EnvironmentColliders` → proximity line once-ever → `[E]` chip (1.1 door pattern) → `1.3_LockerHub.tscn`; return restores saved player position.
 - Choices (deferred): `Turn away` -> `Ending1` not wired.
 - Animations: optional future ambient FX only.
 
----
-
-## Arc 2 - Hub
-
-### 2.1 `2.1_LockerHub.tscn` (`scene_3`) — **shipped**
+### 1.3 `1.3_LockerHub.tscn` (`scene_3`) — **shipped**
 - Location label: `YOUR LOCKER`
-- Background: `exports/Drawings/2.1_Locker.png`; **`MapHotspot`** (`UiPolygonHotspot`, `background_path = ../Background` + `PolygonAnchor/CollisionPolygon2D` in texture-pixel space) — hover + click on MAP paper swaps to `exports/Drawings/map.png` (placeholder until final map art). Map clicks ignored during first-visit dialogue; hotspot disables after map opens.
-- Dialogue: ARC2 `[REWRITE]` on first visit; `GameManager.add_memory_once("scene_3")`.
-- Choices: Cafeteria (`3.1_Cafeteria.tscn`), Classroom (`6.1_Classroom.tscn`), Backyard (`4.1_Backyard.tscn`), Teachers' lounge (`5.1_TeachersLounge.tscn`) — disable button when target scene missing. **No basement button** this milestone (`2.2` / `SceneRouter` deferred).
+- Background: `exports/Drawings/1.3_Locker.png`; **`MapHotspot`** (`UiPolygonHotspot`, `background_path = ../Background` + `PolygonAnchor/CollisionPolygon2D` in texture-pixel space) — hover + click on MAP paper swaps to `exports/Drawings/map.png` (placeholder until final map art). Map clicks ignored during first-visit dialogue; hotspot disables after map opens.
+- Dialogue: ARC1 `[REWRITE]` on first visit; `GameManager.add_memory_once("scene_3")`.
+- Choices: Cafeteria (`2.1_Cafeteria.tscn`), Classroom (`5.1_Classroom.tscn`), Backyard (`3.1_Backyard.tscn`), Teachers' lounge (`4.1_TeachersLounge.tscn`) — disable button when target scene missing. **No basement button** this milestone (`1.4` / `SceneRouter` deferred).
 - Exit: red `X` bottom-right (root-level, visible on locker + map views) → `1.2_Corridor.tscn` at saved `corridor_return_pos`.
-- No player node; no embedded post-FX. Script: `2.1_LockerHub.gd`.
+- No player node; no embedded post-FX. Script: `1.3_LockerHub.gd`.
 
-### 2.2 `2.2_BasementDoor.tscn` (`basement_door`) — **shipped**
+### 1.4 `1.4_BasementDoor.tscn` (`basement_door`) — **shipped**
 - Location label: `BASEMENT`
-- Background: placeholder `exports/Drawings/2.2_BasementDoor.png` (flat dark grey; swap for final art later).
+- Background: placeholder `exports/Drawings/1.4_BasementDoor.png` (flat dark grey; swap for final art later).
 - Walkable exploration scene: chained-door placeholder polygons, floor divider at Y≈474, door `[E]` interact once-ever (`"Not yet."` / `GameManager.basement_door_line_seen`).
 - Entry: `1.2_Corridor.tscn` right-edge `ExitTrigger` (auto, no `[E]`).
 - Exit: left-edge `ExitTrigger` → `1.2_Corridor.tscn` at saved `corridor_return_pos`.
-- No embedded post-FX. Script: `2.2_BasementDoor.gd`. Replaces `2.2_BasementBlockedTemp.tscn`.
+- No embedded post-FX. Script: `1.4_BasementDoor.gd`. Replaces `1.4_BasementBlockedTemp.tscn`.
 
 ---
 
-## Arc 3 - Cafeteria
+## Arc 2 - Cafeteria
 
-### 3.1 `Cafeteria.tscn` (`loc_cafeteria`)
+### 2.1 `Cafeteria.tscn` (`loc_cafeteria`)
 - Location label: `CAFETERIA`
 - Background: `cafeteria.png`
 - Dialogue: "Tables are overturned. The air reeks of rancid grease. In the middle of the hall you see a ghostly figure sitting alone at an intact table. The kitchen area is dark."
 - Choices: `Approach Your table` -> `CafeteriaMemory`, `Search the kitchen` -> `Kitchen`, `Return to locker` -> `LockerHub`.
 - Animations: translucent ghost sprite (floating idle loop, alpha 0.4); `kitchen area` panel rendered darker via masked gradient.
 
-### 3.2 `CafeteriaMemory.tscn` (`loc_cafeteria_memory`) - memory-only, no interaction
+### 2.2 `CafeteriaMemory.tscn` (`loc_cafeteria_memory`) - memory-only, no interaction
 - Location label: `CAFETERIA`
 - Background: `cafeteria_table.png`
 - Dialogue: "You are sitting at the same table. The popular kids invite you over. Your friend whispers, 'Don't go.' You stand up, laugh and shout loud: 'Sorry, I can't deal with your whining.' You leave them alone."
 - Choice: `Go back` -> `Cafeteria`.
 - `onEnter`: `GameState.add_memory_once("loc_cafeteria_memory")` + glitch flash on the story text (1s) to match `addMemory()`.
 
-### 3.3 `Kitchen.tscn` (`loc_kitchen`)
+### 2.3 `Kitchen.tscn` (`loc_kitchen`)
 - Location label: `KITCHEN`
 - Background: `kitchen.png` (dark); after pickup it renders `kitchen_no_flash.png` (JS lines 476-482).
 - Dialogue: "The kitchen is rotting at the seams. You see the rot pile up in the air. The smell is horrendus."
 - Choices: `Turn back` -> `Cafeteria`; plus a hidden click `Area2D` over the counter that loads `action_get_flashlight` when `!hasFlashlight` (JS lines 492-495). Scene is locked (`choice-btn-locked`) until `hasFlashlight` too.
 - Animations: slow particle `CPUParticles2D` for "rot in the air"; optional flies buzzing sfx.
 
-### 3.4 `KitchenFlashlightPickup.tscn` (`action_get_flashlight`) - short state screen
+### 2.4 `KitchenFlashlightPickup.tscn` (`action_get_flashlight`) - short state screen
 - Location label: `KITCHEN`
 - Background: `kitchen_no_flash.png`
 - Dialogue: "Your hand hits cold metal. You found an industrial flashlight!"
@@ -224,9 +220,9 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 
 ---
 
-## Arc 4 - Backyard
+## Arc 3 - Backyard
 
-### 4.1 `Backyard.tscn` (`loc_yard`)
+### 3.1 `Backyard.tscn` (`loc_yard`)
 - Location label: `BACKYARD`
 - Background: `backyard.png`
 - Dialogue (state 0): "The corner at the back of the school. The wall has a weird graffiti on it. You still smell the teen rebelry around."
@@ -237,7 +233,7 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
   3. Reload `loc_yard` in normal (unlocked) state.
 - Animations: graffiti highlight pulse; quick glitch on text transitions; on step 2, a `Sprite2D` of the lighter fades in at the feet position.
 
-### 4.2 `BackyardHint.tscn` (`loc_yard_hint`)
+### 3.2 `BackyardHint.tscn` (`loc_yard_hint`)
 - Location label: `INTERMISSION`
 - Background: `cigarette.png`
 - Dialogue: dynamically chosen by `get_smoking_hint()`; one of:
@@ -251,9 +247,9 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 
 ---
 
-## Arc 5 - Teachers' Lounge
+## Arc 4 - Teachers' Lounge
 
-### 5.1 `TeachersLounge.tscn` (`loc_teachers`)
+### 4.1 `TeachersLounge.tscn` (`loc_teachers`)
 - Location label: `TEACHERS' LOUNGE`
 - Background: `teacher_key.png` (or `teacher_no_key.png` after pickup - JS lines 478-479).
 - Dialogue: "The air is stale. You always wondered what the teachers were doing behind closed doors."
@@ -263,15 +259,15 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
   2. Load `TeachersKeyPickup`.
 - Animations: muted fluorescent flicker; document pages rustling particle.
 
-### 5.2 `TeachersMemory.tscn` (`loc_teachers_memory`) - memory overlay (no own background in HTML)
+### 4.2 `TeachersMemory.tscn` (`loc_teachers_memory`) - memory overlay (no own background in HTML)
 - Location label: `TEACHERS' LOUNGE`
 - Dialogue: "The cop asked, 'When did you last see him?' You answered: 'That day at lunch. I thought they went home.' You lied. You knew exactly where THEY were."
 - This plays inside `TeachersLounge` per the click handler, so in Godot implement it as an embedded state, not a separate file (saves a scene). Keep a separate file only if you want a pure memory view.
 
-### 5.3 `TeachersKeyWall.tscn` (`loc_key_wall`) - currently unused in the JS flow
+### 4.3 `TeachersKeyWall.tscn` (`loc_key_wall`) - currently unused in the JS flow
 - Retained in HTML but not reachable with current choices. Either omit or reserve for future hook.
 
-### 5.4 `TeachersKeyPickup.tscn` (`action_get_key`)
+### 4.4 `TeachersKeyPickup.tscn` (`action_get_key`)
 - Location label: `TEACHERS' LOUNGE`
 - Background: `teacher_no_key.png`
 - Dialogue: "You take the key. A bit of tape reads: 'BASEMENT'."
@@ -281,16 +277,16 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 
 ---
 
-## Arc 6 - Classroom
+## Arc 5 - Classroom
 
-### 6.1 `Classroom.tscn` (`loc_classroom`)
+### 5.1 `Classroom.tscn` (`loc_classroom`)
 - Location label: `CLASSROOM`
 - Background: `classroom.png`
 - Dialogue: "Dust dances in the beams of light. In the back row one desk sits apart from the others. A chalkboard stands at the front."
 - Choices: `Inspect the desk` -> `ClassroomDesk`, `Look at the board` -> `ClassroomBoard`, `Return to locker` -> `LockerHub`.
 - Animations: dust motes `CPUParticles2D` in a god-ray cone.
 
-### 6.2 `ClassroomDesk.tscn` (`loc_desk`) - scripted animation
+### 5.2 `ClassroomDesk.tscn` (`loc_desk`) - scripted animation
 - Location label: `CLASSROOM`
 - Background starts as `desk_empty.jpg`, story text hidden.
 - Animation sequence (JS lines 573-594) played once when `!deskSequencePlayed`:
@@ -302,7 +298,7 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 - Choice: `Close the lid` -> `Classroom`.
 - Implementation note: Use an `AnimationPlayer` with three keyframes calling `_swap_bg(path)` and toggling a `ColorRect` overlay for the opacity blend.
 
-### 6.3 `ClassroomBoard.tscn` (`loc_board`) - text puzzle
+### 5.3 `ClassroomBoard.tscn` (`loc_board`) - text puzzle
 - Location label: `CLASSROOM`
 - Background: `board.png`
 - Dialogue: "On the board is code: `if (name == ____) { remember(); }`. Do you know the name?"
@@ -311,7 +307,7 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 - Choice: `Turn back` -> `Classroom`.
 - Animations: typed-letter tick sound; subtle chalk puff when answer entered.
 
-### 6.4 `ClassroomBoardSuccess.tscn` (`loc_board_success`)
+### 5.4 `ClassroomBoardSuccess.tscn` (`loc_board_success`)
 - Location label: `CLASSROOM`
 - Background: `board.png`
 - Dialogue: "At least YOU remember that much."
@@ -321,51 +317,51 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 
 ---
 
-## Arc 7 - Basement
+## Arc 6 - Basement
 
-### 7.1 `BasementDoor.tscn` (`basement_entry`)
+### 6.1 `BasementDoor.tscn` (`basement_entry`)
 - Location label: `BASEMENT DOOR`; no background (black).
 - Dialogue: "A heavy metal door. The sign reads 'ENTRY FORBIDDEN'."
 - Choices: `Unlock with key` -> `BasementStairs` (if `hasKey`); else `Try the handle (Locked)` -> `BasementLocked`; `Go back` -> `LockerHub`.
 - Animations: dim spotlight on door sprite; handle jiggle when locked.
 
-### 7.2 `BasementLocked.tscn` (`basement_locked`)
+### 6.2 `BasementLocked.tscn` (`basement_locked`)
 - Location label: `LOCKED`
 - Dialogue: "The door won't budge. You need a key."
 - Choice: `Go back` -> `LockerHub`.
 
-### 7.3 `BasementStairs.tscn` (`basement_stairs`)
+### 6.3 `BasementStairs.tscn` (`basement_stairs`)
 - Location label: `STAIRCASE`
 - Dialogue: "The door opens. Before you lie pitch-black stairs. The smell is nauseating. Are you ready to step into the darkness?"
 - Choices: `Go down` -> router (`check_flashlight_logic`), `I'm not ready` -> `LockerHub`.
 - Router: if `hasFlashlight` go to `BasementMain`, else go to `Ending2`. Implement as `SceneRouter.check_flashlight()` rather than a `.tscn`.
 - Animations: slow camera descend, breath sfx, red vignette creeping in.
 
-### 7.4 `BasementMain.tscn` (`basement_main`)
+### 6.4 `BasementMain.tscn` (`basement_main`)
 - Location label: `MAIN CHAMBER`; no background - render flashlight cone as a `Light2D` over a dark canvas.
 - Dialogue: "The beam hits soft soil. In the corner something metallic glints. There is no going back."
 - Choices: `Pick up the shovel` -> `BasementShovelPickup` (if `!hasShovel`); `Dig (Requires shovel)` -> `BasementDigging` (if `hasShovel`); `Turn back` -> `BasementStuck`.
 - Animations: flashlight follows cursor; glint particle pulsing on shovel corner.
 
-### 7.5 `BasementShovelPickup.tscn` (`action_get_shovel`)
+### 6.5 `BasementShovelPickup.tscn` (`action_get_shovel`)
 - Location label: `FOUND`
 - Dialogue: "You found a rusty shovel."
 - Choice: `Continue` -> `BasementMain`.
 - `onEnter`: `flags.hasShovel = true`.
 
-### 7.6 `BasementStuck.tscn` (`basement_stuck`)
+### 6.6 `BasementStuck.tscn` (`basement_stuck`)
 - Location label: `NO RETURN`
 - Dialogue: "The door is locked behind you. You must face this."
 - Choice: `Back` -> `BasementMain`.
 
-### 7.7 `BasementDigging.tscn` (`basement_digging`) - final memory
+### 6.7 `BasementDigging.tscn` (`basement_digging`) - final memory
 - Location label: `DIGGING`
 - Dialogue: "You strike the shovel into the ground. Thud. Fabric... bone. The final memory surfaces."
 - Choice: `FACE THE TRUTH` -> `BasementCorpse`.
 - `onEnter`: `add_memory_once("basement_digging")`.
 - Animations: three screen shakes timed with "Thud" beats; dirt particles each strike; glitch on text.
 
-### 7.8 `BasementCorpse.tscn` (`basement_question`) - text puzzle
+### 6.8 `BasementCorpse.tscn` (`basement_question`) - text puzzle
 - Location label: `CORPSE`
 - Dialogue: "Before you is a mummified body. Its jaw drops open. A voice echoes in your head: 'WHO AM I?'"
 - Input: correct answer `AXEL`. Success -> router `check_true_ending_logic`; fail -> `Ending3`.
@@ -374,27 +370,27 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 
 ---
 
-## Arc 8 - Endings
+## Arc 7 - Endings
 
 Each ending is a static scene with title, dialogue, and a `Start again` button that returns to `SchoolExterior` (HTML `start`). Use one reusable `Ending.tscn` with exported properties.
 
-### 8.1 `Ending1.tscn` - "Fear wins over curiosity. You walk away. In the nights that follow you have nightmares, but you never learn the truth."
+### 7.1 `Ending1.tscn` - "Fear wins over curiosity. You walk away. In the nights that follow you have nightmares, but you never learn the truth."
 - Animation: slow fade to black + distant nightmare whispers loop.
 
-### 8.2 `Ending2.tscn` - "You step into darkness without light. Your foot slips. You tumble down the stairs and your neck breaks. The shadows consume you."
+### 7.2 `Ending2.tscn` - "You step into darkness without light. Your foot slips. You tumble down the stairs and your neck breaks. The shadows consume you."
 - Animation: jump-cut screen shakes, then black.
 
-### 8.3 `Ending3.tscn` - "You answer wrong. 'You still don't care!' the voice screams. The basement walls glow red. Fire engulfs you. You are in hell."
+### 7.3 `Ending3.tscn` - "You answer wrong. 'You still don't care!' the voice screams. The basement walls glow red. Fire engulfs you. You are in hell."
 - Animation: red tint pulse, fire particle overlay, distorted text.
 
-### 8.4 `Ending4.tscn` - "You whisper 'Axel'. The body goes silent. But then the police burst in. You have no evidence (Name missing) that it was suicide. You are convicted of murder."
+### 7.4 `Ending4.tscn` - "You whisper 'Axel'. The body goes silent. But then the police burst in. You have no evidence (Name missing) that it was suicide. You are convicted of murder."
 - Animation: red/blue siren flash alternating.
 
-### 8.5 `EndingTrue.tscn` - "You whisper 'Axel' and give the name. A spirit leaves the body. He looks at peace. 'This can't hurt me anymore,' he laughs. You are forgiven."
+### 7.5 `EndingTrue.tscn` - "You whisper 'Axel' and give the name. A spirit leaves the body. He looks at peace. 'This can't hurt me anymore,' he laughs. You are forgiven."
 - Animation: white spirit `Sprite2D` drifting upward with additive blend; soft tone chord.
 - Choice: `Go to the backyard` -> `Epilogue`.
 
-### 8.6 `Epilogue.tscn`
+### 7.6 `Epilogue.tscn`
 - Location label: `EPILOGUE`
 - Dialogue: "You sit together in the backyard. You and a ghost. You smoke in silence. Smoke rises toward the sky. You are free."
 - Choice: `Exit` -> `SchoolExterior` (reset).

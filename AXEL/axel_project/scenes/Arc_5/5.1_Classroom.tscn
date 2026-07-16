@@ -10,6 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "6.1"
+scene_id = "5.1"
 location_label = "CLASSROOM"
 dialogue = PackedStringArray("This is where the shit went down.", "If shit going down is you, highly caffinated, ignoring your teachers and usually skipping class to go for a smoke.", "How did you ever get anywhere in life?")

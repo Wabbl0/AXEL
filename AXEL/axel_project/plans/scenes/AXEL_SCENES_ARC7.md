@@ -1,189 +1,199 @@
-# AXEL — Scene Dialogues: Arc 7 — Basement
+# AXEL — Scene Dialogues: Arc 7 — Endings
 
 ---
 
-### 7.1 Basement Door (`basement_entry`)
+### 7.1 Ending 1 — Fear (`ending_1`)
 
-**Location label:** `BASEMENT DOOR`
-
-**Dialogue [SOURCE]:**
-
-> A heavy metal door. The sign reads 'ENTRY FORBIDDEN'.
-
-**[REWRITE]:**
-
-> x
-
-**Choices:**
-
-
-| Button label            | Condition | Target          |
-| ----------------------- | --------- | --------------- |
-| Unlock with key         | Has key   | Basement Stairs |
-| Try the handle (Locked) | No key    | Basement Locked |
-| Go back                 | —         | Locker Hub      |
-
-
----
-
-### 7.2 Basement Locked (`basement_locked`)
-
-**Location label:** `LOCKED`
+**Location label:** `ENDING #1`
 
 **Dialogue [SOURCE]:**
 
-> The door won't budge. You need a key.
+> Fear wins over curiosity. You walk away. In the nights that follow you have nightmares, but you never learn the truth.
 
 **[REWRITE]:**
 
-> You need a key, dumbass.
-
-**Choices:**
-
-
-| Button label | Target     |
-| ------------ | ---------- |
-| Go back      | Locker Hub |
-
-
----
-
-### 7.3 Basement Stairs (`basement_stairs`)
-
-**Location label:** `STAIRCASE`
-
-**Dialogue [SOURCE]:**
-
-> The door opens. Before you lie pitch-black stairs. The smell is nauseating. Are you ready to step into the darkness?
-
-**[REWRITE]:**
-
-> The door opens to a terrible screetch.
+> Coward
 >
-> In front of you stairs descending into pitch-blackness.
+> Coward
 >
-> Are you ready?
-
-**Choices:**
-
-
-| Button label  | Condition      | Target        |
-| ------------- | -------------- | ------------- |
-| Go down       | Has flashlight | Basement Main |
-| Go down       | No flashlight  | Ending 2      |
-| I'm not ready | —              | Locker Hub    |
-
-
----
-
-### 7.4 Basement Main (`basement_main`)
-
-**Location label:** `MAIN CHAMBER`
-
-**Dialogue [SOURCE]:**
-
-> The beam hits soft soil. In the corner something metallic glints. There is no going back.
-
-**[REWRITE]:**
-
-> x
-
-**Choices:**
-
-
-| Button label          | Condition     | Target           |
-| --------------------- | ------------- | ---------------- |
-| Pick up the shovel    | No shovel yet | Shovel Pickup    |
-| Dig (Requires shovel) | Has shovel    | Basement Digging |
-| Turn back             | —             | Basement Stuck   |
-
-
----
-
-### 7.5 Shovel Pickup (`action_get_shovel`)
-
-**Location label:** `FOUND`
-
-**Dialogue [SOURCE]:**
-
-> You found a rusty shovel.
-
-**[REWRITE]:**
-
-> The same old shovel still here.
-
-**Choices:**
-
-
-| Button label | Target        |
-| ------------ | ------------- |
-| Continue     | Basement Main |
-
-
----
-
-### 7.6 Basement Stuck (`basement_stuck`)
-
-**Location label:** `NO RETURN`
-
-**Dialogue [SOURCE]:**
-
-> The door is locked behind you. You must face this.
-
-**[REWRITE]:**
-
-> I'm not letting you.
-
-**Choices:**
-
-
-| Button label | Target        |
-| ------------ | ------------- |
-| Back         | Basement Main |
-
-
----
-
-### 7.7 Basement Digging (`basement_digging`)
-
-**Location label:** `DIGGING`
-
-**Dialogue [SOURCE]:**
-
-> You strike the shovel into the ground. Thud. Fabric… bone. The final memory surfaces.
-
-**[REWRITE]:**
-
-> As you keep digging.
+> Coward
 >
-> A memory surfaces.
+> Coward
+>
+> ...
 
 **Choices:**
 
 
-| Button label   | Target          |
-| -------------- | --------------- |
-| FACE THE TRUTH | Basement Corpse |
+| Button label | Target                       |
+| ------------ | ----------------------------- |
+| Start again  | School Exterior (full reset) |
 
 
 ---
 
-### 7.8 Basement Corpse — Puzzle (`basement_question`)
+### 7.2 Ending 2 — Darkness (`ending_2`)
 
-**Location label:** `CORPSE`
+**Location label:** `ENDING #2`
 
 **Dialogue [SOURCE]:**
 
-> Before you is a mummified body. Its jaw drops open. A voice echoes in your head: 'WHO AM I?'
+> You step into darkness without light. Your foot slips. You tumble down the stairs and your neck breaks. The shadows consume you.
+
+**[REWRITE]:**
+
+> The shadows consume you.
+>
+> You lose your footing.
+>
+> Is this how it ends?
+>
+> Really?
+>
+> I mean...
+>
+> Your fault for thinking you could see where you're stepping in pitch-black.
+>
+> If only you had a FLASHLIGHT.
+>
+> You know the tool that lights up dark places.
+>
+> Maybe it's in the kitchen. I don't know.
+>
+> Your dumb.
+
+**Choices:**
+
+
+| Button label | Target                       |
+| ------------ | ----------------------------- |
+| Start again  | School Exterior (full reset) |
+
+
+---
+
+### 7.3 Ending 3 — Wrong Answer (`ending_3`)
+
+**Location label:** `ENDING #3`
+
+**Dialogue [SOURCE]:**
+
+> You answer wrong. 'You still don't care!' the voice screams. The basement walls glow red. Fire engulfs you. You are in hell.
+
+**[REWRITE]:**
+
+> His eyes won't return yours.
+>
+> It's not complete.
+
+**Choices:**
+
+
+| Button label | Target                       |
+| ------------ | ----------------------------- |
+| Start again  | School Exterior (full reset) |
+
+
+---
+
+### 7.4 Ending 4 — No Name (`ending_4`)
+
+**Location label:** `ENDING #4`
+
+**Dialogue [SOURCE]:**
+
+> You whisper 'Axel'. The body goes silent. But then the police burst in. You have no evidence (Name missing) that it was suicide. You are convicted of murder.
 
 **[REWRITE]:**
 
 > [instead of the name, the game just runs a check if the puzzle was completed in the classroom]
+>
+> You hear sirens.
+>
+> Then see the red and blue lights.
+>
+> What comes around, goes around.
 
-**Input:** Text field — correct answer: `AXEL` (case-insensitive)
+**Choices:**
 
-**On correct + has Name flag:** → Ending True
-**On correct + no Name flag:** → Ending 4
-**On wrong answer:** → Ending 3 (auto-routed after 2 seconds, no fail text in source)
+
+| Button label | Target                       |
+| ------------ | ----------------------------- |
+| Start again  | School Exterior (full reset) |
+
 
 ---
+
+### 7.5 True Ending (`ending_true`)
+
+**Location label:** `TRUE ENDING`
+
+**Dialogue [SOURCE]:**
+
+> You whisper 'Axel' and give the name. A spirit leaves the body. He looks at peace. 'This can't hurt me anymore,' he laughs. You are forgiven.
+
+**[REWRITE]:**
+
+> Maybe it wasn't ALL your fault.
+>
+> Maybe I was too harsh.
+>
+> Okay.
+>
+> I'll say it.
+>
+> Ugh.
+>
+> I'm sorry.
+>
+> [a spirit leaves the body]
+
+**Choices:**
+
+
+| Button label       | Target   |
+| ------------------ | -------- |
+| Go to the backyard | Epilogue |
+
+
+---
+
+### 7.6 Epilogue (`epilogue`)
+
+**Location label:** `EPILOGUE`
+
+**Dialogue [SOURCE]:**
+
+> You sit together in the backyard. You and a ghost. You smoke in silence. Smoke rises toward the sky. You are free.
+
+**[REWRITE]:**
+
+> [player smokes in the end screen with the spirit in the backyard]
+>
+> "I should quit."
+>
+> "Yeah, don't want to end like me before your time"
+>
+> It was a really bad joke, but you still laugh.
+>
+> Just like old times.
+
+**Choices:**
+
+
+| Button label | Target                       |
+| ------------ | ----------------------------- |
+| Exit         | School Exterior (full reset) |
+
+
+---
+
+## What was missing from the first version of this file
+
+
+| Scene               | What was missing                                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `loc_key_wall`      | Entire scene omitted — *"Most hooks are empty. One rusty key still hangs."*                                                                                      |
+| Backyard step 2     | Yard reveal text was buried in inline JS `loadScene()`, not in the `story` object: *"YOU look down. There it is. A lighter with the name 'AXEL' written on it."* |
+| `loc_yard_memory`   | Listed only as a click step but the named scene (reached via "Remember the name") was not separated out                                                          |
+| `basement_question` | No fail text is defined in source — player routes to Ending 3 silently after 2s (was implied but not noted)                                                      |

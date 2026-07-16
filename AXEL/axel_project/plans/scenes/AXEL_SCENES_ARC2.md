@@ -1,49 +1,119 @@
-# AXEL — Scene Dialogues: Arc 2 — Hub
+# AXEL — Scene Dialogues: Arc 2 — Cafeteria
 
 ---
 
-### 2.1 Locker Hub (`scene_3`)
+### 2.1 Cafeteria (`loc_cafeteria`)
 
-**Location label:** `YOUR LOCKER`
+**Location label:** `CAFETERIA`
 
 **Dialogue [SOURCE]:**
 
-> You are in your sanctuary. There's a picture of the two of you on the locker door. The map shows four circled locations. The basement entrance has been blacked out.
+> Tables are overturned. The air reeks of rancid grease. In the middle of the hall you see a ghostly figure sitting alone at an intact table. The kitchen area is dark.
 
 **[REWRITE]:**
 
-> Oh look, a map of the school.  
-> [beat]  
-> Was your memory so bad you needed a map of the school?
+> Even through all the chaos you can hear the chattering students of the past.
 
 **Choices:**
 
 
-| Button label                       | Target                           |
-| ---------------------------------- | -------------------------------- |
-| Go to the cafeteria                | Cafeteria                        |
-| Go to the classroom                | Classroom                        |
-| Go to the backyard                 | Backyard                         |
-| Go to the teacher's lounge         | Teachers' Lounge                 |
-| ENTER THE BASEMENT *(red, locked)* | Basement Blocked / Basement Door |
+| Button label        | Target           |
+| ------------------- | ---------------- |
+| Approach Your table | Cafeteria Memory |
+| Search the kitchen  | Kitchen          |
+| Return to locker    | Locker Hub       |
 
-**Implemented (Godot):** `2.1_LockerHub.tscn` + `2.1_LockerHub.gd` — four destinations above (basement omitted); `MapHotspot` (`UiPolygonHotspot`, `background_path = ../Background`) on the MAP paper → swaps background to `map.png` (hover tint + click only inside polygon; clicks ignored during first-visit dialogue); red `X` exit to corridor. Reachable from `1.2_Corridor.tscn` locker interact zone. First-visit lines use `TopDialogueOverlay.show_line()`; player can skip with click / E / Space / Enter while the bar is up (`CrtPowerFx.cancel()` on skip — no session freeze). **Tune map hit area:** `MapHotspot/PolygonAnchor/CollisionPolygon2D` vertex handles in texture-pixel space.
+
+**Implemented (Godot):** `2.1_Cafeteria.tscn` + `2.1_Cafeteria.gd` — first Arc 2 walkable room using the new-scene pattern: `WalkableWorld/Player` (scale `3`, speed `253`), `2.1_Cafeteria.png` cover-fit + locked background, `BackgroundCamera` `STATIC_LOCKED`/`COVER` with `margin_px=12`, collider sync on `layout_applied`. Enter line once via `TopDialogueOverlay`. `[E]` zones: table → `2.2_CafeteriaMemory.tscn` (still placeholder), kitchen → `2.3_Kitchen.tscn` (still placeholder), left return → `1.3_LockerHub.tscn`. No ghost float sprite yet; no embedded post-FX. Tune wall/zone shapes in the editor if hotspots feel off.
+
+---
+
+### 2.2 Cafeteria Memory (`loc_cafeteria_memory`)
+
+**Location label:** `CAFETERIA`
+*(Memory — glitch flash on enter, no interaction area)*
+
+**Dialogue [SOURCE]:**
+
+> You are sitting at the same table. The popular kids invite you over. Your friend whispers, 'Don't go.' You stand up, laugh and shout loud: 'Sorry, I can't deal with your whining.' You leave them alone.
+
+**[REWRITE]:**
+
+> "Do you think I'm a bad person?"
+>
+> [beat]
+>
+> You answer, "No."
+>
+> [beat]
+>
+> "I just - don't have the energy. To be around you."
+>
+> [beat]
+>
+> "Sorry."
+>
+> "Oh," they sigh.
+>
+> [beat]
+>
+> "No. I understand."
+
+**Choices:**
+
+
+| Button label | Target    |
+| ------------ | --------- |
+| Go back      | Cafeteria |
 
 
 ---
 
-### 2.2 Basement Door — walkable gate (`basement_door`)
+### 2.3 Kitchen (`loc_kitchen`)
 
-**Location label:** `BASEMENT`
+**Location label:** `KITCHEN`
 
 **Dialogue [SOURCE]:**
 
-> The basement is sealed off for now. Come back later.
+> The kitchen is rotting at the seams. You see the rot pile up in the air. The smell is horrendus.
 
 **[REWRITE]:**
 
-> Not yet.
+> Everything is rotten here. Everything.
+>
+> [beat]
+>
+> This includes you.
 
-**Implemented (Godot):** `2.2_BasementDoor.tscn` + `2.2_BasementDoor.gd` — walkable exploration room with placeholder flat background, chained-steel-door placeholder art, floor/wall divider line, `[E]` interact near door (once-ever `"Not yet."` via `GameManager.basement_door_line_seen`), left-edge `ExitTrigger` auto-return to `1.2_Corridor.tscn` at saved `corridor_return_pos`. Reachable from `1.2_Corridor.tscn` right-edge `ExitTrigger` (approved `RightWall` move). Replaces dialog-only `2.2_BasementBlockedTemp.tscn`. No embedded post-FX.
+**Choices:**
+
+
+| Button label                                                                            | Target                    |
+| --------------------------------------------------------------------------------------- | ------------------------- |
+| Turn back                                                                               | Cafeteria                 |
+| *(Hidden — click on scene image triggers flashlight pickup before flashlight is found)* | Kitchen Flashlight Pickup |
+
+
+---
+
+### 2.4 Kitchen — Flashlight Pickup (`action_get_flashlight`)
+
+**Location label:** `KITCHEN`
+
+**Dialogue [SOURCE]:**
+
+> Your hand hits cold metal. You found an industrial flashlight!
+
+**[REWRITE]:**
+
+> Let there be light!
+
+**Choices:**
+
+
+| Button label | Target    |
+| ------------ | --------- |
+| Nice         | Cafeteria |
+
 
 ---

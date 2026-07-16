@@ -4,8 +4,8 @@ extends Node2D
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
 
-const LOCKER_HUB_SCENE := "res://scenes/Arc_2/2.1_LockerHub.tscn"
-const BASEMENT_DOOR_SCENE := "res://scenes/Arc_2/2.2_BasementDoor.tscn"
+const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
+const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const LOCKER_LINE := "This was your locker."
 const EXIT_RETURN_MARGIN_PX := 96.0
 
