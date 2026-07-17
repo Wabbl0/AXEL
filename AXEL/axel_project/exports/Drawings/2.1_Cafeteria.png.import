@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dglircrrpmjr4"
-path="res://.godot/imported/3.1_Cafeteria.png-79fec06e809702cce8fa1a9852b00724.ctex"
+path="res://.godot/imported/2.1_Cafeteria.png-658992c7bb29044c75416dddeb4e9be4.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://exports/Drawings/2.1_Cafeteria.png"
-dest_files=["res://.godot/imported/3.1_Cafeteria.png-79fec06e809702cce8fa1a9852b00724.ctex"]
+dest_files=["res://.godot/imported/2.1_Cafeteria.png-658992c7bb29044c75416dddeb4e9be4.ctex"]
 
 [params]
 

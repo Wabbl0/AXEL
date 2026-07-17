@@ -40,6 +40,8 @@ var corridor_locker_line_seen: bool = false
 var corridor_spawn_line_seen: bool = false
 var basement_door_line_seen: bool = false
 var corridor_return_pos: Vector2 = INVALID_RETURN_POS
+## Transient (not persisted). e.g. "basement_right" when leaving 1.4 for 1.2.
+var corridor_spawn_side: String = ""
 
 # References to UI elements in Arc_1/1.1_SchoolExterior.tscn
 @onready var location_label: Label = get_node_or_null("%LocationName") as Label
@@ -200,6 +202,16 @@ func take_corridor_return_pos() -> Vector2:
 	var pos := corridor_return_pos
 	corridor_return_pos = INVALID_RETURN_POS
 	return pos
+
+
+func set_corridor_spawn_side(side: String) -> void:
+	corridor_spawn_side = side
+
+
+func take_corridor_spawn_side() -> String:
+	var side := corridor_spawn_side
+	corridor_spawn_side = ""
+	return side
 
 func load_game_data():
 	"""Load game data from JSON file"""

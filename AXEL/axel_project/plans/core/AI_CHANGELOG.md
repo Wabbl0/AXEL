@@ -3550,3 +3550,18 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: None (docs only).
 - Verification: Cross-checked against current `2.1_Cafeteria.gd`/`.tscn`, `1.4_BasementDoor.tscn`, and prior Jul 15–16 changelog entries.
 - Notes: Corridor/locker/basement renumber path wiring was already logged earlier today; this pass fills the gaps those entries left in canon.
+
+### 1.4 door dialogue replay + right-edge corridor return
+
+- Request: Door `[E]` should reopen `"Not yet."` after the player leaves and returns, but not restart the line while the dialogue bar is still visible (skip/advance as normal). Walking left from 1.4 should always spawn on the right edge of 1.2 with only a sliver of the player visible.
+- Implementation: Removed the `basement_door_line_seen` interact gate in `1.4_BasementDoor.gd` (still set for save compat); if the bar is visible, scene input returns so `TopDialogueOverlay` handles skip/advance. Leaving 1.4 sets transient `GameManager.corridor_spawn_side="basement_right"`; `1.2_Corridor.gd` places a right-edge peek from the live `ExitTrigger` (after layout) and arms a short exit-trigger grace so peek cannot bounce back into 1.4.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Door line is replayable when the bar is closed; 1.4→1.2 always peeks from the right. Locker-hub return path unchanged.
+- Verification: Manual playtest of door re-interact + left exit spawn; no headless bot covering this path.
+- Notes: User said “1.3” for the return target; left exit loads 1.2 Corridor (1.3 is the non-walkable hub).

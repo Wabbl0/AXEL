@@ -38,7 +38,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _door_zone_active:
 		return
-	if GameManager.basement_door_line_seen:
+	# Bar still up → overlay skips/advances; snap chip off with the same press.
+	if _top_dialogue.has_method("is_bar_visible") and _top_dialogue.is_bar_visible():
+		_hide_door_interact_prompt_immediate()
 		return
 	_play_door_line_async()
 
@@ -74,7 +76,8 @@ func _on_exit_body_entered(body: Node) -> void:
 
 func _play_door_line_async() -> void:
 	_door_line_running = true
-	_hide_door_interact_prompt()
+	# Snap chip away with dialogue start so spam cannot CRT-shrink/re-open mid-line.
+	_hide_door_interact_prompt_immediate()
 	await _top_dialogue.show_line(DOOR_LINE, 3.0)
 	_door_line_running = false
 	GameManager.set_basement_door_line_seen(true)
@@ -107,10 +110,19 @@ func _hide_door_interact_prompt() -> void:
 	_interact_prompt.hide_prompt()
 
 
+func _hide_door_interact_prompt_immediate() -> void:
+	if not is_instance_valid(_interact_prompt):
+		return
+	if _interact_prompt.has_method("hide_prompt_immediate"):
+		_interact_prompt.hide_prompt_immediate()
+	else:
+		_interact_prompt.hide_prompt()
+
+
 func _begin_corridor_return() -> void:
 	_is_transitioning = true
-	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
-		_interact_prompt.hide_prompt_immediate()
+	GameManager.set_corridor_spawn_side("basement_right")
+	_hide_door_interact_prompt_immediate()
 	var err := get_tree().change_scene_to_file(CORRIDOR_SCENE)
 	if err != OK:
 		push_error("Failed to change scene to %s (error %d)." % [CORRIDOR_SCENE, err])

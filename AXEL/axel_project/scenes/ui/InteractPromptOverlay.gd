@@ -57,13 +57,19 @@ func show_prompt(world_pos: Vector2) -> void:
 	if _is_active and _crt_settled:
 		_update_screen_position()
 		return
-	if _is_active:
+	# Mid open/close: jump to fully shown (no stacked CRT blink).
+	if _is_active and not _crt_settled:
+		_snap_shown()
 		return
 	_run_show_async()
 
 
 func hide_prompt() -> void:
 	if not _is_active:
+		return
+	# Mid open/close: snap off instead of reversing a half-open chip.
+	if not _crt_settled:
+		hide_prompt_immediate()
 		return
 	_run_hide_async()
 
@@ -79,8 +85,26 @@ func hide_prompt_immediate() -> void:
 	set_process(false)
 
 
+## Instant fully-shown state (cancels in-flight CRT open/close).
+func show_prompt_immediate(world_pos: Vector2) -> void:
+	_world_anchor = world_pos
+	_snap_shown()
+
+
 func is_prompt_visible() -> bool:
 	return _is_active and _root.visible and _root.modulate.a > 0.01
+
+
+func _snap_shown() -> void:
+	_anim_token += 1
+	CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
+	_is_active = true
+	_crt_settled = true
+	_root.visible = true
+	_root.modulate.a = 1.0
+	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
+	set_process(true)
+	_update_screen_position()
 
 
 func _run_show_async() -> void:

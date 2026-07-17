@@ -7,7 +7,9 @@ extends Node2D
 const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
 const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const LOCKER_LINE := "This was your locker."
-const EXIT_RETURN_MARGIN_PX := 96.0
+## Just left of ExitTrigger so only a sliver of the scale-3 player peeks on the right.
+const BASEMENT_PEEK_MARGIN_PX := 12.0
+const EXIT_TRIGGER_GRACE_SEC := 0.15
 
 var _locker_interact_area: Area2D
 var _exit_trigger: Area2D
@@ -16,6 +18,8 @@ var _is_transitioning := false
 var _locker_zone_active := false
 var _locker_line_running := false
 var _locker_enter_token := 0
+var _pending_basement_peek := false
+var _exit_trigger_armed := true
 
 
 func _ready() -> void:
@@ -39,10 +43,41 @@ func _ready() -> void:
 func _restore_player_position_if_needed() -> void:
 	if not is_instance_valid(_player):
 		return
+	if GameManager.take_corridor_spawn_side() == "basement_right":
+		_pending_basement_peek = true
+		# Discard any stale saved return pos; peek wins.
+		if GameManager.has_corridor_return_pos():
+			GameManager.take_corridor_return_pos()
+		call_deferred("_apply_basement_peek_if_pending")
+		return
 	if not GameManager.has_corridor_return_pos():
 		return
 	_player.global_position = GameManager.take_corridor_return_pos()
 	call_deferred("_refresh_locker_zone_state")
+
+
+func _apply_basement_peek_if_pending() -> void:
+	if not _pending_basement_peek or not is_instance_valid(_player):
+		return
+	_pending_basement_peek = false
+	_player.global_position = _basement_right_peek_global()
+	_arm_exit_trigger_grace()
+
+
+func _arm_exit_trigger_grace() -> void:
+	_exit_trigger_armed = false
+	await get_tree().create_timer(EXIT_TRIGGER_GRACE_SEC).timeout
+	_exit_trigger_armed = true
+
+
+func _basement_right_peek_global() -> Vector2:
+	var pos := _player.global_position
+	var left_edge := _exit_trigger_left_edge_x()
+	if left_edge > -INF:
+		pos.x = left_edge - BASEMENT_PEEK_MARGIN_PX
+	if is_instance_valid(_exit_trigger):
+		pos.y = _exit_trigger.global_position.y
+	return pos
 
 
 func _refresh_locker_zone_state() -> void:
@@ -183,7 +218,7 @@ func _begin_locker_transition() -> void:
 
 
 func _on_exit_trigger_body_entered(body: Node) -> void:
-	if body != _player or _is_transitioning:
+	if body != _player or _is_transitioning or not _exit_trigger_armed:
 		return
 	call_deferred("_begin_basement_transition")
 
@@ -195,14 +230,7 @@ func _begin_basement_transition() -> void:
 
 
 func _safe_basement_return_pos() -> Vector2:
-	# The player is standing inside/at the edge of ExitTrigger when this fires. Saving that
-	# exact spot would put them right back inside the trigger on return, instantly re-firing
-	# the transition (infinite reload loop / "stuck" player). Nudge left of the trigger instead.
-	var pos := _player.global_position
-	var left_edge := _exit_trigger_left_edge_x()
-	if left_edge > -INF:
-		pos.x = minf(pos.x, left_edge - EXIT_RETURN_MARGIN_PX)
-	return pos
+	return _basement_right_peek_global()
 
 
 func _exit_trigger_left_edge_x() -> float:
@@ -241,6 +269,8 @@ func _sync_environment_colliders(cover_scale: float, bg_position: Vector2) -> vo
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
 	call_deferred("_wake_static_colliders")
+	if _pending_basement_peek:
+		call_deferred("_apply_basement_peek_if_pending")
 
 
 func _wake_static_colliders() -> void:
