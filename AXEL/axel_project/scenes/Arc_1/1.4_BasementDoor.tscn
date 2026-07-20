@@ -13,7 +13,7 @@
 size = Vector2(2400, 24)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
-size = Vector2(38.5, 1515)
+size = Vector2(233.25, 1515)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor_divider"]
 size = Vector2(2400, 39)
@@ -28,7 +28,7 @@ size = Vector2(80, 1493)
 size = Vector2(306.5, 495.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_cafeteria_interact"]
-size = Vector2(120, 1493)
+size = Vector2(80, 1493)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -66,14 +66,14 @@ shape = SubResource("RectangleShape2D_wall_horizontal")
 position = Vector2(-400, 762)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=1894092143]
-position = Vector2(-20, 0)
+position = Vector2(-90, 0)
 shape = SubResource("RectangleShape2D_wall_vertical")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1737791086]
 position = Vector2(2700, 763)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=748786056]
-position = Vector2(58, 0)
+position = Vector2(-419.375, -21)
 shape = SubResource("RectangleShape2D_wall_vertical")
 
 [node name="FloorDividerWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1021070437]
@@ -143,11 +143,11 @@ position = Vector2(61, 30)
 shape = SubResource("RectangleShape2D_door_interact")
 
 [node name="CafeteriaInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=723135021]
-position = Vector2(2320, 701)
+position = Vector2(2232, 701)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/CafeteriaInteractArea" unique_id=965764312]
-position = Vector2(0, 48.5)
+position = Vector2(-108, 50)
 shape = SubResource("RectangleShape2D_cafeteria_interact")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1150417698]
