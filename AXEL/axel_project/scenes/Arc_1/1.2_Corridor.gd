@@ -250,6 +250,8 @@ func _begin_scene_transition(scene_path: String, return_pos: Vector2) -> void:
 	GameManager.set_corridor_return_pos(return_pos)
 	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
 		_interact_prompt.hide_prompt_immediate()
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
 	var err := get_tree().change_scene_to_file(scene_path)
 	if err != OK:
 		push_error("Failed to change scene to %s (error %d)." % [scene_path, err])

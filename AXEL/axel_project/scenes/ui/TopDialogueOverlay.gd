@@ -51,6 +51,8 @@ var _skip_input_enabled := true
 var _active_line_text := ""
 var _active_line_start_ms := 0
 var _line_token := 0
+## True for the whole show_lines / hide_line await (covers CRT gaps where bar alpha is ~0).
+var _sequence_active := false
 var _panel_style: StyleBoxFlat
 var _inner_style: StyleBoxFlat
 var _inner_style_empty: StyleBoxEmpty
@@ -74,11 +76,31 @@ func _ready() -> void:
 	set_process_input(true)
 	set_process(fx_cursor)
 	get_viewport().size_changed.connect(_lock_bottom_layout)
+	tree_exiting.connect(_on_tree_exiting)
 	_begin_layout()
 
 
+func _on_tree_exiting() -> void:
+	interrupt_line()
+
+
+func _tree_alive() -> bool:
+	return is_instance_valid(self) and is_inside_tree() and get_tree() != null
+
+
+func _await_process_frame() -> bool:
+	if not _tree_alive():
+		return false
+	var tree := get_tree()
+	if tree == null:
+		return false
+	await tree.process_frame
+	return _tree_alive()
+
+
 func _begin_layout() -> void:
-	await get_tree().process_frame
+	if not await _await_process_frame():
+		return
 	_lock_bottom_layout()
 
 
@@ -182,7 +204,8 @@ func _wait_for_advance(token: int, deadline_ms: int) -> void:
 	while _line_alive(token) and not _advance_requested:
 		if Time.get_ticks_msec() >= deadline_ms:
 			break
-		await get_tree().process_frame
+		if not await _await_process_frame():
+			break
 	_advance_requested = false
 
 
@@ -191,7 +214,8 @@ func _await_or_skip(duration_sec: float, allow_skip: bool) -> bool:
 	while Time.get_ticks_msec() < end_ms:
 		if allow_skip and _skip_requested:
 			return true
-		await get_tree().process_frame
+		if not await _await_process_frame():
+			return false
 	return false
 
 
@@ -263,17 +287,21 @@ func _stop_border_pulse() -> void:
 func _scramble_glitch(length: int) -> void:
 	var end_ms := Time.get_ticks_msec() + int(GLITCH_SEC * 1000.0)
 	while Time.get_ticks_msec() < end_ms:
+		if not is_instance_valid(_label):
+			return
 		var scrambled := ""
 		for _i in range(max(length, 1)):
 			scrambled += SCRAMBLE_CHARS[randi() % SCRAMBLE_CHARS.length()]
 		_label.text = scrambled
-		await get_tree().process_frame
+		if not await _await_process_frame():
+			return
 
 
 ## Instantly cuts the current line so a higher-priority line can take over.
 func interrupt_line() -> void:
 	_line_token += 1
 	_line_phase = LinePhase.NONE
+	_sequence_active = false
 	_advance_requested = false
 	_skip_requested = false
 	_cursor_active = false
@@ -291,6 +319,7 @@ func interrupt_line() -> void:
 func cancel_pending_line() -> void:
 	_line_token += 1
 	_line_phase = LinePhase.NONE
+	_sequence_active = false
 	_advance_requested = false
 	_skip_requested = false
 	_cursor_active = false
@@ -299,6 +328,11 @@ func cancel_pending_line() -> void:
 
 func is_bar_visible() -> bool:
 	return is_instance_valid(_fade_root) and _fade_root.visible and _fade_root.modulate.a > 0.01
+
+
+## True while a line sequence or CRT show/hide is in flight (including alpha~0 CRT gaps).
+func is_sequence_busy() -> bool:
+	return _sequence_active or _line_phase != LinePhase.NONE or is_bar_visible()
 
 
 func _line_alive(token: int) -> bool:
@@ -340,6 +374,7 @@ func show_lines(
 
 	_line_token += 1
 	var token := _line_token
+	_sequence_active = true
 	_advance_requested = false
 	_skip_requested = false
 	_skip_input_enabled = allow_skip
@@ -458,17 +493,24 @@ func _run_typewriter(
 
 
 func hide_line() -> void:
+	var token := _line_token
 	if not _fade_root.visible:
 		_line_phase = LinePhase.NONE
+		if _line_alive(token):
+			_sequence_active = false
 		return
 	_cursor_active = false
 	_stop_border_pulse()
 	_line_phase = LinePhase.NONE
+	_sequence_active = true
 	if fx_crt_power:
 		await _crt_power_off()
+		if not _line_alive(token):
+			return
 		_fade_root.visible = false
 		_lock_bottom_layout()
 		_label.text = ""
+		_sequence_active = false
 		return
 	var tw_out := create_tween().set_parallel(true)
 	tw_out.tween_property(_fade_root, "modulate:a", 0.0, FADE_OUT_SEC)
@@ -476,6 +518,9 @@ func hide_line() -> void:
 		tw_out.tween_property(_fade_root, "offset_bottom", _rest_offset_bottom + SLIDE_OFFSET, FADE_OUT_SEC)
 		tw_out.tween_property(_fade_root, "offset_top", _rest_offset_top + SLIDE_OFFSET, FADE_OUT_SEC)
 	await tw_out.finished
+	if not _line_alive(token):
+		return
 	_fade_root.visible = false
 	_lock_bottom_layout()
 	_label.text = ""
+	_sequence_active = false

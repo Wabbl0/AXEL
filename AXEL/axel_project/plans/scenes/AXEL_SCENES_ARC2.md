@@ -24,7 +24,7 @@
 | Return to locker    | Locker Hub       |
 
 
-**Implemented (Godot):** `2.1_Cafeteria.tscn` + `2.1_Cafeteria.gd` — first Arc 2 walkable room using the new-scene pattern: `WalkableWorld/Player` (scale `3`, speed `253`), `2.1_Cafeteria.png` cover-fit + locked background, `BackgroundCamera` `STATIC_LOCKED`/`COVER` with `margin_px=12`, collider sync on `layout_applied`. Enter line once via `TopDialogueOverlay`. `[E]` zones: table → `2.2_CafeteriaMemory.tscn` (still placeholder), kitchen → `2.3_Kitchen.tscn` (still placeholder), left return → `1.3_LockerHub.tscn`. No ghost float sprite yet; no embedded post-FX. Tune wall/zone shapes in the editor if hotspots feel off.
+**Implemented (Godot):** `2.1_Cafeteria.tscn` + `2.1_Cafeteria.gd` — first Arc 2 walkable room: `PlayerLayer` (layer 100; scale `1.5`, speed `126.5`), `2.1_Cafeteria.png` cover-fit + locked background, `BackgroundCamera` `STATIC_LOCKED`/`COVER` with `margin_px=12` and `static_center=(960,0)` (top-biased so foodline/kitchen stay in frame), collider sync on `layout_applied`. Enter line once via `TopDialogueOverlay`. `[E]` zones: table → `2.2_CafeteriaMemory.tscn` (still placeholder), kitchen → `2.3_Kitchen.tscn` (still placeholder), left return → `1.3_LockerHub.tscn`. No ghost float sprite yet; no embedded post-FX. Tune wall/zone shapes in the editor if hotspots feel off.
 
 ---
 

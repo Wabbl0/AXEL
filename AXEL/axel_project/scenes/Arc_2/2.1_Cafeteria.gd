@@ -4,11 +4,13 @@ const ENTER_LINE := "Even through all the chaos you can hear the chattering stud
 const TABLE_SCENE := "res://scenes/Arc_2/2.2_CafeteriaMemory.tscn"
 const KITCHEN_SCENE := "res://scenes/Arc_2/2.3_Kitchen.tscn"
 const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
-const PLAYER_SPAWN_TEX := Vector2(1754.0, 1900.0)
+const PLAYER_SPAWN_TEX := Vector2(142.0, 1368.0)
+const _LEAF_FADE_ALPHA := 0.2
+const _LEAF_GATE_SOFTNESS := 12.0
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
-@onready var _player: CharacterBody2D = $WalkableWorld/Player
+@onready var _player: CharacterBody2D = $PlayerLayer/Player
 
 var _table_area: Area2D
 var _kitchen_area: Area2D
@@ -155,13 +157,74 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var env := $WalkableWorld/EnvironmentColliders
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
+	var player_node := $PlayerLayer/Player
 	if not _player_spawn_applied:
-		_player.global_position = env.to_global(PLAYER_SPAWN_TEX)
+		player_node.global_position = env.to_global(PLAYER_SPAWN_TEX)
 		_player_spawn_applied = true
 	call_deferred("_wake_static_colliders")
+	call_deferred("_configure_table_occlusion_masks")
 
 
 func _wake_static_colliders() -> void:
 	for child in $WalkableWorld/EnvironmentColliders.get_children():
 		if child is StaticBody2D:
 			child.position = child.position
+
+
+func _configure_table_occlusion_masks() -> void:
+	if not is_instance_valid(_player):
+		return
+	if not _player.has_method("configure_leaf_occlusion_polygons"):
+		return
+	var zones: Array[Area2D] = []
+	for zone_name in [
+		"TableBlockLeft_Behind",
+		"ChairBlockLeft_Behind",
+		"ChairBlockRight_Behind",
+	]:
+		var zone := get_node_or_null(
+			"WalkableWorld/EnvironmentColliders/%s" % zone_name
+		) as Area2D
+		zones.append(zone)
+	while zones.size() < 3:
+		zones.append(null)
+	var polys: Array[PackedVector2Array] = []
+	var feathers: Array[float] = []
+	var cutoffs: Array[float] = []
+	for zone in zones:
+		var poly := PackedVector2Array()
+		var feather := 0.0
+		if is_instance_valid(zone) and zone.has_method("get_shader_polygon"):
+			poly = zone.call("get_shader_polygon")
+			feather = float(zone.get("feather_px"))
+		polys.append(poly)
+		feathers.append(feather)
+		cutoffs.append(_occlusion_y_cutoff(zone))
+	_player.call(
+		"configure_leaf_occlusion_polygons",
+		polys[0],
+		polys[1],
+		feathers[0],
+		feathers[1],
+		_LEAF_FADE_ALPHA,
+		cutoffs[0],
+		cutoffs[1],
+		_LEAF_GATE_SOFTNESS,
+		polys[2],
+		feathers[2],
+		cutoffs[2],
+	)
+
+
+func _occlusion_y_cutoff(behind: Area2D) -> float:
+	if not is_instance_valid(behind):
+		return 1e9
+	var polygon_node := behind.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
+	if polygon_node == null or polygon_node.polygon.is_empty():
+		return 1e9
+	var max_y := -INF
+	for local_point in polygon_node.polygon:
+		max_y = maxf(max_y, polygon_node.to_global(local_point).y)
+	if max_y == -INF:
+		return 1e9
+	return max_y

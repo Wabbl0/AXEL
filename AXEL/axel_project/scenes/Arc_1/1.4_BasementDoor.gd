@@ -32,17 +32,29 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _is_transitioning or _door_line_running:
+	if _is_transitioning:
 		return
 	if not _is_interaction_event(event):
 		return
 	if not _door_zone_active:
 		return
-	# Bar still up → overlay skips/advances; snap chip off with the same press.
-	if _top_dialogue.has_method("is_bar_visible") and _top_dialogue.is_bar_visible():
+	# Busy (line / CRT / bar) → overlay skips/advances; snap chip off; never stack a new line.
+	if _door_dialogue_busy():
 		_hide_door_interact_prompt_immediate()
 		return
 	_play_door_line_async()
+
+
+func _door_dialogue_busy() -> bool:
+	if _door_line_running:
+		return true
+	if not is_instance_valid(_top_dialogue):
+		return false
+	if _top_dialogue.has_method("is_sequence_busy") and _top_dialogue.is_sequence_busy():
+		return true
+	if _top_dialogue.has_method("is_bar_visible") and _top_dialogue.is_bar_visible():
+		return true
+	return false
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
@@ -97,6 +109,8 @@ func _door_interact_anchor() -> Vector2:
 func _show_door_interact_prompt() -> void:
 	if _is_transitioning or not _door_zone_active:
 		return
+	if _door_dialogue_busy():
+		return
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.show_prompt(_door_interact_anchor())
@@ -123,6 +137,8 @@ func _begin_corridor_return() -> void:
 	_is_transitioning = true
 	GameManager.set_corridor_spawn_side("basement_right")
 	_hide_door_interact_prompt_immediate()
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
 	var err := get_tree().change_scene_to_file(CORRIDOR_SCENE)
 	if err != OK:
 		push_error("Failed to change scene to %s (error %d)." % [CORRIDOR_SCENE, err])

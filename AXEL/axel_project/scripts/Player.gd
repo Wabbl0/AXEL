@@ -516,6 +516,9 @@ func configure_leaf_occlusion_polygons(
 	y_cutoff_0: float = 1e9,
 	y_cutoff_1: float = 1e9,
 	gate_softness: float = -1.0,
+	poly2: PackedVector2Array = PackedVector2Array(),
+	feather2: float = 0.0,
+	y_cutoff_2: float = 1e9,
 ) -> void:
 	var mat := animated_sprite.material as ShaderMaterial
 	if mat == null:
@@ -527,10 +530,14 @@ func configure_leaf_occlusion_polygons(
 	mat.set_shader_parameter("leaf_poly_1", _pad_leaf_polygon(poly1))
 	mat.set_shader_parameter("leaf_poly_1_count", mini(poly1.size(), _LEAF_POLY_SHADER_MAX))
 	mat.set_shader_parameter("leaf_poly_1_feather", maxf(feather1, 0.0))
+	mat.set_shader_parameter("leaf_poly_2", _pad_leaf_polygon(poly2))
+	mat.set_shader_parameter("leaf_poly_2_count", mini(poly2.size(), _LEAF_POLY_SHADER_MAX))
+	mat.set_shader_parameter("leaf_poly_2_feather", maxf(feather2, 0.0))
 	mat.set_shader_parameter("leaf_fade_alpha", clampf(fade_alpha, 0.0, 1.0))
 	mat.set_shader_parameter("leaf_gate_softness", maxf(gate, 0.001))
 	mat.set_shader_parameter("leaf_y_cutoff_0", y_cutoff_0)
 	mat.set_shader_parameter("leaf_y_cutoff_1", y_cutoff_1)
+	mat.set_shader_parameter("leaf_y_cutoff_2", y_cutoff_2)
 	if shadow_outline.material != mat:
 		shadow_outline.material = mat
 

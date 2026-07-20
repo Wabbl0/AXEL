@@ -34,6 +34,12 @@ func _ready() -> void:
 
 func _on_tree_exiting() -> void:
 	_anim_token += 1
+	# Scene unload can race mid CRT await — cancel so power_on/off do not touch a null tree.
+	if is_instance_valid(_root) and is_instance_valid(_panel):
+		CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
+	_is_active = false
+	_crt_settled = false
+	set_process(false)
 
 
 func _host_alive() -> bool:

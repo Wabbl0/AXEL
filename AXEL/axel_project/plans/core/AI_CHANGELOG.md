@@ -3565,3 +3565,51 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Door line is replayable when the bar is closed; 1.4→1.2 always peeks from the right. Locker-hub return path unchanged.
 - Verification: Manual playtest of door re-interact + left exit spawn; no headless bot covering this path.
 - Notes: User said “1.3” for the return target; left exit loads 1.2 Corridor (1.3 is the non-walkable hub).
+
+## 2026-07-17
+
+### 1.4 door E-spam crash — busy gate + token-safe hide
+- Request: Scene 1.4 often crashes when spamming `E` on the door after the replayable-door fix; keep replay, do not roll back the once-ever gate removal.
+- Implementation: `1.4_BasementDoor.gd` uses `_door_dialogue_busy()` (`_door_line_running` / `is_sequence_busy()` / bar visible) so spam only snap-hides the chip and never stacks a second `show_line`; chip show is blocked while busy. `TopDialogueOverlay` adds `is_sequence_busy()` (`_sequence_active` for whole show/hide) and token-guards `hide_line()` so a stale CRT-off cannot blank a newer line.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Door line still replays when idle; spam `E` during a line only skips/advances; no stacked CRT sequences.
+- Verification: Manual — mash `E` at 1.4 door through several open/close cycles; confirm no freeze and replay after bar closes.
+- Notes: InteractPromptOverlay mid-open/close snap from prior spam visual fix left unchanged.
+
+### CRT cancel — stop using Tween.get_bound_node
+- Request: Spamming door `E` still errored with `Nonexistent function 'get_bound_node' in base 'Tween'`.
+- Implementation: `CrtPowerFx` now tracks CRT tweens per host via `_make_tween` / `_crt_tweens` and kills that list on `cancel()`, so cancel no longer calls `Tween.get_bound_node()` (not exposed in this project's Godot bindings).
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/crt_power_fx.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Chip/dialogue CRT cancel on spam no longer throws; visuals still snap via existing cancel reset.
+- Verification: Mash `E` at 1.4 door; Output should stay clear of `get_bound_node` errors.
+
+### Scene swap 1.2↔1.4 — null process_frame / stuck enter glitch
+- Request: Walking between 1.4 and 1.2 errored `Invalid access to property or key 'process_frame' on a base object of type 'null instance'` and left the screen as white-noise glitch.
+- Implementation: `CrtPowerFx` awaits via `_await_process_frame()` (null-safe tree). `InteractPromptOverlay` / `TopDialogueOverlay` cancel/interrupt on `tree_exiting`. 1.2/1.4 transitions call `interrupt_line()` before `change_scene_to_file`.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/crt_power_fx.gd`
+  - `AXEL/axel_project/scenes/ui/InteractPromptOverlay.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Scene exit no longer crashes mid CRT/dialogue await; enter glitch should finish normally.
+- Verification: Walk 1.2↔1.4 repeatedly with `[E]` chip visible; no `process_frame` null error, no stuck static screen.
+
+### Fix 2.1 Cafeteria crop + missing player
+- Request: Cafeteria background cropped the upper foodline/kitchen entrance; player did not appear and should be ~2× smaller than 1.4 with speed scaled to match.
+- Implementation: Top-biased `static_center=(960,0)` on `BackgroundCamera` so COVER framing keeps the top of `2.1_Cafeteria.png` in view. Reparented Mike to `PlayerLayer` (layer 100, above noir) matching 1.4; scale `1.5` / speed `126.5`; spawn sync via `PlayerLayer/Player`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Foodline/kitchen entrance visible on enter; Mike visible above noir at half 1.4 size/speed.
+- Verification: Manual — hub → cafeteria; confirm top framing, player visible, `[E]` zones still work.

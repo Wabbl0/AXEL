@@ -6,6 +6,7 @@ uniform float leaf_fade_alpha : hint_range(0.0, 1.0) = 0.2;
 uniform float leaf_gate_softness = 18.0;
 uniform float leaf_y_cutoff_0 = 1e9;
 uniform float leaf_y_cutoff_1 = 1e9;
+uniform float leaf_y_cutoff_2 = 1e9;
 uniform float player_anchor_y = -1.0e9;
 
 uniform vec2 leaf_poly_0[LEAF_POLY_MAX];
@@ -15,6 +16,10 @@ uniform float leaf_poly_0_feather = 8.0;
 uniform vec2 leaf_poly_1[LEAF_POLY_MAX];
 uniform int leaf_poly_1_count = 0;
 uniform float leaf_poly_1_feather = 8.0;
+
+uniform vec2 leaf_poly_2[LEAF_POLY_MAX];
+uniform int leaf_poly_2_count = 0;
+uniform float leaf_poly_2_feather = 8.0;
 
 varying vec2 world_pos;
 
@@ -84,11 +89,14 @@ void fragment() {
 	float tex_a = texture(TEXTURE, UV).a;
 	float leaf0 = _polygon_feather_mask(world_pos, leaf_poly_0, leaf_poly_0_count, leaf_poly_0_feather);
 	float leaf1 = _polygon_feather_mask(world_pos, leaf_poly_1, leaf_poly_1_count, leaf_poly_1_feather);
+	float leaf2 = _polygon_feather_mask(world_pos, leaf_poly_2, leaf_poly_2_count, leaf_poly_2_feather);
 	float gate0 = _trunk_line_gate(world_pos.y, leaf_y_cutoff_0, leaf_gate_softness);
 	float gate1 = _trunk_line_gate(world_pos.y, leaf_y_cutoff_1, leaf_gate_softness);
+	float gate2 = _trunk_line_gate(world_pos.y, leaf_y_cutoff_2, leaf_gate_softness);
 	float m0 = leaf0 * gate0;
 	float m1 = leaf1 * gate1;
-	float mask_coverage = clamp(max(m0, m1), 0.0, 1.0);
+	float m2 = leaf2 * gate2;
+	float mask_coverage = clamp(max(max(m0, m1), m2), 0.0, 1.0);
 	float base_alpha = tex_a * COLOR.a;
 	float blended_alpha = base_alpha * mix(1.0, leaf_fade_alpha, mask_coverage);
 	COLOR = vec4(1.0, 1.0, 1.0, blended_alpha);
