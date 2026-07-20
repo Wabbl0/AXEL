@@ -49,8 +49,11 @@ const _OLD_BG_SCALE := Vector2(0.33494318, 0.32130682)
 const INTRO_HIDE_MARGIN_X := 250.0
 const INTRO_HIDE_MARGIN_Y := 350.0
 
+var _player_cover_sync := PlayerCoverSync.new()
+
 
 func _ready() -> void:
+	_player_cover_sync.bind_from_player(_player)
 	_door_interact_area = get_node_or_null(
 		"EnvironmentColliders/Doors/DoorInteractArea"
 	) as Area2D
@@ -381,11 +384,21 @@ func _sync_environment_colliders(new_scale_factor: float, new_bg_position: Vecto
 	var env := get_node_or_null("EnvironmentColliders") as Node2D
 	if env == null:
 		return
+	var tex_pos := Vector2.ZERO
+	var remap_pos := (
+		is_instance_valid(_player) and _player_cover_sync.has_reference()
+	)
+	if remap_pos:
+		tex_pos = env.to_local(_player.global_position)
 	var env_scale := Vector2(
 		new_scale_factor / _OLD_BG_SCALE.x, new_scale_factor / _OLD_BG_SCALE.y
 	)
 	env.position = new_bg_position - env_scale * _OLD_BG_POSITION
 	env.scale = env_scale
+	if remap_pos:
+		_player.global_position = env.to_global(tex_pos)
+	if is_instance_valid(_player):
+		_player_cover_sync.apply(_player, new_scale_factor, new_bg_position)
 	call_deferred("_wake_static_colliders")
 
 

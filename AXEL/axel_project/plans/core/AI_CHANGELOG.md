@@ -3613,3 +3613,80 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Foodline/kitchen entrance visible on enter; Mike visible above noir at half 1.4 size/speed.
 - Verification: Manual — hub → cafeteria; confirm top framing, player visible, `[E]` zones still work.
+
+## 2026-07-20
+
+### 2.1 cafeteria — wire ChairBlockTop/Bottom fade zones
+- Request: `ChairBlockTop_Behind` opacity filter not applying where its `CollisionPolygon2D` is placed.
+- Implementation: `_configure_table_occlusion_masks` was looking for leftover names `ChairBlockLeft_Behind` / `ChairBlockRight_Behind` (missing nodes → empty shader slots). Pointed it at the real zones `ChairBlockBottom_Behind` and `ChairBlockTop_Behind`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Walking behind the top/bottom chair fade polygons should fade Mike like the left table zone.
+- Verification: Not run; confirm in editor by walking into `ChairBlockTop_Behind`.
+
+### 2.1 cafeteria — spawn from Player node position
+- Request: Use wherever the `Player` node is placed in the editor as the spawn point, instead of a hardcoded constant.
+- Implementation: Removed `PLAYER_SPAWN_TEX`. Scene captures `PlayerLayer/Player.position` in `_ready()` (texture-pixel space, same as colliders) and applies it via `env.to_global` on first `layout_applied`. Set Player editor position to `(142, 1368)` so current spawn is unchanged until moved.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Drag `PlayerLayer/Player` in the editor to choose spawn; play still remaps that point through cover-fit like the walls.
+- Verification: Not run (small spawn-source change; confirm in editor by moving Player and F6).
+
+### Upgrade Godot editor to 4.7.1
+- Request: Update all references for the new Godot 4.7.1 executable already present in the repo root.
+- Implementation: Pointed `tools/cmd/godot.cmd`, `tools/Godot.code-workspace`, `.vscode/settings.json`, `AXEL/.vscode/settings.json`, `README.md`, and `AGENTS.md` at `Godot_v4.7.1-stable_win64.exe` (console variant too). Removed the previous `Godot_v4.7-stable_*` binaries. Left `project.godot` `config/features` as `"4.7"` (maintenance release of 4.7).
+- Files changed:
+  - `tools/cmd/godot.cmd`
+  - `tools/Godot.code-workspace`
+  - `.vscode/settings.json`
+  - `AXEL/.vscode/settings.json`
+  - `README.md`
+  - `AGENTS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: CLI wrappers and editor integration use Godot 4.7.1; no AXEL script/shader changes required (4.7.x compatible maintenance build).
+- Verification: `Godot_v4.7.1-stable_win64.exe --version` → `4.7.1.stable.official.a13da4feb`; `tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd` → `Determinism check OK (100 spins, seed 12345)`.
+- Notes: Historical changelog entries still cite older console invocations where recorded at implementation time.
+
+### Fix player size when resizing the game window
+- Request: Player sprite stayed fixed size when resizing the Game window, while the rest of the scene scaled.
+- Implementation: First attempt (`canvas_items` + `keep` stretch) shrank dialogue UI/fonts and player — reverted stretch to `disabled`. Added `PlayerCoverSync` so exploration scenes scale Mike (and speed / `locked_feet_y`) with cover-fit on `layout_applied`, remapping position through `EnvironmentColliders` on later resizes.
+- Files changed:
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scenes/core/player_cover_sync.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Dialogue/UI keep prior pixel sizing; Mike grows/shrinks with the background when the Game window resizes.
+- Verification: Headless scene smoke + `PlayerCoverSync` scale ratio check.
+- Notes: Authored player scale at the first layout is the reference; later covers use `cover / reference`.
+
+### 2.1 cafeteria — separate TableBlockLeft/Right shapes
+- Request: Changing TableBlockLeft or Right width should not change the other table.
+- Implementation: Split shared `RectangleShape2D_table_block` into `RectangleShape2D_table_block_left` and `RectangleShape2D_table_block_right`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+- Behavior impact: Editing one table collider size no longer affects the other.
+- Verification: Scene file inspection (each CollisionShape2D points at its own SubResource).
+
+### 2.1 cafeteria — LeftDoorBlock collider
+- Request: Extra collision border for the left door around `(1500, 500)`.
+- Implementation: Added `EnvironmentColliders/LeftDoorBlock` StaticBody2D at `(1500, 500)` with its own `RectangleShape2D_left_door` (default `120×280`; designer may nudge child shape).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+- Behavior impact: Extra solid blocker near the left-door art; tune in editor.
+- Verification: Not run (collider add only).
+
+### Docs sync — PlayerCoverSync, stretch, 2.1 cafeteria, prior chats
+- Request: `update docs`, including previous two agent chats (Godot 4.7.1 upgrade; 2.1 chair fade + Player-node spawn).
+- Implementation: Synced canon — `AI_DOCS.md` (stretch `disabled`, `PlayerCoverSync`, interact chip `screen_offset` / shape center anchor, 2.1 scale/speed/spawn/fade/table shapes/`LeftDoorBlock`); `AXEL_SCENES_ARC2.md` Implemented note. Prior chats already had changelog entries (`Upgrade Godot editor to 4.7.1`, `2.1 cafeteria — wire ChairBlockTop/Bottom fade zones`, `2.1 cafeteria — spawn from Player node position`).
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only.
+- Verification: Cross-checked against `project.godot`, `2.1_Cafeteria.tscn`, and existing 2026-07-20 changelog titles.

@@ -20,9 +20,11 @@ var _locker_line_running := false
 var _locker_enter_token := 0
 var _pending_basement_peek := false
 var _exit_trigger_armed := true
+var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
+	_player_cover_sync.bind_from_player(_player)
 	_locker_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/LockerInteractArea"
 	) as Area2D
@@ -268,8 +270,18 @@ func _on_background_layout_applied(
 
 func _sync_environment_colliders(cover_scale: float, bg_position: Vector2) -> void:
 	var env := $WalkableWorld/EnvironmentColliders
+	var tex_pos := Vector2.ZERO
+	var remap_pos := (
+		is_instance_valid(_player) and _player_cover_sync.has_reference()
+	)
+	if remap_pos:
+		tex_pos = env.to_local(_player.global_position)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
+	if remap_pos:
+		_player.global_position = env.to_global(tex_pos)
+	if is_instance_valid(_player):
+		_player_cover_sync.apply(_player, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
 	if _pending_basement_peek:
 		call_deferred("_apply_basement_peek_if_pending")

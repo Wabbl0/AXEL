@@ -3,10 +3,12 @@ extends Node2D
 const ENTER_LINE := "Even through all the chaos you can hear the chattering students of the past."
 const TABLE_SCENE := "res://scenes/Arc_2/2.2_CafeteriaMemory.tscn"
 const KITCHEN_SCENE := "res://scenes/Arc_2/2.3_Kitchen.tscn"
-const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
-const PLAYER_SPAWN_TEX := Vector2(142.0, 1368.0)
+const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
+## Just right of ReturnInteractArea so Mike peeks inside the room from the left door.
+const BASEMENT_PEEK_MARGIN_PX := 12.0
+const RETURN_ZONE_GRACE_SEC := 0.15
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
@@ -18,9 +20,16 @@ var _return_area: Area2D
 var _active_zone: String = ""
 var _is_transitioning := false
 var _player_spawn_applied := false
+var _pending_basement_peek := false
+var _return_zone_armed := true
+## Texture-pixel spawn captured from the Player node's editor position.
+var _player_spawn_tex := Vector2.ZERO
+var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
+	_player_spawn_tex = _player.position
+	_player_cover_sync.bind_from_player(_player)
 	_table_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/TableInteractArea"
 	) as Area2D
@@ -33,6 +42,8 @@ func _ready() -> void:
 	_connect_zone(_table_area, "table")
 	_connect_zone(_kitchen_area, "kitchen")
 	_connect_zone(_return_area, "return")
+	if GameManager.take_cafeteria_spawn_side() == "basement_left":
+		_pending_basement_peek = true
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	call_deferred("_play_enter_dialogue")
@@ -62,13 +73,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _active_zone.is_empty():
 		return
+	if _active_zone == "return" and not _return_zone_armed:
+		return
 	match _active_zone:
 		"table":
 			_begin_scene_change(TABLE_SCENE)
 		"kitchen":
 			_begin_scene_change(KITCHEN_SCENE)
 		"return":
-			_begin_scene_change(LOCKER_HUB_SCENE)
+			_begin_return_to_basement()
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
@@ -120,6 +133,8 @@ func _interact_anchor() -> Vector2:
 func _show_interact_prompt() -> void:
 	if _is_transitioning or _active_zone.is_empty():
 		return
+	if _active_zone == "return" and not _return_zone_armed:
+		return
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.show_prompt(_interact_anchor())
@@ -133,12 +148,19 @@ func _hide_interact_prompt() -> void:
 	_interact_prompt.hide_prompt()
 
 
+func _begin_return_to_basement() -> void:
+	GameManager.set_basement_spawn_side("cafeteria_right")
+	_begin_scene_change(BASEMENT_DOOR_SCENE)
+
+
 func _begin_scene_change(scene_path: String) -> void:
 	if _is_transitioning:
 		return
 	_is_transitioning = true
 	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
 		_interact_prompt.hide_prompt_immediate()
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
 	var err := get_tree().change_scene_to_file(scene_path)
 	if err != OK:
 		push_error("Failed to change scene to %s (error %d)." % [scene_path, err])
@@ -155,14 +177,70 @@ func _on_background_layout_applied(
 
 func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var env := $WalkableWorld/EnvironmentColliders
+	var player_node := $PlayerLayer/Player
+	var tex_pos := Vector2.ZERO
+	var remap_pos := _player_spawn_applied and _player_cover_sync.has_reference()
+	if remap_pos:
+		tex_pos = env.to_local(player_node.global_position)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
-	var player_node := $PlayerLayer/Player
 	if not _player_spawn_applied:
-		player_node.global_position = env.to_global(PLAYER_SPAWN_TEX)
+		if _pending_basement_peek:
+			player_node.global_position = _basement_left_peek_global()
+			_pending_basement_peek = false
+			_arm_return_zone_grace()
+		else:
+			player_node.global_position = env.to_global(_player_spawn_tex)
 		_player_spawn_applied = true
+	elif remap_pos:
+		player_node.global_position = env.to_global(tex_pos)
+	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
 	call_deferred("_configure_table_occlusion_masks")
+	if _pending_basement_peek:
+		call_deferred("_apply_basement_peek_if_pending")
+
+
+func _apply_basement_peek_if_pending() -> void:
+	if not _pending_basement_peek or not is_instance_valid(_player):
+		return
+	_pending_basement_peek = false
+	_player.global_position = _basement_left_peek_global()
+	_arm_return_zone_grace()
+
+
+func _arm_return_zone_grace() -> void:
+	_return_zone_armed = false
+	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
+	_return_zone_armed = true
+	if _active_zone == "return":
+		_show_interact_prompt()
+
+
+func _basement_left_peek_global() -> Vector2:
+	var pos := _player.global_position
+	var right_edge := _return_interact_right_edge_x()
+	if right_edge > -INF:
+		pos.x = right_edge + BASEMENT_PEEK_MARGIN_PX
+	if is_instance_valid(_return_area):
+		var shape := _return_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape != null:
+			pos.y = shape.global_position.y
+		else:
+			pos.y = _return_area.global_position.y
+	return pos
+
+
+func _return_interact_right_edge_x() -> float:
+	if not is_instance_valid(_return_area):
+		return -INF
+	var shape := _return_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape == null or not (shape.shape is RectangleShape2D):
+		return -INF
+	var half_width: float = (shape.shape as RectangleShape2D).size.x * 0.5
+	return _return_area.to_global(
+		Vector2(shape.position.x + half_width, shape.position.y)
+	).x
 
 
 func _wake_static_colliders() -> void:
@@ -179,8 +257,8 @@ func _configure_table_occlusion_masks() -> void:
 	var zones: Array[Area2D] = []
 	for zone_name in [
 		"TableBlockLeft_Behind",
-		"ChairBlockLeft_Behind",
-		"ChairBlockRight_Behind",
+		"ChairBlockBottom_Behind",
+		"ChairBlockTop_Behind",
 	]:
 		var zone := get_node_or_null(
 			"WalkableWorld/EnvironmentColliders/%s" % zone_name

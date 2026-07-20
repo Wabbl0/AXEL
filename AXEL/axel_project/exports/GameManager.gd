@@ -42,6 +42,10 @@ var basement_door_line_seen: bool = false
 var corridor_return_pos: Vector2 = INVALID_RETURN_POS
 ## Transient (not persisted). e.g. "basement_right" when leaving 1.4 for 1.2.
 var corridor_spawn_side: String = ""
+## Transient (not persisted). e.g. "cafeteria_right" when leaving 2.1 for 1.4.
+var basement_spawn_side: String = ""
+## Transient (not persisted). e.g. "basement_left" when leaving 1.4 for 2.1.
+var cafeteria_spawn_side: String = ""
 
 # References to UI elements in Arc_1/1.1_SchoolExterior.tscn
 @onready var location_label: Label = get_node_or_null("%LocationName") as Label
@@ -211,6 +215,26 @@ func set_corridor_spawn_side(side: String) -> void:
 func take_corridor_spawn_side() -> String:
 	var side := corridor_spawn_side
 	corridor_spawn_side = ""
+	return side
+
+
+func set_basement_spawn_side(side: String) -> void:
+	basement_spawn_side = side
+
+
+func take_basement_spawn_side() -> String:
+	var side := basement_spawn_side
+	basement_spawn_side = ""
+	return side
+
+
+func set_cafeteria_spawn_side(side: String) -> void:
+	cafeteria_spawn_side = side
+
+
+func take_cafeteria_spawn_side() -> String:
+	var side := cafeteria_spawn_side
+	cafeteria_spawn_side = ""
 	return side
 
 func load_game_data():
