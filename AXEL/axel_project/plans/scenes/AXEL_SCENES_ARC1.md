@@ -1,10 +1,8 @@
 # AXEL — Scene Dialogues: Arc 1 — Intro & Hub
 
 > **How to use this file**
-> Every line marked **[SOURCE]** is the exact original text extracted directly from `game.html`.
-> Lines marked **[REWRITE]** are your cue to replace that text with your own version.
-> Leave a line blank under **[REWRITE]** until you're ready to fill it in.
-> Once you're happy with a scene, remove the tag entirely — that means it's locked.
+> Dialogue under each scene is locked canon (rewrites). Do not restore old HTML prototype SOURCE text.
+> Blank lines marked `TODO: write line` still need authoring.
 
 ---
 
@@ -12,11 +10,7 @@
 
 **Location label:** *(empty)*
 
-**Dialogue [SOURCE]:**
-
-> You stand before the rotting wooden school building. The sky is grey. You feel a jolt in your chest, your GUILT lies here. You've come to finish what was left undone years ago.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > You promised, you'd never come back.  
 > [beat]  
@@ -39,11 +33,7 @@
 
 **Location label:** `CORRIDOR`
 
-**Dialogue [SOURCE]:**
-
-> You step inside. The smell hits you—a mix of mold and old floor cleaner. The past is leaking into the present. You remember that your locker is at the end of the hallway.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > Even after all these years the smell is the same. They must've used some really toxic paint.  
 > [beat]  
@@ -66,11 +56,7 @@
 
 **Location label:** `YOUR LOCKER`
 
-**Dialogue [SOURCE]:**
-
-> You are in your sanctuary. There's a picture of the two of you on the locker door. The map shows four circled locations. The basement entrance has been blacked out.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > Oh look, a map of the school.  
 > [beat]  
@@ -96,14 +82,10 @@
 
 **Location label:** `BASEMENT`
 
-**Dialogue [SOURCE]:**
-
-> The basement is sealed off for now. Come back later.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > Not yet.
 
-**Implemented (Godot):** `1.4_BasementDoor.tscn` + `1.4_BasementDoor.gd` — walkable room with `exports/Drawings/1.4_BasementDoor.png` (`STATIC_LOCKED`/`COVER`, `margin_px=12` to hide CRT red fringe; no `RoomOutline` line), chained-door interact art, floor/wall divider, `[E]` near door plays `"Not yet."` when the dialogue bar is closed (bar still up → skip/advance only; `basement_door_line_seen` saved but not an interact gate), left-edge `ExitTrigger` auto-return to `1.2_Corridor.tscn` with right-edge peek spawn (`corridor_spawn_side="basement_right"`), right-edge `CafeteriaInteractArea` `[E]` → `2.1_Cafeteria.tscn` (`cafeteria_spawn_side="basement_left"`; return from cafeteria peeks on 1.4 right via `basement_spawn_side="cafeteria_right"`; `RightWall` moved like 1.2). Reachable from `1.2_Corridor.tscn` right-edge `ExitTrigger` (approved `RightWall` move). Replaces dialog-only `1.4_BasementBlockedTemp.tscn`. No embedded post-FX.
+**Implemented (Godot):** `1.4_BasementDoor.tscn` + `1.4_BasementDoor.gd` — walkable room with `exports/Drawings/1.4_BasementDoor.png` (`STATIC_LOCKED`/`COVER`, `margin_px=12` to hide CRT red fringe; no `RoomOutline` line), chained-door interact art, floor/wall divider, `[E]` near door plays `"Not yet."` when the dialogue bar is closed (bar still up → skip/advance only; `basement_door_line_seen` saved but not an interact gate), left-edge `ExitTrigger` auto-return to `1.2_Corridor.tscn` with right-edge peek spawn (`corridor_spawn_side="basement_right"`), right-edge `CafeteriaInteractArea` `[E]` → `2.1_Cafeteria.tscn` (`cafeteria_spawn_side="basement_left"`; return from cafeteria peeks on 1.4 right via `basement_spawn_side="cafeteria_right"`; `RightWall` moved like 1.2). Reachable from `1.2_Corridor.tscn` right-edge `ExitTrigger` (approved `RightWall` move). No embedded post-FX.
 
 ---

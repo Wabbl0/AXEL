@@ -3,25 +3,6 @@
 
 extends Node
 
-func _debug_log(hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
-	var file := FileAccess.open("C:/Users/valtt/OneDrive/Godot/logs/debug/debug-7980eb.log", FileAccess.READ_WRITE)
-	if file == null:
-		file = FileAccess.open("C:/Users/valtt/OneDrive/Godot/logs/debug/debug-7980eb.log", FileAccess.WRITE_READ)
-	if file == null:
-		return
-	file.seek_end()
-	var payload := {
-		"sessionId": "7980eb",
-		"runId": "run1",
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000
-	}
-	file.store_line(JSON.stringify(payload))
-	file.close()
-
 # Signals
 signal scene_changed(scene_id: String, scene_data: Dictionary)
 signal memory_collected(count: int)
@@ -46,6 +27,10 @@ var corridor_spawn_side: String = ""
 var basement_spawn_side: String = ""
 ## Transient (not persisted). e.g. "basement_left" when leaving 1.4 for 2.1.
 var cafeteria_spawn_side: String = ""
+## Transient (not persisted). e.g. "kitchen_door" when leaving 2.3 for 2.1.
+var kitchen_spawn_side: String = ""
+## Once-ever kitchen enter line (2.3).
+var kitchen_enter_line_seen: bool = false
 
 # References to UI elements in Arc_1/1.1_SchoolExterior.tscn
 @onready var location_label: Label = get_node_or_null("%LocationName") as Label
@@ -61,12 +46,6 @@ var cafeteria_spawn_side: String = ""
 # ============================================================
 
 func _ready():
-	#region agent log
-	_debug_log("H1", "GameManager.gd:_ready", "GameManager _ready entered", {
-		"node_name": name,
-		"node_type": get_class()
-	})
-	#endregion
 	_load_persistent_state()
 	if not _legacy_ui_ready():
 		return
@@ -78,23 +57,10 @@ func _ready():
 		initialize_game_state()
 	load_scene(game_data["gameMetadata"]["startScene"])
 
-
 func _legacy_ui_ready() -> bool:
 	if home_button == null or location_label == null or story_text == null or background_image == null or choices_container == null or memory_label == null or inventory_label == null:
-		#region agent log
-		_debug_log("H2", "GameManager.gd:_ready", "Legacy HTML UI nodes missing; running state-only autoload", {
-			"home_button_null": home_button == null,
-			"location_label_null": location_label == null,
-			"story_text_null": story_text == null,
-			"background_image_null": background_image == null,
-			"choices_container_null": choices_container == null,
-			"memory_label_null": memory_label == null,
-			"inventory_label_null": inventory_label == null
-		})
-		#endregion
 		return false
 	return true
-
 
 func _default_game_state() -> Dictionary:
 	return {
@@ -112,17 +78,16 @@ func _default_game_state() -> Dictionary:
 		},
 	}
 
-
 func _persistence_enabled() -> bool:
 	# Debug/editor playtests start fresh so once-ever dialogue can be re-tested.
 	return not OS.is_debug_build()
-
 
 func _load_persistent_state() -> void:
 	game_state = _default_game_state()
 	corridor_locker_line_seen = false
 	corridor_spawn_line_seen = false
 	basement_door_line_seen = false
+	kitchen_enter_line_seen = false
 	if not _persistence_enabled():
 		print("GameManager: debug build — ignoring saved narrative state.")
 		return
@@ -143,7 +108,7 @@ func _load_persistent_state() -> void:
 	corridor_locker_line_seen = bool(data.get("corridor_locker_line_seen", false))
 	corridor_spawn_line_seen = bool(data.get("corridor_spawn_line_seen", false))
 	basement_door_line_seen = bool(data.get("basement_door_line_seen", false))
-
+	kitchen_enter_line_seen = bool(data.get("kitchen_enter_line_seen", false))
 
 func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
 	var merged := defaults.duplicate(true)
@@ -157,7 +122,6 @@ func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
 			merged[key] = saved[key]
 	return merged
 
-
 func _save_persistent_state() -> void:
 	if not _persistence_enabled():
 		return
@@ -166,6 +130,7 @@ func _save_persistent_state() -> void:
 		"corridor_locker_line_seen": corridor_locker_line_seen,
 		"corridor_spawn_line_seen": corridor_spawn_line_seen,
 		"basement_door_line_seen": basement_door_line_seen,
+		"kitchen_enter_line_seen": kitchen_enter_line_seen,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -174,78 +139,71 @@ func _save_persistent_state() -> void:
 	file.store_string(JSON.stringify(data, "\t"))
 	file.close()
 
-
 func has_memory_scene(scene_key: String) -> bool:
 	return game_state.get("memoryScenes", {}).has(scene_key)
-
 
 func set_corridor_locker_line_seen(value: bool = true) -> void:
 	corridor_locker_line_seen = value
 	_save_persistent_state()
 
-
 func set_corridor_spawn_line_seen(value: bool = true) -> void:
 	corridor_spawn_line_seen = value
 	_save_persistent_state()
-
 
 func set_basement_door_line_seen(value: bool = true) -> void:
 	basement_door_line_seen = value
 	_save_persistent_state()
 
+func set_kitchen_enter_line_seen(value: bool = true) -> void:
+	kitchen_enter_line_seen = value
+	_save_persistent_state()
 
 func set_corridor_return_pos(pos: Vector2) -> void:
 	corridor_return_pos = pos
 
-
 func has_corridor_return_pos() -> bool:
 	return corridor_return_pos != INVALID_RETURN_POS
-
 
 func take_corridor_return_pos() -> Vector2:
 	var pos := corridor_return_pos
 	corridor_return_pos = INVALID_RETURN_POS
 	return pos
 
-
 func set_corridor_spawn_side(side: String) -> void:
 	corridor_spawn_side = side
-
 
 func take_corridor_spawn_side() -> String:
 	var side := corridor_spawn_side
 	corridor_spawn_side = ""
 	return side
 
-
 func set_basement_spawn_side(side: String) -> void:
 	basement_spawn_side = side
-
 
 func take_basement_spawn_side() -> String:
 	var side := basement_spawn_side
 	basement_spawn_side = ""
 	return side
 
-
 func set_cafeteria_spawn_side(side: String) -> void:
 	cafeteria_spawn_side = side
-
 
 func take_cafeteria_spawn_side() -> String:
 	var side := cafeteria_spawn_side
 	cafeteria_spawn_side = ""
 	return side
 
+func set_kitchen_spawn_side(side: String) -> void:
+	kitchen_spawn_side = side
+
+func take_kitchen_spawn_side() -> String:
+	var side := kitchen_spawn_side
+	kitchen_spawn_side = ""
+	return side
+
 func load_game_data():
 	"""Load game data from JSON file"""
 	var json_path = "res://exports/game_data.json"
-	#region agent log
-	_debug_log("H4", "GameManager.gd:load_game_data", "Checking game data resource", {
-		"json_path": json_path,
-		"resource_exists": ResourceLoader.exists(json_path)
-	})
-	#endregion
 	if not ResourceLoader.exists(json_path):
 		push_error("Game data file not found: " + json_path)
 		return
@@ -263,12 +221,6 @@ func load_game_data():
 		return
 	
 	game_data = json
-	#region agent log
-	_debug_log("H4", "GameManager.gd:load_game_data", "Game data loaded", {
-		"title": game_data.get("gameMetadata", {}).get("title", ""),
-		"scene_count": game_data.get("scenes", {}).size()
-	})
-	#endregion
 	print("✓ Loaded game data: %s" % game_data["gameMetadata"]["title"])
 	print("✓ Total scenes: %d" % game_data["scenes"].size())
 

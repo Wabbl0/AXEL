@@ -31,7 +31,7 @@ const _SCRIPTED_WALK_SPEED_SCALE := 0.5
 const _SCRIPTED_WALK_MAX_FRAMES := 600
 const _SECOND_DIALOGUE_DISTANCE := 50.0
 const _FIRST_DIALOGUE_LINE := "You promised, you'd never come back."
-const _SECOND_DIALOGUE_LINE := "Yet, here we are..."
+const _SECOND_DIALOGUE_LINE := "Yet, here we are."
 const _THIRD_DIALOGUE_LINE := "Pathetic."
 
 var _is_transitioning := false

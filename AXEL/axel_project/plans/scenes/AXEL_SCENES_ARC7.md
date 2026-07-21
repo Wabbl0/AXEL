@@ -1,16 +1,14 @@
 # AXEL — Scene Dialogues: Arc 7 — Endings
 
+> Dialogue under each scene is locked canon (rewrites). Do not restore old HTML prototype SOURCE text.
+
 ---
 
 ### 7.1 Ending 1 — Fear (`ending_1`)
 
 **Location label:** `ENDING #1`
 
-**Dialogue [SOURCE]:**
-
-> Fear wins over curiosity. You walk away. In the nights that follow you have nightmares, but you never learn the truth.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > Coward
 >
@@ -36,11 +34,7 @@
 
 **Location label:** `ENDING #2`
 
-**Dialogue [SOURCE]:**
-
-> You step into darkness without light. Your foot slips. You tumble down the stairs and your neck breaks. The shadows consume you.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > The shadows consume you.
 >
@@ -76,11 +70,7 @@
 
 **Location label:** `ENDING #3`
 
-**Dialogue [SOURCE]:**
-
-> You answer wrong. 'You still don't care!' the voice screams. The basement walls glow red. Fire engulfs you. You are in hell.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > His eyes won't return yours.
 >
@@ -100,11 +90,7 @@
 
 **Location label:** `ENDING #4`
 
-**Dialogue [SOURCE]:**
-
-> You whisper 'Axel'. The body goes silent. But then the police burst in. You have no evidence (Name missing) that it was suicide. You are convicted of murder.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > [instead of the name, the game just runs a check if the puzzle was completed in the classroom]
 >
@@ -128,11 +114,7 @@
 
 **Location label:** `TRUE ENDING`
 
-**Dialogue [SOURCE]:**
-
-> You whisper 'Axel' and give the name. A spirit leaves the body. He looks at peace. 'This can't hurt me anymore,' he laughs. You are forgiven.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > Maybe it wasn't ALL your fault.
 >
@@ -162,11 +144,7 @@
 
 **Location label:** `EPILOGUE`
 
-**Dialogue [SOURCE]:**
-
-> You sit together in the backyard. You and a ghost. You smoke in silence. Smoke rises toward the sky. You are free.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > [player smokes in the end screen with the spirit in the backyard]
 >
@@ -187,13 +165,3 @@
 
 
 ---
-
-## What was missing from the first version of this file
-
-
-| Scene               | What was missing                                                                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `loc_key_wall`      | Entire scene omitted — *"Most hooks are empty. One rusty key still hangs."*                                                                                      |
-| Backyard step 2     | Yard reveal text was buried in inline JS `loadScene()`, not in the `story` object: *"YOU look down. There it is. A lighter with the name 'AXEL' written on it."* |
-| `loc_yard_memory`   | Listed only as a click step but the named scene (reached via "Remember the name") was not separated out                                                          |
-| `basement_question` | No fail text is defined in source — player routes to Ending 3 silently after 2s (was implied but not noted)                                                      |

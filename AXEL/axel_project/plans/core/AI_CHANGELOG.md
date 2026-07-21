@@ -3690,3 +3690,93 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Docs only.
 - Verification: Cross-checked against `project.godot`, `2.1_Cafeteria.tscn`, and existing 2026-07-20 changelog titles.
+
+## 2026-07-21
+
+### 2.3 Kitchen — walkable room + flashlight pickup
+- Request: Replace placeholder 2.3_Kitchen.tscn with a real walkable room (Basement Door template), [E] door back to cafeteria with kitchen-door peek, one-time flashlight pickup, delete unused 2.4.
+- Implementation: Built 2.3_Kitchen.tscn/.gd with flat 2.3_Kitchen.png placeholder, walls, prep/center/fridge/shelves/door placeholders, door [E] exit (kitchen_spawn_side), flashlight [E] (hasFlashlight + inventory + "Let there be light!"), once-ever enter line. Additive GameManager kitchen spawn/enter helpers. Cafeteria peeks beside KitchenInteractArea on return. Removed stub 2.4_KitchenFlashlightPickup.tscn.
+- Files changed:
+  - AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn
+  - AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd
+  - AXEL/axel_project/exports/Drawings/2.3_Kitchen.png
+  - AXEL/axel_project/exports/GameManager.gd
+  - AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd
+  - AXEL/axel_project/scenes/Arc_2/2.4_KitchenFlashlightPickup.tscn (deleted)
+  - AXEL/axel_project/plans/core/AI_CHANGELOG.md
+- Behavior impact: Cafeteria kitchen doorway loads a walkable kitchen; flashlight is found in-room; return peeks at the cafeteria kitchen door.
+- Verification: Headless import + scene smoke if available; manual playtest of enter/pickup/return recommended.
+
+## 2026-07-21
+
+### 2.3 Kitchen — placeholder colors match black/red visual style
+- Request: Kitchen background read as red/white under the CRT vfx instead of black; placeholder block fills/outlines did not follow the game's black-outline style.
+- Implementation: Regenerated 2.3_Kitchen.png as pure black (renders correctly under the red-tint CRT shader). Changed all placeholder block fills (prep table, center table, fridge, shelves, door, flashlight) to a 10% grey shade (Color(0.9,0.9,0.9,1)) and added/kept black (Color(0,0,0,1)) Line2D outlines on every block, matching the existing DoorOutline convention. Preserved the user's manually repositioned block coordinates.
+- Files changed:
+  - AXEL/axel_project/exports/Drawings/2.3_Kitchen.png
+  - AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn
+  - AXEL/axel_project/plans/core/AI_CHANGELOG.md
+- Behavior impact: Kitchen background now renders black (red under CRT) instead of red/white; all placeholder shapes show light-grey fill with black outlines.
+- Verification: Headless reimport + scene_smoke_check.gd OK (7 scenes).
+
+## 2026-07-21
+
+### 2.3 Kitchen — background flipped to white (vfx inverts to black)
+- Request: Correction — kitchen background should be white, not black; the CRT/vfx shader inverts white to black.
+- Implementation: Regenerated `2.3_Kitchen.png` as pure white so it renders black under the vfx shader (previous black fill was rendering red/white).
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/2.3_Kitchen.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Kitchen background now renders black under the CRT vfx as intended.
+- Verification: Headless reimport run.
+
+### 2.1 cafeteria — kitchen return peek shifted up 100px
+- Request: Offset the player's re-spawn point (returning from 2.3 Kitchen to 2.1 Cafeteria) upward by ~100px.
+- Implementation: `_kitchen_door_peek_global()` places the player via `KITCHEN_PEEK_MARGIN_PX` below `KitchenInteractArea`'s bottom edge; changed constant from `12.0` to `-88.0` (12 − 100; Y increases downward in Godot).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+- Behavior impact: Returning from the Kitchen now spawns the player 100px higher (closer to the doorway) than before.
+- Verification: Not run (constant tweak only).
+
+### AXEL docs canon sync + cleanup
+- Request: Review all `plans/` docs for redundant/stale info; confirm `exports/` and `html/` are gitignored; update ARC2 docs; flag `GODOT_IMPLEMENTATION_GUIDE.md` / `AXEL_SCENES_BLUEPRINT.md` as historical; resolve canon ambiguities; consolidate scene-build docs; remove dead files and leftover debug logging.
+- Implementation:
+  - Rewrote all `AXEL_SCENES_ARC1–7.md` to locked rewrite dialogue only (dropped old HTML `SOURCE` blocks); folded Arc 2's `2.4` flashlight pickup into `2.3` (in-room pickup, no separate scene).
+  - Aligned in-code dialogue strings (`2.3_Kitchen.gd`, `1.2_Corridor.gd`, `1.1_SchoolExterior.gd`) with the locked rewrite lines.
+  - Created `plans/scenes/SCENE_BUILDING.md` (merged `SCENE_BUILDER_AGENT_SPEC.md` + `SCENE_LAYOUT_RULES.md` + `SCENE_BACKGROUND_SWAP_CHECKLIST.md`); routed `AI_DOCS.md` and `AXEL_SCENES_NEW.md` to it.
+  - Added "historical reference only" banners + canon fixes (shipped-scene flags, `GameManager` autoload) to `AXEL_SCENES_BLUEPRINT.md` and `GODOT_IMPLEMENTATION_GUIDE.md`.
+  - Moved stale docs to new `plans/archive/` (`GODOT_IMPLEMENTATION_GUIDE.md`, `AXEL_analysis.md`, `VISUAL_STYLE_OPTIONS.md`, `SCENE_PATCH_INTERFACE.md`, `ARTIST_BACKGROUND_LIST.md`) and added that folder to `.cursorignore`; deleted the dead `AGENT_CONTEXT_ROUTING.md`.
+  - Added `/AXEL/axel_project/exports/` and `/AXEL/html/` to `.gitignore`.
+  - Deleted dead code/scenes: `1.4_BasementBlockedTemp.tscn`, `camera_follow_vertical.gd`, `combat/scripts/cluster_detector.gd`, Arc 3 split stubs (`3.1b/c/d_*.tscn`), `tools/scene_builder/`, `ScriptReloadMarker.gd` (+ removed its autoload entry from `project.godot`).
+  - `MainMenu.gd` Start button now always goes to `1.1_SchoolExterior.tscn` (dropped the corridor-test-scene fallback).
+  - Stripped hardcoded agent debug-logging blocks/helpers from `GameManager.gd` and `combat/scripts/*.gd`; fixed a parse error this introduced in `line_detector.gd`.
+  - Updated `combat/VERIFICATION_CHECKLIST.md` script inventory (removed `cluster_detector.gd`, added test scripts) and marked `run_state.gd` as planned/not built yet in `AXEL_combat_implementation.md`.
+- Files changed (highlights):
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md` … `AXEL_SCENES_ARC7.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md` (new)
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_BLUEPRINT.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`, `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/combat/VERIFICATION_CHECKLIST.md`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`, `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`, `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`, `AXEL/axel_project/combat/scripts/combat_root.gd`, `combat_test.gd`, `line_detector.gd`, `free_spins.gd`
+  - `AXEL/axel_project/project.godot`, `.gitignore`, `.cursorignore`
+  - Deleted: `AXEL/axel_project/plans/core/AGENT_CONTEXT_ROUTING.md`, `AXEL/axel_project/scenes/Arc_1/1.4_BasementBlockedTemp.tscn`, `AXEL/axel_project/scenes/Arc_1/camera_follow_vertical.gd`, `AXEL/axel_project/combat/scripts/cluster_detector.gd`, `AXEL/axel_project/scenes/Arc_3/3.1b_BackyardClickStep1.tscn`, `3.1c_BackyardNameReveal.tscn`, `3.1d_BackyardNamedScene.tscn`, `AXEL/axel_project/tools/scene_builder/`, `AXEL/axel_project/ScriptReloadMarker.gd`
+- Behavior impact: No gameplay change intended beyond Main Menu Start target and removal of debug-log side effects; docs now route to one current scene-building guide instead of three overlapping/outdated ones.
+- Verification: Headless `determinism_check.gd`, `princess_check.gd`, `combat_test_scaffold_check.gd`, `scene_smoke_check.gd` all OK after fixing a debug-log-removal parse error in `line_detector.gd`.
+- Note: `AXEL_SCENES_BLUEPRINT.md` was later archived under `plans/archive/` (see entry below).
+
+### Archive AXEL_SCENES_BLUEPRINT
+- Request: Archive the stale scene Blueprint (mostly HTML-era; not live canon).
+- Implementation: Moved `plans/scenes/AXEL_SCENES_BLUEPRINT.md` ? `plans/archive/AXEL_SCENES_BLUEPRINT.md` (already covered by `.cursorignore`). Strengthened archived banner. Removed live pointers from `AI_DOCS.md`, `SCENE_BUILDING.md`, `AXEL_SCENES_NEW.md`, `AXEL_notes.md`, QA README/validators; endings references now point at `AXEL_SCENES_ARC7.md`.
+- Files changed:
+  - `AXEL/axel_project/plans/archive/AXEL_SCENES_BLUEPRINT.md` (moved)
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_NEW.md`
+  - `AXEL/axel_project/plans/references/AXEL_notes.md`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+- Behavior impact: None (docs/routing only). Live scene intent is ARC docs + `SCENE_BUILDING.md` + code.
+- Verification: Not run (docs move + pointer updates only).

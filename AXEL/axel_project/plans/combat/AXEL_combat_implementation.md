@@ -35,8 +35,8 @@ res://combat/
 │   ├── goal_tracker.gd         # goal evaluation per encounter
 │   ├── item_inventory.gd       # held items + hook dispatch
 │   ├── encounter.gd            # one encounter: goal + budget + modifiers
-│   ├── run_state.gd            # cross-encounter: currency, items, act progress
-│   └── rng.gd                  # seeded RNG wrapper
+│   ├── run_state.gd            # PLANNED / NOT BUILT YET — cross-encounter saveable run data (see note below)
+│   └── rng.gd                  # seeded RNG wrapper (`CombatRNG`)
 ├── data/
 │   ├── symbols/                # SymbolDef resources (.tres)
 │   ├── goals/                  # GoalDef resources
@@ -44,6 +44,8 @@ res://combat/
 │   └── encounters/             # EncounterDef resources
 └── art/grid_symbols/
 ```
+
+> **RunState status:** `run_state.gd` / a `RunState` autoload are **planned but not yet built**. Combat currently keeps run data in memory on the live encounter/`CombatRoot` (no disk save between encounters, no pause/resume). Keep this section as the future saveable-run spec; do not assume the file exists today.
 
 Rule of thumb: if a thing is *content* (a symbol type, a goal type, an item), make it a `Resource`. If it's *behavior*, make it a script on a Node. Content should be editable in the Godot inspector without recompiling logic.
 

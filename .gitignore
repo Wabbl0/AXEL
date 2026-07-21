@@ -6,3 +6,7 @@
 
 # Logs
 *.log
+
+# Reference/export folders (large, non-runtime; not needed in version control)
+/AXEL/axel_project/exports/
+/AXEL/html/

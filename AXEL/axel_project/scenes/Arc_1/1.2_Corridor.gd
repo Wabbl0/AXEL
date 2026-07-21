@@ -93,7 +93,10 @@ func _show_spawn_line() -> void:
 	if GameManager.corridor_spawn_line_seen:
 		return
 	_spawn_line_active = true
-	await _top_dialogue.show_line("Even after all these years the smell is the same.", 3.5)
+	await _top_dialogue.show_line(
+		"Even after all these years the smell is the same. They must've used some really toxic paint.",
+		3.5
+	)
 	_spawn_line_active = false
 	if not GameManager.corridor_spawn_line_seen:
 		GameManager.set_corridor_spawn_line_seen(true)

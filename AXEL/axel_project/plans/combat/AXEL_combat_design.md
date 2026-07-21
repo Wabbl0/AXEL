@@ -4,7 +4,7 @@ Design recap for the combat layer. Captures the narrative framing, the chosen me
 
 ---
 
-## 1. Game context (carried from `references/AXEL_analysis.md`)
+## 1. Game context
 
 - **AXEL** is a top-down 2D psychological horror about a grown-up returning to the rotting school where they abandoned a friend.
 - Story-driven but non-linear — player choice shapes one of five endings.

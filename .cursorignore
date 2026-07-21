@@ -38,3 +38,6 @@ AXEL/html/pictures/**
 
 # Archived agent changelog (historical; git is source of truth)
 AXEL/axel_project/plans/core/archive/**
+
+# Archived outdated plan docs (historical reference only)
+AXEL/axel_project/plans/archive/**

@@ -63,5 +63,5 @@ func _play_sample() -> void:
 	if _playing:
 		return
 	_playing = true
-	await _overlay.show_lines(["Yet, here we are...", "Pathetic."])
+	await _overlay.show_lines(["Yet, here we are.", "Pathetic."])
 	_playing = false

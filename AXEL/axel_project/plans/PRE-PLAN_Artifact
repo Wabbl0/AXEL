@@ -9,7 +9,7 @@ What exists today (optional):
 Please figure out for me:
 1. Which area (combat / scenes / narrative / vfx-overworld) and why.
 2. Where handled today — plain English, then 3–5 file paths.
-3. Canon risks (per AI_DOCS).
+3. Canon risks (per AI_DOCS). Also skim other relevant plans/**/*.md (skip plans/archive/) for global context AI_DOCS alone might miss.
 4. Simple recommended approach (beginner-friendly steps).
 5. Any ambiguity — resolve via AskQuestion (yes/no or A/B; batch questions). Ask enough that nothing important is assumed.
 Keep explanations non-jargon; define Godot terms briefly when used.

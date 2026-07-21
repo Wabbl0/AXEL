@@ -19,7 +19,7 @@ size = Vector2(233.25, 1515)
 size = Vector2(2400, 39)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_block"]
-size = Vector2(308, 372)
+size = Vector2(250, 372)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
 size = Vector2(80, 1493)
@@ -90,7 +90,8 @@ width = 24.0
 default_color = Color(0, 0, 0, 1)
 
 [node name="DoorVisuals" type="Node2D" parent="WalkableWorld/EnvironmentColliders" unique_id=860371595]
-position = Vector2(1092, 661)
+position = Vector2(1157, 740)
+scale = Vector2(0.7, 0.7)
 
 [node name="DoorBody" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/DoorVisuals" unique_id=224281194]
 position = Vector2(62.5, 35)
@@ -123,7 +124,7 @@ default_color = Color(0, 0, 0, 1)
 position = Vector2(1090, 668)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorWall" unique_id=1100792469]
-position = Vector2(63, -27)
+position = Vector2(124, -15)
 shape = SubResource("RectangleShape2D_door_block")
 
 [node name="ExitTrigger" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1017758600]
@@ -139,7 +140,7 @@ position = Vector2(1090, 668)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea" unique_id=1740011345]
-position = Vector2(61, 30)
+position = Vector2(114, 56)
 shape = SubResource("RectangleShape2D_door_interact")
 
 [node name="CafeteriaInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=723135021]

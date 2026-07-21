@@ -4,9 +4,6 @@ extends RefCounted
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
 const ROWS := 5
 const COLS := 5
-const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
-const DEBUG_SESSION_ID := "1d1bdd"
-
 
 static func find_lines(cells: Array) -> Array:
 	var lines: Array = []
@@ -15,7 +12,6 @@ static func find_lines(cells: Array) -> Array:
 	for col in COLS:
 		_scan_run(cells, lines, Vector2i(col, 0), Vector2i(0, 1), ROWS)
 	return lines
-
 
 static func score_wild_at(cells: Array, at: Vector2i) -> int:
 	if at.x < 0 or at.x >= COLS or at.y < 0 or at.y >= ROWS:
@@ -26,7 +22,6 @@ static func score_wild_at(cells: Array, at: Vector2i) -> int:
 	for col in COLS:
 		best = maxi(best, _score_axis_with_wild(cells, at, Vector2i(col, 0), Vector2i(0, 1), ROWS))
 	return best
-
 
 static func _scan_run(cells: Array, out_lines: Array, start: Vector2i, delta: Vector2i, length: int) -> void:
 	var axis_positions: Array[Vector2i] = []
@@ -55,7 +50,6 @@ static func _scan_run(cells: Array, out_lines: Array, start: Vector2i, delta: Ve
 			run_cells.clear()
 		_emit_run_for_symbol(run_cells, sid, out_lines, delta, emitted_keys, cells)
 
-
 static func _emit_run(run_cells: Array[Vector2i], run_symbol_id: StringName, out_lines: Array, delta: Vector2i) -> void:
 	if run_cells.size() < 3:
 		return
@@ -69,7 +63,6 @@ static func _emit_run(run_cells: Array[Vector2i], run_symbol_id: StringName, out
 		"axis": "h" if delta.x != 0 else "v",
 	})
 
-
 static func _emit_run_for_symbol(run_cells: Array[Vector2i], sid: StringName, out_lines: Array, delta: Vector2i, emitted_keys: Dictionary, cells: Array) -> void:
 	if run_cells.size() < 3:
 		return
@@ -80,21 +73,6 @@ static func _emit_run_for_symbol(run_cells: Array[Vector2i], sid: StringName, ou
 			has_base_symbol = true
 			break
 	if not has_base_symbol:
-		if sid == &"sym_yellow_triangle":
-			# #region agent log
-			_debug_log(
-				"line-scan-triangle-rejected",
-				"H3",
-				"line_detector.gd:_emit_run_for_symbol",
-				"triangle run rejected due to missing base symbol",
-				{
-					"sid": String(sid),
-					"run_len": run_cells.size(),
-					"axis": "h" if delta.x != 0 else "v",
-					"coords": _coords_to_strings(run_cells),
-				}
-			)
-			# #endregion
 		return
 	var axis := "h" if delta.x != 0 else "v"
 	var coords_key := ""
@@ -107,23 +85,7 @@ static func _emit_run_for_symbol(run_cells: Array[Vector2i], sid: StringName, ou
 	if emitted_keys.has(key):
 		return
 	emitted_keys[key] = true
-	if sid == &"sym_yellow_triangle":
-		# #region agent log
-		_debug_log(
-			"line-scan-triangle-emitted",
-			"H3",
-			"line_detector.gd:_emit_run_for_symbol",
-			"triangle run emitted",
-			{
-				"sid": String(sid),
-				"run_len": run_cells.size(),
-				"axis": axis,
-				"coords": _coords_to_strings(run_cells),
-			}
-		)
-		# #endregion
 	_emit_run(run_cells, sid, out_lines, delta)
-
 
 static func _score_axis_with_wild(cells: Array, at: Vector2i, start: Vector2i, delta: Vector2i, length: int) -> int:
 	var best := 0
@@ -145,7 +107,6 @@ static func _score_axis_with_wild(cells: Array, at: Vector2i, start: Vector2i, d
 		best = maxi(best, run_len)
 	return best
 
-
 static func _matches_id(cells: Array, forced_wild: Vector2i, pos: Vector2i, sid: StringName) -> bool:
 	if pos == forced_wild:
 		return true
@@ -154,28 +115,9 @@ static func _matches_id(cells: Array, forced_wild: Vector2i, pos: Vector2i, sid:
 		return false
 	return sym.tier == SymbolDefScript.Tier.WILD or sym.id == sid
 
-
 static func _coords_to_strings(coords: Array[Vector2i]) -> Array:
 	var out: Array = []
 	for p in coords:
 		out.append("%d:%d" % [p.x, p.y])
 	return out
 
-
-static func _debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
-	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(DEBUG_LOG_PATH) else FileAccess.WRITE_READ
-	var file := FileAccess.open(DEBUG_LOG_PATH, mode)
-	if file == null:
-		return
-	file.seek_end()
-	var payload := {
-		"sessionId": DEBUG_SESSION_ID,
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000,
-	}
-	file.store_line(JSON.stringify(payload))
-	file.close()

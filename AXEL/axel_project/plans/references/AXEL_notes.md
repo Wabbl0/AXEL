@@ -1,7 +1,7 @@
 # AXEL — Game Design Notes
 
 > Compiled from design conversation. Single source of truth for the roguelite encounter, economy, and progression layer.
-> Companion docs: `../combat/AXEL_combat_design.md`, `../combat/AXEL_combat_implementation.md`, `../scenes/AXEL_SCENES_BLUEPRINT.md`, `AXEL_SCENE_DIALOGUES.md`, `README_STRUCTURE.md`.
+> Companion docs: `../combat/AXEL_combat_design.md`, `../combat/AXEL_combat_implementation.md`, `../scenes/AXEL_SCENES_NEW.md`, `README_STRUCTURE.md`.
 
 ---
 
@@ -259,7 +259,7 @@ All three required, no exceptions:
 
 ### 9.3 Other endings
 
-- The five existing endings from the prototype (`../scenes/AXEL_SCENES_BLUEPRINT.md`) remain. Their integration with the loss/restart system is open (Question 7).
+- The five existing endings from the prototype (`../scenes/AXEL_SCENES_ARC7.md`) remain. Their integration with the loss/restart system is open (Question 7).
 
 ---
 
@@ -301,7 +301,7 @@ These questions have not yet been answered and are required before full implemen
   - The intentionally low RTP (persistent upgrades risk inflating the economy).
   - The Slay the Spire-style full restart.
    When this feature is implemented, it should not undermine the core run-restart loop or trivialize True Ending requirements.
-8. **Existing endings integration.** The five existing endings from `../scenes/AXEL_SCENES_BLUEPRINT.md` (Fear, Darkness, Wrong Answer, No Name, True) need explicit mapping to the new combat-loss / area-clear / memory-count system. For example: does losing a run still let you reach Ending 1 (Fear)? Or does the loss-restart loop replace the fear-based ending entirely? This needs reconciliation between exploration outcomes and combat outcomes.
+8. **Existing endings integration.** The five existing endings from `../scenes/AXEL_SCENES_ARC7.md` (Fear, Darkness, Wrong Answer, No Name, True) need explicit mapping to the new combat-loss / area-clear / memory-count system. For example: does losing a run still let you reach Ending 1 (Fear)? Or does the loss-restart loop replace the fear-based ending entirely? This needs reconciliation between exploration outcomes and combat outcomes.
 
 ---
 

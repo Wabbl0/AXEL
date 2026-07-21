@@ -8,6 +8,9 @@ const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 ## Just right of ReturnInteractArea so Mike peeks inside the room from the left door.
 const BASEMENT_PEEK_MARGIN_PX := 12.0
+## Just below KitchenInteractArea so Mike peeks next to the kitchen doorway.
+## Shifted up 100px from the doorway edge per design tweak.
+const KITCHEN_PEEK_MARGIN_PX := -88.0
 const RETURN_ZONE_GRACE_SEC := 0.15
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
@@ -21,7 +24,9 @@ var _active_zone: String = ""
 var _is_transitioning := false
 var _player_spawn_applied := false
 var _pending_basement_peek := false
+var _pending_kitchen_peek := false
 var _return_zone_armed := true
+var _kitchen_zone_armed := true
 ## Texture-pixel spawn captured from the Player node's editor position.
 var _player_spawn_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
@@ -44,6 +49,8 @@ func _ready() -> void:
 	_connect_zone(_return_area, "return")
 	if GameManager.take_cafeteria_spawn_side() == "basement_left":
 		_pending_basement_peek = true
+	elif GameManager.take_kitchen_spawn_side() == "kitchen_door":
+		_pending_kitchen_peek = true
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	call_deferred("_play_enter_dialogue")
@@ -74,6 +81,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _active_zone.is_empty():
 		return
 	if _active_zone == "return" and not _return_zone_armed:
+		return
+	if _active_zone == "kitchen" and not _kitchen_zone_armed:
 		return
 	match _active_zone:
 		"table":
@@ -135,6 +144,8 @@ func _show_interact_prompt() -> void:
 		return
 	if _active_zone == "return" and not _return_zone_armed:
 		return
+	if _active_zone == "kitchen" and not _kitchen_zone_armed:
+		return
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.show_prompt(_interact_anchor())
@@ -189,6 +200,10 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 			player_node.global_position = _basement_left_peek_global()
 			_pending_basement_peek = false
 			_arm_return_zone_grace()
+		elif _pending_kitchen_peek:
+			player_node.global_position = _kitchen_door_peek_global()
+			_pending_kitchen_peek = false
+			_arm_kitchen_zone_grace()
 		else:
 			player_node.global_position = env.to_global(_player_spawn_tex)
 		_player_spawn_applied = true
@@ -199,6 +214,8 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	call_deferred("_configure_table_occlusion_masks")
 	if _pending_basement_peek:
 		call_deferred("_apply_basement_peek_if_pending")
+	elif _pending_kitchen_peek:
+		call_deferred("_apply_kitchen_peek_if_pending")
 
 
 func _apply_basement_peek_if_pending() -> void:
@@ -209,11 +226,27 @@ func _apply_basement_peek_if_pending() -> void:
 	_arm_return_zone_grace()
 
 
+func _apply_kitchen_peek_if_pending() -> void:
+	if not _pending_kitchen_peek or not is_instance_valid(_player):
+		return
+	_pending_kitchen_peek = false
+	_player.global_position = _kitchen_door_peek_global()
+	_arm_kitchen_zone_grace()
+
+
 func _arm_return_zone_grace() -> void:
 	_return_zone_armed = false
 	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
 	_return_zone_armed = true
 	if _active_zone == "return":
+		_show_interact_prompt()
+
+
+func _arm_kitchen_zone_grace() -> void:
+	_kitchen_zone_armed = false
+	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
+	_kitchen_zone_armed = true
+	if _active_zone == "kitchen":
 		_show_interact_prompt()
 
 
@@ -231,6 +264,20 @@ func _basement_left_peek_global() -> Vector2:
 	return pos
 
 
+func _kitchen_door_peek_global() -> Vector2:
+	var pos := _player.global_position
+	var bottom_edge := _kitchen_interact_bottom_edge_y()
+	if bottom_edge > -INF:
+		pos.y = bottom_edge + KITCHEN_PEEK_MARGIN_PX
+	if is_instance_valid(_kitchen_area):
+		var shape := _kitchen_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape != null:
+			pos.x = shape.global_position.x
+		else:
+			pos.x = _kitchen_area.global_position.x
+	return pos
+
+
 func _return_interact_right_edge_x() -> float:
 	if not is_instance_valid(_return_area):
 		return -INF
@@ -241,6 +288,18 @@ func _return_interact_right_edge_x() -> float:
 	return _return_area.to_global(
 		Vector2(shape.position.x + half_width, shape.position.y)
 	).x
+
+
+func _kitchen_interact_bottom_edge_y() -> float:
+	if not is_instance_valid(_kitchen_area):
+		return -INF
+	var shape := _kitchen_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape == null or not (shape.shape is RectangleShape2D):
+		return -INF
+	var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
+	return _kitchen_area.to_global(
+		Vector2(shape.position.x, shape.position.y + half_height)
+	).y
 
 
 func _wake_static_colliders() -> void:

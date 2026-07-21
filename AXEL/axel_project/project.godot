@@ -17,7 +17,6 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-ScriptReloadMarker="*res://ScriptReloadMarker.gd"
 GameManager="*res://exports/GameManager.gd"
 AxelPostFxStack="*res://scripts/autoload/axel_post_fx_stack.gd"
 AxelEventFx="*res://scripts/autoload/axel_event_fx.gd"
@@ -27,6 +26,11 @@ AxelEventFx="*res://scripts/autoload/axel_event_fx.gd"
 shapes/collision/shape_color=Color(0, 0.92, 0.95, 0.42)
 shapes/collision/contact_color=Color(0, 1, 0.5, 0.8)
 
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1280
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
@@ -34,9 +38,3 @@ shapes/collision/contact_color=Color(0, 1, 0.5, 0.8)
 [rendering]
 
 rendering_device/driver.windows="d3d12"
-
-[display]
-
-window/size/viewport_width=1920
-window/size/viewport_height=1280
-window/stretch/mode="disabled"

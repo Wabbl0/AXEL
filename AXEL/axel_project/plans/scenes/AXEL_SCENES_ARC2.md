@@ -1,16 +1,14 @@
 # AXEL — Scene Dialogues: Arc 2 — Cafeteria
 
+> Dialogue under each scene is locked canon (rewrites). Do not restore old HTML prototype SOURCE text.
+
 ---
 
 ### 2.1 Cafeteria (`loc_cafeteria`)
 
 **Location label:** `CAFETERIA`
 
-**Dialogue [SOURCE]:**
-
-> Tables are overturned. The air reeks of rancid grease. In the middle of the hall you see a ghostly figure sitting alone at an intact table. The kitchen area is dark.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > Even through all the chaos you can hear the chattering students of the past.
 
@@ -24,7 +22,7 @@
 | Return to locker    | Locker Hub       |
 
 
-**Implemented (Godot):** `2.1_Cafeteria.tscn` + `2.1_Cafeteria.gd` — first Arc 2 walkable room: `PlayerLayer` (layer 100; authored scale `2.25`, speed `189.75`; spawn from editor `Player` position, or left peek when `cafeteria_spawn_side="basement_left"` from 1.4), `2.1_Cafeteria.png` cover-fit + locked background, `BackgroundCamera` `STATIC_LOCKED`/`COVER` with `margin_px=12` and `static_center=(960,0)` (top-biased so foodline/kitchen stay in frame), collider sync + `PlayerCoverSync` on `layout_applied`. Enter line once via `TopDialogueOverlay`. `[E]` zones: table → `2.2_CafeteriaMemory.tscn` (still placeholder), kitchen → `2.3_Kitchen.tscn` (still placeholder), left return → `1.4_BasementDoor.tscn` (`basement_spawn_side="cafeteria_right"`). Hub 1.3 cafeteria button still loads 2.1 directly. Fade: `TableBlockLeft_Behind` / `ChairBlockBottom_Behind` / `ChairBlockTop_Behind`. `TableBlockLeft`/`Right` have separate rectangle shapes; `LeftDoorBlock` solid near left door. No ghost float sprite yet; no embedded post-FX. Tune wall/zone shapes in the editor if hotspots feel off.
+**Implemented (Godot):** `2.1_Cafeteria.tscn` + `2.1_Cafeteria.gd` — first Arc 2 walkable room: `PlayerLayer` (layer 100; authored scale `2.25`, speed `189.75`; spawn from editor `Player` position, or left peek when `cafeteria_spawn_side="basement_left"` from 1.4), `2.1_Cafeteria.png` cover-fit + locked background, `BackgroundCamera` `STATIC_LOCKED`/`COVER` with `margin_px=12` and `static_center=(960,0)` (top-biased so foodline/kitchen stay in frame), collider sync + `PlayerCoverSync` on `layout_applied`. Enter line once via `TopDialogueOverlay`. `[E]` zones: table → `2.2_CafeteriaMemory.tscn` (still placeholder), kitchen → `2.3_Kitchen.tscn` (walkable, shipped), left return → `1.4_BasementDoor.tscn` (`basement_spawn_side="cafeteria_right"`). Hub 1.3 cafeteria button still loads 2.1 directly. Fade: `TableBlockLeft_Behind` / `ChairBlockBottom_Behind` / `ChairBlockTop_Behind`. `TableBlockLeft`/`Right` have separate rectangle shapes; `LeftDoorBlock` solid near left door. No ghost float sprite yet; no embedded post-FX. Tune wall/zone shapes in the editor if hotspots feel off.
 
 ---
 
@@ -33,11 +31,7 @@
 **Location label:** `CAFETERIA`
 *(Memory — glitch flash on enter, no interaction area)*
 
-**Dialogue [SOURCE]:**
-
-> You are sitting at the same table. The popular kids invite you over. Your friend whispers, 'Don't go.' You stand up, laugh and shout loud: 'Sorry, I can't deal with your whining.' You leave them alone.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > "Do you think I'm a bad person?"
 >
@@ -73,11 +67,7 @@
 
 **Location label:** `KITCHEN`
 
-**Dialogue [SOURCE]:**
-
-> The kitchen is rotting at the seams. You see the rot pile up in the air. The smell is horrendus.
-
-**[REWRITE]:**
+**Enter dialogue:**
 
 > Everything is rotten here. Everything.
 >
@@ -85,35 +75,18 @@
 >
 > This includes you.
 
-**Choices:**
-
-
-| Button label                                                                            | Target                    |
-| --------------------------------------------------------------------------------------- | ------------------------- |
-| Turn back                                                                               | Cafeteria                 |
-| *(Hidden — click on scene image triggers flashlight pickup before flashlight is found)* | Kitchen Flashlight Pickup |
-
-
----
-
-### 2.4 Kitchen — Flashlight Pickup (`action_get_flashlight`)
-
-**Location label:** `KITCHEN`
-
-**Dialogue [SOURCE]:**
-
-> Your hand hits cold metal. You found an industrial flashlight!
-
-**[REWRITE]:**
+**Flashlight pickup dialogue** *(in-room `[E]` zone — no separate 2.4 scene):*
 
 > Let there be light!
 
-**Choices:**
+**Choices / interactions:**
 
 
-| Button label | Target    |
-| ------------ | --------- |
-| Nice         | Cafeteria |
+| Action | Target / result |
+| ------ | --------------- |
+| Door `[E]` | Return to Cafeteria |
+| Flashlight `[E]` (once, if not owned) | Set `hasFlashlight`, add Flashlight to inventory, play pickup line, hide flashlight visual |
 
+**Implemented (Godot):** `2.3_Kitchen.tscn` + `2.3_Kitchen.gd` — walkable kitchen with `2.3_Kitchen.png` (`STATIC_LOCKED`/`COVER`, `margin_px=12`, `static_center=(560,0)`), `PlayerLayer` scale `3.0` / speed `253.4`, collider sync + `PlayerCoverSync` on `layout_applied`. Enter line once via `GameManager.kitchen_enter_line_seen`. Flashlight pickup is **in-room** (no `2.4_KitchenFlashlightPickup.tscn`). Door `[E]` → `2.1_Cafeteria.tscn` with `kitchen_spawn_side="kitchen_door"`. Single static background art (no dark→lit swap). No embedded post-FX.
 
 ---

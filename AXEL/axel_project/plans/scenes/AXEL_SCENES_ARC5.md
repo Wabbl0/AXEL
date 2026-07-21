@@ -1,16 +1,14 @@
 # AXEL — Scene Dialogues: Arc 5 — Classroom
 
+> Dialogue under each scene is locked canon (rewrites). Do not restore old HTML prototype SOURCE text.
+
 ---
 
 ### 5.1 Classroom (`loc_classroom`)
 
 **Location label:** `CLASSROOM`
 
-**Dialogue [SOURCE]:**
-
-> Dust dances in the beams of light. In the back row one desk sits apart from the others. A chalkboard stands at the front.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > This is where the shit went down.
 >
@@ -45,11 +43,7 @@
 | t = 1 300 ms | `desk.png`                    | Final dialogue revealed (below) |
 
 
-**Final dialogue [SOURCE]:**
-
-> This is THEIR desk. You remember. It was a dare.
-
-**[REWRITE]:**
+**Final dialogue:**
 
 > It's THEIR desk.
 >
@@ -73,11 +67,7 @@
 
 **Location label:** `CLASSROOM`
 
-**Dialogue [SOURCE]:**
-
-> On the board is code: 'if (name == ____) { remember(); }'. Do you know the name?
-
-**[REWRITE]:**
+**Dialogue:**
 
 > On the board there are weird ass symbols and equations.
 >
@@ -87,11 +77,7 @@
 
 **Input:** Text field — correct answer: `AXEL` (case-insensitive, trimmed)
 
-**Fail text [SOURCE]:**
-
-> The board doesn't respond.
-
-**[REWRITE fail text]:**
+**Fail text:**
 
 > Nah.
 
@@ -109,13 +95,9 @@
 
 **Location label:** `CLASSROOM`
 
-**Dialogue [SOURCE]:**
+**Dialogue:**
 
-> At least YOU remember that much.
-
-**[REWRITE]:**
-
-> x
+> TODO: write line
 
 **Choices:**
 

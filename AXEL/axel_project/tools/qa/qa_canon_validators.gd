@@ -415,7 +415,7 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 				"REGRESSION",
 				scene_path,
 				"Missing required node path: %s" % node_path,
-				"Restore node per AXEL_SCENES_BLUEPRINT / scene contract for this location."
+				"Restore node per SCENE_BUILDING.md / scene contract for this location."
 			))
 
 	var player := root.get_node_or_null("PlayerLayer/Player") as CharacterBody2D
@@ -433,7 +433,7 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 			scene_path,
 			"Player.speed=%.1f outside profile [%s, %s] for %s"
 			% [speed, speed_min, speed_max, profile.get("label", scene_path)],
-			"Tune Player.speed to SCENE_LAYOUT_RULES profile for this scene."
+			"Tune Player.speed to SCENE_BUILDING profile for this scene."
 		))
 
 	var scale_xy := player.scale
@@ -447,7 +447,7 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 			"STYLE",
 			scene_path,
 			"Player scale avg=%.2f outside profile [%.2f, %.2f]" % [scale_avg, scale_min, scale_max],
-			"Adjust Player scale to match large-scene profile in SCENE_LAYOUT_RULES."
+			"Adjust Player scale to match large-scene profile in SCENE_BUILDING."
 		))
 
 	var fallback := player.get_node_or_null("FallbackBody") as CanvasItem

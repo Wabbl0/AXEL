@@ -6,34 +6,34 @@ todos:
     content: "Build shared UI: scenes/ui/HUD.tscn, StoryBox.tscn, PuzzleInput.tscn, scenes/fx/Scanlines.tscn, and reusable SceneShake.gd / SceneGlitch.gd tween helpers."
     status: pending
   - id: global-autoloads
-    content: Create autoload/GameState.gd (inventory, memories, memory_scenes, flags, add_memory_once, get_smoking_hint) and autoload/SceneRouter.gd with check_flashlight() and check_true_ending() routers that replace the JS logic-only scenes.
-    status: pending
+    content: "Canon autoload is GameManager (exports/GameManager.gd). Do not create GameState.gd / SceneRouter.gd."
+    status: completed
   - id: scene-school-exterior
-    content: "SchoolExterior.tscn (start): school.png bg, intro monologue, choices Walk inside / Turn away, onEnter resets GameState, fade-in + sway animation."
-    status: pending
+    content: "1.1_SchoolExterior.tscn — shipped walkable intro."
+    status: completed
   - id: scene-corridor
-    content: "1.2_Corridor.tscn (scene_2): corridor.png bg, CORRIDOR label, locker/turn-away choices, static full-bleed background (viewport cover-fit), corridor_large player profile (3× scale, speed 362, left spawn)."
-    status: pending
+    content: "1.2_Corridor.tscn — shipped walkable corridor."
+    status: completed
   - id: scene-locker-hub
-    content: "1.3_LockerHub.tscn (scene_3): 1.3_Locker.png bg; MapHotspot (UiPolygonHotspot) on map paper swaps to map.png on click, four destination buttons (basement omitted), add_memory_once('scene_3') on enter."
+    content: "1.3_LockerHub.tscn — shipped hub UI."
     status: completed
   - id: scene-basement-blocked-temp
-    content: "1.4_BasementDoor.tscn (basement_door): walkable exploration room with 1.4_BasementDoor.png, once-ever Not yet line on [E], Corridor right-edge entry and left-edge return, margin_px=12."
+    content: "1.4_BasementDoor.tscn — shipped walkable gate room."
     status: completed
   - id: scene-cafeteria
-    content: "2.1_Cafeteria.tscn (loc_cafeteria): walkable room with 2.1_Cafeteria.png, enter dialogue, [E] zones to Memory/Kitchen/Locker Hub (Memory+Kitchen still placeholders). Ghost float sprite still TODO."
+    content: "2.1_Cafeteria.tscn — shipped walkable; Memory still placeholder; Kitchen shipped as 2.3."
     status: completed
   - id: scene-cafeteria-memory
-    content: "CafeteriaMemory.tscn (loc_cafeteria_memory): cafeteria_table.png bg, dialogue-only memory with glitch-in, add_memory_once, Go back choice."
+    content: "2.2_CafeteriaMemory.tscn — still ScenePlaceholder."
     status: pending
   - id: scene-kitchen
-    content: "Kitchen.tscn (loc_kitchen): kitchen.png (dark) bg that becomes kitchen_no_flash.png after pickup, rot particles, hidden counter Area2D that loads flashlight pickup, locked-choice styling until hasFlashlight."
-    status: pending
+    content: "2.3_Kitchen.tscn — shipped walkable; flashlight pickup in-room (no 2.4); single static art."
+    status: completed
   - id: scene-kitchen-flashlight
-    content: "KitchenFlashlightPickup.tscn (action_get_flashlight): kitchen_no_flash.png bg, pickup dialogue, sets hasFlashlight and adds Flashlight to inventory, flash tween."
-    status: pending
+    content: "Merged into 2.3 — do not recreate 2.4_KitchenFlashlightPickup.tscn."
+    status: completed
   - id: scene-backyard
-    content: "Backyard.tscn (loc_yard): backyard.png bg with clickable state machine (0: graffiti text, 1: friend/lighter memory + add_memory_once, 2: AXEL lighter reveal sets hasName/knowsName, 3: unlocked state with smoke/return choices)."
+    content: "3.1_Backyard.tscn — one scene with internal click steps (no separate 3.1b/c/d files)."
     status: pending
   - id: scene-backyard-hint
     content: "BackyardHint.tscn (loc_yard_hint): cigarette.png bg, dialogue sourced from GameState.get_smoking_hint() on enter, Continue returns to Backyard, smoke particles."
@@ -107,21 +107,28 @@ isProject: false
 
 # AXEL - HTML to Godot Scene Blueprint
 
-Source of truth: [AXEL/html/game.html](AXEL/html/game.html) (the `story` object starting at line 150 and the FX logic in `loadScene` below it).
+> **Archived.** Moved from `plans/scenes/` to `plans/archive/`. Not live canon. For current scene dialogue and build rules use `plans/scenes/AXEL_SCENES_NEW.md` ? ARC docs and `plans/scenes/SCENE_BUILDING.md`. Body below is stale HTML-era intent; do not implement from it without checking shipped scenes + ARC docs.
 
-Target location: `AXEL/axel_project/scenes/` (the project currently points at `res://scenes/Main_Menu/0.1_MainMenu.tscn` in [AXEL/axel_project/project.godot](AXEL/axel_project/project.godot)).
+> **Historical reference.** This file catalogs the original HTML→Godot scene plan and still-useful per-scene intent. It is **not** the current implementation contract.
+>
+> **Current canon:**
+> - Autoload: `GameManager` (`exports/GameManager.gd`) — not the never-built `GameState.gd` / `SceneRouter.gd`
+> - New walkable scenes: `plans/scenes/SCENE_BUILDING.md`
+> - Dialogue: locked rewrites in `AXEL_SCENES_ARC*.md` (no HTML SOURCE text)
+> - Shipped walkable: `1.1`, `1.2`, `1.4`, `2.1`, `2.3` (+ hub `1.3`); Arc 3+ mostly placeholders
+> - Kitchen flashlight pickup is **in-room on 2.3** (no separate 2.4 scene)
+> - Arc 3 backyard = **one scene with internal steps** (not separate 3.1b/c/d files)
+> - Main menu Start → `1.1_SchoolExterior.tscn`
 
-## Global conventions for every placeholder scene
+Source of original story graph: [AXEL/html/game.html](AXEL/html/game.html).
 
-Every scene shares the same HUD chrome (status bar + story box + choices grid). Build this once:
+Target location: `AXEL/axel_project/scenes/` (main scene `res://scenes/Main_Menu/0.1_MainMenu.tscn`).
 
-- `scenes/ui/HUD.tscn` - `CanvasLayer` with `LocationLabel`, `MemoryCounter` (`x/5`), `InventoryLabel`, home button.
-- `scenes/ui/StoryBox.tscn` - `PanelContainer` with `RichTextLabel` (story_text) + `VBoxContainer` for choice buttons. Expose `set_text(text)`, `set_choices(array)`, `glitch(duration)`.
-- `scenes/ui/PuzzleInput.tscn` - `LineEdit` + `Button` for the two text puzzles (`loc_board`, `basement_question`).
-- `scenes/fx/Scanlines.tscn` - full-screen `ColorRect` + shader mimicking `.scanlines` (lines 20-25 of [AXEL/html/styles_game.css](AXEL/html/styles_game.css)).
-- `scenes/fx/SceneShake.gd` + `SceneGlitch.gd` - reusable tweens matching `scene-shake` (0.16s linear x2) and `glitch-text` (1s).
-- `autoload/GameState.gd` - singleton holding `inventory`, `memories`, `memory_scenes`, `flags` (mirrors the `gameState` object). Implements `add_memory_once(key)`, `has_item(flag)`, `get_smoking_hint()` (lines 112-134 of game.html).
-- `autoload/SceneRouter.gd` - `load_scene(id)` equivalent to JS `loadScene`. Handles the two "logic" nodes (`check_flashlight_logic`, `check_true_ending_logic`) without creating real scenes for them.
+## Global conventions (updated)
+
+Shipped UI uses `TopDialogueOverlay` + `InteractPromptOverlay` + autoload post-FX (`AxelPostFxStack` / `AxelEventFx`). Do not embed noir/scanline/CRT in overworld `.tscn`.
+
+Legacy HTML-era stubs below (`HUD.tscn`, `StoryBox.tscn`, `GameState.gd`, `SceneRouter.gd`) were the original plan — **use `GameManager` and the overlays above instead.**
 
 Each gameplay scene is a `Node2D` root with `Background` (`Sprite2D` / `TextureRect`), an optional interaction `Area2D`, and an instance of the HUD. Memory scenes are identical but have no interaction areas - just the story box with glitch-in.
 
@@ -183,18 +190,18 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 - Walkable exploration scene: chained-door placeholder polygons, floor divider at Y≈474, door `[E]` interact once-ever (`"Not yet."` / `GameManager.basement_door_line_seen`).
 - Entry: `1.2_Corridor.tscn` right-edge `ExitTrigger` (auto, no `[E]`).
 - Exit: left-edge `ExitTrigger` → `1.2_Corridor.tscn` at saved `corridor_return_pos`.
-- No embedded post-FX. Script: `1.4_BasementDoor.gd`. Replaces `1.4_BasementBlockedTemp.tscn`.
+- No embedded post-FX. Script: `1.4_BasementDoor.gd`.
 
 ---
 
 ## Arc 2 - Cafeteria
 
-### 2.1 `Cafeteria.tscn` (`loc_cafeteria`)
+### 2.1 `2.1_Cafeteria.tscn` (`loc_cafeteria`) — **shipped**
 - Location label: `CAFETERIA`
-- Background: `cafeteria.png`
-- Dialogue: "Tables are overturned. The air reeks of rancid grease. In the middle of the hall you see a ghostly figure sitting alone at an intact table. The kitchen area is dark."
-- Choices: `Approach Your table` -> `CafeteriaMemory`, `Search the kitchen` -> `Kitchen`, `Return to locker` -> `LockerHub`.
-- Animations: translucent ghost sprite (floating idle loop, alpha 0.4); `kitchen area` panel rendered darker via masked gradient.
+- Background: `exports/Drawings/2.1_Cafeteria.png`
+- Dialogue: rewrite in `AXEL_SCENES_ARC2.md`
+- Choices / zones: Approach table → `2.2` (placeholder), Kitchen → `2.3` (shipped), return → `1.4`
+- See Implemented note in `AXEL_SCENES_ARC2.md`
 
 ### 2.2 `CafeteriaMemory.tscn` (`loc_cafeteria_memory`) - memory-only, no interaction
 - Location label: `CAFETERIA`
@@ -203,35 +210,25 @@ Art placeholders: drop `ColorRect` + `Label` with the filename (e.g. `school.png
 - Choice: `Go back` -> `Cafeteria`.
 - `onEnter`: `GameState.add_memory_once("loc_cafeteria_memory")` + glitch flash on the story text (1s) to match `addMemory()`.
 
-### 2.3 `Kitchen.tscn` (`loc_kitchen`)
+### 2.3 `2.3_Kitchen.tscn` (`loc_kitchen`) — **shipped**
 - Location label: `KITCHEN`
-- Background: `kitchen.png` (dark); after pickup it renders `kitchen_no_flash.png` (JS lines 476-482).
-- Dialogue: "The kitchen is rotting at the seams. You see the rot pile up in the air. The smell is horrendus."
-- Choices: `Turn back` -> `Cafeteria`; plus a hidden click `Area2D` over the counter that loads `action_get_flashlight` when `!hasFlashlight` (JS lines 492-495). Scene is locked (`choice-btn-locked`) until `hasFlashlight` too.
-- Animations: slow particle `CPUParticles2D` for "rot in the air"; optional flies buzzing sfx.
+- Background: single static `exports/Drawings/2.3_Kitchen.png` (no dark→lit swap).
+- Enter dialogue (rewrite): "Everything is rotten here…" / "This includes you."
+- Interactions: door `[E]` → Cafeteria; flashlight `[E]` in-room sets `hasFlashlight` and plays "Let there be light!" (no separate 2.4 scene).
+- See `AXEL_SCENES_ARC2.md` Implemented note.
 
-### 2.4 `KitchenFlashlightPickup.tscn` (`action_get_flashlight`) - short state screen
-- Location label: `KITCHEN`
-- Background: `kitchen_no_flash.png`
-- Dialogue: "Your hand hits cold metal. You found an industrial flashlight!"
-- Choice: `Nice` -> `Cafeteria`.
-- `onEnter`: `flags.hasFlashlight = true`, `add_to_inventory("Flashlight")`.
-- Animations: brief light-flash tween + UI inventory add ping.
+### 2.4 Kitchen Flashlight Pickup — **merged into 2.3**
+- Do not recreate `2.4_KitchenFlashlightPickup.tscn`. Pickup is an in-room zone on Kitchen.
 
 ---
 
 ## Arc 3 - Backyard
 
-### 3.1 `Backyard.tscn` (`loc_yard`)
+### 3.1 `3.1_Backyard.tscn` (`loc_yard`)
+- **Canon:** one scene with internal click-step state machine (default → memory → name reveal → unlocked). Do **not** ship separate `3.1b` / `3.1c` / `3.1d` scene files.
 - Location label: `BACKYARD`
-- Background: `backyard.png`
-- Dialogue (state 0): "The corner at the back of the school. The wall has a weird graffiti on it. You still smell the teen rebelry around."
-- Choices: `Smoke a cigarette` -> `BackyardHint`, `Return to locker` -> `LockerHub`. Scene is locked until `memoryScenes.loc_yard_memory` is set; the whole background itself is clickable to advance the memory sequence (JS lines 505-542).
-- Click sequence (state machine inside this scene):
-  1. Glitch-flash story text 250ms -> swap to `loc_yard_memory.text`: "Your friend looks gaunt. 'Just to make sure you don't steal my lighter again I'm going to write my name on it.'" + `add_memory_once("loc_yard_memory")`.
-  2. Swap to: `YOU look down. There it is. A lighter with the name "AXEL" written on it.` + set `flags.hasName`, `flags.knowsName`, add `Name` to inventory.
-  3. Reload `loc_yard` in normal (unlocked) state.
-- Animations: graffiti highlight pulse; quick glitch on text transitions; on step 2, a `Sprite2D` of the lighter fades in at the feet position.
+- Dialogue: locked rewrites in `AXEL_SCENES_ARC3.md`.
+- Choices: `Smoke a cigarette` → `BackyardHint`, `Return to locker` → `LockerHub`.
 
 ### 3.2 `BackyardHint.tscn` (`loc_yard_hint`)
 - Location label: `INTERMISSION`
@@ -413,7 +410,8 @@ flowchart TD
   LockerHub --> BasementDoor
   Cafeteria --> CafeteriaMemory
   Cafeteria --> Kitchen
-  Kitchen --> KitchenFlashlightPickup --> Cafeteria
+  Kitchen -->|flashlight in-room| Kitchen
+  Kitchen -->|door| Cafeteria
   Backyard --> BackyardHint --> Backyard
   TeachersLounge --> TeachersKeyPickup
   Classroom --> ClassroomDesk

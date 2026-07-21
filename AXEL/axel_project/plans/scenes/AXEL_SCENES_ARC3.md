@@ -1,16 +1,15 @@
 # AXEL — Scene Dialogues: Arc 3 — Backyard
 
+> Dialogue under each scene is locked canon (rewrites). Do not restore old HTML prototype SOURCE text.
+> **Canon layout:** one Backyard scene with internal click steps (not separate `3.1b` / `3.1c` / `3.1d` scene files).
+
 ---
 
 ### 3.1 Backyard — default state (`loc_yard`)
 
 **Location label:** `BACKYARD`
 
-**Dialogue [SOURCE]:**
-
-> The corner at the back of the school. The wall has a weird graffiti on it. You still smell the teen rebelry around.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > The spirit of rebellion is still present here. Nice graffiti.
 >
@@ -31,16 +30,12 @@
 
 ---
 
-### 3.1b Backyard — Click step 1: Memory flash (`loc_yard_memory` text)
+### 3.1 — Click step 1: Memory flash (`loc_yard_memory` text)
 
 **Location label:** `BACKYARD`
-*(Glitch flash 250ms, then this text replaces scene text — sourced from `story.loc_yard_memory.text`)*
+*(Glitch flash 250ms, then this text replaces scene text)*
 
-**Dialogue [SOURCE]:**
-
-> Your friend looks gaunt. 'Just to make sure you don't steal my lighter again I'm going to write my name on it.'
-
-**[REWRITE]:**
+**Dialogue:**
 
 > "Oh. Sorry. I'll go," they say.
 >
@@ -60,16 +55,12 @@
 
 ---
 
-### 3.1c Backyard — Click step 2: Name reveal (inline JS `yardRevealText`)
+### 3.1 — Click step 2: Name reveal
 
 **Location label:** `BACKYARD`
-*(No glitch — text swaps directly. This line lives in `loadScene()` JS, not in the `story` object)*
+*(No glitch — text swaps directly)*
 
-**Dialogue [SOURCE]:**
-
-> YOU look down. There it is. A lighter with the name "AXEL" written on it.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > You light up your cigarette.
 >
@@ -79,18 +70,14 @@
 
 ---
 
-### 3.1d Backyard — Named scene (`loc_yard_memory`)
+### 3.1 — After sequence (named memory beat)
 
 **Location label:** `BACKYARD`
-*(This is the actual `story.loc_yard_memory` scene object — same text as 3.1b, but reached via the "Remember the name" button after the sequence)*
+*(Reached via "Remember the name" after the sequence)*
 
-**Dialogue [SOURCE]:**
+**Dialogue:**
 
-> Your friend looks gaunt. 'Just to make sure you don't steal my lighter again I'm going to write my name on it.
-
-**[REWRITE]:**
-
-> x
+> TODO: write line
 
 **Choices:**
 
@@ -106,19 +93,17 @@
 
 **Location label:** `INTERMISSION`
 
-**Dialogue [DYNAMIC — chosen at runtime from `getSmokingHintText()`]:**
+**Dialogue [DYNAMIC — chosen at runtime from smoking-hint logic]:**
 
 
-| Condition          | Line [SOURCE]                                                         |
-| ------------------ | --------------------------------------------------------------------- |
-| No flashlight      | The basement is bound to be dark. I need something to light the way   |
-| No name            | I remember their face. But their name escapes me                      |
-| No key             | The basement is bound to be locked. I better look around for the key. |
-| Memories < 5       | I should look around more. There's something I'm forgetting.          |
-| All conditions met | I'm ready.                                                            |
+| Condition          | Line |
+| ------------------ | ---- |
+| No flashlight      | TODO: write line |
+| No name            | TODO: write line |
+| No key             | TODO: write line |
+| Memories < 5       | TODO: write line |
+| All conditions met | TODO: write line |
 
-
-**[REWRITE any hint lines you want to change:]**
 
 **Choices:**
 

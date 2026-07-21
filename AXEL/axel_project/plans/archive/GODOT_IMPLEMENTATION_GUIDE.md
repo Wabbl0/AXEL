@@ -1,5 +1,9 @@
 # GUILT Game - Godot GDScript Implementation Guide
 
+> **Historical reference only.** This describes an early JSON/`game_data.json` + HTML-style port plan.
+> Current Godot implementation uses walkable scenes, `TopDialogueOverlay`, and autoload `GameManager`.
+> Do not follow this file as the implementation contract. Prefer `plans/core/AI_DOCS.md` and `plans/scenes/SCENE_BUILDING.md`.
+
 ## Overview
 
 This document explains the exported game data structure (`game_data.json`) and provides guidance on implementing the game in Godot 4.x with GDScript.

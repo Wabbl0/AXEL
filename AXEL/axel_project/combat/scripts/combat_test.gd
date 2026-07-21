@@ -1,4 +1,4 @@
-﻿@tool
+@tool
 ## Combat test UI — mirrored playtest shell (SPINS | grid | ITEMS), percentage layout, integer economy.
 ## Canonical entry: `res://combat/combat_test.tscn` (F6). See `README_COMBAT_TEST_VERSIONS.md`.
 extends Control
@@ -12,8 +12,6 @@ const COMBAT_ROOT_INSTANCED_CHILDREN := [
 	"RoundWinningsLabel", "EncounterWonLabel", "MultiplierLabel",
 ]
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
-const DEBUG_LOG_PATH := "res://../../logs/debug/debug-1d1bdd.log"
-const DEBUG_SESSION_ID := "1d1bdd"
 const PRINCESS_LOVE: StringName = &"love"
 const PRINCESS_STAR: StringName = &"star"
 const PRINCESS_STORM: StringName = &"storm"
@@ -172,7 +170,6 @@ const FALLBACK_CELL_SIZE_MAX := 128.0
 
 var _fallback_grid_width: float = 0.0
 
-
 func _can_use_combat_api() -> bool:
 	if combat == null or not is_instance_valid(combat):
 		return false
@@ -181,102 +178,85 @@ func _can_use_combat_api() -> bool:
 		return false
 	return combat.has_method("setup_new_grid") and combat.has_method("get_current_seed")
 
-
 func _can_layout_combat_grid() -> bool:
 	if not _can_use_combat_api():
 		return false
 	return combat.has_method("fit_to_panel") and combat.get("grid_ui") != null
-
 
 func _safe_get_current_seed() -> int:
 	if _can_use_combat_api():
 		return combat.get_current_seed()
 	return _queued_seed
 
-
 func _safe_get_current_bet() -> float:
 	if _can_use_combat_api():
 		return combat.get_current_bet()
 	return float(EDITOR_FALLBACK_BET)
-
 
 func _safe_get_round_winnings() -> float:
 	if _can_use_combat_api():
 		return combat.get_round_winnings()
 	return 0.0
 
-
 func _safe_get_meter_sections_filled() -> int:
 	if _can_use_combat_api():
 		return combat.get_meter_sections_filled()
 	return 0
-
 
 func _safe_get_bankroll() -> float:
 	if _can_use_combat_api():
 		return combat.get_bankroll()
 	return float(EDITOR_FALLBACK_BANKROLL)
 
-
 func _safe_get_bankroll_cap() -> float:
 	if _can_use_combat_api():
 		return combat.get_bankroll_cap()
 	return float(EDITOR_FALLBACK_BANKROLL_CAP)
-
 
 func _safe_get_goal_label() -> String:
 	if _can_use_combat_api():
 		return combat.get_goal_label()
 	return "GOAL: WIN 10x CHIP-BAR  (0 / 0)"
 
-
 func _safe_get_multiplier_value() -> int:
 	if _can_use_combat_api():
 		return combat.get_multiplier_value()
 	return 1
-
 
 func _safe_is_multiplier_cap_active() -> bool:
 	if _can_use_combat_api():
 		return combat.is_multiplier_cap_active()
 	return false
 
-
 func _safe_get_multiplier_cap_value() -> int:
 	if _can_use_combat_api():
 		return combat.get_multiplier_cap_value()
 	return 0
-
 
 func _safe_is_encounter_complete() -> bool:
 	if _can_use_combat_api():
 		return combat.is_encounter_complete()
 	return false
 
-
 func _safe_did_win_encounter() -> bool:
 	if _can_use_combat_api():
 		return combat.did_win_encounter()
 	return false
-
 
 func _safe_is_waiting_for_free_spin_choice() -> bool:
 	if _can_use_combat_api():
 		return combat.is_waiting_for_free_spin_choice()
 	return false
 
-
 func _safe_get_combat_state() -> int:
 	if _can_use_combat_api():
 		return combat.get_state()
 	return CombatRoot.State.IDLE
 
-
 func _safe_get_spins_used() -> int:
 	if _can_use_combat_api():
 		return combat.get_spins_used()
 	return 0
-
 
 func _safe_get_item_max_slots() -> int:
 	if not _can_use_combat_api():
@@ -288,7 +268,6 @@ func _safe_get_item_max_slots() -> int:
 		return inv.get_current_max_slots()
 	return EDITOR_FALLBACK_MAX_ITEM_SLOTS
 
-
 func _safe_get_item_inventory_size() -> int:
 	if not _can_use_combat_api():
 		return 0
@@ -299,7 +278,6 @@ func _safe_get_item_inventory_size() -> int:
 		return inv.size()
 	return 0
 
-
 func _safe_get_grid_ui_width() -> float:
 	if _can_layout_combat_grid():
 		var grid_ui: GridContainer = combat.grid_ui
@@ -308,7 +286,6 @@ func _safe_get_grid_ui_width() -> float:
 	if _fallback_grid_width >= 8.0:
 		return _fallback_grid_width
 	return _get_center_column_interior_width(260.0)
-
 
 func _warn_duplicate_combat_root_children() -> void:
 	if combat == null:
@@ -343,7 +320,6 @@ func _warn_duplicate_combat_root_children() -> void:
 			) % ", ".join(dupes)
 		)
 
-
 func _prune_orphan_economics_stacks() -> void:
 	if _economics_center == null or not is_instance_valid(_economics_center):
 		return
@@ -353,7 +329,6 @@ func _prune_orphan_economics_stacks() -> void:
 		if child is VBoxContainer and (String(child.name).begins_with("@VBoxContainer@") or child.name == "EconomicsStack"):
 			child.queue_free()
 
-
 func _suppress_combat_root_legacy_labels() -> void:
 	if combat == null:
 		return
@@ -361,7 +336,6 @@ func _suppress_combat_root_legacy_labels() -> void:
 		var legacy := combat.get_node_or_null(node_name) as CanvasItem
 		if legacy != null:
 			legacy.visible = false
-
 
 func _get_center_column_interior_width(default_w: float) -> float:
 	if _center_column != null and _center_column.size.x >= 64.0:
@@ -373,7 +347,6 @@ func _get_center_column_interior_width(default_w: float) -> float:
 			side_w = size.x * 0.18
 		return maxf(play_w - 2.0 * side_w - 2.0 * GRID_COLUMN_GAP, 260.0)
 	return maxf(default_w, 260.0)
-
 
 func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: float) -> float:
 	if combat == null or _grid_host == null:
@@ -415,7 +388,6 @@ func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: 
 		power_layer.size = grid_ui.size
 	return grid_width
 
-
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		if editor_preview_enabled:
@@ -423,13 +395,11 @@ func _ready() -> void:
 		return
 	call_deferred("_run_runtime_when_ready")
 
-
 func _resolve_scaffold_node(unique_name: String) -> Node:
 	var node_path := NodePath("%" + unique_name)
 	if has_node(node_path):
 		return get_node(node_path)
 	return find_child(unique_name, true, false)
-
 
 func _missing_scaffold_refs() -> PackedStringArray:
 	var missing: PackedStringArray = PackedStringArray()
@@ -465,7 +435,6 @@ func _missing_scaffold_refs() -> PackedStringArray:
 		missing.append("%ChooseStormButton")
 	return missing
 
-
 func _run_runtime_when_ready() -> void:
 	if Engine.is_editor_hint():
 		return
@@ -481,7 +450,6 @@ func _run_runtime_when_ready() -> void:
 		return
 	_runtime_tree_ready_attempts = 0
 	_initialize_runtime()
-
 
 func _restore_scaffold_from_baseline() -> bool:
 	if find_child("CombatRoot", true, false) != null:
@@ -510,7 +478,6 @@ func _restore_scaffold_from_baseline() -> bool:
 	if restored > 0:
 		push_warning("CombatTest restored %d scaffold nodes from baseline scene." % restored)
 	return restored > 0
-
 
 func _cache_scene_refs() -> bool:
 	if not is_inside_tree():
@@ -564,7 +531,6 @@ func _cache_scene_refs() -> bool:
 		return false
 	return true
 
-
 func _run_editor_preview_when_ready() -> void:
 	if not Engine.is_editor_hint() or not editor_preview_enabled:
 		return
@@ -576,10 +542,8 @@ func _run_editor_preview_when_ready() -> void:
 	_editor_tree_ready_attempts = 0
 	_initialize_editor_preview()
 
-
 func _is_editor_preview() -> bool:
 	return Engine.is_editor_hint() and editor_preview_enabled
-
 
 func _queue_editor_preview_refresh() -> void:
 	if not Engine.is_editor_hint() or not is_inside_tree():
@@ -589,13 +553,11 @@ func _queue_editor_preview_refresh() -> void:
 	_editor_preview_refresh_queued = true
 	call_deferred("_run_queued_editor_preview_refresh")
 
-
 func _run_queued_editor_preview_refresh() -> void:
 	_editor_preview_refresh_queued = false
 	if not Engine.is_editor_hint() or not editor_preview_enabled:
 		return
 	call_deferred("_run_editor_preview_when_ready")
-
 
 func _initialize_runtime() -> void:
 	if _runtime_initialized:
@@ -609,23 +571,12 @@ func _initialize_runtime() -> void:
 	_wire_winnings_popup_target()
 	_queued_seed = int(seed_spin.value)
 	combat.setup_new_grid(int(seed_spin.value))
-	_debug_log(
-		"seed-ui-ready",
-		"H5",
-		"combat_test.gd:_ready",
-		"initial setup_new_grid called from _ready",
-		{
-			"seed_spin_value": int(seed_spin.value),
-			"combat_seed_after_setup": combat.get_current_seed(),
-		}
-	)
 	_set_default_bet()
 	call_deferred("_finish_initial_layout")
 	_refresh_readouts()
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
 	_refresh_spin_button_state()
-
 
 func _initialize_editor_preview() -> void:
 	if not _cache_scene_refs():
@@ -638,7 +589,6 @@ func _initialize_editor_preview() -> void:
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
 	_refresh_spin_button_state()
-
 
 func _initialize_shared_layout(editor_mode: bool) -> void:
 	if not _cache_scene_refs():
@@ -668,13 +618,11 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 	if not resized.is_connected(_on_size_changed):
 		resized.connect(_on_size_changed)
 
-
 func _wire_winnings_popup_target() -> void:
 	if not _can_use_combat_api() or mult_label == null:
 		return
 	if combat.has_method("set_winnings_popup_target"):
 		combat.set_winnings_popup_target(mult_label)
-
 
 func _connect_runtime_signals() -> void:
 	if not spin_btn.pressed.is_connected(_on_spin_pressed):
@@ -706,7 +654,6 @@ func _connect_runtime_signals() -> void:
 	if not seed_spin.value_changed.is_connected(_on_seed_spin_value_changed):
 		seed_spin.value_changed.connect(_on_seed_spin_value_changed)
 
-
 func _apply_editor_combat_preview() -> void:
 	if combat == null:
 		return
@@ -716,14 +663,12 @@ func _apply_editor_combat_preview() -> void:
 	_queued_seed = editor_preview_seed
 	# Editor parity: layout shell only; do not populate symbol grid or numeric gameplay state.
 
-
 func _edited_scene_root() -> Node:
 	var tree := get_tree()
 	if tree == null:
 		return self
 	var edited := tree.edited_scene_root
 	return edited if edited != null else self
-
 
 func _reparent_for_layout(node: Node, new_parent: Node) -> void:
 	if node == null or new_parent == null:
@@ -734,7 +679,6 @@ func _reparent_for_layout(node: Node, new_parent: Node) -> void:
 	node.reparent(new_parent)
 	_reassert_node_ownership(node)
 
-
 func _reassert_node_ownership(node: Node) -> void:
 	if not Engine.is_editor_hint() or node == null:
 		return
@@ -742,7 +686,6 @@ func _reassert_node_ownership(node: Node) -> void:
 	node.set_owner(scene_root)
 	for child in node.get_children():
 		_reassert_node_ownership(child)
-
 
 func _reassert_scaffold_ownership() -> void:
 	if not Engine.is_editor_hint():
@@ -756,11 +699,9 @@ func _reassert_scaffold_ownership() -> void:
 		if node != null:
 			_reassert_node_ownership(node)
 
-
 func _add_preview_child(node: Node, parent: Node = self) -> void:
 	parent.add_child(node)
 	_reassert_node_ownership(node)
-
 
 func _finish_editor_preview_layout() -> void:
 	if not _is_editor_preview():
@@ -775,7 +716,6 @@ func _finish_editor_preview_layout() -> void:
 	_validate_editor_combat_root_structure()
 	_validate_editor_economics_structure()
 
-
 func _validate_editor_combat_root_structure() -> void:
 	if not Engine.is_editor_hint() or combat == null:
 		return
@@ -788,7 +728,6 @@ func _validate_editor_combat_root_structure() -> void:
 		+ " Keep combat_root.tscn instance only; remove inline Grid* nodes under CombatRoot. "
 		+ "Pre-commit auto-fix: python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py --staged"
 	)
-
 
 func _validate_editor_economics_structure() -> void:
 	if not Engine.is_editor_hint():
@@ -805,7 +744,6 @@ func _validate_editor_economics_structure() -> void:
 		+ " Keep a single EconomicsStack under EconomicsCenter; remove orphan @VBoxContainer stacks. "
 		+ "Pre-commit auto-fix: python AXEL/axel_project/tools/qa/check_combat_test_scaffold.py --staged"
 	)
-
 
 func _ensure_editor_grid_shell_visible() -> void:
 	if not _is_editor_preview() or combat == null:
@@ -824,7 +762,6 @@ func _ensure_editor_grid_shell_visible() -> void:
 	for node in [mult_label, bankroll_label, bet_label, goal_label, seed_spin, _cascade_mult_label, _cascade_mult_pill]:
 		if node is CanvasItem:
 			(node as CanvasItem).visible = true
-
 
 func _organize_top_hud() -> void:
 	if top_bar != null:
@@ -847,7 +784,6 @@ func _reparent_hud_to_root(node: Control) -> void:
 	_reparent_for_layout(node, self)
 	move_child(node, 2)
 
-
 func _hide_legacy_meter_nodes() -> void:
 	var meter_stack := get_node_or_null("RightMeterStack")
 	if meter_stack != null:
@@ -858,13 +794,11 @@ func _hide_legacy_meter_nodes() -> void:
 	if meter_circle != null:
 		meter_circle.visible = false
 
-
 func _ensure_play_shell() -> void:
 	if _restore_play_shell_from_scene():
 		_finalize_play_shell_layout()
 		return
 	_build_play_shell()
-
 
 func _restore_play_shell_from_scene() -> bool:
 	var area := get_node_or_null("PlayArea") as Control
@@ -897,7 +831,6 @@ func _restore_play_shell_from_scene() -> bool:
 		_configure_cascade_multiplier_readout()
 	return _grid_host != null and _center_footer != null
 
-
 func _finalize_play_shell_layout() -> void:
 	if combat == null or _grid_host == null:
 		return
@@ -915,7 +848,6 @@ func _finalize_play_shell_layout() -> void:
 	if mult_label != null and mult_label.visible:
 		mult_label.visible = true
 	_wire_winnings_popup_target()
-
 
 func _build_play_shell() -> void:
 	_play_area = Control.new()
@@ -1053,7 +985,6 @@ func _build_play_shell() -> void:
 	_reassert_node_ownership(_bottom_window_margin)
 	_reassert_scaffold_ownership()
 
-
 ## Stake-overlap ideas (grid/symbol size fixed; stake stays off bankroll):
 ## - Top premium-bar mirror: thin frame-attached bar over grid top border only.
 ## - Border notch: stake pill in centered top-border cutout.
@@ -1107,7 +1038,6 @@ func _integrate_economics_into_center_hud() -> void:
 		stake_selector.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		_reparent_for_layout(stake_selector, _economics_stack)
 
-
 func _reset_container_child_layout(control_node: Control) -> void:
 	if control_node == null:
 		return
@@ -1117,14 +1047,12 @@ func _reset_container_child_layout(control_node: Control) -> void:
 	control_node.offset_right = 0.0
 	control_node.offset_bottom = 0.0
 
-
 func _strip_corner_panel_boxes() -> void:
 	var empty := StyleBoxEmpty.new()
 	if meta_box != null:
 		meta_box.add_theme_stylebox_override("panel", empty)
 	if goal_box != null:
 		goal_box.add_theme_stylebox_override("panel", empty)
-
 
 func _configure_top_corner_hud() -> void:
 	if meta_box == null:
@@ -1158,12 +1086,10 @@ func _configure_top_corner_hud() -> void:
 		seed_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		seed_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-
 func _configure_white_hud_readouts() -> void:
 	for label in [bankroll_label, bet_label, goal_label, encounter_win_label]:
 		if label != null:
 			_apply_white_hud_text_style(label)
-
 
 func _apply_white_hud_text_style(label: Label) -> void:
 	label.add_theme_color_override("font_color", HUD_WHITE_TEXT_COLOR)
@@ -1172,7 +1098,6 @@ func _apply_white_hud_text_style(label: Label) -> void:
 	label.add_theme_color_override("font_shadow_color", HUD_WHITE_TEXT_SHADOW_COLOR)
 	label.add_theme_constant_override("shadow_offset_x", 0)
 	label.add_theme_constant_override("shadow_offset_y", HUD_WHITE_TEXT_SHADOW_OFFSET_Y)
-
 
 func _winnings_readout_bg_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -1186,7 +1111,6 @@ func _winnings_readout_bg_style() -> StyleBoxFlat:
 	style.content_margin_bottom = 6
 	return style
 
-
 func _configure_winnings_readout() -> void:
 	if mult_label == null:
 		return
@@ -1195,7 +1119,6 @@ func _configure_winnings_readout() -> void:
 	mult_label.remove_theme_color_override("font_outline_color")
 	mult_label.add_theme_constant_override("outline_size", WINNINGS_READOUT_OUTLINE)
 
-
 func _configure_cascade_multiplier_readout() -> void:
 	if _cascade_mult_label == null:
 		return
@@ -1203,7 +1126,6 @@ func _configure_cascade_multiplier_readout() -> void:
 	_cascade_mult_label.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
 	_cascade_mult_label.remove_theme_color_override("font_outline_color")
 	_cascade_mult_label.add_theme_constant_override("outline_size", CASCADE_MULT_READOUT_OUTLINE)
-
 
 func _build_history_placeholder() -> PanelContainer:
 	var panel := _make_side_panel("HISTORY", true)
@@ -1218,7 +1140,6 @@ func _build_history_placeholder() -> PanelContainer:
 	root_list.add_child(_history_spin_list)
 	return panel
 
-
 func _corner_box_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.06, 0.0, 0.0, 0.92)
@@ -1230,7 +1151,6 @@ func _corner_box_style() -> StyleBoxFlat:
 	style.content_margin_right = 10
 	style.content_margin_bottom = 8
 	return style
-
 
 func _side_panel_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -1244,7 +1164,6 @@ func _side_panel_style() -> StyleBoxFlat:
 	style.content_margin_bottom = 8
 	return style
 
-
 func _side_panel_title_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.03, 0.0, 0.0, 0.98)
@@ -1257,12 +1176,10 @@ func _side_panel_title_style() -> StyleBoxFlat:
 	style.content_margin_bottom = 8
 	return style
 
-
 func _style_side_panel_header(header: Label) -> void:
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_theme_font_size_override("font_size", SIDE_PANEL_HEADER_FONT)
 	header.add_theme_color_override("font_color", Color(0.88, 0.4, 0.4, 1.0))
-
 
 func _bind_history_spin_list_from_panel(panel: PanelContainer) -> void:
 	if panel == null:
@@ -1283,7 +1200,6 @@ func _bind_history_spin_list_from_panel(panel: PanelContainer) -> void:
 	list_root.add_child(_history_spin_list)
 	_reassert_node_ownership(_history_spin_list)
 
-
 func _apply_side_panel_typography() -> void:
 	for panel in [_spin_history_panel, _item_picker_panel]:
 		if panel == null:
@@ -1296,7 +1212,6 @@ func _apply_side_panel_typography() -> void:
 		if header_strip != null:
 			header_strip.add_theme_stylebox_override("panel", _side_panel_title_style())
 	_apply_item_picker_body_typography()
-
 
 func _apply_item_picker_body_typography() -> void:
 	if _item_picker_panel == null:
@@ -1313,7 +1228,6 @@ func _apply_item_picker_body_typography() -> void:
 		if label.text == "No items available":
 			label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 
-
 func _style_item_picker_checkbox(cb: CheckBox, body_font: int = -1) -> void:
 	if cb == null:
 		return
@@ -1325,7 +1239,6 @@ func _style_item_picker_checkbox(cb: CheckBox, body_font: int = -1) -> void:
 	cb.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-
 func _make_side_panel_header_strip(header_text: String) -> PanelContainer:
 	var strip := PanelContainer.new()
 	strip.add_theme_stylebox_override("panel", _side_panel_title_style())
@@ -1335,7 +1248,6 @@ func _make_side_panel_header_strip(header_text: String) -> PanelContainer:
 	_style_side_panel_header(header)
 	strip.add_child(header)
 	return strip
-
 
 func _make_side_panel(header_text: String, with_scroll_list: bool = true) -> PanelContainer:
 	var panel := PanelContainer.new()
@@ -1377,7 +1289,6 @@ func _make_side_panel(header_text: String, with_scroll_list: bool = true) -> Pan
 	panel.set_meta("header", header)
 	return panel
 
-
 func _configure_stake_display() -> void:
 	if bet_label == null:
 		return
@@ -1405,7 +1316,6 @@ func _configure_stake_display() -> void:
 	bet_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bet_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
-
 func _stake_button_style() -> StyleBoxFlat:
 	var flat := StyleBoxFlat.new()
 	flat.bg_color = Color(0.0, 0.0, 0.0, 0.0)
@@ -1418,7 +1328,6 @@ func _stake_button_style() -> StyleBoxFlat:
 	flat.content_margin_bottom = 2
 	return flat
 
-
 func _style_stake_buttons() -> void:
 	for btn in [bet_minus_btn, bet_plus_btn]:
 		if btn == null:
@@ -1429,7 +1338,6 @@ func _style_stake_buttons() -> void:
 		btn.add_theme_stylebox_override("pressed", flat.duplicate())
 		btn.add_theme_stylebox_override("focus", flat.duplicate())
 		btn.add_theme_stylebox_override("disabled", flat.duplicate())
-
 
 func _on_spin_pressed() -> void:
 	if Engine.is_editor_hint():
@@ -1444,7 +1352,6 @@ func _on_spin_pressed() -> void:
 	spin_btn.disabled = false
 	_refresh_readouts()
 	_refresh_spin_button_state()
-
 
 func _refresh_readouts() -> void:
 	if not _cache_scene_refs():
@@ -1475,7 +1382,6 @@ func _refresh_readouts() -> void:
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
 
-
 func _refresh_editor_placeholder_readouts() -> void:
 	if not _cache_scene_refs():
 		return
@@ -1496,7 +1402,6 @@ func _refresh_editor_placeholder_readouts() -> void:
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
 
-
 func _refresh_cascade_multiplier_readout() -> void:
 	if _cascade_mult_label == null:
 		return
@@ -1506,13 +1411,11 @@ func _refresh_cascade_multiplier_readout() -> void:
 		_pulse_cascade_multiplier()
 	_last_displayed_cascade_mult = mult
 
-
 func _format_cascade_multiplier_text(mult: int) -> String:
 	var text := "%d×" % mult
 	if _safe_is_multiplier_cap_active():
 		text += " / %d" % _safe_get_multiplier_cap_value()
 	return text
-
 
 func _pulse_cascade_multiplier() -> void:
 	if _cascade_mult_pill == null:
@@ -1528,7 +1431,6 @@ func _pulse_cascade_multiplier() -> void:
 	settle.tween_property(_cascade_mult_pill, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.18)
 	settle.tween_property(_cascade_mult_pill, "scale", Vector2.ONE, 0.18)
 
-
 func _on_spin_started(seed_value: int) -> void:
 	_queued_seed = seed_value
 	_set_seed_spin_value_no_signal(seed_value)
@@ -1536,13 +1438,11 @@ func _on_spin_started(seed_value: int) -> void:
 	_last_displayed_cascade_mult = int(combat.get_multiplier_value())
 	_reset_winnings_counter_display()
 
-
 func _on_spin_finished() -> void:
 	_sync_winnings_counter_to_combat_truth()
 	if combat.get_state() == CombatRoot.State.IDLE or combat.is_encounter_complete():
 		spin_btn.disabled = false
 	_refresh_spin_button_state()
-
 
 func _on_winnings_popup_border_touched(event: Dictionary) -> void:
 	var cents: int = int(event.get("payout_cents", 0))
@@ -1551,13 +1451,11 @@ func _on_winnings_popup_border_touched(event: Dictionary) -> void:
 	_target_round_winnings += cents
 	_start_winnings_counter_if_needed()
 
-
 func _reset_winnings_counter_display() -> void:
 	_kill_winnings_counter()
 	_displayed_round_winnings = 0
 	_target_round_winnings = 0
 	_apply_winnings_readout_text()
-
 
 func _sync_winnings_counter_to_combat_truth() -> void:
 	_kill_winnings_counter()
@@ -1566,17 +1464,14 @@ func _sync_winnings_counter_to_combat_truth() -> void:
 	_target_round_winnings = combat_total
 	_apply_winnings_readout_text()
 
-
 func _apply_winnings_readout_text() -> void:
 	if mult_label == null:
 		return
 	mult_label.text = "%d" % _displayed_round_winnings
 
-
 func _kill_winnings_counter() -> void:
 	_winnings_counter_generation += 1
 	_winnings_counter_running = false
-
 
 func _start_winnings_counter_if_needed() -> void:
 	if _winnings_counter_running:
@@ -1585,7 +1480,6 @@ func _start_winnings_counter_if_needed() -> void:
 		return
 	_winnings_counter_running = true
 	_run_winnings_counter_async()
-
 
 func _run_winnings_counter_async() -> void:
 	var gen := _winnings_counter_generation
@@ -1607,7 +1501,6 @@ func _run_winnings_counter_async() -> void:
 	if _displayed_round_winnings < _target_round_winnings:
 		_start_winnings_counter_if_needed()
 
-
 func _on_meter_full_transition_started() -> void:
 	if _premium_progress == null:
 		return
@@ -1615,44 +1508,26 @@ func _on_meter_full_transition_started() -> void:
 	peak.tween_property(_premium_progress, "modulate", Color(1.4, 1.1, 1.1, 1.0), 0.12)
 	peak.tween_property(_premium_progress, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.2)
 
-
 func _on_premium_meter_changed(_previous_sections: int, next_sections: int) -> void:
 	if _premium_progress == null:
 		return
 	var tween := create_tween()
 	tween.tween_property(_premium_progress, "value", float(next_sections), 0.2)
 
-
 func _on_seed_spin_value_changed(value: float) -> void:
 	if not _can_queue_seed_change():
 		return
 	_queued_seed = int(value)
-	_debug_log(
-		"seed-ui-change-%d" % int(value),
-		"H5",
-		"combat_test.gd:_on_seed_spin_value_changed",
-		"seed change queued for execute",
-		{
-			"input_seed": int(value),
-			"queued_seed": _queued_seed,
-			"combat_seed_current": _safe_get_current_seed(),
-			"spins_used": _safe_get_spins_used(),
-			"state": _safe_get_combat_state(),
-		}
-	)
 	_refresh_readouts()
 	_refresh_spin_button_state()
-
 
 func _on_bet_minus_pressed() -> void:
 	combat.step_bet(-1)
 	_refresh_readouts()
 
-
 func _on_bet_plus_pressed() -> void:
 	combat.step_bet(1)
 	_refresh_readouts()
-
 
 func _set_default_bet() -> void:
 	if not _can_use_combat_api():
@@ -1663,13 +1538,11 @@ func _set_default_bet() -> void:
 		default_index = 0
 	combat.set_bet_index(default_index)
 
-
 func _on_line_win_resolved(event: Dictionary) -> void:
 	var payout_cents: int = int(event.get("payout_cents", 0))
 	if payout_cents <= 0:
 		return
 	_append_history_spin_row(event)
-
 
 func _append_history_spin_row(event: Dictionary) -> void:
 	if _history_spin_list == null:
@@ -1701,24 +1574,20 @@ func _append_history_spin_row(event: Dictionary) -> void:
 	row.add_child(row_label)
 	_history_spin_list.add_child(row)
 
-
 func _apply_history_text_style(label: Label) -> void:
 	label.add_theme_font_size_override("font_size", _resolved_history_body_font())
 	_apply_white_hud_text_style(label)
-
 
 func _format_history_factor(value: float) -> String:
 	if is_equal_approx(value, roundf(value)):
 		return str(int(roundf(value)))
 	return "%0.1f" % value
 
-
 func _clear_history_spin_list() -> void:
 	if _history_spin_list == null:
 		return
 	for child in _history_spin_list.get_children():
 		child.queue_free()
-
 
 func _configure_hud_layers() -> void:
 	var hud_z := 20
@@ -1736,13 +1605,11 @@ func _configure_hud_layers() -> void:
 	if stake_selector != null:
 		stake_selector.mouse_filter = Control.MOUSE_FILTER_PASS
 
-
 func _configure_spin_button_layer() -> void:
 	if spin_btn == null:
 		return
 	spin_btn.z_index = 30
 	spin_btn.mouse_filter = Control.MOUSE_FILTER_STOP
-
 
 func _finish_initial_layout() -> void:
 	await get_tree().process_frame
@@ -1750,13 +1617,11 @@ func _finish_initial_layout() -> void:
 	await get_tree().process_frame
 	_layout_combat()
 
-
 func _on_size_changed() -> void:
 	if Engine.is_editor_hint() and not editor_preview_enabled:
 		return
 	_apply_responsive_layout()
 	call_deferred("_layout_combat")
-
 
 func _layout_combat() -> void:
 	if _grid_host == null or _center_column == null:
@@ -1790,7 +1655,6 @@ func _layout_combat() -> void:
 	if _is_editor_preview():
 		_ensure_editor_grid_shell_visible()
 
-
 func _layout_premium_bar() -> void:
 	if _premium_progress == null or _grid_host == null or not _can_layout_combat_grid():
 		return
@@ -1799,7 +1663,6 @@ func _layout_premium_bar() -> void:
 	_premium_progress.position = Vector2(grid_left, grid_bottom)
 	_premium_progress.size = Vector2(combat.grid_ui.size.x, PREMIUM_BAR_HEIGHT)
 	_premium_progress.z_index = 6
-
 
 func _layout_premium_bar_fallback(bar_width: float, host_h: float) -> void:
 	if _premium_progress == null or _grid_host == null:
@@ -1810,7 +1673,6 @@ func _layout_premium_bar_fallback(bar_width: float, host_h: float) -> void:
 	_premium_progress.position = Vector2(bar_x, bar_y)
 	_premium_progress.size = Vector2(bar_width, PREMIUM_BAR_HEIGHT)
 	_premium_progress.z_index = 6
-
 
 func _layout_premium_bar_fallback_aligned(grid_w: float, host_h: float) -> void:
 	if _premium_progress == null or _grid_host == null or combat == null:
@@ -1825,10 +1687,8 @@ func _layout_premium_bar_fallback_aligned(grid_w: float, host_h: float) -> void:
 		return
 	_layout_premium_bar_fallback(grid_w, host_h)
 
-
 func _layout_execute_button_width() -> void:
 	_layout_execute_button_to_grid_width(_safe_get_grid_ui_width())
-
 
 func _layout_execute_button_to_grid_width(grid_w: float) -> void:
 	if spin_btn == null:
@@ -1838,7 +1698,6 @@ func _layout_execute_button_to_grid_width(grid_w: float) -> void:
 	var btn_h := maxf(spin_btn.custom_minimum_size.y, EXECUTE_BUTTON_MIN_HEIGHT)
 	spin_btn.custom_minimum_size = Vector2(grid_w, btn_h)
 	spin_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-
 
 func _apply_responsive_layout() -> void:
 	if _play_area == null:
@@ -1873,7 +1732,6 @@ func _apply_responsive_layout() -> void:
 	_apply_side_panel_typography()
 	_refresh_history_row_typography()
 
-
 func _get_center_column_footer_stack_height() -> float:
 	var stack_h := 0.0
 	if _bottom_window_margin != null:
@@ -1884,7 +1742,6 @@ func _get_center_column_footer_stack_height() -> float:
 		stack_h += maxf(_winnings_center.custom_minimum_size.y, WINNINGS_BAND_MIN_HEIGHT)
 	stack_h += float(CENTER_COLUMN_SEPARATION) * 2.0
 	return stack_h
-
 
 func _shrink_grid_host_to_content(host_w: float) -> void:
 	if _grid_host == null:
@@ -1898,7 +1755,6 @@ func _shrink_grid_host_to_content(host_w: float) -> void:
 	_grid_host.custom_minimum_size = Vector2(host_w, maxf(used_h, GRID_HOST_MIN_HEIGHT))
 	_grid_host.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
-
 func _side_panel_inner_width(panel: PanelContainer) -> float:
 	if panel == null:
 		return 200.0
@@ -1910,7 +1766,6 @@ func _side_panel_inner_width(panel: PanelContainer) -> float:
 		panel_w -= style.get_content_margin(Side.SIDE_LEFT) + style.get_content_margin(Side.SIDE_RIGHT)
 	return maxf(panel_w - 6.0, 64.0)
 
-
 func _fit_body_font_size(sample_text: String, target_scale: float, max_width: float, font: Font) -> int:
 	var max_size := maxi(int(round(float(SIDE_PANEL_BODY_FONT) * target_scale)), SIDE_PANEL_BODY_FONT)
 	if font == null or max_width <= 0.0:
@@ -1920,7 +1775,6 @@ func _fit_body_font_size(sample_text: String, target_scale: float, max_width: fl
 		if text_size.x <= max_width:
 			return font_size
 	return SIDE_PANEL_BODY_FONT_MIN
-
 
 func _resolved_history_body_font() -> int:
 	var inner_w := _side_panel_inner_width(_spin_history_panel)
@@ -1934,7 +1788,6 @@ func _resolved_history_body_font() -> int:
 		font,
 	)
 
-
 func _resolved_items_body_font() -> int:
 	var inner_w := _side_panel_inner_width(_item_picker_panel)
 	var font := get_theme_font("font", "CheckBox")
@@ -1947,17 +1800,14 @@ func _resolved_items_body_font() -> int:
 		font,
 	)
 
-
 func _history_mini_icon_size_for_font(body_font: int) -> int:
 	return maxi(
 		int(round(float(HISTORY_MINI_ICON_SIZE) * float(body_font) / float(SIDE_PANEL_BODY_FONT))),
 		HISTORY_MINI_ICON_SIZE,
 	)
 
-
 func _history_mini_icon_size() -> int:
 	return _history_mini_icon_size_for_font(_resolved_history_body_font())
-
 
 func _refresh_history_row_typography() -> void:
 	if _history_spin_list == null:
@@ -1989,7 +1839,6 @@ func _apply_economics_typography() -> void:
 		bet_plus_btn.custom_minimum_size = Vector2(btn_size, btn_size)
 		_style_stake_buttons()
 
-
 func _place_control_rect(control_node: Control, x0: float, y0: float, x1: float, y1: float) -> void:
 	if control_node == null:
 		return
@@ -2005,7 +1854,6 @@ func _place_control_rect(control_node: Control, x0: float, y0: float, x1: float,
 	control_node.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	control_node.grow_vertical = Control.GROW_DIRECTION_BOTH
 
-
 func _refresh_spin_button_state() -> void:
 	if spin_btn == null:
 		return
@@ -2014,7 +1862,6 @@ func _refresh_spin_button_state() -> void:
 	else:
 		spin_btn.text = "EXECUTE"
 
-
 func _refresh_encounter_win_overlay() -> void:
 	if encounter_win_overlay == null:
 		return
@@ -2022,7 +1869,6 @@ func _refresh_encounter_win_overlay() -> void:
 	encounter_win_overlay.visible = should_show
 	if encounter_win_label != null and should_show:
 		encounter_win_label.text = "Encounter won!"
-
 
 func _refresh_super_fs_choice_overlay() -> void:
 	if super_fs_choice_overlay == null:
@@ -2036,18 +1882,14 @@ func _refresh_super_fs_choice_overlay() -> void:
 	if choose_storm_button != null:
 		choose_storm_button.disabled = not awaiting_choice
 
-
 func _on_choose_love_pressed() -> void:
 	_submit_super_fs_choice(PRINCESS_LOVE)
-
 
 func _on_choose_star_pressed() -> void:
 	_submit_super_fs_choice(PRINCESS_STAR)
 
-
 func _on_choose_storm_pressed() -> void:
 	_submit_super_fs_choice(PRINCESS_STORM)
-
 
 func _submit_super_fs_choice(princess_id: StringName) -> void:
 	if not combat.is_waiting_for_free_spin_choice():
@@ -2056,7 +1898,6 @@ func _submit_super_fs_choice(princess_id: StringName) -> void:
 	spin_btn.disabled = false
 	_refresh_readouts()
 	_refresh_spin_button_state()
-
 
 func _goal_progress_only(goal_text: String) -> String:
 	var open_idx := goal_text.find("(")
@@ -2068,12 +1909,10 @@ func _goal_progress_only(goal_text: String) -> String:
 				return inside
 	return "0 / 0"
 
-
 func _pick_start_seed() -> int:
 	var local_rng := RandomNumberGenerator.new()
 	local_rng.randomize()
 	return local_rng.randi_range(int(seed_spin.min_value), int(seed_spin.max_value))
-
 
 func _can_queue_seed_change() -> bool:
 	if Engine.is_editor_hint() and not _can_use_combat_api():
@@ -2084,7 +1923,6 @@ func _can_queue_seed_change() -> bool:
 		return false
 	return _safe_get_combat_state() == CombatRoot.State.IDLE
 
-
 func _can_apply_queued_seed_on_execute() -> bool:
 	if not _can_queue_seed_change():
 		return false
@@ -2092,14 +1930,12 @@ func _can_apply_queued_seed_on_execute() -> bool:
 		return false
 	return _queued_seed != _safe_get_current_seed()
 
-
 func _set_seed_spin_value_no_signal(seed_value: int) -> void:
 	if seed_spin == null:
 		return
 	if int(seed_spin.value) == seed_value:
 		return
 	seed_spin.set_value_no_signal(seed_value)
-
 
 func _build_item_picker() -> void:
 	if _item_picker_panel != null and is_instance_valid(_item_picker_panel):
@@ -2146,7 +1982,6 @@ func _build_item_picker() -> void:
 	else:
 		_add_preview_child(_item_picker_panel)
 
-
 func _discover_available_items() -> Array:
 	var found: Array = []
 	var dir := DirAccess.open("res://combat/data/items")
@@ -2164,7 +1999,6 @@ func _discover_available_items() -> Array:
 	found.sort_custom(func(a, b): return String(a.id) < String(b.id))
 	return found
 
-
 func _on_item_checkbox_toggled(toggled_on: bool, item: Resource, cb: CheckBox) -> void:
 	if not _can_use_combat_api():
 		cb.set_pressed_no_signal(false)
@@ -2177,29 +2011,9 @@ func _on_item_checkbox_toggled(toggled_on: bool, item: Resource, cb: CheckBox) -
 		combat.unequip_item(item)
 	_refresh_item_picker_title()
 
-
 func _refresh_item_picker_title() -> void:
 	if _item_picker_title != null:
 		_item_picker_title.text = "ITEMS (%d/%d)" % [
 			_safe_get_item_inventory_size(),
 			_safe_get_item_max_slots(),
 		]
-
-
-func _debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
-	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(DEBUG_LOG_PATH) else FileAccess.WRITE_READ
-	var file := FileAccess.open(DEBUG_LOG_PATH, mode)
-	if file == null:
-		return
-	file.seek_end()
-	var payload := {
-		"sessionId": DEBUG_SESSION_ID,
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000,
-	}
-	file.store_line(JSON.stringify(payload))
-	file.close()

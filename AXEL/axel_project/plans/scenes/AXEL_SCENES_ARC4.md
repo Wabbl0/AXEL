@@ -1,16 +1,14 @@
 # AXEL — Scene Dialogues: Arc 4 — Teachers' Lounge
 
+> Dialogue under each scene is locked canon (rewrites). Do not restore old HTML prototype SOURCE text.
+
 ---
 
 ### 4.1 Teachers' Lounge (`loc_teachers`)
 
 **Location label:** `TEACHERS' LOUNGE`
 
-**Dialogue [SOURCE]:**
-
-> The air is stale. You always wondered what the teachers were doing behind closed doors.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > You always wondered what the teachers were doing behind closed doors.
 >
@@ -34,11 +32,7 @@
 **Location label:** `TEACHERS' LOUNGE`
 *(Plays as embedded click step within Teachers' Lounge — glitch flash 250ms before text swaps)*
 
-**Dialogue [SOURCE]:**
-
-> The cop asked, 'When did you last see him?' You answered: 'That day at lunch. I thought they went home.' You lied. You knew exactly where THEY were.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > "So, when did you see him last?" the police officer asked.
 >
@@ -59,11 +53,7 @@
 **Location label:** `TEACHERS' LOUNGE`
 *(Currently unreachable via normal navigation — reserved for future use)*
 
-**Dialogue [SOURCE]:**
-
-> Most hooks are empty. One rusty key still hangs.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > There's a key.
 >
@@ -84,11 +74,7 @@
 
 **Location label:** `TEACHERS' LOUNGE`
 
-**Dialogue [SOURCE]:**
-
-> You take the key. A bit of tape reads: 'BASEMENT'.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > You take the key.
 >

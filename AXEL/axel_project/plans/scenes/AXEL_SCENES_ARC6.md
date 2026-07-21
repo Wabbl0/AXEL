@@ -1,18 +1,16 @@
 # AXEL — Scene Dialogues: Arc 6 — Basement
 
+> Dialogue under each scene is locked canon (rewrites). Do not restore old HTML prototype SOURCE text.
+
 ---
 
 ### 6.1 Basement Door (`basement_entry`)
 
 **Location label:** `BASEMENT DOOR`
 
-**Dialogue [SOURCE]:**
+**Dialogue:**
 
-> A heavy metal door. The sign reads 'ENTRY FORBIDDEN'.
-
-**[REWRITE]:**
-
-> x
+> TODO: write line
 
 **Choices:**
 
@@ -30,11 +28,7 @@
 
 **Location label:** `LOCKED`
 
-**Dialogue [SOURCE]:**
-
-> The door won't budge. You need a key.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > You need a key, dumbass.
 
@@ -52,11 +46,7 @@
 
 **Location label:** `STAIRCASE`
 
-**Dialogue [SOURCE]:**
-
-> The door opens. Before you lie pitch-black stairs. The smell is nauseating. Are you ready to step into the darkness?
-
-**[REWRITE]:**
+**Dialogue:**
 
 > The door opens to a terrible screetch.
 >
@@ -80,13 +70,9 @@
 
 **Location label:** `MAIN CHAMBER`
 
-**Dialogue [SOURCE]:**
+**Dialogue:**
 
-> The beam hits soft soil. In the corner something metallic glints. There is no going back.
-
-**[REWRITE]:**
-
-> x
+> TODO: write line
 
 **Choices:**
 
@@ -104,11 +90,7 @@
 
 **Location label:** `FOUND`
 
-**Dialogue [SOURCE]:**
-
-> You found a rusty shovel.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > The same old shovel still here.
 
@@ -126,11 +108,7 @@
 
 **Location label:** `NO RETURN`
 
-**Dialogue [SOURCE]:**
-
-> The door is locked behind you. You must face this.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > I'm not letting you.
 
@@ -148,11 +126,7 @@
 
 **Location label:** `DIGGING`
 
-**Dialogue [SOURCE]:**
-
-> You strike the shovel into the ground. Thud. Fabric… bone. The final memory surfaces.
-
-**[REWRITE]:**
+**Dialogue:**
 
 > As you keep digging.
 >
@@ -172,11 +146,7 @@
 
 **Location label:** `CORPSE`
 
-**Dialogue [SOURCE]:**
-
-> Before you is a mummified body. Its jaw drops open. A voice echoes in your head: 'WHO AM I?'
-
-**[REWRITE]:**
+**Dialogue:**
 
 > [instead of the name, the game just runs a check if the puzzle was completed in the classroom]
 
@@ -184,6 +154,6 @@
 
 **On correct + has Name flag:** → Ending True
 **On correct + no Name flag:** → Ending 4
-**On wrong answer:** → Ending 3 (auto-routed after 2 seconds, no fail text in source)
+**On wrong answer:** → Ending 3 (auto-routed after 2 seconds)
 
 ---
