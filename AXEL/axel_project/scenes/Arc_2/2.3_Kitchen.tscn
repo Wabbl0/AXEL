@@ -10,31 +10,28 @@
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
-size = Vector2(2400, 40)
+size = Vector2(3508, 40)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
-size = Vector2(40, 1500)
+size = Vector2(40, 2480)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_prep_table"]
-size = Vector2(2000, 160)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_table"]
+size = Vector2(610, 1195)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_center_table"]
-size = Vector2(420, 420)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_right_shelves"]
+size = Vector2(448, 1030)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_fridge"]
-size = Vector2(220, 320)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_shelves"]
-size = Vector2(280, 180)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_top_left_shelves"]
+size = Vector2(830, 100)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_block"]
-size = Vector2(285, 82)
+size = Vector2(100, 300)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
-size = Vector2(308, 170)
+size = Vector2(300, 400)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_flashlight_interact"]
-size = Vector2(218, 211)
+size = Vector2(260, 260)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -55,203 +52,65 @@ metadata/_edit_lock_ = true
 [node name="EnvironmentColliders" type="Node2D" parent="WalkableWorld" unique_id=666840030]
 
 [node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=288839979]
-position = Vector2(1200, 20)
+position = Vector2(1754, 20)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall" unique_id=869564141]
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1556060605]
-position = Vector2(1200, 1480)
+position = Vector2(1754, 2460)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=8002746]
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=682415939]
-position = Vector2(20, 750)
+position = Vector2(20, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=1480030335]
 shape = SubResource("RectangleShape2D_wall_vertical")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1725412702]
-position = Vector2(2380, 750)
+position = Vector2(3488, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=1970101638]
 shape = SubResource("RectangleShape2D_wall_vertical")
 
-[node name="PrepTableBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1518615208]
-position = Vector2(1200, 180)
+[node name="TableBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=284601399]
+position = Vector2(2175, 1832)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/PrepTableBlock" unique_id=888639565]
-shape = SubResource("RectangleShape2D_prep_table")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableBlock" unique_id=1746383868]
+shape = SubResource("RectangleShape2D_table")
 
-[node name="PrepTableVisual" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=731181728]
-position = Vector2(1200, 180)
-color = Color(0.9, 0.9, 0.9, 1)
-polygon = PackedVector2Array(-1000, -80, 1000, -80, 1000, 80, -1000, 80)
+[node name="RightShelvesBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1780002063]
+position = Vector2(3284, 935)
 
-[node name="PrepTableOutline" type="Line2D" parent="WalkableWorld/EnvironmentColliders/PrepTableVisual" unique_id=2001808860]
-points = PackedVector2Array(-1000, -80, 1000, -80, 1000, 80, -1000, 80, -1000, -80)
-width = 5.0
-default_color = Color(0, 0, 0, 1)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightShelvesBlock" unique_id=679239371]
+shape = SubResource("RectangleShape2D_right_shelves")
 
-[node name="PrepTableLabel" type="Label" parent="WalkableWorld/EnvironmentColliders/PrepTableVisual" unique_id=2080230910]
-offset_left = -60.0
-offset_top = -12.0
-offset_right = 60.0
-offset_bottom = 12.0
-theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
-theme_override_font_sizes/font_size = 22
-text = "PREP TABLE"
-horizontal_alignment = 1
+[node name="TopLeftShelvesBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1124883453]
+position = Vector2(645, 250)
 
-[node name="CenterTableBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=284601399]
-position = Vector2(1100, 750)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/CenterTableBlock" unique_id=1746383868]
-shape = SubResource("RectangleShape2D_center_table")
-
-[node name="CenterTableVisual" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1904421577]
-position = Vector2(1208, 780.5)
-scale = Vector2(1.5142857, 1.145238)
-color = Color(0.9, 0.9, 0.9, 1)
-polygon = PackedVector2Array(-210, -210, 210, -210, 210, 210, -210, 210)
-
-[node name="CenterTableOutline" type="Line2D" parent="WalkableWorld/EnvironmentColliders/CenterTableVisual" unique_id=187974518]
-points = PackedVector2Array(-210, -210, 210, -210, 210, 210, -210, 210, -210, -210)
-width = 5.0
-default_color = Color(0, 0, 0, 1)
-
-[node name="CenterTableLabel" type="Label" parent="WalkableWorld/EnvironmentColliders/CenterTableVisual" unique_id=1443701374]
-offset_left = -40.0
-offset_top = -12.0
-offset_right = 40.0
-offset_bottom = 12.0
-theme_override_colors/font_color = Color(0.95, 0.9, 0.8, 1)
-theme_override_font_sizes/font_size = 22
-text = "TABLE"
-horizontal_alignment = 1
-
-[node name="FridgeBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1803881818]
-position = Vector2(161, 719)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/FridgeBlock" unique_id=344309713]
-position = Vector2(-23, -1)
-shape = SubResource("RectangleShape2D_fridge")
-
-[node name="FridgeVisual" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1852736381]
-position = Vector2(154, 716)
-color = Color(0.9, 0.9, 0.9, 1)
-polygon = PackedVector2Array(-110, -160, 110, -160, 110, 160, -110, 160)
-
-[node name="FridgeOutline" type="Line2D" parent="WalkableWorld/EnvironmentColliders/FridgeVisual" unique_id=1754029912]
-points = PackedVector2Array(-110, -160, 110, -160, 110, 160, -110, 160, -110, -160)
-width = 5.0
-default_color = Color(0, 0, 0, 1)
-
-[node name="FridgeLabel" type="Label" parent="WalkableWorld/EnvironmentColliders/FridgeVisual" unique_id=1364301383]
-offset_left = -40.0
-offset_top = -12.0
-offset_right = 40.0
-offset_bottom = 12.0
-theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
-theme_override_font_sizes/font_size = 20
-text = "FRIDGE"
-horizontal_alignment = 1
-
-[node name="ShelvesBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1780002063]
-position = Vector2(1810, 1351)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ShelvesBlock" unique_id=679239371]
-position = Vector2(-1635, 14)
-shape = SubResource("RectangleShape2D_shelves")
-
-[node name="ShelvesVisual" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1124883453]
-position = Vector2(181, 1377)
-color = Color(0.9, 0.9, 0.9, 1)
-polygon = PackedVector2Array(-140, -90, 140, -90, 140, 90, -140, 90)
-
-[node name="ShelvesOutline" type="Line2D" parent="WalkableWorld/EnvironmentColliders/ShelvesVisual" unique_id=1809542865]
-points = PackedVector2Array(-140, -90, 140, -90, 140, 90, -140, 90, -140, -90)
-width = 5.0
-default_color = Color(0, 0, 0, 1)
-
-[node name="ShelvesLabel" type="Label" parent="WalkableWorld/EnvironmentColliders/ShelvesVisual" unique_id=1971870210]
-offset_left = -50.0
-offset_top = -12.0
-offset_right = 50.0
-offset_bottom = 12.0
-theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
-theme_override_font_sizes/font_size = 20
-text = "SHELVES"
-horizontal_alignment = 1
-
-[node name="DoorVisuals" type="Node2D" parent="WalkableWorld/EnvironmentColliders" unique_id=422298770]
-position = Vector2(1900, 1200)
-
-[node name="DoorBody" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/DoorVisuals" unique_id=1272965812]
-position = Vector2(-47.50003, 229.5)
-scale = Vector2(1.6055555, 0.26785713)
-color = Color(0.9, 0.9, 0.9, 1)
-polygon = PackedVector2Array(-90, -140, 90, -140, 90, 140, -90, 140)
-
-[node name="DoorOutline" type="Line2D" parent="WalkableWorld/EnvironmentColliders/DoorVisuals" unique_id=1119267140]
-position = Vector2(-46, 231)
-scale = Vector2(1.4947368, 0.26206896)
-points = PackedVector2Array(-90, -140, 90, -140, 90, 140, -90, 140, -90, -140)
-width = 5.0
-default_color = Color(0, 0, 0, 1)
-
-[node name="DoorLabel" type="Label" parent="WalkableWorld/EnvironmentColliders/DoorVisuals" unique_id=386392463]
-offset_left = -80.0
-offset_top = 195.0
-offset_right = -8.0
-offset_bottom = 221.0
-theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
-theme_override_font_sizes/font_size = 18
-text = "DOOR"
-horizontal_alignment = 1
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopLeftShelvesBlock" unique_id=1809542865]
+shape = SubResource("RectangleShape2D_top_left_shelves")
 
 [node name="DoorWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=973707253]
-position = Vector2(1900, 1200)
+position = Vector2(3460, 1740)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorWall" unique_id=1122184146]
-position = Vector2(-39.5, 231)
 shape = SubResource("RectangleShape2D_door_block")
 
 [node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1841412176]
-position = Vector2(1900, 1200)
+position = Vector2(3300, 1740)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea" unique_id=1869156649]
-position = Vector2(-43, 178)
 shape = SubResource("RectangleShape2D_door_interact")
 
-[node name="FlashlightVisual" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1646270571]
-position = Vector2(281, 196)
-color = Color(0.9, 0.9, 0.9, 1)
-polygon = PackedVector2Array(-40, -40, 40, -40, 40, 40, -40, 40)
-
-[node name="FlashlightOutline" type="Line2D" parent="WalkableWorld/EnvironmentColliders/FlashlightVisual" unique_id=639128101]
-points = PackedVector2Array(-40, -40, 40, -40, 40, 40, -40, 40, -40, -40)
-width = 4.0
-default_color = Color(0, 0, 0, 1)
-
-[node name="FlashlightLabel" type="Label" parent="WalkableWorld/EnvironmentColliders/FlashlightVisual" unique_id=379899710]
-offset_left = -55.0
-offset_top = -10.0
-offset_right = 55.0
-offset_bottom = 14.0
-theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
-theme_override_font_sizes/font_size = 14
-text = "FLASHLIGHT"
-horizontal_alignment = 1
-
 [node name="FlashlightInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1328869624]
-position = Vector2(281, 196)
+position = Vector2(550, 550)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/FlashlightInteractArea" unique_id=668854355]
-position = Vector2(26, 35.5)
 shape = SubResource("RectangleShape2D_flashlight_interact")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1068058929]

@@ -6,7 +6,7 @@ const ENTER_LINES := [
 	"This includes you.",
 ]
 const FLASHLIGHT_LINE := "Let there be light!"
-const PLAYER_SPAWN_TEX := Vector2(1620.0, 1200.0)
+const PLAYER_SPAWN_TEX := Vector2(3150.0, 1740.0)
 const DOOR_ZONE_GRACE_SEC := 0.15
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
@@ -57,11 +57,6 @@ func _apply_flashlight_visibility() -> void:
 		_flashlight_interact_area.visible = false
 		_flashlight_interact_area.monitoring = false
 		_flashlight_interact_area.monitorable = false
-		var visual := get_node_or_null(
-			"WalkableWorld/EnvironmentColliders/FlashlightVisual"
-		)
-		if is_instance_valid(visual):
-			visual.visible = false
 
 
 func _play_enter_dialogue() -> void:

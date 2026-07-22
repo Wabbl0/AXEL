@@ -12,10 +12,14 @@ const BASEMENT_PEEK_MARGIN_PX := 12.0
 ## Shifted up 100px from the doorway edge per design tweak.
 const KITCHEN_PEEK_MARGIN_PX := -88.0
 const RETURN_ZONE_GRACE_SEC := 0.15
+## Cosmetic-only nudge for the "[E]" chip above the table/memory zone; the
+## actual collision box (trigger + memory glow anchor) is untouched.
+const TABLE_PROMPT_VISUAL_OFFSET := Vector2(-15, 12)
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
+@onready var _memory_indicator: Node2D = get_node_or_null("PlayerLayer/MemoryIndicator")
 
 var _table_area: Area2D
 var _kitchen_area: Area2D
@@ -134,9 +138,22 @@ func _interact_anchor() -> Vector2:
 	if not is_instance_valid(area):
 		return Vector2.ZERO
 	var shape := area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	var anchor := area.global_position
 	if shape != null and shape.shape is RectangleShape2D:
-		return shape.global_position
-	return area.global_position
+		anchor = shape.global_position
+	if _active_zone == "table":
+		anchor += TABLE_PROMPT_VISUAL_OFFSET
+	return anchor
+
+
+## Table interact-area coordinates are texture-pixel space; re-derive the
+## indicator's world position from the area's live global_position each time
+## the background layout (re)applies, same as the player spawn remap above.
+func _sync_memory_indicator() -> void:
+	if not is_instance_valid(_memory_indicator) or not is_instance_valid(_table_area):
+		return
+	var shape := _table_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	_memory_indicator.global_position = shape.global_position if shape != null else _table_area.global_position
 
 
 func _show_interact_prompt() -> void:
@@ -210,6 +227,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	elif remap_pos:
 		player_node.global_position = env.to_global(tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
+	_sync_memory_indicator()
 	call_deferred("_wake_static_colliders")
 	call_deferred("_configure_table_occlusion_masks")
 	if _pending_basement_peek:

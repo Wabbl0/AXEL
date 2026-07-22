@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="9_leaf_zone"]
+[ext_resource type="PackedScene" path="res://scenes/fx/MemoryIndicator.tscn" id="10_memory_indicator"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(3600, 40)
@@ -26,7 +27,7 @@ size = Vector2(679, 996.5)
 size = Vector2(1893, 233)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_table_interact"]
-size = Vector2(187, 188.5)
+size = Vector2(209.75, 283.25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_kitchen_interact"]
 size = Vector2(277, 128)
@@ -152,7 +153,7 @@ position = Vector2(1754, 1300)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableInteractArea" unique_id=696839511]
-position = Vector2(911.5, -901.25)
+position = Vector2(901.875, -1002.625)
 shape = SubResource("RectangleShape2D_table_interact")
 
 [node name="KitchenInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=201792129]
@@ -218,6 +219,9 @@ polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=766864926]
 position = Vector2(-2.2222223, 3.6585884)
 shape = SubResource("CircleShape2D_player")
+
+[node name="MemoryIndicator" parent="PlayerLayer" unique_id=99253428 instance=ExtResource("10_memory_indicator")]
+position = Vector2(2656, 297)
 
 [node name="TopDialogueOverlay" parent="." unique_id=672473847 instance=ExtResource("5_top_dialogue")]
 

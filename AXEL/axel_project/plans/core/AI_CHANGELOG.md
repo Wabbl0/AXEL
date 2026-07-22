@@ -3780,3 +3780,43 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
 - Behavior impact: None (docs/routing only). Live scene intent is ARC docs + `SCENE_BUILDING.md` + code.
 - Verification: Not run (docs move + pointer updates only).
+
+## 2026-07-22
+
+### 2.3 Kitchen — wire in real hand-drawn background
+- Request: Swap in the new hand-drawn `2.3_Kitchen.png` (3508×2480, replacing the flat 2400×1500 placeholder), remove the old debug placeholders, and keep exactly 3 collision borders (table, right shelves, top-left shelves).
+- Implementation: Measured the new art's pixel layout (grid-annotated crops) to place 3 furniture colliders sized from the drawing; removed all placeholder `Polygon2D`/`Line2D`/`Label` visuals and their now-unused colliders (`PrepTableBlock`, `FridgeBlock`); resized the 4 room-boundary walls to the new texture bounds; the new art has no door/fridge/flashlight drawn, so those functional zones (door exit, flashlight pickup, player spawn) were relocated to sensible open-floor spots rather than removed. Follow-up pass removed a leftover dead `get_node_or_null("...FlashlightVisual")` lookup in `_apply_flashlight_visibility()` now that the node no longer exists.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/exports/Drawings/2.3_Kitchen.png`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Kitchen now shows the real hand-drawn room; player still blocked by 4 walls + table/right-shelves/top-left-shelves; door `[E]` and flashlight `[E]` still work, just at new floor positions; spawn point moved next to the new door.
+- Verification: Headless `scene_smoke_check.gd` OK after both passes; manual in-editor walk-test still recommended (no local Godot binary in this session to render it).
+
+### Memory indicator — reusable glow asset + Cafeteria test placement
+- Request: Turn the `Memory.png` flame spritesheet into a reusable "memory marker" asset (recolored to shades of white so it survives the global CRT filter) that sits in the middle of a memory's InteractArea, and place a test instance in the Cafeteria (2.1) table zone.
+- Implementation: Converted `exports/Drawings/Memory.png` (5×48px frames) to a luminance-preserving grayscale sheet at `assets/sprites/memory_glow-Sheet.png` (kept as light grays, not flattened to pure white, so internal shading survives). Built a reusable `scenes/fx/MemoryIndicator.tscn` + `memory_indicator.gd` (runtime `AtlasTexture` slicing/looping, exported `indicator_scale` default `1.5`, exported `visual_offset` for cosmetic nudging). Instanced it under `2.1_Cafeteria.tscn`'s `PlayerLayer` (must be above `NoirPaletteOverlay`, layer 100, or it gets crushed to black/red like the rest of the room — no shader changes needed once art is above that layer). First placement used a hardcoded editor position and didn't track the table's real runtime position (table coordinates are texture-pixel space, remapped by cover-fit at runtime); fixed by adding `_sync_memory_indicator()` in `2.1_Cafeteria.gd`, called on every `layout_applied`, which re-derives the indicator's `global_position` from `TableInteractArea`'s live `CollisionShape2D.global_position` (same pattern as the existing player-spawn remap).
+- Files changed:
+  - `AXEL/axel_project/assets/sprites/memory_glow-Sheet.png`
+  - `AXEL/axel_project/scenes/fx/MemoryIndicator.tscn`
+  - `AXEL/axel_project/scenes/fx/memory_indicator.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Visual-only — a small white looping glow now appears at the Cafeteria table's memory zone, correctly tracking the table's on-screen position through cover-fit scaling. No memory-collection/pickup logic wired; existing table `[E]` → `2.2_CafeteriaMemory.tscn` transition unchanged.
+- Verification: Headless scene load after texture (re)import — no errors/warnings. No local Godot binary available in this session to visually confirm the glow's exact on-screen alignment; user to eyeball via `visual_offset` in the editor if it needs a nudge.
+
+### 2.1 Cafeteria — fix skewed [E] interact prompt over the memory table
+- Request: The `[E]` interact-button indicator over the Cafeteria memory/table zone appeared skewed right and too high relative to the `TableInteractArea`'s actual center; first pass misdiagnosed this as the memory glow marker instead of the `[E]` chip.
+- Implementation: Confirmed all scenes share one global `InteractPromptOverlay.screen_offset` default (`(0, -52)`, no per-scene overrides), so this was not a global bug. Added a small per-zone cosmetic-only constant, `TABLE_PROMPT_VISUAL_OFFSET := Vector2(-15, 12)`, applied inside `_interact_anchor()` only when `_active_zone == "table"` — nudges just the visible chip; the actual `TableInteractArea` collision box (player trigger zone + memory-glow anchor) is untouched, and the kitchen/return-to-locker prompts are unaffected.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: `[E]` chip over the Cafeteria table/memory zone shifts 15px left / 12px down from its previous position; no other interact prompt in the game is affected.
+- Verification: Not run in-engine this session (no local Godot binary); user to confirm in-game and report if `TABLE_PROMPT_VISUAL_OFFSET` needs further tuning.
