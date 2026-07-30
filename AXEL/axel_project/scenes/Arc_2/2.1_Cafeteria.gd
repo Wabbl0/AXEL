@@ -4,6 +4,8 @@ const ENTER_LINE := "Even through all the chaos you can hear the chattering stud
 const TABLE_SCENE := "res://scenes/Arc_2/2.2_CafeteriaMemory.tscn"
 const KITCHEN_SCENE := "res://scenes/Arc_2/2.3_Kitchen.tscn"
 const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
+const BACKYARD_SCENE := "res://scenes/Arc_3/3.1_Backyard.tscn"
+const CLASSROOMS_CORRIDOR_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 ## Just right of ReturnInteractArea so Mike peeks inside the room from the left door.
@@ -11,10 +13,11 @@ const BASEMENT_PEEK_MARGIN_PX := 12.0
 ## Just below KitchenInteractArea so Mike peeks next to the kitchen doorway.
 ## Shifted up 100px from the doorway edge per design tweak.
 const KITCHEN_PEEK_MARGIN_PX := -88.0
+## Just left of BackyardInteractArea so Mike peeks inside from the right door.
+const BACKYARD_PEEK_MARGIN_PX := -12.0
+## Just above ClassroomsInteractArea so Mike peeks inside from the bottom door.
+const CLASSROOMS_PEEK_MARGIN_PX := -12.0
 const RETURN_ZONE_GRACE_SEC := 0.15
-## Cosmetic-only nudge for the "[E]" chip above the table/memory zone; the
-## actual collision box (trigger + memory glow anchor) is untouched.
-const TABLE_PROMPT_VISUAL_OFFSET := Vector2(-15, 12)
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
@@ -24,20 +27,30 @@ const TABLE_PROMPT_VISUAL_OFFSET := Vector2(-15, 12)
 var _table_area: Area2D
 var _kitchen_area: Area2D
 var _return_area: Area2D
+var _backyard_area: Area2D
+var _classrooms_area: Area2D
 var _active_zone: String = ""
 var _is_transitioning := false
 var _player_spawn_applied := false
 var _pending_basement_peek := false
 var _pending_kitchen_peek := false
+var _pending_backyard_peek := false
+var _pending_classrooms_peek := false
 var _return_zone_armed := true
 var _kitchen_zone_armed := true
+var _backyard_zone_armed := true
+var _classrooms_zone_armed := true
 ## Texture-pixel spawn captured from the Player node's editor position.
 var _player_spawn_tex := Vector2.ZERO
+## Texture-pixel position captured from the MemoryIndicator node's editor position.
+var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
 	_player_spawn_tex = _player.position
+	if is_instance_valid(_memory_indicator):
+		_memory_indicator_tex = _memory_indicator.position
 	_player_cover_sync.bind_from_player(_player)
 	_table_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/TableInteractArea"
@@ -48,11 +61,24 @@ func _ready() -> void:
 	_return_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/ReturnInteractArea"
 	) as Area2D
+	_backyard_area = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/BackyardInteractArea"
+	) as Area2D
+	_classrooms_area = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/ClassroomsInteractArea"
+	) as Area2D
 	_connect_zone(_table_area, "table")
 	_connect_zone(_kitchen_area, "kitchen")
 	_connect_zone(_return_area, "return")
-	if GameManager.take_cafeteria_spawn_side() == "basement_left":
+	_connect_zone(_backyard_area, "backyard")
+	_connect_zone(_classrooms_area, "classrooms")
+	var cafeteria_side := GameManager.take_cafeteria_spawn_side()
+	if cafeteria_side == "basement_left":
 		_pending_basement_peek = true
+	elif cafeteria_side == "backyard_right":
+		_pending_backyard_peek = true
+	elif cafeteria_side == "classrooms_bottom":
+		_pending_classrooms_peek = true
 	elif GameManager.take_kitchen_spawn_side() == "kitchen_door":
 		_pending_kitchen_peek = true
 	set_process_unhandled_input(true)
@@ -88,6 +114,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _active_zone == "kitchen" and not _kitchen_zone_armed:
 		return
+	if _active_zone == "backyard" and not _backyard_zone_armed:
+		return
+	if _active_zone == "classrooms" and not _classrooms_zone_armed:
+		return
 	match _active_zone:
 		"table":
 			_begin_scene_change(TABLE_SCENE)
@@ -95,6 +125,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_begin_scene_change(KITCHEN_SCENE)
 		"return":
 			_begin_return_to_basement()
+		"backyard":
+			_begin_go_to_backyard()
+		"classrooms":
+			_begin_go_to_classrooms()
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
@@ -129,6 +163,10 @@ func _zone_area(zone_id: String) -> Area2D:
 			return _kitchen_area
 		"return":
 			return _return_area
+		"backyard":
+			return _backyard_area
+		"classrooms":
+			return _classrooms_area
 		_:
 			return null
 
@@ -141,19 +179,18 @@ func _interact_anchor() -> Vector2:
 	var anchor := area.global_position
 	if shape != null and shape.shape is RectangleShape2D:
 		anchor = shape.global_position
-	if _active_zone == "table":
-		anchor += TABLE_PROMPT_VISUAL_OFFSET
 	return anchor
 
 
-## Table interact-area coordinates are texture-pixel space; re-derive the
-## indicator's world position from the area's live global_position each time
-## the background layout (re)applies, same as the player spawn remap above.
+## MemoryIndicator's editor position is texture-pixel space (same as colliders
+## and the player spawn); re-derive its world position from that captured
+## offset each time the background layout (re)applies, so dragging the node
+## in the editor is what actually moves it, not a hardcoded/computed anchor.
 func _sync_memory_indicator() -> void:
-	if not is_instance_valid(_memory_indicator) or not is_instance_valid(_table_area):
+	if not is_instance_valid(_memory_indicator):
 		return
-	var shape := _table_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	_memory_indicator.global_position = shape.global_position if shape != null else _table_area.global_position
+	var env := $WalkableWorld/EnvironmentColliders
+	_memory_indicator.global_position = env.to_global(_memory_indicator_tex)
 
 
 func _show_interact_prompt() -> void:
@@ -162,6 +199,10 @@ func _show_interact_prompt() -> void:
 	if _active_zone == "return" and not _return_zone_armed:
 		return
 	if _active_zone == "kitchen" and not _kitchen_zone_armed:
+		return
+	if _active_zone == "backyard" and not _backyard_zone_armed:
+		return
+	if _active_zone == "classrooms" and not _classrooms_zone_armed:
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -179,6 +220,16 @@ func _hide_interact_prompt() -> void:
 func _begin_return_to_basement() -> void:
 	GameManager.set_basement_spawn_side("cafeteria_right")
 	_begin_scene_change(BASEMENT_DOOR_SCENE)
+
+
+func _begin_go_to_backyard() -> void:
+	GameManager.set_backyard_spawn_side("cafeteria_door")
+	_begin_scene_change(BACKYARD_SCENE)
+
+
+func _begin_go_to_classrooms() -> void:
+	GameManager.set_classrooms_corridor_spawn_side("cafeteria_door")
+	_begin_scene_change(CLASSROOMS_CORRIDOR_SCENE)
 
 
 func _begin_scene_change(scene_path: String) -> void:
@@ -221,6 +272,14 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 			player_node.global_position = _kitchen_door_peek_global()
 			_pending_kitchen_peek = false
 			_arm_kitchen_zone_grace()
+		elif _pending_backyard_peek:
+			player_node.global_position = _backyard_door_peek_global()
+			_pending_backyard_peek = false
+			_arm_backyard_zone_grace()
+		elif _pending_classrooms_peek:
+			player_node.global_position = _classrooms_door_peek_global()
+			_pending_classrooms_peek = false
+			_arm_classrooms_zone_grace()
 		else:
 			player_node.global_position = env.to_global(_player_spawn_tex)
 		_player_spawn_applied = true
@@ -234,6 +293,10 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 		call_deferred("_apply_basement_peek_if_pending")
 	elif _pending_kitchen_peek:
 		call_deferred("_apply_kitchen_peek_if_pending")
+	elif _pending_backyard_peek:
+		call_deferred("_apply_backyard_peek_if_pending")
+	elif _pending_classrooms_peek:
+		call_deferred("_apply_classrooms_peek_if_pending")
 
 
 func _apply_basement_peek_if_pending() -> void:
@@ -252,6 +315,22 @@ func _apply_kitchen_peek_if_pending() -> void:
 	_arm_kitchen_zone_grace()
 
 
+func _apply_backyard_peek_if_pending() -> void:
+	if not _pending_backyard_peek or not is_instance_valid(_player):
+		return
+	_pending_backyard_peek = false
+	_player.global_position = _backyard_door_peek_global()
+	_arm_backyard_zone_grace()
+
+
+func _apply_classrooms_peek_if_pending() -> void:
+	if not _pending_classrooms_peek or not is_instance_valid(_player):
+		return
+	_pending_classrooms_peek = false
+	_player.global_position = _classrooms_door_peek_global()
+	_arm_classrooms_zone_grace()
+
+
 func _arm_return_zone_grace() -> void:
 	_return_zone_armed = false
 	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
@@ -265,6 +344,22 @@ func _arm_kitchen_zone_grace() -> void:
 	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
 	_kitchen_zone_armed = true
 	if _active_zone == "kitchen":
+		_show_interact_prompt()
+
+
+func _arm_backyard_zone_grace() -> void:
+	_backyard_zone_armed = false
+	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
+	_backyard_zone_armed = true
+	if _active_zone == "backyard":
+		_show_interact_prompt()
+
+
+func _arm_classrooms_zone_grace() -> void:
+	_classrooms_zone_armed = false
+	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
+	_classrooms_zone_armed = true
+	if _active_zone == "classrooms":
 		_show_interact_prompt()
 
 
@@ -296,6 +391,34 @@ func _kitchen_door_peek_global() -> Vector2:
 	return pos
 
 
+func _backyard_door_peek_global() -> Vector2:
+	var pos := _player.global_position
+	var left_edge := _backyard_interact_left_edge_x()
+	if left_edge < INF:
+		pos.x = left_edge + BACKYARD_PEEK_MARGIN_PX
+	if is_instance_valid(_backyard_area):
+		var shape := _backyard_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape != null:
+			pos.y = shape.global_position.y
+		else:
+			pos.y = _backyard_area.global_position.y
+	return pos
+
+
+func _classrooms_door_peek_global() -> Vector2:
+	var pos := _player.global_position
+	var top_edge := _classrooms_interact_top_edge_y()
+	if top_edge < INF:
+		pos.y = top_edge + CLASSROOMS_PEEK_MARGIN_PX
+	if is_instance_valid(_classrooms_area):
+		var shape := _classrooms_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape != null:
+			pos.x = shape.global_position.x
+		else:
+			pos.x = _classrooms_area.global_position.x
+	return pos
+
+
 func _return_interact_right_edge_x() -> float:
 	if not is_instance_valid(_return_area):
 		return -INF
@@ -317,6 +440,30 @@ func _kitchen_interact_bottom_edge_y() -> float:
 	var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
 	return _kitchen_area.to_global(
 		Vector2(shape.position.x, shape.position.y + half_height)
+	).y
+
+
+func _backyard_interact_left_edge_x() -> float:
+	if not is_instance_valid(_backyard_area):
+		return INF
+	var shape := _backyard_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape == null or not (shape.shape is RectangleShape2D):
+		return INF
+	var half_width: float = (shape.shape as RectangleShape2D).size.x * 0.5
+	return _backyard_area.to_global(
+		Vector2(shape.position.x - half_width, shape.position.y)
+	).x
+
+
+func _classrooms_interact_top_edge_y() -> float:
+	if not is_instance_valid(_classrooms_area):
+		return INF
+	var shape := _classrooms_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape == null or not (shape.shape is RectangleShape2D):
+		return INF
+	var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
+	return _classrooms_area.to_global(
+		Vector2(shape.position.x, shape.position.y - half_height)
 	).y
 
 

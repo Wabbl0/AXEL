@@ -97,6 +97,38 @@ func _on_background_layout_applied(scale_factor: float, bg_position: Vector2, _w
 - Player: world space under `WalkableWorld/Player` on **new** scenes (legacy 1.1/1.2 still use `PlayerLayer`)
 - Cover sync: `scenes/core/player_cover_sync.gd` so Mike scales with window resize
 
+### Rule: any node placed against the background must spawn from its own editor position
+
+Player spawn points, memory-indicator glows, and any other node whose on-screen
+spot should match where you dragged it in the editor MUST follow this pattern
+— never hardcode a spawn constant, and never re-derive a node's runtime
+position from a *different* node (e.g. snapping onto an interact area's shape).
+That silently makes the node's own editor position dead/unused, so nudging it
+in the editor does nothing at runtime.
+
+1. In `_ready()` (before the first `layout_applied`), capture the node's
+   authored `position` into a `_foo_tex` variable. At this point it's still in
+   texture-pixel space (same frame as `EnvironmentColliders`).
+2. In the `layout_applied` handler, once `EnvironmentColliders` has its final
+   `position`/`scale`, set `node.global_position = env.to_global(_foo_tex)`.
+3. To move the spot, drag the node itself in the editor — do not add an
+   offset constant or point it at another node's position.
+
+See `2.3_Kitchen.gd` (`_player_spawn_tex`) and `2.1_Cafeteria.gd`
+(`_player_spawn_tex`, `_memory_indicator_tex`) for reference implementations.
+
+### Rule: interact-prompt "[E]" chip has no offset by default
+
+`InteractPromptOverlay.gd`'s `screen_offset` export defaults to `Vector2.ZERO`
+— the chip centers exactly on the interact anchor (the `CollisionShape2D`'s
+`global_position`). Never add a nudge (screen-space `screen_offset` override
+in a scene's `.tscn`, or a world-space anchor offset in the scene script) as
+a blanket/default choice. Only add one when explicitly asked for a specific
+interact point, and scope it as narrowly as possible (ideally per-zone in the
+scene script's anchor function, not the whole-scene `screen_offset`, since
+one `InteractPromptOverlay` node is shared by every interact zone in a
+scene).
+
 ### QA smoke (new scenes)
 
 After `_ready`, headless smoke MUST call:

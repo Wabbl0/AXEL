@@ -29,8 +29,22 @@ var basement_spawn_side: String = ""
 var cafeteria_spawn_side: String = ""
 ## Transient (not persisted). e.g. "kitchen_door" when leaving 2.3 for 2.1.
 var kitchen_spawn_side: String = ""
+## Transient (not persisted). e.g. "cafeteria_door" when leaving 2.1 for 3.1.
+var backyard_spawn_side: String = ""
+## Transient (not persisted). e.g. "cafeteria_door" / "lounge_door" / "classroom_door".
+var classrooms_corridor_spawn_side: String = ""
+## Transient (not persisted). e.g. "corridor_door" when leaving 2.4 for 4.1.
+var teachers_lounge_spawn_side: String = ""
+## Transient (not persisted). e.g. "corridor_door" when leaving 2.4 for 5.1.
+var classroom_spawn_side: String = ""
 ## Once-ever kitchen enter line (2.3).
 var kitchen_enter_line_seen: bool = false
+## Once-ever backyard enter line (3.1).
+var backyard_enter_line_seen: bool = false
+## Once-ever teachers lounge enter line (4.1).
+var teachers_lounge_enter_line_seen: bool = false
+## Once-ever classroom enter line (5.1).
+var classroom_enter_line_seen: bool = false
 
 # References to UI elements in Arc_1/1.1_SchoolExterior.tscn
 @onready var location_label: Label = get_node_or_null("%LocationName") as Label
@@ -88,6 +102,9 @@ func _load_persistent_state() -> void:
 	corridor_spawn_line_seen = false
 	basement_door_line_seen = false
 	kitchen_enter_line_seen = false
+	backyard_enter_line_seen = false
+	teachers_lounge_enter_line_seen = false
+	classroom_enter_line_seen = false
 	if not _persistence_enabled():
 		print("GameManager: debug build — ignoring saved narrative state.")
 		return
@@ -109,6 +126,9 @@ func _load_persistent_state() -> void:
 	corridor_spawn_line_seen = bool(data.get("corridor_spawn_line_seen", false))
 	basement_door_line_seen = bool(data.get("basement_door_line_seen", false))
 	kitchen_enter_line_seen = bool(data.get("kitchen_enter_line_seen", false))
+	backyard_enter_line_seen = bool(data.get("backyard_enter_line_seen", false))
+	teachers_lounge_enter_line_seen = bool(data.get("teachers_lounge_enter_line_seen", false))
+	classroom_enter_line_seen = bool(data.get("classroom_enter_line_seen", false))
 
 func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
 	var merged := defaults.duplicate(true)
@@ -131,6 +151,9 @@ func _save_persistent_state() -> void:
 		"corridor_spawn_line_seen": corridor_spawn_line_seen,
 		"basement_door_line_seen": basement_door_line_seen,
 		"kitchen_enter_line_seen": kitchen_enter_line_seen,
+		"backyard_enter_line_seen": backyard_enter_line_seen,
+		"teachers_lounge_enter_line_seen": teachers_lounge_enter_line_seen,
+		"classroom_enter_line_seen": classroom_enter_line_seen,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -156,6 +179,18 @@ func set_basement_door_line_seen(value: bool = true) -> void:
 
 func set_kitchen_enter_line_seen(value: bool = true) -> void:
 	kitchen_enter_line_seen = value
+	_save_persistent_state()
+
+func set_backyard_enter_line_seen(value: bool = true) -> void:
+	backyard_enter_line_seen = value
+	_save_persistent_state()
+
+func set_teachers_lounge_enter_line_seen(value: bool = true) -> void:
+	teachers_lounge_enter_line_seen = value
+	_save_persistent_state()
+
+func set_classroom_enter_line_seen(value: bool = true) -> void:
+	classroom_enter_line_seen = value
 	_save_persistent_state()
 
 func set_corridor_return_pos(pos: Vector2) -> void:
@@ -199,6 +234,38 @@ func set_kitchen_spawn_side(side: String) -> void:
 func take_kitchen_spawn_side() -> String:
 	var side := kitchen_spawn_side
 	kitchen_spawn_side = ""
+	return side
+
+func set_backyard_spawn_side(side: String) -> void:
+	backyard_spawn_side = side
+
+func take_backyard_spawn_side() -> String:
+	var side := backyard_spawn_side
+	backyard_spawn_side = ""
+	return side
+
+func set_classrooms_corridor_spawn_side(side: String) -> void:
+	classrooms_corridor_spawn_side = side
+
+func take_classrooms_corridor_spawn_side() -> String:
+	var side := classrooms_corridor_spawn_side
+	classrooms_corridor_spawn_side = ""
+	return side
+
+func set_teachers_lounge_spawn_side(side: String) -> void:
+	teachers_lounge_spawn_side = side
+
+func take_teachers_lounge_spawn_side() -> String:
+	var side := teachers_lounge_spawn_side
+	teachers_lounge_spawn_side = ""
+	return side
+
+func set_classroom_spawn_side(side: String) -> void:
+	classroom_spawn_side = side
+
+func take_classroom_spawn_side() -> String:
+	var side := classroom_spawn_side
+	classroom_spawn_side = ""
 	return side
 
 func load_game_data():

@@ -27,16 +27,22 @@ size = Vector2(679, 996.5)
 size = Vector2(1893, 233)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_table_interact"]
-size = Vector2(209.75, 283.25)
+size = Vector2(339.75, 377.25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_kitchen_interact"]
 size = Vector2(277, 128)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_return_interact"]
-size = Vector2(143, 804.5)
+size = Vector2(143, 751)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_left_door"]
 size = Vector2(148, 805)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_backyard_interact"]
+size = Vector2(179.5, 693)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_classrooms_interact"]
+size = Vector2(721, 266)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -153,7 +159,7 @@ position = Vector2(1754, 1300)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableInteractArea" unique_id=696839511]
-position = Vector2(901.875, -1002.625)
+position = Vector2(836.875, -955.625)
 shape = SubResource("RectangleShape2D_table_interact")
 
 [node name="KitchenInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=201792129]
@@ -169,7 +175,7 @@ position = Vector2(180, 1900)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ReturnInteractArea" unique_id=1826375760]
-position = Vector2(-59.5, -473.25)
+position = Vector2(-59.5, -386.5)
 shape = SubResource("RectangleShape2D_return_interact")
 
 [node name="LeftDoorBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1226774591]
@@ -178,6 +184,43 @@ position = Vector2(1500, 500)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftDoorBlock" unique_id=1540598922]
 position = Vector2(-1422, 926.5)
 shape = SubResource("RectangleShape2D_left_door")
+
+[node name="BackyardInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=918948670]
+position = Vector2(3300, 1440)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BackyardInteractArea" unique_id=191643595]
+position = Vector2(109.25, 77.5)
+shape = SubResource("RectangleShape2D_backyard_interact")
+
+[node name="ClassroomsInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=622986680]
+position = Vector2(2078, 2300)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ClassroomsInteractArea" unique_id=851748786]
+position = Vector2(-8.5, 13)
+shape = SubResource("RectangleShape2D_classrooms_interact")
+
+[node name="Placeholders" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1977150767]
+
+[node name="Kitchen_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=441580876]
+position = Vector2(0, 38.297295)
+scale = Vector2(1, 0.6486486)
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(1904, 182, 1905, 111, 2176, 109, 2178, 183)
+
+[node name="Backyard_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=438226570]
+position = Vector2(3479, 1242)
+scale = Vector2(1, 1.2868792)
+color = Color(0.32156864, 0.32156864, 0.32156864, 1)
+offset = Vector2(-2161, -272)
+polygon = PackedVector2Array(2101, 718, 2103, 110, 2197, 113.47699, 2195, 721.14856)
+
+[node name="Classrooms_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=452955483]
+position = Vector2(-202, 2104.0002)
+scale = Vector2(1.0027211, 1.4782588)
+color = Color(0.32156864, 0.32156864, 0.32156864, 1)
+polygon = PackedVector2Array(1904, 182, 1904, 116, 2643.9866, 116.041534, 2639, 185)
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=504722463]
 script = ExtResource("7_camera_script")
@@ -221,7 +264,7 @@ position = Vector2(-2.2222223, 3.6585884)
 shape = SubResource("CircleShape2D_player")
 
 [node name="MemoryIndicator" parent="PlayerLayer" unique_id=99253428 instance=ExtResource("10_memory_indicator")]
-position = Vector2(2656, 297)
+position = Vector2(2653, 220)
 
 [node name="TopDialogueOverlay" parent="." unique_id=672473847 instance=ExtResource("5_top_dialogue")]
 

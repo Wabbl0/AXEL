@@ -28,6 +28,8 @@
 
 > **Note:** On first visit (before yard memory plays), clicking anywhere on the scene advances the click sequence below instead of triggering the buttons normally.
 
+**Implemented (Godot) — shell only, mini-games deferred:** `3.1_Backyard.tscn` + `.gd` — walkable shell with flat placeholder background, Kitchen player profile (`3.0` / `253.4`), `STATIC_LOCKED` camera, one door back to `2.1_Cafeteria` (`cafeteria_spawn_side="backyard_right"`). Canon enter lines play once via `GameManager.backyard_enter_line_seen`. Cigarette memory click-steps / hint / graffiti interactions are **not** built yet — this is structure only, not arc-complete. Hub 1.3 still loads this file by path.
+
 ---
 
 ### 3.1 — Click step 1: Memory flash (`loc_yard_memory` text)

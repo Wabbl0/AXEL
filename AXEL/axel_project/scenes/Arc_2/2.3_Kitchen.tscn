@@ -16,22 +16,22 @@ size = Vector2(3508, 40)
 size = Vector2(40, 2480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_table"]
-size = Vector2(610, 1195)
+size = Vector2(754, 1387.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_right_shelves"]
-size = Vector2(448, 1030)
+size = Vector2(498, 1982)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_top_left_shelves"]
-size = Vector2(830, 100)
+size = Vector2(862, 325)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_block"]
-size = Vector2(100, 300)
+size = Vector2(517, 62)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
-size = Vector2(300, 400)
+size = Vector2(629, 399)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_flashlight_interact"]
-size = Vector2(260, 260)
+size = Vector2(464, 364)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -79,24 +79,28 @@ shape = SubResource("RectangleShape2D_wall_vertical")
 position = Vector2(2175, 1832)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableBlock" unique_id=1746383868]
+position = Vector2(-15, -96.25)
 shape = SubResource("RectangleShape2D_table")
 
 [node name="RightShelvesBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1780002063]
 position = Vector2(3284, 935)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightShelvesBlock" unique_id=679239371]
+position = Vector2(-23, 531)
 shape = SubResource("RectangleShape2D_right_shelves")
 
 [node name="TopLeftShelvesBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1124883453]
 position = Vector2(645, 250)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopLeftShelvesBlock" unique_id=1809542865]
+position = Vector2(47, -75.5)
 shape = SubResource("RectangleShape2D_top_left_shelves")
 
 [node name="DoorWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=973707253]
 position = Vector2(3460, 1740)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorWall" unique_id=1122184146]
+position = Vector2(-660.5, 705)
 shape = SubResource("RectangleShape2D_door_block")
 
 [node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1841412176]
@@ -104,6 +108,7 @@ position = Vector2(3300, 1740)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea" unique_id=1869156649]
+position = Vector2(-506.5, 549.5)
 shape = SubResource("RectangleShape2D_door_interact")
 
 [node name="FlashlightInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1328869624]
@@ -111,6 +116,7 @@ position = Vector2(550, 550)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/FlashlightInteractArea" unique_id=668854355]
+position = Vector2(-81, -256)
 shape = SubResource("RectangleShape2D_flashlight_interact")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1068058929]
@@ -125,7 +131,7 @@ layer = 100
 follow_viewport_enabled = true
 
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=1244768089]
-position = Vector2(1852, 1282)
+position = Vector2(2768, 2028)
 scale = Vector2(3, 3)
 script = ExtResource("2_player_script")
 speed = 253.4
@@ -156,3 +162,4 @@ shape = SubResource("CircleShape2D_player")
 [node name="TopDialogueOverlay" parent="." unique_id=1427198189 instance=ExtResource("5_top_dialogue")]
 
 [node name="InteractPromptOverlay" parent="." unique_id=1244457954 instance=ExtResource("6_interact_prompt")]
+screen_offset = Vector2(0, -52)

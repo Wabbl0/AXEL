@@ -3820,3 +3820,74 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: `[E]` chip over the Cafeteria table/memory zone shifts 15px left / 12px down from its previous position; no other interact prompt in the game is affected.
 - Verification: Not run in-engine this session (no local Godot binary); user to confirm in-game and report if `TABLE_PROMPT_VISUAL_OFFSET` needs further tuning.
+
+## 2026-07-30
+
+### 2.3 Kitchen — spawn from Player node position
+- Request: Make the Kitchen's player spawn point always match wherever the `Player` node is placed, instead of a hardcoded constant (same pattern already used in 2.1 Cafeteria).
+- Implementation: Removed `PLAYER_SPAWN_TEX`. Scene now captures `PlayerLayer/Player.position` in `_ready()` (texture-pixel space, same as colliders) into `_player_spawn_tex`, and applies it via `env.to_global()` on the first `layout_applied`, exactly mirroring the Cafeteria fix.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Drag `PlayerLayer/Player` in the editor to choose the Kitchen spawn point; it is remapped through the cover-fit background scaling at runtime like the colliders, so the spawn always lines up with the node's editor position.
+- Verification: Not run (no local Godot binary in this session); logic mirrors the already-verified 2.1 Cafeteria spawn fix.
+
+### Scene Building — codify "spawn from own editor position" as a mandatory rule
+- Request: Make sure new scenes follow the pattern above (player spawn point always matches wherever the node sits in the editor); also fix the 2.1 Cafeteria memory indicator, which was snapping onto `TableInteractArea`'s shape every frame instead of following its own editor position.
+- Implementation: Added a "Rule: any node placed against the background must spawn from its own editor position" section to `SCENE_BUILDING.md` (capture `position` pre-layout → `env.to_global()` on `layout_applied`; never hardcode, never re-derive from a different node). Fixed `2.1_Cafeteria.gd`'s `_sync_memory_indicator()` to capture `_memory_indicator_tex` from `MemoryIndicator`'s own `position` in `_ready()` and remap that instead of copying `TableInteractArea`'s live shape position. Updated the memory-indicator notes in `AI_DOCS.md` and `AXEL_SCENES_ARC2.md` to match.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Dragging `PlayerLayer/MemoryIndicator` in the Cafeteria editor now actually moves where the glow renders in-game; previously any edit to that node's position was silently discarded at runtime. New scenes following `SCENE_BUILDING.md` will use the same spawn-from-own-position pattern for the player and any similar background-anchored markers.
+- Verification: Not run (no local Godot binary in this session); logic mirrors the already-verified Player spawn pattern.
+
+### Cafeteria doors + Arc 3/4/5 walkable shells
+- Request: Activate the dead Backyard and Classrooms doors in `2.1_Cafeteria` and give them destinations — a new `2.4_ClassroomsCorridor` plus walkable shells for Backyard, Teachers' Lounge, and Classroom (structure/doors/enter-line only; mini-games deferred).
+- Implementation: Wired InteractArea + DoorBlock pairs on the cafeteria's right and bottom placeholder doors with kitchen-style doorway peeks. Replaced Arc 3/4/5 ScenePlaceholder stubs in place with flat-placeholder walkable shells (Kitchen player profile, art-derived camera pipeline). Built L-shaped `2.4_ClassroomsCorridor` with `MOVABLE_FOLLOW` camera, doors to Cafeteria/Lounge/Classroom, and a drawn-only future-1.2 door. Added GameManager spawn-side flags and once-ever enter-line keys. Back doors always return to the fixed neighbour. `1.2_Corridor` untouched.
+- Files changed:
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn` (new)
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd` (new)
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd` (new)
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd` (new)
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd` (new)
+  - `AXEL/axel_project/exports/Drawings/3.1_Backyard.png` (flat placeholder)
+  - `AXEL/axel_project/exports/Drawings/2.4_ClassroomsCorridor.png` (flat placeholder)
+  - `AXEL/axel_project/exports/Drawings/4.1_TeachersLounge.png` (flat placeholder)
+  - `AXEL/axel_project/exports/Drawings/5.1_Classroom.png` (flat placeholder)
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: From the Cafeteria the player can walk to Backyard (right door) and the Classrooms corridor (bottom door), then into Teachers' Lounge / Classroom. Enter lines play once. Mini-game content (cigarette memory, key pickup, desk/board puzzle) is still deferred — these are shells only, not arc-complete.
+- Verification: Not run (no local Godot binary in this session); follow the manual test checklist in the plan.
+
+### Interact-prompt "[E]" chip offset — off by default going forward
+- Request: In `2.1_Cafeteria`, the shared upward chip nudge doesn't make sense for vertically-placed door interact areas; `ReturnInteractArea`, `BackyardInteractArea`, `KitchenInteractArea`, and the table/memory zone should show the "[E]" chip with no offset at all. Make "no offset by default, opt-in only" a rule for future scenes.
+- Implementation: `InteractPromptOverlay.gd`'s `screen_offset` export default changed from `Vector2(0, -52)` to `Vector2.ZERO` (was silently applied to every interact chip in every scene since no `.tscn` overrode it). To preserve current on-screen behavior everywhere except Cafeteria, added an explicit `screen_offset = Vector2(0, -52)` override on the `InteractPromptOverlay` node in every other walkable scene's `.tscn` (`1.1_SchoolExterior`, `1.2_Corridor`, `1.4_BasementDoor`, `2.3_Kitchen`, `2.4_ClassroomsCorridor`, `3.1_Backyard`, `4.1_TeachersLounge`, `5.1_Classroom`). `2.1_Cafeteria.tscn` gets no override, so all five of its interact zones (table/memory, kitchen, return, backyard, classrooms) now use the new zero default. Also removed `2.1_Cafeteria.gd`'s `TABLE_PROMPT_VISUAL_OFFSET` world-space nudge on the table/memory anchor, per the same "memory zone should have no offset" request. Documented the rule in `SCENE_BUILDING.md` (new "chip has no offset by default" section) so future scenes/agents don't reintroduce a blanket offset.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/InteractPromptOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: In `2.1_Cafeteria`, the "[E]" chip for the table/memory, kitchen, return, backyard, and classrooms doors now centers exactly on each interact area's collision shape instead of floating 52px above it. Every other scene's chip position is unchanged (explicit override matches the old default).
+- Verification: Not run (no local Godot binary in this session); visual check recommended in-editor for `2.1_Cafeteria`'s five interact zones.

@@ -6,7 +6,6 @@ const ENTER_LINES := [
 	"This includes you.",
 ]
 const FLASHLIGHT_LINE := "Let there be light!"
-const PLAYER_SPAWN_TEX := Vector2(3150.0, 1740.0)
 const DOOR_ZONE_GRACE_SEC := 0.15
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
@@ -20,10 +19,13 @@ var _is_transitioning := false
 var _flashlight_line_running := false
 var _player_spawn_applied := false
 var _door_zone_armed := true
+## Texture-pixel spawn captured from the Player node's editor position.
+var _player_spawn_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
+	_player_spawn_tex = _player.position
 	_player_cover_sync.bind_from_player(_player)
 	_door_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/DoorInteractArea"
@@ -208,7 +210,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
 	if not _player_spawn_applied:
-		player_node.global_position = env.to_global(PLAYER_SPAWN_TEX)
+		player_node.global_position = env.to_global(_player_spawn_tex)
 		_player_spawn_applied = true
 		_arm_door_zone_grace()
 	elif remap_pos:

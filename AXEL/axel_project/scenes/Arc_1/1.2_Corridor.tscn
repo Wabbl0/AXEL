@@ -141,3 +141,4 @@ shape = SubResource("CircleShape2D_player")
 [node name="TopDialogueOverlay" parent="." unique_id=529892493 instance=ExtResource("10_top_dialogue")]
 
 [node name="InteractPromptOverlay" parent="." unique_id=1738398092 instance=ExtResource("11_interact_prompt")]
+screen_offset = Vector2(0, -52)

@@ -3,9 +3,14 @@ extends CanvasLayer
 const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 
 ## World-anchored interact key chip; CRT on/off uses compact opts (no white beam wash).
-
+##
+## `screen_offset` defaults to zero (chip centers exactly on the interact
+## anchor). Only nudge it away from zero when a scene explicitly needs the
+## chip clear of the anchor point (e.g. so it doesn't sit on top of a prop) —
+## never as a blanket default. Set the override on this node in the scene's
+## `.tscn`, not by changing this default.
 @export var key_label := "[E]"
-@export var screen_offset := Vector2(0.0, -52.0)
+@export var screen_offset := Vector2.ZERO
 
 @onready var _root: Control = $ViewportRoot/ChipRoot
 @onready var _panel: PanelContainer = $ViewportRoot/ChipRoot/BarPanel

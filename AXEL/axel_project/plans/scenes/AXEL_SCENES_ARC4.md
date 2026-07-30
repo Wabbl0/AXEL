@@ -25,6 +25,8 @@
 | *(Hidden — click on scene advances memory sequence before key is found)* | → Teachers Memory → Key Pickup |
 
 
+**Implemented (Godot) — shell only, mini-games deferred:** `4.1_TeachersLounge.tscn` + `.gd` — walkable shell with flat placeholder background, Kitchen player profile, `STATIC_LOCKED` camera, one door back to `2.4_ClassroomsCorridor` (`classrooms_corridor_spawn_side="lounge_door"`). Canon enter lines play once via `GameManager.teachers_lounge_enter_line_seen`. Memory sequence / key pickup are **not** built yet — structure only, not arc-complete. Hub 1.3 still loads this file by path.
+
 ---
 
 ### 4.2 Teachers' Lounge Memory (`loc_teachers_memory`)

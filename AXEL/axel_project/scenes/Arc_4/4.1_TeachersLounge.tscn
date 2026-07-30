@@ -1,15 +1,134 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" path="res://scenes/Arc_4/4.1_TeachersLounge.gd" id="1_lounge"]
+[ext_resource type="Script" path="res://scripts/Player.gd" id="2_player_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
+[ext_resource type="Texture2D" path="res://exports/Drawings/4.1_TeachersLounge.png" id="4_lounge_bg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
+[ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
+[ext_resource type="Script" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
+[ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 
-[node name="ScenePlaceholder" type="Control"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_scene_placeholder")
-scene_id = "4.1"
-location_label = "TEACHERS' LOUNGE"
-dialogue = PackedStringArray("You always wondered what the teachers were doing behind closed doors.", "[beat]", "Pervert.")
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
+size = Vector2(2400, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
+size = Vector2(40, 1800)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door_block"]
+size = Vector2(420, 70)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
+size = Vector2(420, 180)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
+radius = 5.5
+
+[node name="4_1_TeachersLounge" type="Node2D"]
+script = ExtResource("1_lounge")
+
+[node name="WalkableWorld" type="Node2D" parent="."]
+
+[node name="Background" type="Sprite2D" parent="WalkableWorld"]
+z_index = -100
+texture_filter = 1
+texture = ExtResource("4_lounge_bg")
+centered = false
+script = ExtResource("8_bg_lock")
+metadata/_edit_lock_ = true
+
+[node name="EnvironmentColliders" type="Node2D" parent="WalkableWorld"]
+
+[node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(1200, 20)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall"]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(1200, 1780)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall"]
+shape = SubResource("RectangleShape2D_wall_horizontal")
+
+[node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(20, 900)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall"]
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(2380, 900)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall"]
+shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="DoorWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(1200, 40)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorWall"]
+shape = SubResource("RectangleShape2D_door_block")
+
+[node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders"]
+position = Vector2(1200, 200)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea"]
+shape = SubResource("RectangleShape2D_door_interact")
+
+[node name="Placeholders" type="Node2D" parent="WalkableWorld/EnvironmentColliders"]
+
+[node name="WallOutline" type="Line2D" parent="WalkableWorld/EnvironmentColliders/Placeholders"]
+width = 8.0
+default_color = Color(0.45, 0.12, 0.12, 1)
+points = PackedVector2Array(40, 40, 2360, 40, 2360, 1760, 40, 1760, 40, 40)
+
+[node name="Corridor_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders"]
+color = Color(0.40960324, 0.40960327, 0.40960324, 1)
+polygon = PackedVector2Array(990, 20, 1410, 20, 1410, 80, 990, 80)
+
+[node name="CouchHint" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders"]
+color = Color(0.35, 0.1, 0.1, 0.5)
+polygon = PackedVector2Array(400, 1100, 900, 1100, 900, 1500, 400, 1500)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("7_camera_script")
+background_path = NodePath("../WalkableWorld/Background")
+margin_px = 12.0
+target_path = NodePath("../PlayerLayer/Player")
+static_center = Vector2(560, 0)
+
+[node name="PlayerLayer" type="CanvasLayer" parent="."]
+layer = 100
+follow_viewport_enabled = true
+
+[node name="Player" type="CharacterBody2D" parent="PlayerLayer"]
+z_index = 10
+position = Vector2(1200, 400)
+scale = Vector2(3, 3)
+script = ExtResource("2_player_script")
+speed = 253.4
+sprite_sheet = ExtResource("3_player_sheet")
+animation_fps = 5.0
+collision_polygon_epsilon = 4.0
+collision_alpha_shrink_pixels = 4
+collision_inward_margin = 4.0
+collision_lower_body_ratio = 0.42
+
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player"]
+
+[node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player"]
+modulate = Color(0, 0, 0, 0.55)
+z_index = -1
+scale = Vector2(1.08, 1.08)
+
+[node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player"]
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player"]
+shape = SubResource("CircleShape2D_player")
+
+[node name="TopDialogueOverlay" parent="." instance=ExtResource("5_top_dialogue")]
+
+[node name="InteractPromptOverlay" parent="." instance=ExtResource("6_interact_prompt")]
+screen_offset = Vector2(0, -52)
