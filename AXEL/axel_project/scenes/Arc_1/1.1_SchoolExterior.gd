@@ -25,7 +25,6 @@ const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 const _LEAF_Y_CUTOFF_MARGIN := 0.0
 
-const _GLITCH_BURST_SEC := 0.85
 const _STONES_ARRIVE_DISTANCE := 36.0
 const _SCRIPTED_WALK_SPEED_SCALE := 0.5
 const _SCRIPTED_WALK_MAX_FRAMES := 600
@@ -33,6 +32,12 @@ const _SECOND_DIALOGUE_DISTANCE := 50.0
 const _FIRST_DIALOGUE_LINE := "You promised, you'd never come back."
 const _SECOND_DIALOGUE_LINE := "Yet, here we are."
 const _THIRD_DIALOGUE_LINE := "Pathetic."
+## Hold before camera tilt + walk-in (replaces the long off-screen approach wait).
+const INTRO_START_WAIT_SEC := 1.0
+## How far above the stand target the camera starts so follow tilts down onto Mike.
+const INTRO_CAMERA_START_LIFT_PX := 320.0
+## Extra world px beyond the left view edge so Mike starts fully off-screen.
+const INTRO_OFFSCREEN_PAD_PX := 96.0
 
 var _is_transitioning := false
 var _unlock_position: Vector2 = Vector2.ZERO
@@ -46,13 +51,13 @@ var _watching_movement := false
 ## this keeps colliders correct at any window size, not just today's.
 const _OLD_BG_POSITION := Vector2(32.0, -297.0)
 const _OLD_BG_SCALE := Vector2(0.33494318, 0.32130682)
-const INTRO_HIDE_MARGIN_X := 250.0
-const INTRO_HIDE_MARGIN_Y := 350.0
 
 var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
+	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
+	_player_cover_sync.authored_bg_baseline_position = _OLD_BG_POSITION
 	_player_cover_sync.bind_from_player(_player)
 	_door_interact_area = get_node_or_null(
 		"EnvironmentColliders/Doors/DoorInteractArea"
@@ -71,6 +76,13 @@ func _ready() -> void:
 		_enable_player_control()
 		_refresh_door_interact_prompt()
 		return
+	# Defer one frame so deferred camera layout + collider remap settle before
+	# computing the off-screen spawn / Rocks_Left walk targets.
+	call_deferred("_begin_forced_intro_after_layout")
+
+
+func _begin_forced_intro_after_layout() -> void:
+	_sync_environment_colliders_from_current_background()
 	_run_forced_intro_sequence()
 
 
@@ -109,13 +121,21 @@ func _run_forced_intro_sequence() -> void:
 	AxelEventFx.start_interface_distortion()
 
 	var stones_target := _left_stones_stand_target()
-	var hidden_spawn := stones_target - Vector2(INTRO_HIDE_MARGIN_X, INTRO_HIDE_MARGIN_Y)
+	var cam := $Camera2D as BackgroundCamera
+	# Camera starts above the road (tilt-down when follow engages). Mike starts
+	# left of frame at the same Y as the rocks so he walks straight right.
+	if cam != null:
+		cam.set_follow_enabled(false)
+		cam.place_center_clamped(
+			Vector2(stones_target.x, stones_target.y - INTRO_CAMERA_START_LIFT_PX)
+		)
 	if is_instance_valid(_player):
-		_player.global_position = hidden_spawn
+		_player.global_position = _intro_offscreen_left_spawn(stones_target)
 
-	_run_intro_glitch_burst(_GLITCH_BURST_SEC)
-	await _scripted_walk_down_to_road(stones_target)
-	await _scripted_walk_to_left_stones()
+	await get_tree().create_timer(INTRO_START_WAIT_SEC).timeout
+	if cam != null:
+		cam.set_follow_enabled(true)
+	await _scripted_walk_horizontal_to(stones_target)
 
 	if is_instance_valid(_left_wall_collision):
 		_left_wall_collision.set_deferred("disabled", false)
@@ -130,6 +150,19 @@ func _run_forced_intro_sequence() -> void:
 	_refresh_door_interact_prompt()
 
 	_play_first_dialogue_line()
+
+
+func _intro_offscreen_left_spawn(stones_target: Vector2) -> Vector2:
+	var cam := $Camera2D as Camera2D
+	if cam == null:
+		return Vector2(stones_target.x - 400.0, stones_target.y)
+	var vp := get_viewport().get_visible_rect().size
+	if vp.x <= 0.0 or vp.y <= 0.0:
+		vp = Vector2(1920.0, 1280.0)
+	var half := vp / (2.0 * cam.zoom)
+	# Left of the current (lifted) camera view; Y locked to the rocks stand height.
+	var spawn_x := cam.global_position.x - half.x - INTRO_OFFSCREEN_PAD_PX
+	return Vector2(spawn_x, stones_target.y)
 
 
 func _play_first_dialogue_line() -> void:
@@ -153,10 +186,6 @@ func _play_first_dialogue_line() -> void:
 		await _top_dialogue.hide_line()
 
 
-func _run_intro_glitch_burst(duration_sec: float) -> void:
-	await AxelEventFx.play_glitch_burst(duration_sec)
-
-
 func _disable_player_control() -> void:
 	if is_instance_valid(_player) and _player.has_method("set_input_enabled"):
 		_player.set_input_enabled(false)
@@ -171,38 +200,32 @@ func _enable_player_control() -> void:
 		_player.set_input_enabled(true)
 
 
-func _scripted_walk_down_to_road(stones_target: Vector2) -> void:
-	var road_target := Vector2(stones_target.x - INTRO_HIDE_MARGIN_X, stones_target.y)
-	await _scripted_walk_to(road_target)
-
-
-func _scripted_walk_to_left_stones() -> void:
-	if not is_instance_valid(_rocks_left):
-		return
-	await _scripted_walk_to(_left_stones_stand_target())
-
-
-func _scripted_walk_to(target: Vector2) -> void:
+func _scripted_walk_horizontal_to(target: Vector2) -> void:
 	if not is_instance_valid(_player):
 		return
 
-	var base_speed := float(_player.get("speed")) if _player.get("speed") != null else 180.0
+	var base_speed := float(_player.get("speed")) if _player.get("speed") != null else 120.0
 	var move_speed := base_speed * _SCRIPTED_WALK_SPEED_SCALE
 	var frames := 0
+	# Keep a fixed road Y so collisions cannot turn this into a diagonal path.
+	var road_y := target.y
 
 	while is_instance_valid(_player):
 		frames += 1
-		var to_target := target - _player.global_position
-		if to_target.length() <= _STONES_ARRIVE_DISTANCE or frames >= _SCRIPTED_WALK_MAX_FRAMES:
+		_player.global_position.y = road_y
+		var dx := target.x - _player.global_position.x
+		if absf(dx) <= _STONES_ARRIVE_DISTANCE or frames >= _SCRIPTED_WALK_MAX_FRAMES:
 			break
-		var direction := to_target.normalized()
+		var direction := Vector2(signf(dx), 0.0)
 		if _player.has_method("set_scripted_velocity"):
 			_player.set_scripted_velocity(direction * move_speed)
 		await get_tree().physics_frame
 
-	if is_instance_valid(_player) and _player.has_method("clear_scripted_velocity"):
-		_player.clear_scripted_velocity()
-		_player.velocity = Vector2.ZERO
+	if is_instance_valid(_player):
+		_player.global_position.y = road_y
+		if _player.has_method("clear_scripted_velocity"):
+			_player.clear_scripted_velocity()
+			_player.velocity = Vector2.ZERO
 
 
 func _left_stones_stand_target() -> Vector2:

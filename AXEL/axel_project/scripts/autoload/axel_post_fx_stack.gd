@@ -6,6 +6,12 @@ const NOIR_SCENE := "res://scenes/fx/NoirPaletteOverlay.tscn"
 const SCANLINE_SCENE := "res://scenes/fx/ScanlineOverlay.tscn"
 const CRT_SCENE := "res://scenes/fx/CrtPluginOverlay.tscn"
 const MANAGED_GROUP := "axel_post_fx_managed"
+## Test-only 8-band palette. Production overlay scene stays on the 3-band shader.
+const NOIR_8BAND_SHADER := "res://tools/visual_style/shaders/noir_palette_8band_test.gdshader"
+
+## Flip to true, save, then F5/F6 any non-combat scene to preview 8-band noir.
+## Or launch with env AXEL_NOIR_8BAND=1 (same effect; no file edit). Keep false for production 3-band.
+const DEBUG_USE_NOIR_8BAND_TEST := true
 
 const _OVERLAY_NAME_NOIR := "NoirPaletteOverlay"
 const _OVERLAY_NAME_SCANLINE := "ScanlineOverlay"
@@ -15,6 +21,7 @@ var _attached_scene: Node = null
 var _noir: CanvasLayer = null
 var _scanline: CanvasLayer = null
 var _crt: CanvasLayer = null
+var _logged_8band := false
 
 
 func _ready() -> void:
@@ -143,6 +150,32 @@ func _attach_to_scene(scene: Node) -> void:
 		canvas_layer.add_to_group(MANAGED_GROUP)
 		scene.add_child(canvas_layer)
 	_attached_scene = scene
+	if _use_noir_8band_test():
+		_apply_noir_8band_shader()
+
+
+func _use_noir_8band_test() -> bool:
+	if OS.has_environment("AXEL_NOIR_8BAND") and OS.get_environment("AXEL_NOIR_8BAND").strip_edges() == "1":
+		return true
+	return DEBUG_USE_NOIR_8BAND_TEST
+
+
+func _apply_noir_8band_shader() -> void:
+	var rect := get_noir_filter_rect()
+	if rect == null:
+		return
+	if not ResourceLoader.exists(NOIR_8BAND_SHADER):
+		push_warning("AxelPostFxStack: missing 8-band shader %s" % NOIR_8BAND_SHADER)
+		return
+	var sh := load(NOIR_8BAND_SHADER) as Shader
+	if sh == null:
+		return
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	rect.material = mat
+	if not _logged_8band:
+		_logged_8band = true
+		print("AxelPostFxStack: noir 8-band TEST on (DEBUG_USE_NOIR_8BAND_TEST or AXEL_NOIR_8BAND=1)")
 
 
 func _remove_legacy_scene_overlays(scene: Node) -> void:

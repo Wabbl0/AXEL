@@ -39,10 +39,10 @@ size = Vector2(143, 751)
 size = Vector2(148, 805)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_backyard_interact"]
-size = Vector2(179.5, 693)
+size = Vector2(193.75, 765.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_classrooms_interact"]
-size = Vector2(721, 266)
+size = Vector2(721, 246)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -190,7 +190,7 @@ position = Vector2(3300, 1440)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BackyardInteractArea" unique_id=191643595]
-position = Vector2(109.25, 77.5)
+position = Vector2(94, 72)
 shape = SubResource("RectangleShape2D_backyard_interact")
 
 [node name="ClassroomsInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=622986680]
@@ -198,7 +198,7 @@ position = Vector2(2078, 2300)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ClassroomsInteractArea" unique_id=851748786]
-position = Vector2(-8.5, 13)
+position = Vector2(-1, -31)
 shape = SubResource("RectangleShape2D_classrooms_interact")
 
 [node name="Placeholders" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1977150767]
@@ -206,11 +206,11 @@ shape = SubResource("RectangleShape2D_classrooms_interact")
 [node name="Kitchen_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=441580876]
 position = Vector2(0, 38.297295)
 scale = Vector2(1, 0.6486486)
-color = Color(0, 0, 0, 1)
+color = Color(0.32156864, 0.32156864, 0.32156864, 1)
 polygon = PackedVector2Array(1904, 182, 1905, 111, 2176, 109, 2178, 183)
 
 [node name="Backyard_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=438226570]
-position = Vector2(3479, 1242)
+position = Vector2(3474, 1325)
 scale = Vector2(1, 1.2868792)
 color = Color(0.32156864, 0.32156864, 0.32156864, 1)
 offset = Vector2(-2161, -272)

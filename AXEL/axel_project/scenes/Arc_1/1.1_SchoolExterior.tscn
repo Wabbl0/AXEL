@@ -21,7 +21,7 @@ size = Vector2(29.5, 1096)
 size = Vector2(29.5, 741.5449)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_b508v"]
-size = Vector2(137.5, 27.5)
+size = Vector2(186.75, 27.5)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 16.0
@@ -147,7 +147,7 @@ rotation = -2.099631
 shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="CollisionShape2D3" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=175384946]
-position = Vector2(-61.5, -551.5)
+position = Vector2(-65, -537.375)
 rotation = 1.5707964
 shape = SubResource("RectangleShape2D_b508v")
 
@@ -179,9 +179,10 @@ follow_viewport_enabled = true
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=304166626]
 unique_name_in_owner = true
 z_index = 20
+position = Vector2(227, 430)
 scale = Vector2(1.2, 1.2)
 script = ExtResource("2_elx0u")
-speed = 180.0
+speed = 120.0
 sprite_sheet = ExtResource("3_p5syx")
 animation_fps = 5.0
 

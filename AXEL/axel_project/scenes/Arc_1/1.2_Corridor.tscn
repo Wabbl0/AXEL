@@ -96,8 +96,8 @@ position = Vector2(1172, 620)
 monitorable = false
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/LockerInteractArea" unique_id=1200780102]
-position = Vector2(644.89685, 107.13535)
-scale = Vector2(1.1545798, 1.2652589)
+position = Vector2(608.9528, 116.62136)
+scale = Vector2(0.9017174, 1.3375075)
 polygon = PackedVector2Array(-280, -60, -45.787476, -58.608032, -40.29297, 177.6557, -280.21973, 175.82416)
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]
@@ -110,7 +110,7 @@ layer = 100
 follow_viewport_enabled = true
 
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=558325098]
-position = Vector2(73, 271.00003)
+position = Vector2(35, 490.00003)
 scale = Vector2(3, 3)
 script = ExtResource("2_player_script")
 speed = 253.4

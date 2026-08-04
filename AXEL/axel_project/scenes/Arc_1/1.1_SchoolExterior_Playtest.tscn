@@ -9,3 +9,9 @@ skip_intro = true
 position = Vector2(38.999996, -146)
 scale = Vector2(1.157552, 1.1575521)
 polygon = PackedVector2Array(78, -46, 89, 10, 65, 47, 51, 50, 51, 109, 62.200195, 126.99212, 8.638916, 126.12823, 21.27668, 83.64821, 23, 69, 17, 44, -1, 31, -7, 8, -7, -44, 7, -58, 34, -62, 63, -58)
+
+[node name="CollisionShape2D3" parent="EnvironmentColliders/RightWall" parent_id_path=PackedInt32Array(432242208) index="2" unique_id=175384946]
+position = Vector2(-66, -561)
+
+[node name="Player" parent="PlayerLayer" parent_id_path=PackedInt32Array(1984527034) index="0" unique_id=304166626]
+position = Vector2(-50, 246)

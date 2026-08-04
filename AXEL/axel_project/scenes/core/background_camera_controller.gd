@@ -30,6 +30,8 @@ const DEFAULT_MAX_AUTO_ZOOM := 4.0
 @export var max_auto_zoom: float = DEFAULT_MAX_AUTO_ZOOM
 ## When set (finite), static_locked centers here instead of art rect center.
 @export var static_center: Vector2 = Vector2.INF
+## When false, MOVABLE_FOLLOW holds its current center (used by 1.1 intro off-screen spawn).
+var follow_enabled: bool = true
 
 signal layout_applied(scale_factor: float, bg_position: Vector2, world_rect: Rect2)
 
@@ -51,6 +53,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if camera_mode != CameraMode.MOVABLE_FOLLOW:
 		return
+	if not follow_enabled:
+		return
 	if not is_instance_valid(_target):
 		return
 	var desired := _target.global_position
@@ -58,6 +62,16 @@ func _physics_process(delta: float) -> void:
 	if follow_smoothing > 0.0:
 		next = global_position.lerp(desired, 1.0 - exp(-follow_smoothing * delta))
 	global_position = clamp_center_to_rect(next, _inset_rect, _viewport_size, zoom)
+
+
+func set_follow_enabled(enabled: bool) -> void:
+	follow_enabled = enabled
+
+
+func place_center_clamped(world_center: Vector2) -> void:
+	global_position = clamp_center_to_rect(
+		world_center, _inset_rect, _viewport_size, zoom
+	)
 
 
 func _run_pipeline() -> void:
@@ -71,7 +85,9 @@ func _run_pipeline() -> void:
 			)
 			if not layout.is_empty():
 				Layout.apply_to_sprite(background, layout)
-				world_rect = layout["world_rect"]
+				# Limits/clamp must use global art bounds so a non-zero scene-root
+				# offset cannot open clear-color / post-FX red void at the edges.
+				world_rect = Layout.compute_global_world_rect(background)
 				layout_applied.emit(
 					layout["scale_factor"], layout["position"], world_rect
 				)

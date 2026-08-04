@@ -3,6 +3,7 @@ extends Node2D
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const TEACHERS_LOUNGE_SCENE := "res://scenes/Arc_4/4.1_TeachersLounge.tscn"
 const CLASSROOM_SCENE := "res://scenes/Arc_5/5.1_Classroom.tscn"
+const FUTURE_DOOR_LINE := "Not yet."
 const DOOR_ZONE_GRACE_SEC := 0.15
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
@@ -12,8 +13,10 @@ const DOOR_ZONE_GRACE_SEC := 0.15
 var _cafeteria_area: Area2D
 var _lounge_area: Area2D
 var _classroom_area: Area2D
+var _future_area: Area2D
 var _active_zone: String = ""
 var _is_transitioning := false
+var _future_line_running := false
 var _player_spawn_applied := false
 var _pending_spawn_side := ""
 var _cafeteria_zone_armed := true
@@ -35,9 +38,13 @@ func _ready() -> void:
 	_classroom_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/ClassroomInteractArea"
 	) as Area2D
+	_future_area = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/FutureDoorInteractArea"
+	) as Area2D
 	_connect_zone(_cafeteria_area, "cafeteria")
 	_connect_zone(_lounge_area, "lounge")
 	_connect_zone(_classroom_area, "classroom")
+	_connect_zone(_future_area, "future")
 	_pending_spawn_side = GameManager.take_classrooms_corridor_spawn_side()
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
@@ -74,6 +81,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_begin_go_to_lounge()
 		"classroom":
 			_begin_go_to_classroom()
+		"future":
+			_begin_future_door_stub()
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
@@ -108,6 +117,8 @@ func _zone_area(zone_id: String) -> Area2D:
 			return _lounge_area
 		"classroom":
 			return _classroom_area
+		"future":
+			return _future_area
 		_:
 			return null
 
@@ -120,6 +131,8 @@ func _zone_armed(zone_id: String) -> bool:
 			return _lounge_zone_armed
 		"classroom":
 			return _classroom_zone_armed
+		"future":
+			return not _future_line_running
 		_:
 			return true
 
@@ -150,6 +163,40 @@ func _hide_interact_prompt() -> void:
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.hide_prompt()
+
+
+func _hide_interact_prompt_immediate() -> void:
+	if not is_instance_valid(_interact_prompt):
+		return
+	if _interact_prompt.has_method("hide_prompt_immediate"):
+		_interact_prompt.hide_prompt_immediate()
+	else:
+		_interact_prompt.hide_prompt()
+
+
+func _future_dialogue_busy() -> bool:
+	if _future_line_running:
+		return true
+	if not is_instance_valid(_top_dialogue):
+		return false
+	if _top_dialogue.has_method("is_sequence_busy") and _top_dialogue.is_sequence_busy():
+		return true
+	if _top_dialogue.has_method("is_bar_visible") and _top_dialogue.is_bar_visible():
+		return true
+	return false
+
+
+func _begin_future_door_stub() -> void:
+	# Canon: Future_1_2_Door stays stub-only until legacy corridor link is approved.
+	if _future_dialogue_busy():
+		_hide_interact_prompt_immediate()
+		return
+	_future_line_running = true
+	_hide_interact_prompt_immediate()
+	await _top_dialogue.show_line(FUTURE_DOOR_LINE, 3.0)
+	_future_line_running = false
+	if _active_zone == "future":
+		_show_interact_prompt()
 
 
 func _begin_go_to_cafeteria() -> void:

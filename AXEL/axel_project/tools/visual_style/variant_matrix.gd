@@ -49,6 +49,15 @@ const VARIANTS: Array[Dictionary] = [
 		"theme_mode": THEME_AXEL,
 		"theme_strength": 1.0,
 	},
+	{
+		"id": "noir_8band_test",
+		"label": "Noir 8-band test (replace production 3-band)",
+		"png": "05_noir_8band_test.png",
+		"stack": "replace_noir",
+		"shader": SHADER_ROOT + "noir_palette_8band_test.gdshader",
+		"theme_mode": THEME_AXEL,
+		"theme_strength": 1.0,
+	},
 ]
 
 

@@ -10,6 +10,8 @@ const LOCKER_LINE := "This was your locker."
 ## Just left of ExitTrigger so only a sliver of the scale-3 player peeks on the right.
 const BASEMENT_PEEK_MARGIN_PX := 12.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
+## Pre-migration hand-tuned Background scale (matches 1.2_Corridor.tscn WalkableWorld/Background).
+const _OLD_BG_SCALE := Vector2(0.546, 0.546)
 
 var _locker_interact_area: Area2D
 var _exit_trigger: Area2D
@@ -24,6 +26,7 @@ var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
+	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
 	_player_cover_sync.bind_from_player(_player)
 	_locker_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/LockerInteractArea"
