@@ -471,3 +471,94 @@ Game/runtime is preferred over stale docs when they conflict; final wording come
 - **Verdict:** canon
 - **Final wording:** (unchanged)
 - **Cascade:** —
+
+### S8-01 — SCENE_BUILDING / scene agent
+- **Original claim:** Building a new scene? Read `plans/scenes/SCENE_BUILDING.md` first. Alias: `scene agent`.
+- **Verdict:** canon (+ explain)
+- **Final wording:** Keep as the mandatory scene-building entry point / `scene agent` alias. Must be reviewed and updated against current game state so it stays relevant (cascade / follow-up pass).
+- **Cascade:** `plans/scenes/SCENE_BUILDING.md` — full current-state review required
+- **Follow-through:** After AI_DOCS S8 Q&A, walk SCENE_BUILDING against live scenes/helpers and update stale bits.
+
+### S8-02 — Scene dialogue index
+- **Original claim:** `AXEL_SCENES_NEW.md` → `AXEL_SCENES_ARC1.md` … `ARC7.md` (locked rewrite dialogue; no HTML SOURCE).
+- **Verdict:** canon
+- **Final wording:** (unchanged)
+- **Cascade:** —
+
+### S8-03 — Folder / naming taxonomy
+- **Original claim:** Folder / naming taxonomy: `plans/references/README_STRUCTURE.md`.
+- **Verdict:** canon (+ explain)
+- **Final wording:** Keep as the taxonomy reference, but review/update contents against current game layout (likely stale since early development).
+- **Cascade:** `plans/references/README_STRUCTURE.md` — current-state review required
+- **Follow-through:** During cascade, check folder layout vs live project and fix stale guidance.
+
+### S8-04 — Derive camera limits from art
+- **Original claim:** Derive camera limits from art size — never hand-tune `limit_*` / `fixed_x`.
+- **Verdict:** canon
+- **Final wording:** (unchanged)
+- **Cascade:** —
+
+### S8-05 — Background layout/camera helpers
+- **Original claim:** Helpers: `background_layout.gd`, `background_camera_controller.gd`.
+- **Verdict:** canon
+- **Final wording:** (unchanged)
+- **Cascade:** —
+
+### S8-06 — Default camera_mode / fit_mode / margin
+- **Original claim:** Default `camera_mode = static_locked`; `fit_mode` cover or contain; optional `margin_px`.
+- **Verdict:** canon
+- **Final wording:** (unchanged)
+- **Cascade:** —
+
+### S8-07 — Sync EnvironmentColliders on layout_applied
+- **Original claim:** Sync `EnvironmentColliders` on `layout_applied`.
+- **Verdict:** canon
+- **Final wording:** (unchanged)
+- **Cascade:** —
+
+### S8-08 — Locked exploration background
+- **Original claim:** Lock background with `locked_exploration_background.gd`.
+- **Verdict:** canon
+- **Final wording:** (unchanged)
+- **Cascade:** —
+
+### S8-09 — Shipped Arc 2 walkable inventory
+- **Original claim:** Shipped Arc 2 walkable: 2.1 / 2.3; 2.2 placeholder; kitchen art note.
+- **Verdict:** not canon
+- **Final wording:** Remove from AI_DOCS. AI_DOCS is an overall instructions/rulebook, not a shipped-scene reference guide — what’s walkable/shipped comes from live game state. Same for other AI_DOCS scene-inventory dumps (Arc 1 detail lists, “shipped test instance” notes).
+- **Cascade:** AI_DOCS Optional references rewrite; SCENE_BUILDING / arc notes may hold scene status if needed
+
+### S8-principle — AI_DOCS is rulebook not scene catalog
+- **Verdict:** canon (user directive)
+- **Final wording:** Do not keep shipped-scene inventories or per-scene numeric dumps in AI_DOCS. Point to live game + `SCENE_BUILDING.md` / `plans/scenes/` instead.
+- **Applies to:** S8-09 removed; Arc 1 detail bullet removed/shrunk; MemoryIndicator “shipped test instance” removed; S8-11–S8-25 scene-specific dumps treated as out of AI_DOCS scope (rules may remain in SCENE_BUILDING).
+
+### S8-10 — Memory indicator rules
+- **Original claim:** MemoryIndicator parent under PlayerLayer; cover-fit remap on layout_applied; don’t derive from another shape.
+- **Verdict:** canon
+- **Final wording:** Keep as short rules in AI_DOCS; details/examples in live scenes + SCENE_BUILDING.
+- **Cascade:** SCENE_BUILDING if memory-indicator guidance is thin there
+
+### S8-11–S8-25 — Arc 1 per-scene dumps
+- **Original claim:** Root at (0,0); camera modes 1.1/1.2; player layer; cover sync scene list; 1.1 free XY; no canvas stretch; corridor_large; window 1920×1280; exploration_viewport inert; leaf fade; playtest scene; deferred migration; etc.
+- **Verdict:** not canon for AI_DOCS (per S8-principle)
+- **Final wording:** Removed from AI_DOCS. Legacy Arc 1: do not change without approval; specifics from live scenes + SCENE_BUILDING.
+- **Cascade:** SCENE_BUILDING current-state review should absorb any still-needed Arc 1 rules
+
+### S8-26 — Headless checks optional
+- **Original claim:** Headless checks via run_default_playtest.ps1 / bots README — manual, not every chat.
+- **Verdict:** canon
+- **Final wording:** (unchanged)
+- **Cascade:** —
+
+### S8-27 — Collisions editor doc
+- **Original claim:** Collisions (editor): `plans/core/PLAYTEST_DEBUG_COLLISIONS.md`
+- **Verdict:** not canon
+- **Final wording:** Remove pointer from AI_DOCS and delete `PLAYTEST_DEBUG_COLLISIONS.md`.
+- **Cascade:** delete file; strip AI_DOCS bullet; any other refs to that path
+
+### S8-28 — .cursorignore indexing
+- **Original claim:** Root `.cursorignore` excludes logs/`.godot`/export captures/`plans/archive/**`/tool caches; keeps `exports/game_data.json` and `exports/GameManager.gd` indexed.
+- **Verdict:** canon
+- **Final wording:** (unchanged)
+- **Cascade:** —

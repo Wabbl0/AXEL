@@ -37,7 +37,7 @@ Each area's items share a mechanical theme tied to the room's narrative identity
 
 ### 2.3 Rarity tiers
 
-Tiers, ascending: **Common → Uncommon → Rare → Epic** (exact names placeholder).
+Tiers, ascending: **Common → Uncommon → Rare → Epic → Legendary** (five tiers total).
 
 Rules:
 
@@ -318,7 +318,9 @@ When adding or replacing symbols, add/update the PNG in `grid_symbols` and wire 
 
 ---
 
-## 13. Terminology Lock (Free Spins vs SUPER Free Spins)
+## 13. Terminology Lock (Trinity vs Free Spins)
+
+**Canon naming (see `plans/core/AI_DOCS.md`):** normal spins → Trinity round → Free Spins. Never call Trinity “Free Spins.” Prefer **Free Spins** over the old label “SUPER Free Spins.”
 
 To avoid future confusion in chats, reviews, and implementation notes, use these exact terms:
 

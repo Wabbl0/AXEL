@@ -77,7 +77,8 @@ Pause cadence during scripted intros via `set_cadence_enabled(false)`.
 ## Canvas layer stack
 
 ```
-Noir 90 → Scanline 105 → CRT 108 → InterfacePulse 109 → TopDialogue 110 → InteractPrompt 111 → IntroGlitch 112
+Noir 90 → Scanline 105 → CRT 108 → InterfacePulse 109 → InteractPrompt 110 → TopDialogue 111 → IntroGlitch 112
+(Dialogue must draw above the `[E]` prompt.)
 ```
 
 `InteractPromptOverlay` is scene-local (not `AxelEventFx`): CRT chip at door/proximity via `1.1_SchoolExterior.gd` + `EnvironmentColliders/Doors/DoorInteractArea`.

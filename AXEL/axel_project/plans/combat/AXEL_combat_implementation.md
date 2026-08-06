@@ -254,7 +254,7 @@ Pure-wild runs are valid and pay as wild (wild has explicit x3/x4/x5 pay values)
 
 1. Mark winning-line cells as `null`.
 2. For each column, pull non-null entries downward (gravity).
-3. **Do not** fill empties from the top during a spin round. Mid-round resolution is depletion-only in all modes (normal, Trinity Run, SUPER Free Spins).
+3. **Do not** fill empties from the top during a spin round. Mid-round resolution is depletion-only in all modes (normal, Trinity, Free Spins).
 
 Initial spin setup still populates a fresh 5x5 via `grid.populate()` at paid-spin start and encounter setup. `GridManager.refill()` remains available for future item hooks but is not called from cascade resolution.
 

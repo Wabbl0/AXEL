@@ -64,7 +64,7 @@ var _rest_offset_top := 0.0
 
 
 func _ready() -> void:
-	layer = 110
+	layer = 111
 	_fade_root.visible = false
 	_fade_root.modulate.a = 0.0
 	_panel_style = _panel.get_theme_stylebox("panel").duplicate() as StyleBoxFlat

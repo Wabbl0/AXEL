@@ -21,7 +21,7 @@ content_margin_bottom = 1
 blend_mode = 1
 
 [node name="InteractPromptOverlay" type="CanvasLayer"]
-layer = 111
+layer = 110
 follow_viewport_enabled = false
 script = ExtResource("1_script")
 

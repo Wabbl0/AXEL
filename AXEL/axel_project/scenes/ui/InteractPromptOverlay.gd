@@ -26,7 +26,7 @@ var _crt_opts = CrtPowerFx.compact_chip_options()
 
 
 func _ready() -> void:
-	layer = 111
+	layer = 110
 	_label.text = key_label
 	_root.visible = false
 	_root.modulate.a = 0.0

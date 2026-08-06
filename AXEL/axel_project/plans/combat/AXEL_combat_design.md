@@ -38,7 +38,7 @@ Kept verbatim as the mechanical spine so we know what we're reskinning.
 
 - **Grid:** 5 columns × 5 rows.
 - **Win rule:** line pays — 3+ matching symbols connected horizontally or vertically in a single row/column, with no gaps. A symbol may contribute to one horizontal and one vertical win at the same time.
-- **Cascade:** winning symbols are removed and remaining symbols fall (gravity-only). No new symbols spawn from the top during a spin round (normal, Trinity Run, or SUPER Free Spins).
+- **Cascade:** winning symbols are removed and remaining symbols fall (gravity-only). No new symbols spawn from the top during a spin round (normal, Trinity, or Free Spins).
 - **Wild drop:** when a winning line of exactly 3 symbols resolves, a **wild** appears in the middle cell of that line. 4-symbol and 5-symbol wins do not create a wild.
 - **Multiplier:** starts at x1 and increases by +1 for each new drop (each cascade step). During Free Spins, the multiplier can grow up to **100×**.
 - **Three princesses (rotating):** exactly one princess is active on-screen. Girl Power triggers at random on non-winning spins. The active princess changes only after a Girl Power activation, in fixed order **Love → Star → Storm**. The opening active princess is random.
@@ -71,13 +71,13 @@ All symbols are placeholder art for now (red-on-black, respects the existing pal
 
 Power-symbol alias map used across this project:
 - `cigarette` means **Storm**
-- `booze`/`alcohol` means **Star**
+- `alcohol` means **Star** (prefer this name; older code may still use id `booze`)
 - `bloody hand` means **Love**
 
 | MP100 princess | AXEL premium | Power role |
 |---|---|---|
 | **Storm (green)** | **Cigarette** | Removes two low-pay symbol types from the grid — "burning away noise." |
-| **Star (blue)** | **Booze bottle (XXX label)** | Adds 1–2 wilds with intelligent placement — "drowning it out." |
+| **Star (blue)** | **Alcohol bottle (XXX label)** | Adds 1–2 wilds with intelligent placement — "drowning it out." |
 | **Love (red)** | **Bloody hand** | Transforms a random symbol into another type — "rewriting the memory." |
 
 ### Wild

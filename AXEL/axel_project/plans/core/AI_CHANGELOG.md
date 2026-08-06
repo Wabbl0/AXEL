@@ -3891,3 +3891,115 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: In `2.1_Cafeteria`, the "[E]" chip for the table/memory, kitchen, return, backyard, and classrooms doors now centers exactly on each interact area's collision shape instead of floating 52px above it. Every other scene's chip position is unchanged (explicit override matches the old default).
 - Verification: Not run (no local Godot binary in this session); visual check recommended in-editor for `2.1_Cafeteria`'s five interact zones.
+
+## 2026-08-03
+
+### 2.4 Classrooms Corridor — white bg, L stretch, future-door stub
+- Request: Make `2.4` background white; stretch the L-corridor much longer (not wider), then widen the whole corridor ~1.5× and cut the second leg length in half; wire the future/1.2 stub door; stop lounge/cafeteria interact areas from scaling with the stretch.
+- Implementation: Replaced the flat corridor placeholder art with a white texture (gitignored under `exports/Drawings/`). Rescaled `2.4_ClassroomsCorridor.tscn` geometry (walls, fills, doors, spawns) for a long L layout with follow-up width/leg tweaks. Added `FutureDoorInteractArea` + once line `"Not yet."` (no scene change). Lounge/cafeteria interact shapes use dedicated sizes (not shared stretch sync). Small cafeteria door/interact collider nudges for the new corridor link.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/exports/Drawings/2.4_ClassroomsCorridor.png` (gitignored local art)
+- Behavior impact: Classrooms corridor is a large walkable L; future door only shows dialogue; cafeteria link colliders match the new sizes.
+- Verification: Manual editor/play checks during the session; temporary geom helper uid added in the ship commit.
+- Notes: Shipped with related 08-03 work in commit `ebed207` (2026-08-04).
+
+### 8-band overworld noir test (not production)
+- Request: Test an overworld noir filter with more bands (2 black, 2 grey, 4 red) without replacing production 3-band canon; make it easy to toggle before play.
+- Implementation: Added test shader `noir_palette_8band_test.gdshader`. `AxelPostFxStack` can swap noir to 8-band via `DEBUG_USE_NOIR_8BAND_TEST` or env `AXEL_NOIR_8BAND=1`. Registered a `noir_8band_test` row in the visual-style variant matrix. Production overlay scene stays on 3-band unless the debug flag/env is on.
+- Files changed:
+  - `AXEL/axel_project/tools/visual_style/shaders/noir_palette_8band_test.gdshader`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/tools/visual_style/variant_matrix.gd`
+- Behavior impact: Overworld can preview 8-band noir for playtests; 3-band remains production canon until explicitly promoted.
+- Verification: Manual F5/F6 overworld preview during the session.
+- Notes: At ship time `DEBUG_USE_NOIR_8BAND_TEST` was left `true` for ongoing playtest — flip to `false` (or unset env) for production 3-band. Shipped in `ebed207`.
+
+### Stop automatic changelog appends (end-of-day only)
+- Request: Stop agents from auto-writing the changelog; user will ask a separate agent to update docs at end of day.
+- Implementation: Removed the AI_DOCS line that told agents to optionally append the changelog on `update docs`. Git commits remain the primary history; this changelog is updated only when asked.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Agents no longer treat changelog append as a routine wrap-up step unless the user asks.
+- Verification: Doc text check only.
+- Notes: Shipped in `ebed207`.
+
+### 1.1 / 1.2 player scale baseline + cover void / intro walk
+- Request: Fix Mike rendering too small vs background after viewport edits; never show red void at edges (zoom/cover instead); retire road `locked_feet_y` for the intro; shorten intro wait to 1s; camera tilt then horizontal walk-in (no diagonal); cut move speed ~33%.
+- Implementation: Extended `PlayerCoverSync` with `authored_bg_baseline` / position so 1.1 and 1.2 remap from pre-migration hand-tuned background scale. Camera limits use `Layout.compute_global_world_rect` so scene-root offsets cannot open post-FX void. Added `follow_enabled` + `place_center_clamped` for intro: camera starts lifted, waits `INTRO_START_WAIT_SEC` (1s), then follows; Mike spawns fully off-screen left and walks horizontally on a fixed road Y. Removed intro glitch-burst wait and old diagonal walk helpers. Tuned 1.1 player speed `180→120`, collider tweaks, playtest overrides; 1.2 player/locker interact positions + baseline. Set `window/stretch/mode="disabled"` explicitly in `project.godot`.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/player_cover_sync.gd`
+  - `AXEL/axel_project/scenes/core/background_layout.gd`
+  - `AXEL/axel_project/scenes/core/background_camera_controller.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior_Playtest.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/project.godot`
+- Behavior impact: 1.1 intro is a short wait → tilt-down → straight walk to the stones; player size tracks cover-fit; edges stay filled by art instead of red void; 1.2 scale stays correct on resize.
+- Verification: Iterative manual play of 1.1 intro during the session.
+- Notes: Shipped in `ebed207`.
+
+## 2026-08-04
+
+### AI_DOCS Q&A log + first rulebook rewrite (S0–S7)
+- Request: Interactive point-by-point check of `AI_DOCS.md` against the live game (game wins on conflict); start rewriting canon docs from those verdicts.
+- Implementation: Created `AI_DOCS_QA_LOG.md` and recorded verdicts through section S7. Rewrote much of `AI_DOCS.md` toward a lean rulebook (scope, hierarchy, architecture, combat naming notes, style/FX layer order, lore, workflow). Game/runtime scene work from 2026-08-03 was committed in the same ship.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS_QA_LOG.md` (new)
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - (same commit also includes 2026-08-03 scene/VFX files — see that day section)
+- Behavior impact: Agents start from the rewritten AI_DOCS foundation; full cascade to linked docs/runtime finished on 2026-08-06.
+- Verification: Doc review in-session; no full headless suite required for docs-only portion.
+- Notes: Commit `ebed207`. S8 Q&A + GameManager/UI/combat cascade completed under 2026-08-06.
+
+---
+
+## 2026-08-06
+
+### AI_DOCS interactive canon overhaul — cascade complete
+- Request: Finish the AI_DOCS point-by-point overhaul against live game; cascade linked docs/rules and runtime cleanup (game wins when docs disagree).
+- Implementation: Extended `AI_DOCS_QA_LOG.md` with S8 (+ rulebook-not-catalog principle). Finished AI_DOCS as a rulebook (not a shipped-scene catalog). Cascaded governance rule, `SCENE_BUILDING.md`, `README_STRUCTURE.md`, event-FX layer order, combat design/notes terminology (Trinity → Free Spins; alcohol not booze in docs/UI). Stripped HTML/JSON narrative UI from `GameManager.gd`. Deleted `PLAYTEST_DEBUG_COLLISIONS.md`. Swapped dialogue/prompt canvas layers so dialogue draws above `[E]`; renamed SUPER Free Spins UI copy to Free Spins.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS_QA_LOG.md` (extended; created 2026-08-04)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+  - `AXEL/axel_project/plans/core/PLAYTEST_DEBUG_COLLISIONS.md` (deleted)
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/references/AXEL_notes.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd` / `.tscn`
+  - `AXEL/axel_project/scenes/ui/InteractPromptOverlay.gd` / `.tscn`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/combat_test_scaffold_baseline.tscn`
+  - `AXEL/axel_project/combat/data/symbols/sym_booze.tres`
+- Behavior impact: Agents treat AI_DOCS as foundation rulebook; live scenes define what exists. Dialogue draws above interact prompt. GameManager is overworld-state only. Combat UI says Free Spins.
+- Verification: GameManager overworld smoke reported OK by implement subagent; full playtest not re-run after layer swap.
+- Notes: Internal combat symbol id may still be `booze` while user-facing/docs prefer alcohol. Further SUPER→Free Spins string cleanup may remain in older combat plans/tests.
+
+### SCENE_BUILDING — post-FX white/black authoring colors
+- Request: Document that new-scene clear/empty fill must be white (not black — filter turns black red); placeholders/polygons/shapes and all outlines must be black (filter turns them red).
+- Implementation: Added “Rule: post-FX colors — white ground, black shapes/outlines” to `SCENE_BUILDING.md` and mirrored it in the background-swap checklist. Pointed `AI_DOCS.md` new-PNG / scene-building bullets at the same rule.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None at runtime; agents/builders author colors against the noir remap.
+- Verification: Docs-only.
+
+### 3.1 Backyard — background PNG to white
+- Request: Change 3.1 texture to the same white as the previous scene (2.4).
+- Implementation: Replaced solid dark `(18,8,8)` `3.1_Backyard.png` with solid white `(255,255,255)` at the same `2800×2000` size so noir post-FX does not read the ground as red.
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/3.1_Backyard.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Backyard empty fill matches 2.4 white authoring; under noir it reads as dark void instead of red.
+- Verification: PNG pixel check (solid white); Godot reimport may be needed in editor.
