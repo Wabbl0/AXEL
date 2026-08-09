@@ -21,7 +21,10 @@ const AUTO_ADVANCE_READING_SQRT_COEFFICIENT := 0.5774
 const AUTO_ADVANCE_SKIP_GRACE_SEC := 2.0
 const AUTO_ADVANCE_READING_MAX_SEC := 20.0
 const SLIDE_OFFSET := 12.0
+## Baseline side padding for the full-width bar (fraction 1.0).
 const SIDE_INSET_PX := 28.0
+## Pre-test full-width look: set `bar_width_fraction` back to this.
+const BAR_WIDTH_FRACTION_FULL := 1.0
 const CURSOR_GLYPH := "\u2588"
 const GLITCH_SEC := 0.12
 const SCRAMBLE_CHARS := "!@#$%^&*?/\\|{}[]<>~`"
@@ -30,6 +33,8 @@ const DIM_BORDER := Color(0.290196, 0, 0, 0.35)
 const BAR_MIN_HEIGHT := 136.0
 
 @export var bottom_gap_px := 12.0
+## Playtest: bar width as a fraction of the old nearly-full bar. 1.0 = rollback to full width.
+@export_range(0.2, 1.0, 0.01) var bar_width_fraction := 2.0 / 3.0
 @export var fx_cursor := false
 @export var fx_slide_up := false
 @export var fx_chrome := true
@@ -108,9 +113,14 @@ func _lock_bottom_layout() -> void:
 	if not is_instance_valid(_fade_root) or not is_instance_valid(_panel):
 		return
 	var bar_h := maxf(_panel.get_combined_minimum_size().y, BAR_MIN_HEIGHT)
+	var viewport_w := get_viewport().get_visible_rect().size.x
+	var full_bar_w := maxf(0.0, viewport_w - (SIDE_INSET_PX * 2.0))
+	var fraction := clampf(bar_width_fraction, 0.2, BAR_WIDTH_FRACTION_FULL)
+	var target_w := full_bar_w * fraction
+	var side_inset := maxf(SIDE_INSET_PX, (viewport_w - target_w) * 0.5)
 	_fade_root.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_fade_root.offset_left = SIDE_INSET_PX
-	_fade_root.offset_right = -SIDE_INSET_PX
+	_fade_root.offset_left = side_inset
+	_fade_root.offset_right = -side_inset
 	_rest_offset_bottom = -bottom_gap_px
 	_rest_offset_top = -(bottom_gap_px + bar_h)
 	_fade_root.offset_bottom = _rest_offset_bottom

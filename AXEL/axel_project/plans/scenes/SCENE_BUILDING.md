@@ -68,7 +68,7 @@ Root (Node2D + scene script)
 └── InteractPromptOverlay (instanced)
 ```
 
-**Layer order (UI):** dialogue above `[E]` prompt; both above CRT / baseline post-FX. See `AI_DOCS.md` § Style and FX.
+**Layer order (UI):** dialogue above `[E]` prompt; both above CRT / baseline post-FX. Hub/map chrome (red `X`, travel choices) that must stay readable: CanvasLayer ~110 (above CRT 108, below dialogue 111) — do not rely on root Control `z_index`. See `AI_DOCS.md` § Style and FX.
 
 **Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`.
 

@@ -34,8 +34,10 @@ const _SECOND_DIALOGUE_LINE := "Yet, here we are."
 const _THIRD_DIALOGUE_LINE := "Pathetic."
 ## Hold before camera tilt + walk-in (replaces the long off-screen approach wait).
 const INTRO_START_WAIT_SEC := 1.0
-## How far above the stand target the camera starts so follow tilts down onto Mike.
+## How far above the stand target the camera starts so the intro can tilt down onto the road.
 const INTRO_CAMERA_START_LIFT_PX := 320.0
+## Controlled vertical tilt duration (follow stays off so the camera never races to off-screen Mike).
+const INTRO_CAMERA_TILT_DURATION_SEC := 3.4
 ## Extra world px beyond the left view edge so Mike starts fully off-screen.
 const INTRO_OFFSCREEN_PAD_PX := 96.0
 
@@ -122,9 +124,13 @@ func _run_forced_intro_sequence() -> void:
 
 	var stones_target := _left_stones_stand_target()
 	var cam := $Camera2D as BackgroundCamera
-	# Camera starts above the road (tilt-down when follow engages). Mike starts
-	# left of frame at the same Y as the rocks so he walks straight right.
+	# Camera starts above the road, then tilts down onto the stand point with
+	# follow off. Enabling follow while Mike is still off-screen left used to
+	# race the camera toward him (sudden fast tilt/pan). Mike walks in after.
+	var saved_smoothing := false
 	if cam != null:
+		saved_smoothing = cam.position_smoothing_enabled
+		cam.position_smoothing_enabled = false
 		cam.set_follow_enabled(false)
 		cam.place_center_clamped(
 			Vector2(stones_target.x, stones_target.y - INTRO_CAMERA_START_LIFT_PX)
@@ -134,8 +140,12 @@ func _run_forced_intro_sequence() -> void:
 
 	await get_tree().create_timer(INTRO_START_WAIT_SEC).timeout
 	if cam != null:
-		cam.set_follow_enabled(true)
+		await _intro_camera_tilt_to(cam, stones_target)
 	await _scripted_walk_horizontal_to(stones_target)
+	if cam != null:
+		cam.place_center_clamped(stones_target)
+		cam.position_smoothing_enabled = saved_smoothing
+		cam.set_follow_enabled(true)
 
 	if is_instance_valid(_left_wall_collision):
 		_left_wall_collision.set_deferred("disabled", false)
@@ -150,6 +160,26 @@ func _run_forced_intro_sequence() -> void:
 	_refresh_door_interact_prompt()
 
 	_play_first_dialogue_line()
+
+
+func _intro_camera_tilt_to(cam: BackgroundCamera, end_center: Vector2) -> void:
+	if cam == null:
+		return
+	var start := cam.global_position
+	var duration := INTRO_CAMERA_TILT_DURATION_SEC
+	if duration <= 0.0:
+		cam.place_center_clamped(end_center)
+		return
+	var elapsed := 0.0
+	while elapsed < duration and is_instance_valid(cam):
+		elapsed += get_process_delta_time()
+		var t := clampf(elapsed / duration, 0.0, 1.0)
+		# Smoothstep: ease in/out so the tilt never spikes in speed.
+		var s := t * t * (3.0 - 2.0 * t)
+		cam.place_center_clamped(start.lerp(end_center, s))
+		await get_tree().process_frame
+	if is_instance_valid(cam):
+		cam.place_center_clamped(end_center)
 
 
 func _intro_offscreen_left_spawn(stones_target: Vector2) -> Vector2:

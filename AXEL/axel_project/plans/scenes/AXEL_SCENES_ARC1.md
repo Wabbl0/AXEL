@@ -54,7 +54,7 @@
 
 ### 1.3 Locker Hub (`scene_3`)
 
-**Location label:** `YOUR LOCKER`
+**Location label:** none (locker view only)
 
 **Dialogue:**
 
@@ -62,7 +62,9 @@
 > [beat]  
 > Was your memory so bad you needed a map of the school?
 
-**Choices:**
+**Hub:** no travel menu. Map paper hotspot opens `1.3_SchoolMap.tscn`. Red `X` (CanvasLayer 110, above CRT) returns to corridor.
+
+**School map (`1.3_SchoolMap`) choices:**
 
 
 | Button label                       | Target                           |
@@ -73,7 +75,7 @@
 | Go to the teacher's lounge         | Teachers' Lounge                 |
 | ENTER THE BASEMENT *(red, locked)* | Basement Blocked / Basement Door |
 
-**Implemented (Godot):** `1.3_LockerHub.tscn` + `1.3_LockerHub.gd` — four destinations above (basement omitted); `MapHotspot` (`UiPolygonHotspot`, `background_path = ../Background`) on the MAP paper → swaps background to `map.png` (hover tint + click only inside polygon; clicks ignored during first-visit dialogue); red `X` exit to corridor. Reachable from `1.2_Corridor.tscn` locker interact zone. First-visit lines use `TopDialogueOverlay.show_line()`; player can skip with click / E / Space / Enter while the bar is up (`CrtPowerFx.cancel()` on skip — no session freeze). **Tune map hit area:** `MapHotspot/PolygonAnchor/CollisionPolygon2D` vertex handles in texture-pixel space.
+**Implemented (Godot):** `1.3_LockerHub.tscn` + `1.3_LockerHub.gd` — locker background only; `MapHotspot` (`UiPolygonHotspot`, `background_path = ../Background`) on the MAP paper → `change_scene_to_file` to `1.3_SchoolMap.tscn` (clicks ignored during first-visit dialogue); red `X` on CanvasLayer 110 exits to corridor. `1.3_SchoolMap.tscn` + `.gd` — flat black placeholder background; bottom-left travel choices (four destinations + locked red basement); red `X` on CanvasLayer 110 returns to locker hub. Reachable from `1.2_Corridor.tscn` locker interact zone. First-visit lines use `TopDialogueOverlay.show_lines()`; player can skip with click / E / Space / Enter while the bar is up (`CrtPowerFx.cancel()` on skip — no session freeze). **Tune map hit area:** `MapHotspot/PolygonAnchor/CollisionPolygon2D` vertex handles in texture-pixel space.
 
 
 ---

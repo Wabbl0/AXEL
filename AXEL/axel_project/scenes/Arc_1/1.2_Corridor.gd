@@ -172,6 +172,8 @@ func _handle_locker_zone_entered() -> void:
 	_locker_enter_token += 1
 	_try_show_locker_interact_prompt()
 	if not GameManager.corridor_locker_line_seen and not _locker_line_running:
+		# Mark seen immediately so leaving mid-line (or to locker hub) never re-triggers it.
+		GameManager.set_corridor_locker_line_seen(true)
 		_play_locker_line_async(_locker_enter_token)
 
 
@@ -198,9 +200,6 @@ func _play_locker_line_async(token: int) -> void:
 			_spawn_line_active = false
 		await _top_dialogue.show_line(LOCKER_LINE, 3.0)
 	_locker_line_running = false
-	if token != _locker_enter_token or not _locker_zone_active:
-		return
-	GameManager.set_corridor_locker_line_seen(true)
 
 
 func _try_show_locker_interact_prompt() -> void:

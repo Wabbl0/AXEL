@@ -4003,3 +4003,49 @@ Keep scope minimal. One batched question list only if truly blocked.
   - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
 - Behavior impact: Backyard empty fill matches 2.4 white authoring; under noir it reads as dark void instead of red.
 - Verification: PNG pixel check (solid white); Godot reimport may be needed in editor.
+
+---
+
+## 2026-08-09
+
+### 1.1 School Exterior — stop sudden intro camera race
+- Request: Intro camera starts at a good speed, then suddenly accelerates into a very fast tilt until Mike enters view; remove that spike.
+- Implementation: Keep camera follow off during the intro tilt. After the 1s wait, run a controlled smoothstep tilt (`INTRO_CAMERA_TILT_DURATION_SEC` 3.4s) onto the stones stand point with position smoothing temporarily disabled; only then walk Mike in horizontally and re-enable follow. Previously enabling follow while Mike was still off-screen left raced the camera toward him.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+- Behavior impact: Intro tilt stays even; no sudden pan/tilt spike before the walk-in.
+- Verification: Manual play of 1.1 intro during the session.
+
+### 1.3 Locker Hub — separate school map scene + X above CRT
+- Request: Red hub `X` washed out by post-FX; remove “YOUR LOCKER”; hide travel choices until the map is opened; open a separate empty map scene (no map art yet) with the travel buttons.
+- Implementation: Stripped hub chrome (location label + choices). Hub `MapHotspot` now `change_scene_to_file` → new `1.3_SchoolMap.tscn` (flat black placeholder, four destinations + locked red basement, red `X` back to hub). Hub and map red `X` live on CanvasLayer 110 so CRT/noir do not cover them. First-visit dialogue + `scene_3` memory gate kept. Smoke list includes the new map scene. `AXEL_SCENES_ARC1.md` §1.3 updated to match.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_SchoolMap.gd` (new)
+  - `AXEL/axel_project/scenes/Arc_1/1.3_SchoolMap.tscn` (new)
+  - `AXEL/axel_project/tools/scene_smoke_check.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Locker hub is locker-view only; fast travel is only on the school map scene; exit buttons stay above CRT.
+- Verification: Headless `scene_smoke_check.gd` reported OK (8 scenes) in the implement session.
+
+### 1.2 Corridor — “This was your locker.” once-ever on start
+- Request: Corridor locker line must only play once, even if the player leaves mid-line or enters the locker hub and returns.
+- Implementation: Call `GameManager.set_corridor_locker_line_seen(true)` as soon as the locker zone starts the line (no longer wait for line finish + still-in-zone). Leaving early can no longer re-trigger it in the same save/session (debug builds still reset flags each editor run by design).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+- Behavior impact: Locker once-ever line cannot replay after a mid-line exit.
+- Verification: Logic review in-session; editor debug reset behavior unchanged.
+
+### TopDialogueOverlay — 2/3-width banner playtest (easy rollback)
+- Request: Try a shorter dialogue banner (~2/3 current width) for playtest only, with a clear rollback.
+- Implementation: Added `@export_range bar_width_fraction` (default `2.0/3.0`) and `BAR_WIDTH_FRACTION_FULL := 1.0`. `_lock_bottom_layout()` centers the bar using that fraction of the old nearly-full width. Scene offsets updated to match the narrower default. Rollback: set **Bar Width Fraction** to `1.0` in the Inspector (or ask to revert files).
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: All dialogue bars are narrower and centered until rolled back or promoted.
+- Verification: Not run headlessly; visual playtest left to user.
+- Notes: Temporary playtest — not locked production canon until confirmed.
