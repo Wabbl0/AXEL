@@ -48,7 +48,7 @@ Use the shared background + camera pipeline. Do **not** hand-tune `limit_*` or `
 
 ### Rule (mandatory for every new scene): white background, black outlines/placeholders
 
-Author **source** colors against the noir/VFX remap — not the final on-screen look. The filter turns white ground dark and black ink red.
+Author **source** colors against the noir/VFX remap — not the final on-screen look. Production VFX is **8-band inverted noir** (see `AI_DOCS.md` § Style and FX). The filter still turns white ground dark and black ink red.
 
 **Always:**
 
@@ -74,7 +74,7 @@ Root (Node2D + scene script)
 
 **Layer order (UI):** dialogue above `[E]` prompt; both above CRT / baseline post-FX. Hub/map chrome (red `X`, travel choices) that must stay readable: CanvasLayer ~110 (above CRT 108, below dialogue 111) — do not rely on root Control `z_index`. See `AI_DOCS.md` § Style and FX.
 
-**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert.
+**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white.
 
 **Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape.
 

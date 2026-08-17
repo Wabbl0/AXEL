@@ -8,7 +8,7 @@ Design recap for the combat layer. Captures the narrative framing, the chosen me
 
 - **AXEL** is a top-down 2D psychological horror about a grown-up returning to the rotting school where they abandoned a friend.
 - Story-driven but non-linear — player choice shapes one of five endings.
-- Aesthetic: strict black + two reds (`--blood-red #ff0000`, `--dark-blood #4a0000`), CRT scanlines, VT323 / Space Mono type, glitch and shake FX.
+- Aesthetic: overworld VFX is **8-band inverted noir** (4 red / 2 warm grey / 2 black — see `AI_DOCS.md`). Combat is excluded from that post-FX stack and still ships as black/red CRT (placeholder art: red-on-black). VT323 / Space Mono type, glitch and shake FX.
 - Core exploration loop: hub-and-spoke school, recover 5 memory fragments, collect intangible items (Flashlight, Key, Shovel, *Name*), speak the name over the grave.
 - Recurring motifs: lighter with "AXEL" scratched on it, cigarettes as a shared ritual / hint mechanic, the basement as literal + emotional burial, the locker as sanctuary/hub.
 - Open question the prototype leaves unanswered: **where does combat live?** This document is the answer.

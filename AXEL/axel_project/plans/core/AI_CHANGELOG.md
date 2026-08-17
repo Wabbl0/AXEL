@@ -4108,3 +4108,148 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: All dialogue can flash cryptic glyphs while typing; only lines with `|beat:N|` pause mid-line (1.2 spawn is the first). Skip still jumps to the clean full line.
 - Verification: Logic review + string spacing fix in-session; playtest left to user.
 - Notes: Other scene dialogue strings unchanged (no beats until authored).
+
+## 2026-08-17
+
+### Promote 8-band inverted noir to production canon
+- Request: Confirm the playtested multi-color (8-band) VFX noir as the new canon palette; update AI_DOCS, the governance rule, and any other plans/docs that still called 3-band production.
+- Implementation: Rewrote palette canon to 8-band inverted noir (4 red / 2 warm grey / 2 black). Marked old 3-band as retired. Left runtime wiring as-is (`DEBUG_USE_NOIR_8BAND_TEST` already true).
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/tools/visual_style/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS_QA_LOG.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only — overworld already ran 8-band when the debug flag was on. Agents must now document and ship against 8-band, not 3-band.
+- Verification: Searched plans/docs for leftover “3-band production / 8-band test-only” wording.
+- Notes: Shader path and flag names still say `test`; that is leftover wiring, not a canon status. Combat stays excluded from the post-FX stack (black/red placeholder art).
+
+### 3.1 Backyard + 5.1 Classroom — wire hand-drawn backgrounds
+- Request: Use the new drawings in `exports/Drawings` as the 3.1 and 5.1 scene backgrounds; remove placeholder graphics; leave collision borders for manual placement. Check that `3.1_Backyard_v2` (already red/black) uses the correct production red.
+- Implementation: Copied `5.1_Classroom_v2.png` over canonical `5.1_Classroom.png` (already white fill + black ink). Converted `3.1_Backyard_v2.png` from red-on-black (artist used `#FF0000`, 25 above canon red1 `#E60000` / `0.90`) to white fill + black ink so 8-band noir shows the production reds instead of double-inverting a pre-colored plate. Both scenes already pointed at the canonical PNG paths; removed visual-only `Placeholders` (`Line2D`/`Polygon2D`); resized the 4 outer walls to the new `3508×2480` texture bounds. Door/interact colliders and player spawn were left in place for the user to move.
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/3.1_Backyard.png`
+  - `AXEL/axel_project/exports/Drawings/5.1_Classroom.png`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 3.1 and 5.1 show the new drawings; under post-FX the backyard reads as red-on-black with canon reds. Placeholder shapes are gone. Outer walls match the new art size; inner collisions still need a manual pass.
+- Verification: PNG color check (3.1 converted to white/black; 5.1 already authoring-correct). Headless import + scene smoke after reimport.
+- Notes: Artist originals `3.1_Backyard_v2.png` and `5.1_Classroom_v2.png` were left in `exports/Drawings/`.
+
+### 2.2 Cafeteria Memory — wire hand-drawn background
+- Request: Scene 2.2 now has its drawn version; include it as the scene background like 3.1/5.1.
+- Implementation: Replaced the `ScenePlaceholder` stub with a still-image memory scene (`2.2_Cafeteria_Memory.png` + locked background + `BackgroundCamera` cover/static). Converted the art from red-on-black to white fill + black ink so 8-band noir shows production reds. Plays canon memory lines once, then E returns to the cafeteria table. No player or placeholder graphics (POV table drawing is not a walkable room).
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/2.2_Cafeteria_Memory.png`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Table `[E]` in 2.1 now opens the drawn memory instead of a black text placeholder. Dialogue plays once; E returns you to the table. Under post-FX the art reads as red-on-black.
+- Verification: Headless import + load of `2.2_CafeteriaMemory.tscn`.
+- Notes: No collision borders to move — this scene has no player.
+
+### 2.1 Cafeteria — player 5% larger
+- Request: Increase the player model size in scene 2.1 by 5%.
+- Implementation: Raised authored `PlayerLayer/Player` scale from `2.25` to `2.3625` (`2.25 × 1.05`). Speed left at `189.75`. `PlayerCoverSync` still uses the scene scale as the first-layout reference.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike appears 5% larger in the cafeteria. Collision grows with the node. Walk speed is unchanged.
+- Verification: Scene file scale check.
+- Notes: Visual-only size tweak; no spawn or collider retune.
+
+### 2.1 Cafeteria — player scale 2.5
+- Request: Make the player scale 2.5 in scene 2.1.
+- Implementation: Set authored `PlayerLayer/Player` scale from `2.3625` to `2.5`. Speed left at `189.75`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike is a bit larger than the 5% bump. Walk speed is unchanged.
+- Verification: Scene file scale check.
+- Notes: Follow-up to the 5% increase in the same session.
+
+### 2.1 Cafeteria — player scale 3.0
+- Request: Bump the player scale in scene 2.1 to 3.
+- Implementation: Set authored `PlayerLayer/Player` scale from `2.5` to `3`. Speed left at `189.75`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike is larger again in the cafeteria. Walk speed is unchanged.
+- Verification: Scene file scale check.
+- Notes: Follow-up size tweak in the same session.
+
+### 2.2 Cafeteria Memory — AXEL lines bright red
+- Request: Cafeteria memory 2.2 other-speaker texts (`AXEL:`) should type in bright red instead of white.
+- Implementation: Restored canon `AXEL:` prefixes on those memory lines. `TopDialogueOverlay` now colors any ALL-CAPS speaker-tag line (`AXEL: ...`) bright red; player/narration stays white.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: In 2.2, Axel's three lines are red; "You answer / energy / Sorry" stay white. Future `NAME:` lines anywhere will use the same red.
+- Verification: Logic review of speaker-tag detect + color apply/reset on show/hide.
+- Notes: Dialogue sits above noir, so authored `#FF0000` shows as bright red.
+
+### 2.2 Cafeteria Memory — match ARC2 canon quotes
+- Request: Check that the 2.2 scene script matches current `AXEL_SCENES_ARC2.md` dialogue.
+- Implementation: Added the missing wrapping quotes on the two player lines (`"I just - don't have the energy..."` and `"Sorry."`). AXEL lines and `[beat]` splits were already correct. 2.1 / 2.3 lines already matched.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Those two player lines now show with quotes, matching locked canon.
+- Verification: Line-by-line compare of Arc 2 scripts vs `AXEL_SCENES_ARC2.md`.
+
+### 2.2 Cafeteria Memory — 1.85:1 frame above dialogue
+- Request: Crop 2.2 from the top to 1.85:1 with black around the still (taller top/bottom, thinner sides). Do not move or scale the dialogue bar. Follow-ups in the same chat: shrink 25% and center; drop overlay bars that showed red edges; raise the still; then fill the play area marked by arrows (some black on all sides, still above the bar).
+- Implementation: Added scene-local `2.2_cafeteria_memory_frame.gd`. Runtime top-crop via Sprite `region_rect` to 1.85:1 (bottom of the drawing stays). Camera `CONTAIN` + `max_auto_zoom=1`. Final fit fills a content box above the dialogue bar (side ~2.5%, top ~4.5%, small gap above the bar). Overlay ColorRect letterbox was tried then removed (post-FX turned the bar edges red). World-space white `VoidFill` (hidden in the editor) keeps empty areas dark under 8-band noir. Dropped the 75% shrink after playtest. Removed invalid `region_filter_clip` (not on Sprite2D in Godot 4.7) so the scene starts.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.2_cafeteria_memory_frame.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 2.2 shows a widescreen slice of the drawing, large, with a little black around it and the hand above the dialogue bar.
+- Verification: Playtest screenshots in session; crash fix confirmed by reload.
+- Notes: 2.2-only framing. PNG on disk unchanged. Shared camera helpers unchanged.
+
+### 2.2 Cafeteria Memory — hide AXEL: tags (`|other|`)
+- Request: Remove on-screen `AXEL:` from 2.2 lines; color is enough to mark other speakers.
+- Implementation: 2.2 `MEMORY_LINES` use `|other|` instead of `AXEL:`. `TopDialogueOverlay` strips `|other|` from display (same parser as `|beat:N|`) and still types those lines bright red. ALL-CAPS `NAME:` tags still work.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Axel’s three 2.2 lines are red with no speaker name. Player/narration stays white.
+- Verification: Logic review of marker strip + other-speaker color.
+- Notes: Follow-up to the same-day “AXEL lines bright red” entry. Use `|other|` when the name should not appear.
+
+### 2.2 Cafeteria Memory — exit [X], return spot, collection
+- Request: Scene 2.2 had no red `[X]`, keyboard leave felt stuck, return snapped to the table-zone center, and the 2.1 glow/`[E]` stayed after the memory.
+- Implementation: Copied locker-hub `ExitLayer`/`ExitButton` (CanvasLayer 110, VT323 red `X`) onto 2.2. Leave (X and E/Space/Enter) waits for `_can_exit` after `show_lines` finishes. 2.1 saves the exact standing spot in texture-pixel space (`cafeteria_table_return_pos`) and restores it on return. First successful leave calls `add_memory_once("cafeteria_memory")`; 2.1 then hides `MemoryIndicator` and disables `TableInteractArea`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/tools/scene_smoke_check.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: After the memory lines finish, `[X]` and E return to 2.1 at the same table standing spot. Glow and table `[E]` are gone for the rest of that run. Counts toward 5/5 memories.
+- Verification: Headless scene smoke including 2.2.
+- Notes: Debug builds skip save load, so the glow returns each editor run. 2.2 art/crop/`MEMORY_LINES` unchanged.

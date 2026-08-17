@@ -17,6 +17,7 @@ var _smoke_scenes: PackedStringArray = PackedStringArray([
 	"res://scenes/Arc_1/1.3_LockerHub.tscn",
 	"res://scenes/Arc_1/1.3_SchoolMap.tscn",
 	"res://scenes/Arc_2/2.1_Cafeteria.tscn",
+	"res://scenes/Arc_2/2.2_CafeteriaMemory.tscn",
 	"res://combat/scenes/combat_root.tscn",
 	COMBAT_TEST_SCENE,
 ])

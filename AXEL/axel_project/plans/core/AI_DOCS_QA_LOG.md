@@ -562,3 +562,10 @@ Game/runtime is preferred over stale docs when they conflict; final wording come
 - **Verdict:** canon
 - **Final wording:** (unchanged)
 - **Cascade:** —
+
+### S4-01 / S4-09 — 8-band noir promoted (2026-08-17)
+- **Original claim:** S4-01 / S4-09: production palette is 3-band (black + `#ff0000` + `#4a0000`); 8-band is test-only until promoted.
+- **Verdict:** canon (revised — user confirmed 8-band as production)
+- **Final wording:** Production palette is 8-band inverted noir (4 red / 2 warm grey / 2 black). Shader `noir_palette_8band_test.gdshader` (on via `DEBUG_USE_NOIR_8BAND_TEST` / `AXEL_NOIR_8BAND=1`). Old 3-band is retired — do not document or ship against it.
+- **Cascade:** `AI_DOCS.md` Style/FX; `.cursor/rules/axel-ai-docs-governance.mdc`; `SCENE_BUILDING.md`; `AXEL_combat_design.md`; `AXEL_OVERWORLD_EVENT_FX.md`; `tools/visual_style/README_gd_scripts.md`
+- **Note:** S4-01 and S4-09 final wording above are historical. Code still names the shader/flag `*_test`; that is wiring, not “still experimental.”

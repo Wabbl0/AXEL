@@ -1,15 +1,63 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://bwpstyqcljkt5"]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" uid="uid://r5dnn5co7gsm" path="res://scenes/Arc_2/2.2_CafeteriaMemory.gd" id="1_memory"]
+[ext_resource type="Texture2D" uid="uid://bn7cof0m24lnk" path="res://exports/Drawings/2.2_Cafeteria_Memory.png" id="2_memory_bg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
+[ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="4_camera_script"]
+[ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="5_bg_lock"]
+[ext_resource type="Script" uid="uid://dcqmn1lf1uf5d" path="res://scenes/Arc_2/2.2_cafeteria_memory_frame.gd" id="6_frame"]
+[ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="7_font"]
 
-[node name="ScenePlaceholder" type="Control"]
-layout_mode = 3
-anchors_preset = 15
+[node name="2_2_CafeteriaMemory" type="Node2D" unique_id=1824663402]
+script = ExtResource("1_memory")
+
+[node name="WalkableWorld" type="Node2D" parent="." unique_id=254175630]
+
+[node name="VoidFill" type="Polygon2D" parent="WalkableWorld" unique_id=499709413]
+visible = false
+z_index = -101
+polygon = PackedVector2Array(-4000, -4000, 8000, -4000, 8000, 8000, -4000, 8000)
+
+[node name="Background" type="Sprite2D" parent="WalkableWorld" unique_id=1550750099]
+z_index = -100
+texture_filter = 1
+texture = ExtResource("2_memory_bg")
+centered = false
+region_enabled = true
+region_rect = Rect2(0, 584, 3508, 1896)
+script = ExtResource("5_bg_lock")
+metadata/_edit_lock_ = true
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=30607984]
+script = ExtResource("4_camera_script")
+background_path = NodePath("../WalkableWorld/Background")
+fit_mode = 1
+margin_px = 12.0
+max_auto_zoom = 1.0
+
+[node name="MemoryFrame" type="Node" parent="." unique_id=2110410248]
+script = ExtResource("6_frame")
+
+[node name="ExitLayer" type="CanvasLayer" parent="." unique_id=389910304]
+layer = 110
+
+[node name="ExitButton" type="Button" parent="ExitLayer" unique_id=562482031]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_scene_placeholder")
-scene_id = "2.2"
-location_label = "CAFETERIA"
-dialogue = PackedStringArray("\"Do you think I'm a bad person?\"", "[beat]", "You answer, \"No.\"", "[beat]", "\"I just - don't have the energy. To be around you.\"", "[beat]", "\"Sorry.\"", "\"Oh.\"", "[beat]", "\"No. I understand.\"")
+offset_left = -82.0
+offset_top = -82.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_colors/font_pressed_color = Color(0.75, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.25, 0.25, 1)
+theme_override_fonts/font = ExtResource("7_font")
+theme_override_font_sizes/font_size = 36
+text = "X"
+
+[node name="TopDialogueOverlay" parent="." unique_id=509748563 instance=ExtResource("3_top_dialogue")]

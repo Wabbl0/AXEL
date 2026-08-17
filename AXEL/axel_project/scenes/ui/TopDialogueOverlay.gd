@@ -39,6 +39,9 @@ const CHAR_SCRAMBLE_MAX_SEC := 0.05
 const BASE_BORDER := Color(0.290196, 0, 0, 1)
 const DIM_BORDER := Color(0.290196, 0, 0, 0.35)
 const BAR_MIN_HEIGHT := 136.0
+## Player / narration. Other speakers (`AXEL: ...`) use bright red.
+const PLAYER_LINE_COLOR := Color(1, 1, 1, 1)
+const OTHER_SPEAKER_COLOR := Color(1, 0, 0, 1)
 
 ## Legacy fixed gap; ignored when `bottom_gap_viewport_fraction` > 0.
 @export var bottom_gap_px := BOTTOM_GAP_PX_FULL
@@ -324,7 +327,7 @@ func _scramble_glitch(length: int) -> void:
 			return
 
 
-## Splits `|beat:<seconds>|` markers from display text. Malformed tokens stay literal.
+## Splits `|beat:<seconds>|` and `|other|` markers from display text. Malformed tokens stay literal.
 ## Returns { "display": String, "segments": Array of {kind:text|beat, ...} }.
 func _parse_dialogue_segments(raw: String) -> Dictionary:
 	var segments: Array = []
@@ -337,6 +340,9 @@ func _parse_dialogue_segments(raw: String) -> Dictionary:
 			var close := raw.find("|", i + 1)
 			if close > i:
 				var token := raw.substr(i + 1, close - i - 1)
+				if token == "other":
+					i = close + 1
+					continue
 				if token.begins_with("beat:"):
 					var sec_str := token.substr(5)
 					if sec_str.is_valid_float():
@@ -362,6 +368,37 @@ func _parse_dialogue_segments(raw: String) -> Dictionary:
 
 func _dialogue_display_text(raw: String) -> String:
 	return str(_parse_dialogue_segments(raw)["display"])
+
+
+## True when the line is tagged `|other|` or starts with an ALL-CAPS speaker tag (`AXEL: ...`).
+func _is_other_speaker_line(text: String) -> bool:
+	if text.contains("|other|"):
+		return true
+	var display := _dialogue_display_text(text).strip_edges()
+	var colon := display.find(":")
+	if colon <= 0:
+		return false
+	var speaker := display.substr(0, colon)
+	for i in range(speaker.length()):
+		var code := speaker.unicode_at(i)
+		if code == 32:
+			continue
+		if code < 65 or code > 90:
+			return false
+	return true
+
+
+func _apply_line_color(text: String) -> void:
+	if not is_instance_valid(_label):
+		return
+	var color := OTHER_SPEAKER_COLOR if _is_other_speaker_line(text) else PLAYER_LINE_COLOR
+	_label.add_theme_color_override("font_color", color)
+
+
+func _reset_line_color() -> void:
+	if not is_instance_valid(_label):
+		return
+	_label.add_theme_color_override("font_color", PLAYER_LINE_COLOR)
 
 
 func _is_scrambleable_char(ch: String) -> bool:
@@ -399,6 +436,7 @@ func interrupt_line() -> void:
 		_fade_root.modulate.a = 0.0
 	if is_instance_valid(_label):
 		_label.text = ""
+	_reset_line_color()
 	_reset_crt_visual()
 
 
@@ -475,6 +513,7 @@ func show_lines(
 
 	for i in range(texts.size()):
 		var text: String = str(texts[i])
+		_apply_line_color(text)
 		if i > 0:
 			if fx_line_swap_glitch:
 				await _scramble_glitch(_dialogue_display_text(text).length())
@@ -521,6 +560,7 @@ func type_line(
 	_advance_requested = false
 	_skip_requested = false
 	_skip_input_enabled = allow_skip
+	_apply_line_color(text)
 	var is_swap := (
 		fx_line_swap_glitch
 		and _fade_root.visible
@@ -545,6 +585,7 @@ func _run_typewriter(
 	var parsed := _parse_dialogue_segments(full_text)
 	var display_text: String = str(parsed["display"])
 	var segments: Array = parsed["segments"]
+	_apply_line_color(full_text)
 	_active_line_text = display_text
 	_skip_requested = false
 	if display_text.is_empty() and segments.is_empty():
@@ -645,6 +686,7 @@ func hide_line() -> void:
 		_fade_root.visible = false
 		_lock_bottom_layout()
 		_label.text = ""
+		_reset_line_color()
 		_sequence_active = false
 		return
 	var tw_out := create_tween().set_parallel(true)
@@ -658,4 +700,5 @@ func hide_line() -> void:
 	_fade_root.visible = false
 	_lock_bottom_layout()
 	_label.text = ""
+	_reset_line_color()
 	_sequence_active = false

@@ -26,7 +26,7 @@
 | Return to locker  | Locker Hub      |
 
 
-**Implemented (Godot) — shell only, mini-games deferred:** `5.1_Classroom.tscn` + `.gd` — walkable shell with flat placeholder background, Kitchen player profile, `STATIC_LOCKED` camera, one door back to `2.4_ClassroomsCorridor` (`classrooms_corridor_spawn_side="classroom_door"`). Visual-only desk/board Polygon2D placeholders (not interactive). Canon enter lines play once via `GameManager.classroom_enter_line_seen`. Desk/board puzzle scenes are **not** wired yet — structure only, not arc-complete. Hub 1.3 still loads this file by path.
+**Implemented (Godot) — shell only, mini-games deferred:** `5.1_Classroom.tscn` + `.gd` — walkable shell with hand-drawn `5.1_Classroom.png` (from `5.1_Classroom_v2`; white fill + black ink), Kitchen player profile, `STATIC_LOCKED` camera, one door back to `2.4_ClassroomsCorridor` (`classrooms_corridor_spawn_side="classroom_door"`). Placeholder desk/board polygons removed; door colliders are left for manual placement. Canon enter lines play once via `GameManager.classroom_enter_line_seen`. Desk/board puzzle scenes are **not** wired yet — structure only, not arc-complete. Hub 1.3 still loads this file by path.
 
 ---
 

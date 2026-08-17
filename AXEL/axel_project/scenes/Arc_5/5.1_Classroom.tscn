@@ -10,10 +10,10 @@
 [ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
-size = Vector2(2600, 40)
+size = Vector2(3508, 40)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
-size = Vector2(40, 1900)
+size = Vector2(40, 2480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_block"]
 size = Vector2(80, 420)
@@ -40,25 +40,25 @@ metadata/_edit_lock_ = true
 [node name="EnvironmentColliders" type="Node2D" parent="WalkableWorld"]
 
 [node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
-position = Vector2(1300, 20)
+position = Vector2(1754, 20)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall"]
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
-position = Vector2(1300, 1880)
+position = Vector2(1754, 2460)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall"]
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
-position = Vector2(20, 950)
+position = Vector2(20, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall"]
 shape = SubResource("RectangleShape2D_wall_vertical")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
-position = Vector2(2580, 950)
+position = Vector2(3488, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall"]
 shape = SubResource("RectangleShape2D_wall_vertical")
@@ -75,25 +75,6 @@ monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea"]
 shape = SubResource("RectangleShape2D_door_interact")
-
-[node name="Placeholders" type="Node2D" parent="WalkableWorld/EnvironmentColliders"]
-
-[node name="WallOutline" type="Line2D" parent="WalkableWorld/EnvironmentColliders/Placeholders"]
-width = 8.0
-default_color = Color(0.45, 0.12, 0.12, 1)
-points = PackedVector2Array(40, 40, 2560, 40, 2560, 1860, 40, 1860, 40, 40)
-
-[node name="Corridor_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders"]
-color = Color(0.40960324, 0.40960327, 0.40960324, 1)
-polygon = PackedVector2Array(20, 740, 90, 740, 90, 1160, 20, 1160)
-
-[node name="Desk" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders"]
-color = Color(0.32, 0.18, 0.12, 0.7)
-polygon = PackedVector2Array(1600, 700, 2200, 700, 2200, 1100, 1600, 1100)
-
-[node name="Board" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders"]
-color = Color(0.2, 0.35, 0.2, 0.65)
-polygon = PackedVector2Array(700, 120, 1900, 120, 1900, 320, 700, 320)
 
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("7_camera_script")

@@ -6,7 +6,7 @@ Canonical reference for **event-tier** overworld visual effects — distinct fro
 
 | Layer | Owner | Behavior |
 |-------|-------|----------|
-| **Baseline post-FX** | `AxelPostFxStack` autoload | Always-on noir + scanline + CRT on non-combat scene enter |
+| **Baseline post-FX** | `AxelPostFxStack` autoload | Always-on 8-band inverted noir + scanline + CRT on non-combat scene enter |
 | **Event-tier overlays** | `AxelEventFx` autoload | Always-on interference wave + scripted glitch bursts + interface pulse cadence |
 | **Future micro-FX** | Per-scene (planned) | StoryBox text glitch, camera shake tweens, localized flashes |
 

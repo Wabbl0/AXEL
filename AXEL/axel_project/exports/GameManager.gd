@@ -17,6 +17,8 @@ var corridor_locker_line_seen: bool = false
 var corridor_spawn_line_seen: bool = false
 var basement_door_line_seen: bool = false
 var corridor_return_pos: Vector2 = INVALID_RETURN_POS
+## Transient (not persisted). Texture-pixel standing spot when leaving 2.1 for 2.2.
+var cafeteria_table_return_pos: Vector2 = INVALID_RETURN_POS
 ## Transient (not persisted). e.g. "basement_right" when leaving 1.4 for 1.2.
 var corridor_spawn_side: String = ""
 ## Transient (not persisted). e.g. "cafeteria_right" when leaving 2.1 for 1.4.
@@ -41,6 +43,8 @@ var backyard_enter_line_seen: bool = false
 var teachers_lounge_enter_line_seen: bool = false
 ## Once-ever classroom enter line (5.1).
 var classroom_enter_line_seen: bool = false
+## Once-ever cafeteria memory lines (2.2).
+var cafeteria_memory_line_seen: bool = false
 
 # ============================================================
 # INITIALIZATION
@@ -78,6 +82,7 @@ func _load_persistent_state() -> void:
 	backyard_enter_line_seen = false
 	teachers_lounge_enter_line_seen = false
 	classroom_enter_line_seen = false
+	cafeteria_memory_line_seen = false
 	if not _persistence_enabled():
 		print("GameManager: debug build — ignoring saved narrative state.")
 		return
@@ -102,6 +107,7 @@ func _load_persistent_state() -> void:
 	backyard_enter_line_seen = bool(data.get("backyard_enter_line_seen", false))
 	teachers_lounge_enter_line_seen = bool(data.get("teachers_lounge_enter_line_seen", false))
 	classroom_enter_line_seen = bool(data.get("classroom_enter_line_seen", false))
+	cafeteria_memory_line_seen = bool(data.get("cafeteria_memory_line_seen", false))
 
 func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
 	var merged := defaults.duplicate(true)
@@ -127,6 +133,7 @@ func _save_persistent_state() -> void:
 		"backyard_enter_line_seen": backyard_enter_line_seen,
 		"teachers_lounge_enter_line_seen": teachers_lounge_enter_line_seen,
 		"classroom_enter_line_seen": classroom_enter_line_seen,
+		"cafeteria_memory_line_seen": cafeteria_memory_line_seen,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -166,6 +173,10 @@ func set_classroom_enter_line_seen(value: bool = true) -> void:
 	classroom_enter_line_seen = value
 	_save_persistent_state()
 
+func set_cafeteria_memory_line_seen(value: bool = true) -> void:
+	cafeteria_memory_line_seen = value
+	_save_persistent_state()
+
 func set_corridor_return_pos(pos: Vector2) -> void:
 	corridor_return_pos = pos
 
@@ -175,6 +186,17 @@ func has_corridor_return_pos() -> bool:
 func take_corridor_return_pos() -> Vector2:
 	var pos := corridor_return_pos
 	corridor_return_pos = INVALID_RETURN_POS
+	return pos
+
+func set_cafeteria_table_return_pos(pos: Vector2) -> void:
+	cafeteria_table_return_pos = pos
+
+func has_cafeteria_table_return_pos() -> bool:
+	return cafeteria_table_return_pos != INVALID_RETURN_POS
+
+func take_cafeteria_table_return_pos() -> Vector2:
+	var pos := cafeteria_table_return_pos
+	cafeteria_table_return_pos = INVALID_RETURN_POS
 	return pos
 
 func set_corridor_spawn_side(side: String) -> void:
