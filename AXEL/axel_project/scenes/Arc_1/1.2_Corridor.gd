@@ -97,7 +97,7 @@ func _show_spawn_line() -> void:
 		return
 	_spawn_line_active = true
 	await _top_dialogue.show_line(
-		"Even after all these years the smell is the same. They must've used some really toxic paint.",
+		"Even after all these years the smell is the same.|beat:1.5| They must've used some really toxic paint.",
 		3.5
 	)
 	_spawn_line_active = false

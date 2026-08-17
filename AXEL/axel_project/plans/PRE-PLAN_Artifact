@@ -17,7 +17,14 @@ Questionnaire rule:
 - Use Cursor AskQuestion for ambiguities before the artifact.
 - Do not post --- EXPLORATION ARTIFACT --- until I have answered (or there were none).
 - After answers, print the artifact once. Record outcomes under Decisions: — not as unanswered bullets.
-When ready, end your reply with this block only (fill every field; quote line refs or node names where you read code):
+
+Output rule (copy-paste handoff):
+- When ready, your ENTIRE final reply must be ONLY the EXPLORATION ARTIFACT block below — nothing before it, nothing after it.
+- No intro, no summary, no “here is the artifact,” no extra markdown fences around the block.
+- That way the user can select-all / copy the whole reply into a new Premium plan chat with @AXEL/axel_project/plans/PREMIUM_Artifact.
+- Never edit PREMIUM_Artifact or this PRE-PLAN_Artifact file to store the artifact; the artifact lives only in chat for handoff.
+
+Fill every field; quote line refs or node names where you read code:
 --- EXPLORATION ARTIFACT ---
 Area: <combat | scenes | narrative | vfx-overworld>
 Symptom: <what the player sees>

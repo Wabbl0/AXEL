@@ -46,13 +46,17 @@ Keep scenes visibly abandoned, looted, broken, and rotting while preserving read
 
 Use the shared background + camera pipeline. Do **not** hand-tune `limit_*` or `fixed_x`. Do **not** embed noir/scanline/CRT overlays (`AxelPostFxStack` owns those).
 
-### Rule: post-FX colors — white ground, black shapes/outlines
+### Rule (mandatory for every new scene): white background, black outlines/placeholders
 
-The noir filter remaps colors. Author against that, not the final on-screen look:
+Author **source** colors against the noir/VFX remap — not the final on-screen look. The filter turns white ground dark and black ink red.
 
-- **Clear color / empty fill behind the PNG:** always **white** — never black. Black clear color becomes a red field.
-- **Placeholders, polygons, block fills, and other solid shapes:** always **black**. The filter turns them red (intended look).
-- **Outlines (Line2D, stroke, border):** always **black**.
+**Always:**
+
+1. **Background PNG / empty fill:** pure **white** (`#ffffff` / `Color(1,1,1,1)`). Never ship a black or near-black clear fill — under VFX that becomes a red field (wrong).
+2. **All drawn placeholders and other authored shapes:** **black** fills (`Color(0,0,0,…)`).
+3. **All outlines** (`Line2D`, strokes, borders on placeholders/props): **black** (`Color(0,0,0,1)`).
+
+Do not use red, brown, or grey “preview” colors in the editor for outlines — they will not match the intended black→red look after post-FX.
 
 ### Scene tree
 
@@ -70,7 +74,7 @@ Root (Node2D + scene script)
 
 **Layer order (UI):** dialogue above `[E]` prompt; both above CRT / baseline post-FX. Hub/map chrome (red `X`, travel choices) that must stay readable: CanvasLayer ~110 (above CRT 108, below dialogue 111) — do not rely on root Control `z_index`. See `AI_DOCS.md` § Style and FX.
 
-**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`.
+**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert.
 
 **Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape.
 
@@ -130,6 +134,16 @@ in the editor does nothing at runtime.
 See `2.3_Kitchen.gd` (`_player_spawn_tex`) and `2.1_Cafeteria.gd`
 (`_player_spawn_tex`, `_memory_indicator_tex`) for reference implementations.
 
+### Rule: each CollisionShape2D gets its own Shape2D resource
+
+Never share one `RectangleShape2D` / `CircleShape2D` / other `Shape2D` SubResource across two `CollisionShape2D` nodes that should resize or scale independently.
+
+Godot stores the shape as a shared resource. If two doors point at the same SubResource, editing size/scale on one changes the other.
+
+1. After duplicating a `CollisionShape2D` in the editor: select the shape in the Inspector → **Make Unique**.
+2. In `.tscn` text: every door/interact/wall collider that must be tuned alone needs its own `[sub_resource type="RectangleShape2D" id="..."]` and a matching `shape = SubResource("...")`.
+3. Door blockers belong under their own `StaticBody2D` (e.g. `LoungeDoorBlock` → `Lounge_CollisionShape2D`), not as orphan `CollisionShape2D` children of `EnvironmentColliders`.
+
 ### Rule: interact-prompt "[E]" chip has no offset by default
 
 `InteractPromptOverlay.gd`'s `screen_offset` export defaults to `Vector2.ZERO`
@@ -169,7 +183,7 @@ Always target `<arc>.<index>_<Name>.tscn` (e.g. `1.2_Corridor.tscn`). Never crea
 
 1. Drawing exists + `.import` generated; note texture uid.
 2. Inventory `.tscn` nodes — remove visual-only placeholders; keep collision, interact areas, player, UI overlays, scene script.
-3. Wire `Sprite2D` background (`z_index=-100`, `centered=false`) to the drawing; prefer `WalkableWorld/Background` + lock script for new scenes. Clear color / empty fill = **white**; placeholders/polygons/shapes and all outlines = **black** (noir turns black red).
+3. Wire `Sprite2D` background (`z_index=-100`, `centered=false`) to the drawing; prefer `WalkableWorld/Background` + lock script for new scenes. PNG empty fill = pure **white** (never black — VFX turns white ground dark / black ink red). Placeholders and **all outlines** = **black**.
 4. Remove orphaned `ext_resource` / tilemap `sub_resource` entries.
 5. Verify `@onready` / `get_node()` paths still exist.
 6. Editor check: loads, art visible, player moves, post-FX on top, dialogue readable, transitions work.

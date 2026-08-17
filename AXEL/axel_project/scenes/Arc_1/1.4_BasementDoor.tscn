@@ -13,7 +13,7 @@
 size = Vector2(2400, 24)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
-size = Vector2(233.25, 1515)
+size = Vector2(63.25, 1515)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor_divider"]
 size = Vector2(2400, 39)
@@ -28,7 +28,7 @@ size = Vector2(80, 1493)
 size = Vector2(306.5, 495.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_cafeteria_interact"]
-size = Vector2(80, 1493)
+size = Vector2(120, 619.5)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -73,7 +73,7 @@ shape = SubResource("RectangleShape2D_wall_vertical")
 position = Vector2(2700, 763)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=748786056]
-position = Vector2(-419.375, -21)
+position = Vector2(-473.375, -21)
 shape = SubResource("RectangleShape2D_wall_vertical")
 
 [node name="FloorDividerWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1021070437]
@@ -127,6 +127,12 @@ position = Vector2(1090, 668)
 position = Vector2(124, -15)
 shape = SubResource("RectangleShape2D_door_block")
 
+[node name="Polygon2D" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/DoorWall" unique_id=522653964]
+position = Vector2(1114, 755.00006)
+scale = Vector2(0.75418776, 0.99999994)
+color = Color(0.32156864, 0.32156864, 0.32156864, 1)
+polygon = PackedVector2Array(53.999878, -520, 180.11292, -516.4431, 176.99988, 76, 55.999878, 76)
+
 [node name="ExitTrigger" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1017758600]
 position = Vector2(20, 701)
 monitorable = false
@@ -148,7 +154,7 @@ position = Vector2(2232, 701)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/CafeteriaInteractArea" unique_id=965764312]
-position = Vector2(-108, 50)
+position = Vector2(-97, 486.75)
 shape = SubResource("RectangleShape2D_cafeteria_interact")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1150417698]

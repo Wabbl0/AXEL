@@ -4049,3 +4049,62 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: All dialogue bars are narrower and centered until rolled back or promoted.
 - Verification: Not run headlessly; visual playtest left to user.
 - Notes: Temporary playtest — not locked production canon until confirmed.
+
+## 2026-08-10
+
+### Unlink 2.4 Classroom/Lounge door collision shapes
+- Request: `Classroom_CollisionShape2D` and `Lounge_CollisionShape2D` were scaling together; stop that and prevent recurrence.
+- Implementation: Gave every door/interact collider in `2.4_ClassroomsCorridor.tscn` its own `RectangleShape2D` SubResource (no shared `door_h` / `door_v` / `interact_v`). Nested lounge/classroom door shapes under `LoungeDoorBlock` / `ClassroomDoorBlock` `StaticBody2D` parents (they were orphaned under `EnvironmentColliders`). Documented “Make Unique / one SubResource per independently tuned CollisionShape2D” in `SCENE_BUILDING.md`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Resizing lounge or classroom door colliders in the editor no longer changes sibling door/interact shapes; lounge/classroom door blocks now collide as real `StaticBody2D`s.
+- Verification: Scene file inspection — each door/interact `CollisionShape2D` references a distinct SubResource.
+
+### Scene colors — white ground / black outlines (4.1 fix)
+- Request: Canon must say every new scene uses a white background PNG and black placeholder outlines; `4.1_TeachersLounge` had a black flat texture (wrong under VFX).
+- Implementation: Strengthened the mandatory white-bg / black-outline rule in `SCENE_BUILDING.md` and `AI_DOCS.md`. Regenerated `4.1_TeachersLounge.png` as pure white. Set lounge `WallOutline` / door / couch placeholder colors to black.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/exports/Drawings/4.1_TeachersLounge.png`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Teachers' Lounge ground should read as the intended dark void under VFX (not a red field); placeholders outline/fill as black→red.
+- Verification: PNG pixel check — full white `(255,255,255)`; scene placeholder colors set to `Color(0,0,0,…)`.
+- Notes: `5.1_Classroom.png` is still the same near-black flat fill if you want that fixed next.
+
+### Explore/Plan artifact handoff — never edit template files
+- Request: When pasting an exploration artifact into a new chat with `@PREMIUM_Artifact`, never insert the artifact into that file; Explore replies should be only the artifact block for easy copy-paste.
+- Implementation: Clarified both template files and `AI_DOCS.md` chat-workflow table: Explore final reply = artifact only; Plan uses pasted chat artifact + `@PREMIUM_Artifact` as instructions; templates are never storage for artifacts.
+- Files changed:
+  - `AXEL/axel_project/plans/PRE-PLAN_Artifact`
+  - `AXEL/axel_project/plans/PREMIUM_Artifact`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Agent workflow only — no runtime change.
+- Verification: Doc/template review in-session.
+
+### TopDialogueOverlay — playtest banner retune (wider + slight lift)
+- Request: After the first 2/3-width banner test, try a middle width and a smaller bottom lift.
+- Implementation: Default `bar_width_fraction` is now `BAR_WIDTH_FRACTION_PLAYTEST` (~0.88 = midpoint of full vs 2/3, then +5%). Added `@export bottom_gap_viewport_fraction` (default `0.03`; `0` uses fixed `bottom_gap_px`). Scene offsets updated to match. Rollback still `bar_width_fraction = 1.0` and gap fraction `0` / `12px`.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Dialogue bar is wider than the first 2/3 playtest and sits slightly above the bottom edge.
+- Verification: Visual playtest left to user.
+- Notes: Still temporary playtest — not locked production canon until confirmed.
+
+### TopDialogueOverlay — per-char scramble + `|beat:N|` pauses
+- Request: Implement exploration/plan for cryptic per-letter flash (default ON) and opt-in mid-line `|beat:<seconds>|` pauses; first consumer on 1.2 corridor spawn line.
+- Implementation: Extended `_run_typewriter` with segment parser (markers never shown), `fx_char_scramble` (~40% of letters/digits, 30–50 ms flash), beat pauses (advance ends pause only), display-length line-swap glitch, default CPS `35` (offset scramble delay), and auto-advance clock starting after the line is fully shown. Wired `|beat:1.5|` into 1.2 spawn line (space after marker preserved). FxPreview key **7** toggles char scramble. Documented in `AI_DOCS.md` / `SCENE_BUILDING.md`.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlayFxPreview.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+- Behavior impact: All dialogue can flash cryptic glyphs while typing; only lines with `|beat:N|` pause mid-line (1.2 spawn is the first). Skip still jumps to the clean full line.
+- Verification: Logic review + string spacing fix in-session; playtest left to user.
+- Notes: Other scene dialogue strings unchanged (no beats until authored).

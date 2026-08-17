@@ -15,7 +15,8 @@ enum LinePhase {
 
 const FADE_IN_SEC := 0.22
 const FADE_OUT_SEC := 0.22
-const DEFAULT_CHARS_PER_SEC := 28.0
+## ~25% faster than the old 28 CPS baseline (char-scramble flashes add perceived delay).
+const DEFAULT_CHARS_PER_SEC := 35.0
 const AUTO_ADVANCE_READING_BASE_SEC := 3.0
 const AUTO_ADVANCE_READING_SQRT_COEFFICIENT := 0.5774
 const AUTO_ADVANCE_SKIP_GRACE_SEC := 2.0
@@ -25,22 +26,34 @@ const SLIDE_OFFSET := 12.0
 const SIDE_INSET_PX := 28.0
 ## Pre-test full-width look: set `bar_width_fraction` back to this.
 const BAR_WIDTH_FRACTION_FULL := 1.0
+## Midpoint between full (1.0) and the first 2/3 playtest, then +5% width.
+const BAR_WIDTH_FRACTION_PLAYTEST := (BAR_WIDTH_FRACTION_FULL + 2.0 / 3.0) * 0.5 + 0.05
+## Pre-test bottom gap in pixels (used when `bottom_gap_viewport_fraction` is 0).
+const BOTTOM_GAP_PX_FULL := 12.0
 const CURSOR_GLYPH := "\u2588"
 const GLITCH_SEC := 0.12
 const SCRAMBLE_CHARS := "!@#$%^&*?/\\|{}[]<>~`"
+const CHAR_SCRAMBLE_CHANCE := 0.4
+const CHAR_SCRAMBLE_MIN_SEC := 0.03
+const CHAR_SCRAMBLE_MAX_SEC := 0.05
 const BASE_BORDER := Color(0.290196, 0, 0, 1)
 const DIM_BORDER := Color(0.290196, 0, 0, 0.35)
 const BAR_MIN_HEIGHT := 136.0
 
-@export var bottom_gap_px := 12.0
+## Legacy fixed gap; ignored when `bottom_gap_viewport_fraction` > 0.
+@export var bottom_gap_px := BOTTOM_GAP_PX_FULL
+## Playtest: lift bar by this fraction of window height above the bottom edge. 0 = use `bottom_gap_px`.
+@export_range(0.0, 0.4, 0.01) var bottom_gap_viewport_fraction := 0.03
 ## Playtest: bar width as a fraction of the old nearly-full bar. 1.0 = rollback to full width.
-@export_range(0.2, 1.0, 0.01) var bar_width_fraction := 2.0 / 3.0
+@export_range(0.2, 1.0, 0.01) var bar_width_fraction := BAR_WIDTH_FRACTION_PLAYTEST
 @export var fx_cursor := false
 @export var fx_slide_up := false
 @export var fx_chrome := true
 @export var fx_line_swap_glitch := true
 @export var fx_border_pulse := false
 @export var fx_crt_power := true
+## Per-letter cryptic flash while typing (letters/digits only).
+@export var fx_char_scramble := true
 
 @onready var _fade_root: Control = $ViewportRoot/RootMargin
 @onready var _panel: PanelContainer = $ViewportRoot/RootMargin/BarPanel
@@ -113,16 +126,20 @@ func _lock_bottom_layout() -> void:
 	if not is_instance_valid(_fade_root) or not is_instance_valid(_panel):
 		return
 	var bar_h := maxf(_panel.get_combined_minimum_size().y, BAR_MIN_HEIGHT)
-	var viewport_w := get_viewport().get_visible_rect().size.x
+	var viewport_size := get_viewport().get_visible_rect().size
+	var viewport_w := viewport_size.x
 	var full_bar_w := maxf(0.0, viewport_w - (SIDE_INSET_PX * 2.0))
 	var fraction := clampf(bar_width_fraction, 0.2, BAR_WIDTH_FRACTION_FULL)
 	var target_w := full_bar_w * fraction
 	var side_inset := maxf(SIDE_INSET_PX, (viewport_w - target_w) * 0.5)
+	var gap_px := bottom_gap_px
+	if bottom_gap_viewport_fraction > 0.0:
+		gap_px = viewport_size.y * bottom_gap_viewport_fraction
 	_fade_root.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_fade_root.offset_left = side_inset
 	_fade_root.offset_right = -side_inset
-	_rest_offset_bottom = -bottom_gap_px
-	_rest_offset_top = -(bottom_gap_px + bar_h)
+	_rest_offset_bottom = -gap_px
+	_rest_offset_top = -(gap_px + bar_h)
 	_fade_root.offset_bottom = _rest_offset_bottom
 	_fade_root.offset_top = _rest_offset_top
 	_reset_crt_visual()
@@ -307,6 +324,66 @@ func _scramble_glitch(length: int) -> void:
 			return
 
 
+## Splits `|beat:<seconds>|` markers from display text. Malformed tokens stay literal.
+## Returns { "display": String, "segments": Array of {kind:text|beat, ...} }.
+func _parse_dialogue_segments(raw: String) -> Dictionary:
+	var segments: Array = []
+	var display := ""
+	var text_buf := ""
+	var i := 0
+	var n := raw.length()
+	while i < n:
+		if raw[i] == "|":
+			var close := raw.find("|", i + 1)
+			if close > i:
+				var token := raw.substr(i + 1, close - i - 1)
+				if token.begins_with("beat:"):
+					var sec_str := token.substr(5)
+					if sec_str.is_valid_float():
+						var sec := sec_str.to_float()
+						if sec >= 0.0:
+							if not text_buf.is_empty():
+								segments.append({"kind": "text", "text": text_buf})
+								display += text_buf
+								text_buf = ""
+							segments.append({"kind": "beat", "sec": sec})
+							i = close + 1
+							continue
+			text_buf += raw[i]
+			i += 1
+		else:
+			text_buf += raw[i]
+			i += 1
+	if not text_buf.is_empty():
+		segments.append({"kind": "text", "text": text_buf})
+		display += text_buf
+	return {"display": display, "segments": segments}
+
+
+func _dialogue_display_text(raw: String) -> String:
+	return str(_parse_dialogue_segments(raw)["display"])
+
+
+func _is_scrambleable_char(ch: String) -> bool:
+	if ch.length() != 1:
+		return false
+	var code := ch.unicode_at(0)
+	var is_digit := code >= 48 and code <= 57
+	var is_upper := code >= 65 and code <= 90
+	var is_lower := code >= 97 and code <= 122
+	return is_digit or is_upper or is_lower
+
+
+func _set_typing_label(visible_text: String) -> void:
+	_cursor_text = visible_text
+	if fx_cursor:
+		_cursor_active = true
+		_label.text = _compose(visible_text)
+	else:
+		_cursor_active = false
+		_label.text = visible_text
+
+
 ## Instantly cuts the current line so a higher-priority line can take over.
 func interrupt_line() -> void:
 	_line_token += 1
@@ -400,7 +477,7 @@ func show_lines(
 		var text: String = str(texts[i])
 		if i > 0:
 			if fx_line_swap_glitch:
-				await _scramble_glitch(text.length())
+				await _scramble_glitch(_dialogue_display_text(text).length())
 			else:
 				_label.text = ""
 			if not _line_alive(token):
@@ -455,7 +532,7 @@ func type_line(
 	if not _fade_root.visible or _fade_root.modulate.a < 1.0:
 		await _fade_in()
 	if is_swap:
-		await _scramble_glitch(text.length())
+		await _scramble_glitch(_dialogue_display_text(text).length())
 	await _run_typewriter(text, chars_per_sec, allow_skip, _line_token)
 
 
@@ -465,11 +542,14 @@ func _run_typewriter(
 	allow_skip: bool,
 	token: int = -1,
 ) -> void:
-	var n := full_text.length()
-	_active_line_text = full_text
-	_active_line_start_ms = Time.get_ticks_msec()
+	var parsed := _parse_dialogue_segments(full_text)
+	var display_text: String = str(parsed["display"])
+	var segments: Array = parsed["segments"]
+	_active_line_text = display_text
 	_skip_requested = false
-	if n == 0:
+	if display_text.is_empty() and segments.is_empty():
+		# Reading timer starts when the line is fully shown, not when typing begins.
+		_active_line_start_ms = Time.get_ticks_msec()
 		_line_phase = LinePhase.READY
 		return
 
@@ -477,28 +557,73 @@ func _run_typewriter(
 	_start_border_pulse()
 	var cps := maxf(chars_per_sec, 4.0)
 	var delay := 1.0 / cps
+	var revealed := ""
+	var abort_to_full := false
 
-	for i in range(1, n + 1):
+	for segment in segments:
 		if token >= 0 and not _line_alive(token):
 			_stop_border_pulse()
 			_line_phase = LinePhase.NONE
 			return
 		if allow_skip and _skip_requested:
+			abort_to_full = true
 			break
-		var revealed := full_text.substr(0, i)
-		_cursor_text = revealed
-		if fx_cursor:
-			_cursor_active = true
-			_label.text = _compose(revealed)
-		else:
-			_cursor_active = false
-			_label.text = revealed
-		if await _await_or_skip(delay, allow_skip):
+
+		if str(segment.get("kind", "")) == "beat":
+			var beat_sec: float = float(segment.get("sec", 0.0))
+			var end_ms := Time.get_ticks_msec() + int(beat_sec * 1000.0)
+			while Time.get_ticks_msec() < end_ms:
+				if token >= 0 and not _line_alive(token):
+					_stop_border_pulse()
+					_line_phase = LinePhase.NONE
+					return
+				if allow_skip and _skip_requested:
+					# Advance during beat ends pause only; typing continues.
+					_skip_requested = false
+					break
+				if not await _await_process_frame():
+					_stop_border_pulse()
+					_line_phase = LinePhase.NONE
+					return
+			continue
+
+		var chunk: String = str(segment.get("text", ""))
+		for ci in range(chunk.length()):
+			if token >= 0 and not _line_alive(token):
+				_stop_border_pulse()
+				_line_phase = LinePhase.NONE
+				return
+			if allow_skip and _skip_requested:
+				abort_to_full = true
+				break
+
+			var ch := chunk[ci]
+			if (
+				fx_char_scramble
+				and _is_scrambleable_char(ch)
+				and randf() < CHAR_SCRAMBLE_CHANCE
+			):
+				var scramble_ch := SCRAMBLE_CHARS[randi() % SCRAMBLE_CHARS.length()]
+				_set_typing_label(revealed + scramble_ch)
+				var flash_sec := randf_range(CHAR_SCRAMBLE_MIN_SEC, CHAR_SCRAMBLE_MAX_SEC)
+				if await _await_or_skip(flash_sec, allow_skip):
+					abort_to_full = true
+					break
+
+			revealed += ch
+			_set_typing_label(revealed)
+			if await _await_or_skip(delay, allow_skip):
+				abort_to_full = true
+				break
+
+		if abort_to_full:
 			break
 
 	_cursor_active = false
-	_label.text = full_text
+	_label.text = display_text
 	_stop_border_pulse()
+	# Start auto-advance clock after the last letter (beats/scramble no longer eat the hold).
+	_active_line_start_ms = Time.get_ticks_msec()
 	_line_phase = LinePhase.READY
 
 

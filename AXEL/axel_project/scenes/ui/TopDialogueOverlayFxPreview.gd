@@ -1,7 +1,7 @@
 extends Control
 
 ## Dev-only preview for TopDialogueOverlay FX toggles.
-## Play this scene directly: keys 1-6 toggle effects, Space replays the sample sequence.
+## Play this scene directly: keys 1-7 toggle effects, Space replays the sample sequence.
 
 @onready var _overlay: CanvasLayer = $TopDialogueOverlay
 @onready var _status: Label = $StatusLabel
@@ -33,6 +33,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_overlay.fx_border_pulse = not _overlay.fx_border_pulse
 		KEY_6:
 			_overlay.fx_crt_power = not _overlay.fx_crt_power
+		KEY_7:
+			_overlay.fx_char_scramble = not _overlay.fx_char_scramble
 		KEY_SPACE:
 			_play_sample()
 		_:
@@ -42,8 +44,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _refresh_status() -> void:
 	_status.text = (
-		"TopDialogueOverlay FX Preview (defaults: chrome + glitch + CRT ON)\n"
-		+ "1 cursor: %s  |  2 slide: %s  |  3 chrome: %s  |  4 glitch: %s  |  5 pulse: %s  |  6 CRT: %s\n"
+		"TopDialogueOverlay FX Preview (defaults: chrome + glitch + CRT + char scramble ON)\n"
+		+ "1 cursor: %s  |  2 slide: %s  |  3 chrome: %s  |  4 glitch: %s  |  5 pulse: %s  |  6 CRT: %s  |  7 char: %s\n"
 		+ "[Space] replay sample (CRT on -> line1 -> advance -> scramble -> line2 -> advance -> CRT off)"
 	) % [
 		_on_off(_overlay.fx_cursor),
@@ -52,6 +54,7 @@ func _refresh_status() -> void:
 		_on_off(_overlay.fx_line_swap_glitch),
 		_on_off(_overlay.fx_border_pulse),
 		_on_off(_overlay.fx_crt_power),
+		_on_off(_overlay.fx_char_scramble),
 	]
 
 

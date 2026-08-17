@@ -1,11 +1,22 @@
 PREMIUM PLAN
 AXEL — plan only. Do not implement or edit files.
+
+CRITICAL — do not edit this template file:
+- The user will paste an EXPLORATION ARTIFACT in the chat and @-reference this file.
+- Never insert that artifact into PREMIUM_Artifact (or any other plans/* template).
+- This file is reference/instructions only. Deliver only a new plan in the chat (or a new plan file if the user asks for one).
+
 Tool rule: Do NOT read, grep, search, or explore the codebase.
-Use ONLY the EXPLORATION ARTIFACT below. If a path, line, or behavior is missing or unclear, ask me in one batched question list — do not verify in the repo yourself.
+Use ONLY the EXPLORATION ARTIFACT pasted in the chat (not stored in this file). If a path, line, or behavior is missing or unclear, ask me in one batched question list — do not verify in the repo yourself.
 @AXEL/axel_project/plans/core/AI_DOCS.md (canon only — no file hunting)
+
+Expected user message shape:
+1. @AXEL/axel_project/plans/PREMIUM_Artifact
+2. Pasted block:
 --- EXPLORATION ARTIFACT ---
-<paste block from Auto explore chat>
+...
 --- END ARTIFACT ---
+
 Deliver:
 1. Numbered implementation steps (file + concrete change; no full code unless one line is essential)
 2. Acceptance criteria (what I should see in-game after the fix)
