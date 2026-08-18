@@ -76,7 +76,7 @@ Root (Node2D + scene script)
 
 **Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white.
 
-**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape.
+**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked.
 
 ### Camera2D exports (`BackgroundCamera`)
 
@@ -134,6 +134,24 @@ in the editor does nothing at runtime.
 See `2.3_Kitchen.gd` (`_player_spawn_tex`) and `2.1_Cafeteria.gd`
 (`_player_spawn_tex`, `_memory_indicator_tex`) for reference implementations.
 
+### Rule: no visual offset from the node (default)
+
+By default the **player model**, **memory glow**, and **`[E]` interact chip**
+must sit on their node. No extra offset.
+
+- Player: `AnimatedSprite`, `ShadowOutline`, and `CollisionShape2D` stay at
+  `(0, 0)` on the Player node. Do not author a sprite/collision child offset
+  to “fix” spawn. Move the Player node itself.
+- Memory glow: `MemoryIndicator.visual_offset` stays `Vector2.ZERO`. Align
+  `MemoryInteractArea` to the same editor point as the glow node.
+- `[E]` chip: `InteractPromptOverlay.screen_offset` stays `Vector2.ZERO`
+  (shared default). Do not put a scene-wide override on the overlay node.
+
+Cover-fit remap (`env.to_global(_foo_tex)` from that node’s own editor
+position) is **not** an offset. Child `position`, `visual_offset`, and
+`screen_offset` **are** offsets — leave them zero unless the user asks for
+one specific nudge (then scope it to that one zone/node).
+
 ### Rule: each CollisionShape2D gets its own Shape2D resource
 
 Never share one `RectangleShape2D` / `CircleShape2D` / other `Shape2D` SubResource across two `CollisionShape2D` nodes that should resize or scale independently.
@@ -146,15 +164,15 @@ Godot stores the shape as a shared resource. If two doors point at the same SubR
 
 ### Rule: interact-prompt "[E]" chip has no offset by default
 
-`InteractPromptOverlay.gd`'s `screen_offset` export defaults to `Vector2.ZERO`
-— the chip centers exactly on the interact anchor (the `CollisionShape2D`'s
-`global_position`). Never add a nudge (screen-space `screen_offset` override
-in a scene's `.tscn`, or a world-space anchor offset in the scene script) as
-a blanket/default choice. Only add one when explicitly asked for a specific
-interact point, and scope it as narrowly as possible (ideally per-zone in the
-scene script's anchor function, not the whole-scene `screen_offset`, since
-one `InteractPromptOverlay` node is shared by every interact zone in a
-scene).
+Same as the no-visual-offset rule above. `InteractPromptOverlay.gd`'s
+`screen_offset` export defaults to `Vector2.ZERO` — the chip centers exactly
+on the interact anchor (the `CollisionShape2D`'s `global_position`). Never
+add a nudge (screen-space `screen_offset` override in a scene's `.tscn`, or
+a world-space anchor offset in the scene script) as a blanket/default
+choice. Only add one when explicitly asked for a specific interact point,
+and scope it as narrowly as possible (ideally per-zone in the scene
+script's anchor function, not the whole-scene `screen_offset`, since one
+`InteractPromptOverlay` node is shared by every interact zone in a scene).
 
 ### QA smoke (new scenes)
 
@@ -202,9 +220,10 @@ Do not rewire without approval. Still deferred:
 
 Do not copy to new scenes without a design pass.
 
-- Zones: `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` + `leaf_occlusion_zone.gd`
+- Zones: `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` + `leaf_occlusion_zone.gd`
 - Wired in `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_polygons` → `white_sprite.gdshader`
-- Designer-tuned `feather_px = 12.0` — do not reset without playtest
+- Trees use a trunk Y-gate. `RightWall_Behind` uses cutoff `1e9` (no trunk line) so only the polygon matters. Shader: cutoff `> 1e8` means “allow,” not “off.”
+- Canon `feather_px = 2.0` on all behind zones (1.1 trees + right wall, 2.1 tables/chairs, 3.1 wall/bush/well)
 
 ## What is walkable / shipped
 

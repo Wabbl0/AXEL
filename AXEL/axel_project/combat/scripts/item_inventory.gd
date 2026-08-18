@@ -7,6 +7,8 @@ const LEGENDARY_RARITY_INT := 4
 
 ## Direct access for iteration; use equip()/unequip() to enforce constraints.
 var items: Array = []
+## Playtest only: when true, skip the 7/9 overflow reject. Duplicate ids still rejected.
+var ignore_slot_cap: bool = false
 
 
 func get_base_max_slots() -> int:
@@ -25,10 +27,35 @@ func equip(item: Resource) -> bool:
 		for existing in items:
 			if existing.get("id") == new_id:
 				return false
-	var projected_max := BASE_MAX_SLOTS + _compute_bonus_slots(items) + _item_slot_bonus(item)
-	if items.size() + 1 > projected_max:
-		return false
+	if not ignore_slot_cap:
+		var projected_max := BASE_MAX_SLOTS + _compute_bonus_slots(items) + _item_slot_bonus(item)
+		if items.size() + 1 > projected_max:
+			return false
 	items.append(item)
+	return true
+
+
+func replace_at(index: int, new_item: Resource) -> bool:
+	if new_item == null:
+		return false
+	if index < 0 or index >= items.size():
+		return false
+	var new_id = new_item.get("id")
+	if new_id != null:
+		for i in items.size():
+			if i == index:
+				continue
+			if items[i].get("id") == new_id:
+				return false
+	if not ignore_slot_cap:
+		var without: Array = []
+		for i in items.size():
+			if i != index:
+				without.append(items[i])
+		var projected_max := BASE_MAX_SLOTS + _compute_bonus_slots(without) + _item_slot_bonus(new_item)
+		if without.size() + 1 > projected_max:
+			return false
+	items[index] = new_item
 	return true
 
 
@@ -58,10 +85,14 @@ func size() -> int:
 
 
 func has_item(item_id: StringName) -> bool:
-	for item in items:
-		if item.get("id") == item_id:
-			return true
-	return false
+	return index_of(item_id) >= 0
+
+
+func index_of(item_id: StringName) -> int:
+	for i in items.size():
+		if items[i].get("id") == item_id:
+			return i
+	return -1
 
 
 func _compute_bonus_slots(item_list: Array) -> int:

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/U2.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"U2"
+display_name = "Iron Lighter"
+rarity = 1
+family = ""
+description = "Normal-symbol payout value +20%"
+effect_id = &"normal_payout_bonus"
+effect_params = {"amount": 0.2}
+icon = ExtResource("2_icon")

@@ -498,7 +498,7 @@ func configure_leaf_occlusion_masks(
 	)
 
 
-const _LEAF_POLY_SHADER_MAX := 32
+const _LEAF_POLY_SHADER_MAX := 64
 
 
 func _pad_leaf_polygon(poly: PackedVector2Array) -> PackedVector2Array:
@@ -519,6 +519,7 @@ func configure_leaf_occlusion_polygons(
 	poly2: PackedVector2Array = PackedVector2Array(),
 	feather2: float = 0.0,
 	y_cutoff_2: float = 1e9,
+	use_anchor_y: bool = false,
 ) -> void:
 	var mat := animated_sprite.material as ShaderMaterial
 	if mat == null:
@@ -538,6 +539,7 @@ func configure_leaf_occlusion_polygons(
 	mat.set_shader_parameter("leaf_y_cutoff_0", y_cutoff_0)
 	mat.set_shader_parameter("leaf_y_cutoff_1", y_cutoff_1)
 	mat.set_shader_parameter("leaf_y_cutoff_2", y_cutoff_2)
+	mat.set_shader_parameter("leaf_mask_use_anchor_y", 1 if use_anchor_y else 0)
 	if shadow_outline.material != mat:
 		shadow_outline.material = mat
 

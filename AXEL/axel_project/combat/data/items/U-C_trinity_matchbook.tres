@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/U-C.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"U-C"
+display_name = "Trinity Matchbook"
+rarity = 1
+family = "C"
+description = "At Trinity Run start, gain +1 starting spin"
+effect_id = &"trinity_run"
+effect_params = {"extra_start_spins": 1}
+icon = ExtResource("2_icon")

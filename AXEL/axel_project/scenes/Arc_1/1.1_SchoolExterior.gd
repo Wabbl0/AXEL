@@ -371,7 +371,7 @@ func _get_leaf_occlusion_zones() -> Array[Area2D]:
 	if colliders == null:
 		return []
 	var zones: Array[Area2D] = []
-	for zone_name in ["TreeLine_Bottom_Behind", "TreeLine_Top_Behind"]:
+	for zone_name in ["TreeLine_Bottom_Behind", "TreeLine_Top_Behind", "RightWall_Behind"]:
 		var zone := colliders.get_node_or_null(zone_name) as Area2D
 		if zone != null:
 			zones.append(zone)
@@ -399,13 +399,13 @@ func _configure_leaf_occlusion_masks() -> void:
 		else:
 			polygons.append(PackedVector2Array())
 			feathers.append(0.0)
-	while polygons.size() < 2:
+	while polygons.size() < 3:
 		polygons.append(PackedVector2Array())
 		feathers.append(0.0)
 	var y_cutoffs: Array[float] = []
 	for trunk_body in _trunk_lines:
 		y_cutoffs.append(_trunk_line_y_cutoff(trunk_body))
-	while y_cutoffs.size() < 2:
+	while y_cutoffs.size() < 3:
 		y_cutoffs.append(1e9)
 	_player.call(
 		"configure_leaf_occlusion_polygons",
@@ -417,6 +417,9 @@ func _configure_leaf_occlusion_masks() -> void:
 		y_cutoffs[0],
 		y_cutoffs[1],
 		_LEAF_GATE_SOFTNESS,
+		polygons[2],
+		feathers[2],
+		y_cutoffs[2],
 	)
 
 
@@ -453,6 +456,7 @@ func _sync_environment_colliders(new_scale_factor: float, new_bg_position: Vecto
 	if is_instance_valid(_player):
 		_player_cover_sync.apply(_player, new_scale_factor, new_bg_position)
 	call_deferred("_wake_static_colliders")
+	call_deferred("_configure_leaf_occlusion_masks")
 
 
 func _wake_static_colliders() -> void:

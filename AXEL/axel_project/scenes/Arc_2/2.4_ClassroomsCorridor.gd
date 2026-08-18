@@ -254,7 +254,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 				player_node.global_position = _peek_above_area(_lounge_area)
 				_arm_zone_grace("lounge")
 			"classroom_door":
-				player_node.global_position = _peek_right_of_area(_classroom_area)
+				player_node.global_position = _peek_above_area(_classroom_area)
 				_arm_zone_grace("classroom")
 			_:
 				player_node.global_position = env.to_global(_player_spawn_tex)
@@ -289,19 +289,6 @@ func _peek_above_area(area: Area2D) -> Vector2:
 	var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
 	pos.y = area.to_global(Vector2(shape.position.x, shape.position.y - half_height - 12.0)).y
 	pos.x = shape.global_position.x
-	return pos
-
-
-func _peek_right_of_area(area: Area2D) -> Vector2:
-	var pos := _player.global_position
-	if not is_instance_valid(area):
-		return pos
-	var shape := area.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if shape == null or not (shape.shape is RectangleShape2D):
-		return area.global_position
-	var half_width: float = (shape.shape as RectangleShape2D).size.x * 0.5
-	pos.x = area.to_global(Vector2(shape.position.x + half_width + 12.0, shape.position.y)).x
-	pos.y = shape.global_position.y
 	return pos
 
 

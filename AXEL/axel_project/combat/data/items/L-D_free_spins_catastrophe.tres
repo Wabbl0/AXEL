@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/L-D.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"L-D"
+display_name = "Free Spins Catastrophe"
+rarity = 4
+family = "D"
+description = "During Free Spins, each power activation chains one extra random power at 75% potency"
+effect_id = &"free_spins"
+effect_params = {"chain_random_potency": 0.75}
+icon = ExtResource("2_icon")

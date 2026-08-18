@@ -4253,3 +4253,245 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: After the memory lines finish, `[X]` and E return to 2.1 at the same table standing spot. Glow and table `[E]` are gone for the rest of that run. Counts toward 5/5 memories.
 - Verification: Headless scene smoke including 2.2.
 - Notes: Debug builds skip save load, so the glow returns each editor run. 2.2 art/crop/`MEMORY_LINES` unchanged.
+
+## 2026-08-18
+
+### 3.1 Backyard — DoorSideRight and DoorBottom colliders
+- Request: Add 3 collision borders for the 3.1 building front and side, placed in order next to `DoorSideLeft`, named `DoorSideRight` and `DoorBottom`.
+- Implementation: Renamed leftover `DoorWall` to `DoorSideLeft`. Inserted sibling `DoorSideRight` (vertical) and `DoorBottom` (horizontal) immediately after it, each with its own `RectangleShape2D` so resizing one does not change the others. Starter positions sit next to the old door block for editor dragging.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Three solid building blockers exist in 3.1. They still need a manual drag onto the drawn walls; `[E]` door interact is unchanged.
+- Verification: Scene file node order check (`DoorSideLeft`, `DoorSideRight`, `DoorBottom`, then `DoorInteractArea`).
+- Notes: User named two new nodes. The third border is the renamed `DoorSideLeft`. Ask if a fourth named collider is needed.
+
+### Rollback editor dialogue bar + 2D camera fit
+- Request: Roll back the editor overlay/fit work; the fixes were not working and reload crashed Godot.
+- Implementation: Restored `TopDialogueOverlay.gd` and `project.godot`. Removed the editor-fit addon, preview helper, and QA check.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd` (restored)
+  - `AXEL/axel_project/project.godot` (restored)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Editor 2D tab is back to the previous state (dialogue bar at origin). Play-time dialogue is unchanged.
+- Verification: Restored overlay script has no `@tool` / editor preview path; plugin enable line is gone.
+- Notes: Close Godot if it is still open from a crash, then open the project again.
+
+### 3.1 Backyard — Wall_Behind fade zone
+- Request: Add a behind filter to scene 3.1 named `Wall_Behind` for editor configuration.
+- Implementation: Added `Wall_Behind` `Area2D` (`leaf_occlusion_zone.gd`) under `EnvironmentColliders` with a starter polygon and `feather_px = 12`. `3.1_Backyard.gd` sends that polygon to `Player.configure_leaf_occlusion_polygons` after background layout, same fade as 2.1 table/chair behind zones.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike fades when standing inside the `Wall_Behind` polygon. Drag the polygon vertices in the editor to match the wall; `feather_px` softens the edge.
+- Verification: Scene node `Wall_Behind` present; script wires the zone after layout.
+- Notes: Starter box is near the top wall so the green editor preview is visible. Reshape before treating the fade as final.
+
+### 3.1 Backyard — keep Wall_Behind fade above TopWall
+- Request: In 3.1 only, the behind filter should still work when the player model is above the `TopWall` collision border.
+- Implementation: 3.1 now fades from feet position inside `Wall_Behind` and skips the trunk Y-gate (`leaf_mask_use_anchor_y`). Head/body pixels that stick above `TopWall` stay faded. 1.1 / 2.1 still use per-pixel Y-gate fade.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Standing in `Wall_Behind` fades all of Mike, even if his sprite crosses above `TopWall`. Other scenes unchanged.
+- Verification: Shader default `leaf_mask_use_anchor_y = 0`; only 3.1 passes `true`.
+- Notes: If fade still cuts off after feet leave the polygon, extend `Wall_Behind` in the editor.
+
+### 3.1 Backyard — Bush_Behind and Well_Behind fade zones
+- Request: Add two more behind filters for bush and well.
+- Implementation: Added `Bush_Behind` and `Well_Behind` `Area2D` zones next to `Wall_Behind`. `_configure_behind_occlusion_masks` fills the three shader polygon slots (wall, bush, well). Same feet-in-zone fade as the wall; starter boxes sit in the lower yard for editor dragging.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike also fades inside the bush and well polygons. Drag those shapes onto the drawing; `feather_px` still starts at `12`.
+- Verification: Scene nodes `Bush_Behind` and `Well_Behind` present; script maps them to shader slots 1 and 2.
+- Notes: Wall polygon/scale left as already tuned. Bush/well starters are separate so they do not sit on the wall box.
+
+### All behind filters — feather 2 px
+- Request: Make every behind filter in all scenes use a feather of 2 px.
+- Implementation: Set `feather_px = 2.0` on all `*_Behind` zones (1.1 trees, 2.1 table/chairs, 3.1 wall/bush/well). Default on `leaf_occlusion_zone.gd` and `white_sprite.gdshader` is now `2.0` so new zones match.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/fx/leaf_occlusion_zone.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Behind fade edges are a tight 2 px blend in every walkable scene that has these zones.
+- Verification: Grep shows all `feather_px` values on behind nodes are `2.0`.
+- Notes: Replaces older per-scene feathers (1.1 was 4, 2.1 table 12 / chairs 0, 3.1 wall/bush 12).
+
+### 3.1 Bush_Behind — match drawn polygon
+- Request: Bush behind filter was activating far from the actual polygon.
+- Implementation: Bush/well now fade per pixel against the real polygon (no feet-Y stretch). Raised shader polygon cap from 32 to 64 so the bush's extra vertices are not dropped. Wall still uses feet-Y so fade can cross `TopWall`.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/scenes/fx/leaf_occlusion_zone.gd`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Standing next to the bush should fade only where the green polygon is, not a vertical slab beside it.
+- Verification: Bush polygon has 45 points; cap is 64. Shader samples bush/well with `world_pos`.
+- Notes: If a future behind polygon exceeds 64 points, extra verts are still ignored.
+
+### 3.1 / 3.2 Backyard Memory — graffiti glow, still, cigarette after
+- Request: In the backyard the player should see a memory glow on the graffiti wall, press [E], watch a still-image memory (empty white picture for now) with the Axel talk, leave with X or E, then hear the cigarette lines back in the yard. After that the glow and [E] go away. No hint screen. No “remember the name.”
+- Implementation: Rewrote Arc 3 canon to 3.1 walkable yard + 3.2 still (like 2.2). Added GameManager flags (`backyard_memory` via `add_memory_once`, `backyard_memory_line_seen`, `backyard_cigarette_line_seen`, transient `backyard_memory_return_pos`). New `3.2_BackyardMemory` scene copied from 2.2 (local frame script, white placeholder PNG, CanvasLayer 110 red X). 3.1 instances `MemoryIndicator` under `PlayerLayer`, adds `MemoryInteractArea` on the graffiti wall, remaps the glow, restores the standing spot, hides glow/[E] after collect, and plays the cigarette three-liner once on return. Deleted hint / click-step / “remember the name” from the Arc 3 write-up. Did not edit live 2.2 files or 3.1 behind filters.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_NEW.md`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.2_BackyardMemory.tscn` (new)
+  - `AXEL/axel_project/scenes/Arc_3/3.2_BackyardMemory.gd` (new)
+  - `AXEL/axel_project/scenes/Arc_3/3.2_backyard_memory_frame.gd` (new)
+  - `AXEL/axel_project/exports/Drawings/3.2_Backyard_Memory.png` (new, white placeholder)
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/tools/scene_smoke_check.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Graffiti glow + [E] opens 3.2. After the Axel talk, X/E returns to 3.1 at the same spot, cigarette lines play once, then glow and [E] are gone. Counts toward 5/5 memories.
+- Verification: Headless scene smoke including 3.2.
+- Notes: Debug builds skip save load, so the glow returns each editor run. Old unused `3.2_BackyardHint.tscn` was left unwired. Glow/[E] starters may need a drag onto the real graffiti.
+
+### 3.1 Backyard — sync memory glow and [E], no default chip offset
+- Request: MemoryInteractArea and the memory glow spawn were offset. That offset should not be on by default (AI_DOCS / SCENE_BUILDING).
+- Implementation: Moved `MemoryInteractArea` so its shape center matches `PlayerLayer/MemoryIndicator` at the current graffiti editor pos `(3056, 1824)`. Removed the scene-wide `InteractPromptOverlay.screen_offset = (0, -52)` so 3.1 uses the shared zero default like 2.1. Glow still remaps from its own editor position; no per-zone chip nudge.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Glow, walk-up `[E]` zone, and the `[E]` chip share the same graffiti point. Door `[E]` also has no chip offset now.
+- Verification: Scene positions match; overlay has no `screen_offset` override.
+- Notes: Drag both nodes together if you move the graffiti hotspot. Add a door-only chip nudge later only if asked.
+
+### Canon — no visual offset from nodes (player, memory, [E])
+- Request: By default no indicator, memory, interact button, or player model should have any offset from their nodes. The 3.1 player also looked skewed from the scene nodes.
+- Implementation: Wrote the default into `AI_DOCS.md` (Style/FX + optional refs), the always-on Cursor rule, and `SCENE_BUILDING.md`. Player sprite/collision children, `MemoryIndicator.visual_offset`, and `[E]` `screen_offset` stay at zero unless asked. Cover-fit remap from a node’s own editor position is not an offset. 3.1 player children were already at `(0, 0)`; did not strip existing 2.1 sprite child offsets.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/scenes/fx/memory_indicator.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: New scenes and future edits default to no extra offset. 3.1 glow/[E] already matched; 3.1 player spawn still uses its own editor position via cover-fit.
+- Verification: Doc + rule text review.
+- Notes: If Mike still looks off in 3.1 at play, that is cover-fit / camera framing (`static_center`), not a child offset. Drag the Player node to move spawn.
+
+### 3.1 Backyard — mid-line beat before “Nice graffiti”
+- Request: There should be a [beat] before the “nice graffiti” line. Only a wait; do not put it on a different dialogue box or line.
+- Implementation: First enter line is now `The spirit of rebellion is still present here.|beat:1.5| Nice graffiti.` (same bar, same `show_lines` entry). Second line unchanged. Arc 3 write-up matches.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: After “here.” the bar pauses ~1.5s, then types “Nice graffiti.” Advance during the wait skips the pause and continues typing. Then the second line still plays in the next box.
+- Verification: Line matches 1.2’s `|beat:1.5|` pattern.
+- Notes: Marker is never shown on screen.
+
+### 3.2 Backyard Memory — drop wrapping quote marks
+- Request: Check Arc 3 write-up and update the scene script to remove `""` marks.
+- Implementation: 3.1 enter/cigarette lines already had no wrapping quotes. Matched `3.2_BackyardMemory.gd` to the write-up: spoken lines no longer wrap in quotes; first Axel line no longer has `, they say.`
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_3/3.2_BackyardMemory.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 3.2 types `Oh. Sorry. I'll go.` (and the rest) without quote marks. Axel lines stay red via `|other|`.
+- Verification: Line-by-line compare vs `AXEL_SCENES_ARC3.md` §3.2.
+- Notes: 3.1 script unchanged.
+
+### Scene 1.1 — wire RightWall_Behind fade
+- Request: Wire the placed `RightWall_Behind` zone in scene 1.1.
+- Implementation: Added `RightWall_Behind` to 1.1’s behind-zone list as shader slot 2 (trees stay 0–1). Passes the wall polygon after cover-fit layout. Wall uses no trunk Y-gate (`1e9`) so fade follows the authored polygon. Did not enable feet-Y (`use_anchor_y`) so tree fade stays per-pixel.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike fades inside the `RightWall_Behind` polygon as well as the two tree behind zones.
+- Verification: Scene node `RightWall_Behind` present under `EnvironmentColliders` with `leaf_occlusion_zone.gd`; script lists that name and fills slot 2.
+- Notes: Polygon shape is the user’s editor placement. Shader still maxes out at 3 behind zones.
+
+### Scene 1.1 — RightWall_Behind fade actually on
+- Request: `RightWall_Behind` was wired but Mike would not fade.
+- Implementation: The wall uses “no trunk line” (`leaf_y_cutoff_2 = 1e9`). The shader treated that as gate=off, so slot 2 never faded. Unused/no-cutoff now means gate=on; empty polygons still fade nothing.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Standing inside `RightWall_Behind` fades Mike. Tree behind zones unchanged (they still use real trunk Y-gates). 2.1 / 3.1 unchanged.
+- Verification: Shader `_trunk_line_gate` returns 1.0 when cutoff `> 1e8`.
+- Notes: Fade is per-pixel inside the green polygon, same as bush/well — not the 3.1 wall “feet in zone” stretch.
+
+### Scene 2.3 — flashlight drawing + faint glow
+- Request: Place `exports/Drawings/Flashlight.png` in 2.3 around the flashlight interact, with a faint glow, through the color filter; hide it after pickup.
+- Implementation: Added world-space `FlashlightVisual` under `EnvironmentColliders` (cover-fit with the room, so noir remaps the black ink). Soft pulsing halo via `prop_ink_halo.gdshader` (authored black → faint red after 8-band). `_apply_flashlight_visibility()` now hides the drawing as soon as `hasFlashlight` is set.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/scenes/fx/prop_ink_halo.gdshader`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The flashlight drawing is visible on the interact spot until picked up, then it disappears. Glow is faint and follows the production noir look.
+- Verification: Scene tree has `FlashlightVisual` at the interact-zone center; pickup path sets `hasFlashlight` then hides the node before the line plays.
+- Notes: Drag `FlashlightVisual` in the editor to nudge placement. Scale is `0.2` of the cropped drawing.
+
+### Combat item catalog — playtest picker + full effects
+- Request: Ship all 75 playable catalog items (drop L-A), family C→E rank rows, Ignore-cap debug, playtest Used/Budget and Goal Base/Progress, and make every listed effect actually change combat.
+- Implementation: Added one `.tres` per catalog id with icons; `ItemEffectDispatcher` walks inventory in tick order; CombatRoot setters for paid-reroll Used and encounter goal (Family H % on Base). ITEMS picker is runtime UI only (protected unique nodes untouched). C1 stays 0.06/0.36. SUPER copy renamed to Free Spins. Cascade refill stays off; G is regular-spin payout + skip-guard.
+- Files changed:
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/combat/scripts/item_def.gd`
+  - `AXEL/axel_project/combat/scripts/item_inventory.gd`
+  - `AXEL/axel_project/combat/scripts/item_effect_dispatcher.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/line_detector.gd`
+  - `AXEL/axel_project/combat/scripts/meter.gd`
+  - `AXEL/axel_project/combat/scripts/princess_controller.gd`
+  - `AXEL/axel_project/combat/scripts/free_spins.gd`
+  - `AXEL/axel_project/combat/scripts/grid_manager.gd`
+  - `AXEL/axel_project/combat/scripts/rng.gd`
+  - `AXEL/axel_project/combat/data/items/`
+  - `AXEL/axel_project/combat/art/item_icons/`
+  - `AXEL/axel_project/combat/test/item_synergy_smoke.gd`
+  - `AXEL/axel_project/tools/combat/bake_item_icons.gd`
+  - `AXEL/axel_project/tools/combat/generate_item_resources.py`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 combat test lists the full catalog. Tick order is activation order. Used=6 + C1 is already at cap +0.36×. Base 10000 + H Epic → Effective 12500.
+- Verification: `combat_test_scaffold_check.gd`, `item_synergy_smoke.gd` (44 pass), `determinism_check.gd`, `princess_check.gd`.
+- Notes: Icon baker accepts an optional source-root CLI arg; placeholders are 8-band+white 48×48 if sources are missing. L-A is not in playtest.
+
+### 2.4 / 4.1 / 3.1 memory — wire hand-drawn backgrounds
+- Request: Integrate new drawings in `exports/Drawings` for 2.4, 4.1, and 3.1 into the live scenes per `SCENE_BUILDING.md`.
+- Implementation: All three plates were already white fill + black ink (no color convert). 2.4: removed placeholder `Line2D`/`Polygon2D`, resized the L-corridor colliders to `7016×4960`, placed cafeteria/lounge/classroom/future doors on the ink, classroom return peek is now above the south-wall door. 4.1: removed placeholders, outer walls to `3508×2480`, furniture colliders on cabinet/table/chair/key-bench/right clutter, door stays on the north wall; camera is art-centered. 3.1 walkable already used `3.1_Backyard.png`; wired artist file `3.1_Backyard_Memory.png` into 3.2’s still (same 1.85:1 top-crop frame as 2.2). Key pickup / 1.2 loop still not wired.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.2_BackyardMemory.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 2.4 and 4.1 show the new room drawings instead of flat placeholders; 3.2 shows the backyard memory still. Doors and movement still work; colliders may need an editor nudge against the ink.
+- Verification: PNG color check (white fill, no red plate). Scene files point at the new textures; 3.2 `region_rect` matches 3508×1896 top-crop. Headless smoke not run (no Godot in this pass).
+- Notes: Artist named the memory `3.1_Backyard_Memory.png` (3.1’s memory, shown in scene 3.2). Tune door/furniture boxes in the editor if a hotspot feels off.
+
+### Docs sync — 2026-08-18 live scenes
+- Request: `update docs` after today’s backyard memory, behind fades, flashlight drawing, combat catalog playtest, and new 2.4 / 4.1 / 3.2 plates.
+- Implementation: Scene write-ups now match live files. 3.1 colliders and behind polygons are authored on the drawing (not “starter boxes”). Index lists 2.4. 1.1 notes `RightWall_Behind`. 2.4 / 4.1 note the shared zero `[E]` chip offset.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_NEW.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Gameplay unchanged.
+- Verification: Compared write-ups to live `.tscn` / `.gd` (3.2 uses `3.1_Backyard_Memory.png`; 2.3 `FlashlightVisual`; catalog playtest HUD already in the catalog plan).
+- Notes: Changelog already had today’s implement entries (behind fades, 3.1+3.2 memory, no-offset canon, 1.1 wall fade, flashlight, full item catalog, new plates).

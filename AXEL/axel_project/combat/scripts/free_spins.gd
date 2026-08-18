@@ -28,8 +28,8 @@ func reset() -> void:
 	spins_awarded_total = 0
 	powers_used_once = {}
 
-func start_with_princess(princess_id: StringName) -> void:
-	var base := int(BASE_SPINS.get(princess_id, 4))
+func start_with_princess(princess_id: StringName, extra_spins: int = 0) -> void:
+	var base := int(BASE_SPINS.get(princess_id, 4)) + maxi(extra_spins, 0)
 	active = true
 	chosen_princess = princess_id
 	spins_remaining = base

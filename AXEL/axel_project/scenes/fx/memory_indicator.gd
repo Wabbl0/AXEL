@@ -10,9 +10,8 @@ const _ANIM := &"glow"
 @export var frame_size: int = 48
 @export var animation_fps: float = 8.0
 @export var indicator_scale: float = 1.5
-## Fine-tune the glow's visible position, in actual on-screen pixels
-## (independent of indicator_scale), without moving the node's real
-## anchor point (which stays pinned to the interact area's center).
+## Opt-in only: keep ZERO unless asked. Fine-tune the glow in on-screen
+## pixels without moving the node's editor/anchor position.
 @export var visual_offset: Vector2 = Vector2.ZERO
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite

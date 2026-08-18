@@ -37,25 +37,27 @@
 
 **Dialogue:**
 
-> AXEL: "Do you think I'm a bad person?"
+> AXEL: Do you think I'm a bad person?
 >
 > [beat]
 >
-> You answer, "No."
+> No.
 >
 > [beat]
 >
-> "I just - don't have the energy. To be around you."
+> I just   
+> [beat]  
+> don't have the energy. To be around you.
 >
 > [beat]
 >
-> "Sorry."
+> Sorry.
 >
-> AXEL: "Oh," they sigh.
+> AXEL: Oh.
 >
 > [beat]
 >
-> AXEL: "No. I understand."
+> AXEL: No. I understand.
 
 **Choices:**
 
@@ -96,7 +98,7 @@
 | Flashlight `[E]` (once, if not owned) | Set `hasFlashlight`, add Flashlight to inventory, play pickup line, hide flashlight visual |
 
 
-**Implemented (Godot):** `2.3_Kitchen.tscn` + `2.3_Kitchen.gd` — walkable kitchen with `2.3_Kitchen.png` (`STATIC_LOCKED`/`COVER`, `margin_px=12`, `static_center=(560,0)`), `PlayerLayer` scale `3.0` / speed `253.4`, collider sync + `PlayerCoverSync` on `layout_applied`. Enter line once via `GameManager.kitchen_enter_line_seen`. Flashlight pickup is **in-room** (no `2.4_KitchenFlashlightPickup.tscn`). Door `[E]` → `2.1_Cafeteria.tscn` with `kitchen_spawn_side="kitchen_door"`. Single static background art (no dark→lit swap). No embedded post-FX. Spawn point always matches wherever `PlayerLayer/Player` is placed in the editor (same pattern as 2.1 Cafeteria) — drag that node to move the spawn, no hardcoded constant.
+**Implemented (Godot):** `2.3_Kitchen.tscn` + `2.3_Kitchen.gd` — walkable kitchen with `2.3_Kitchen.png` (`STATIC_LOCKED`/`COVER`, `margin_px=12`, `static_center=(560,0)`), `PlayerLayer` scale `3.0` / speed `253.4`, collider sync + `PlayerCoverSync` on `layout_applied`. Enter line once via `GameManager.kitchen_enter_line_seen`. Flashlight pickup is **in-room** (no `2.4_KitchenFlashlightPickup.tscn`). World-space `FlashlightVisual` (`exports/Drawings/Flashlight.png`) sits on the interact zone with a faint ink-halo glow (`prop_ink_halo.gdshader`); both go through the global noir stack (not above it). Pickup hides the drawing immediately. Door `[E]` → `2.1_Cafeteria.tscn` with `kitchen_spawn_side="kitchen_door"`. Single static background art (no dark→lit swap). No embedded post-FX. Spawn point always matches wherever `PlayerLayer/Player` is placed in the editor (same pattern as 2.1 Cafeteria) — drag that node to move the spawn, no hardcoded constant.
 
 **Real hand-drawn background (replaces flat placeholder):** `2.3_Kitchen.png` is now the actual hand-drawn art (3508×2480, was a flat placeholder at 2400×1500) — same filename, re-imported in place. All debug placeholder visuals (`Polygon2D`/`Line2D`/`Label` boxes for prep table, center table, fridge, shelves, door, flashlight) are removed. Room walls (`TopWall`/`BottomWall`/`LeftWall`/`RightWall`) resized to the new texture bounds. Exactly 3 furniture colliders kept, positions measured from the art (texture-pixel space): `TableBlock` (2175, 1832), `RightShelvesBlock` (3284, 935), `TopLeftShelvesBlock` (645, 250). The new art does not draw a door, fridge, or flashlight, so those functional zones were placed at sensible open-floor spots rather than removed: `DoorWall`/`DoorInteractArea` on the right wall between the shelves and stove (~3300–3460, 1740), `FlashlightInteractArea` near the top-left shelf (550, 550); the `Player` node's editor position (texture-pixel space) is the spawn point, currently placed next to the door. Re-tune any of these in the editor if they feel off against the final art; no dialogue/camera/gameplay-logic changes.
 
@@ -106,7 +108,7 @@
 
 ### 2.4 Classrooms Corridor (connector)
 
-**Implemented (Godot) — shell only:** `2.4_ClassroomsCorridor.tscn` + `.gd` — L-shaped connector (flat placeholder `2.4_ClassroomsCorridor.png`). `BackgroundCamera` `MOVABLE_FOLLOW`/`COVER` with `margin_px=12` following `PlayerLayer/Player` (Kitchen profile scale `3.0` / speed `253.4`). Live doors: top → Cafeteria, opposite (bottom of vertical arm) → Teachers' Lounge, far left end → Classroom. `Future_1_2_Door` is drawn-only (no Area2D / no interact) reserved for a later loop-around link to `1.2_Corridor` — **do not wire without approval** (`1.2` is legacy). Spawn-side peeks via `classrooms_corridor_spawn_side`. No enter line. Not arc-complete content.
+**Implemented (Godot) — shell only:** `2.4_ClassroomsCorridor.tscn` + `.gd` — L-shaped connector with hand-drawn `2.4_ClassroomsCorridor.png` (7016×4960, white fill + black ink). `BackgroundCamera` `MOVABLE_FOLLOW`/`COVER` with `margin_px=12` following `PlayerLayer/Player` (Kitchen profile scale `3.0` / speed `253.4`). Live doors: top of the vertical arm → Cafeteria, bottom of the vertical arm → Teachers' Lounge, left door on the south wall of the horizontal arm → Classroom (return peek is above that door). The second south-wall door is the stub `FutureDoorInteractArea` (`"Not yet."`) reserved for a later loop-around link to `1.2_Corridor` — **do not wire a real transition without approval** (`1.2` is legacy). Placeholder `Line2D`/`Polygon2D` visuals removed. Spawn-side peeks via `classrooms_corridor_spawn_side`. Editor `Player` position is the default spawn. `InteractPromptOverlay` uses the shared zero `screen_offset` default. No enter line. Not arc-complete content. Re-tune wall/door shapes in the editor if they sit off the ink.
 
 ---
 

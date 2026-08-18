@@ -88,6 +88,7 @@ func _love_transform(ctx: Dictionary) -> void:
 	var rng: CombatRNGScript = ctx.get("rng")
 	var low_pool: Array = ctx.get("low_pool", [])
 	var premium_pool: Array = ctx.get("premium_pool", [])
+	var potency: float = float(ctx.get("potency", 1.0))
 	if grid == null or rng == null:
 		return
 	var present_counts: Dictionary = {}
@@ -122,16 +123,34 @@ func _love_transform(ctx: Dictionary) -> void:
 			var p := Vector2i(x, y)
 			var sym: SymbolDefScript = grid.get_cell(p)
 			if sym != null and sym.id == source_id:
-				grid.set_cell(p, target)
+				if potency >= 1.0 or rng.randf() <= potency:
+					grid.set_cell(p, target)
+	var extra_transform: float = float(ctx.get("extra_transform_chance", 0.0))
+	if extra_transform > 0.0 and rng.randf() <= extra_transform:
+		var candidates: Array[Vector2i] = []
+		for y2 in GridManagerScript.ROWS:
+			for x2 in GridManagerScript.COLS:
+				var p2 := Vector2i(x2, y2)
+				var s2: SymbolDefScript = grid.get_cell(p2)
+				if s2 != null and s2.id != target.id and s2.tier != SymbolDefScript.Tier.WILD:
+					candidates.append(p2)
+		if not candidates.is_empty():
+			grid.set_cell(candidates[rng.randi_range(0, candidates.size() - 1)], target)
 
 
 func _star_add_wilds(ctx: Dictionary) -> void:
 	var grid: GridManagerScript = ctx.get("grid")
 	var rng: CombatRNGScript = ctx.get("rng")
 	var wild: SymbolDefScript = ctx.get("wild")
+	var potency: float = float(ctx.get("potency", 1.0))
+	var diag_opts: Dictionary = ctx.get("diag_opts", {})
 	if grid == null or rng == null or wild == null:
 		return
 	var placements := rng.randi_range(1, 2)
+	if potency < 1.0:
+		placements = maxi(1, int(round(float(placements) * potency)))
+	if float(ctx.get("extra_wild_chance", 0.0)) > 0.0 and rng.randf() <= float(ctx.get("extra_wild_chance", 0.0)):
+		placements += 1
 	var blocked: Dictionary = {}
 	for _i in placements:
 		var best_score := -1
@@ -141,7 +160,7 @@ func _star_add_wilds(ctx: Dictionary) -> void:
 				var p := Vector2i(c, r)
 				if blocked.has(p):
 					continue
-				var score: int = LineDetectorScript.score_wild_at(grid.cells, p)
+				var score: int = LineDetectorScript.score_wild_at(grid.cells, p, diag_opts)
 				if score > best_score:
 					best_score = score
 					best_cell = p
@@ -153,8 +172,10 @@ func _star_add_wilds(ctx: Dictionary) -> void:
 
 func _storm_remove_lowpays(ctx: Dictionary) -> void:
 	var grid: GridManagerScript = ctx.get("grid")
+	var rng: CombatRNGScript = ctx.get("rng")
 	if grid == null:
 		return
+	var potency: float = float(ctx.get("potency", 1.0))
 	var counts := {}
 	var weights := {}
 	for r in GridManagerScript.ROWS:
@@ -171,8 +192,17 @@ func _storm_remove_lowpays(ctx: Dictionary) -> void:
 	ids.sort_custom(_sort_lowpay_ids.bind(counts, weights))
 	var remove_ids: Dictionary = {}
 	remove_ids[ids[0]] = true
-	if ids.size() > 1:
+	var sets_to_remove := 2
+	if potency < 0.5:
+		sets_to_remove = 1
+	if ids.size() > 1 and sets_to_remove >= 2:
 		remove_ids[ids[1]] = true
+	if rng != null and float(ctx.get("extra_set_chance", 0.0)) > 0.0 and rng.randf() <= float(ctx.get("extra_set_chance", 0.0)):
+		if ids.size() > remove_ids.size():
+			for cand in ids:
+				if not remove_ids.has(cand):
+					remove_ids[cand] = true
+					break
 	for r in GridManagerScript.ROWS:
 		for c in GridManagerScript.COLS:
 			var p := Vector2i(c, r)

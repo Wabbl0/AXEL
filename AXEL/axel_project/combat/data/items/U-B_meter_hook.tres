@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/U-B.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"U-B"
+display_name = "Meter Hook"
+rarity = 1
+family = "B"
+description = "Premium meter gains x1.25"
+effect_id = &"premium_meter"
+effect_params = {"gain_mult": 1.25}
+icon = ExtResource("2_icon")

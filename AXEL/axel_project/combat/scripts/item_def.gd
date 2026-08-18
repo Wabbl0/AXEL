@@ -10,3 +10,4 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 @export var description: String = ""
 @export var effect_id: StringName = &""
 @export var effect_params: Dictionary = {}
+@export var icon: Texture2D

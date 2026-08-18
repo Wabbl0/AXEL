@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/C5.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"C5"
+display_name = "Burn Mark"
+rarity = 0
+family = ""
+description = "If no power activates for 2 spins, next spin gets +8% random power chance"
+effect_id = &"dead_spin_power_catchup"
+effect_params = {"spins": 2, "amount": 0.08}
+icon = ExtResource("2_icon")

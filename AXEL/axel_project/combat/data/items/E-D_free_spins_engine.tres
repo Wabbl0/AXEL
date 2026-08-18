@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/E-D.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"E-D"
+display_name = "Free Spins Engine"
+rarity = 3
+family = "D"
+description = "First win each Free Spins spin duplicates 1 winning symbol into wild"
+effect_id = &"free_spins"
+effect_params = {"first_win_wild": true}
+icon = ExtResource("2_icon")

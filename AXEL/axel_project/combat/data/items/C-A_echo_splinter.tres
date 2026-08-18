@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/C-A.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"C-A"
+display_name = "Echo Splinter"
+rarity = 0
+family = "A"
+description = "When any power activates, 20% chance one other random power activates at 25% potency"
+effect_id = &"power_chain"
+effect_params = {"chance": 0.2, "potency": 0.25, "other_count": 1}
+icon = ExtResource("2_icon")

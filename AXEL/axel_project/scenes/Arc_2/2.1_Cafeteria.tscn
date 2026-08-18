@@ -30,7 +30,7 @@ size = Vector2(1893, 233)
 size = Vector2(339.75, 377.25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_kitchen_interact"]
-size = Vector2(277, 128)
+size = Vector2(278, 288)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_return_interact"]
 size = Vector2(143, 751)
@@ -101,7 +101,6 @@ position = Vector2(1100, 800)
 monitoring = false
 monitorable = false
 script = ExtResource("9_leaf_zone")
-feather_px = 12.0
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/TableBlockLeft_Behind" unique_id=664775203]
 polygon = PackedVector2Array(-120, 64, 468, 66, 468, 241, 18.192078, 253.28983, 3, 1103, -120, 1108)
@@ -125,7 +124,6 @@ position = Vector2(1100, 1750)
 monitoring = false
 monitorable = false
 script = ExtResource("9_leaf_zone")
-feather_px = 0.0
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/ChairBlockBottom_Behind" unique_id=1613338245]
 position = Vector2(629, -456)
@@ -143,7 +141,6 @@ position = Vector2(2600, 1750)
 monitoring = false
 monitorable = false
 script = ExtResource("9_leaf_zone")
-feather_px = 0.0
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/ChairBlockTop_Behind" unique_id=723225839]
 position = Vector2(1, -15)
@@ -161,7 +158,7 @@ position = Vector2(1754, 1300)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableInteractArea" unique_id=696839511]
-position = Vector2(836.875, -955.625)
+position = Vector2(872, -1090)
 shape = SubResource("RectangleShape2D_table_interact")
 
 [node name="KitchenInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=201792129]
@@ -169,7 +166,7 @@ position = Vector2(3000, 1100)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/KitchenInteractArea" unique_id=977331617]
-position = Vector2(-959.5, -878)
+position = Vector2(-959, -835)
 shape = SubResource("RectangleShape2D_kitchen_interact")
 
 [node name="ReturnInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1353098574]
@@ -206,8 +203,8 @@ shape = SubResource("RectangleShape2D_classrooms_interact")
 [node name="Placeholders" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1977150767]
 
 [node name="Kitchen_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=441580876]
-position = Vector2(0, 38.297295)
-scale = Vector2(1, 0.6486486)
+position = Vector2(-2, -166.53505)
+scale = Vector2(1, 1.5094959)
 color = Color(0.32156864, 0.32156864, 0.32156864, 1)
 polygon = PackedVector2Array(1904, 182, 1905, 111, 2176, 109, 2178, 183)
 

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/E-M.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"E-M"
+display_name = "CRT Etching"
+rarity = 3
+family = "M"
+description = "Majority of glyph value feeds active multiplier for rest of spin chain; minority flat spin payout"
+effect_id = &"corner_glyphs"
+effect_params = {"cells": 4, "mult_min": 2.0, "mult_max": 3.0, "dest": "majority_mult"}
+icon = ExtResource("2_icon")

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/C-B.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"C-B"
+display_name = "Meter Scratch"
+rarity = 0
+family = "B"
+description = "Premium meter gain from premium lines +1 on first qualifying line each spin"
+effect_id = &"premium_meter"
+effect_params = {"first_line_bonus": 1}
+icon = ExtResource("2_icon")

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/U1.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"U1"
+display_name = "Filtered Reroller"
+rarity = 1
+family = ""
+description = "Each reroll adds +0.15x payout scalar (cap +0.90x)"
+effect_id = &"reroll_payout_scalar"
+effect_params = {"per_reroll": 0.15, "cap": 0.9}
+icon = ExtResource("2_icon")

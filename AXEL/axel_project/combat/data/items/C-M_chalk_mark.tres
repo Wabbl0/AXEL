@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/C-M.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"C-M"
+display_name = "Chalk Mark"
+rarity = 0
+family = "M"
+description = "Roll random multipliers on random cells (x2-x2.5). When the cell pays, bonus to that spin winnings"
+effect_id = &"corner_glyphs"
+effect_params = {"cells": 1, "mult_min": 2.0, "mult_max": 2.5, "dest": "winnings"}
+icon = ExtResource("2_icon")

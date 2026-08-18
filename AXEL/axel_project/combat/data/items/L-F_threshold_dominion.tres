@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/L-F.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"L-F"
+display_name = "Threshold Dominion"
+rarity = 4
+family = "F"
+description = "Board-count wins become full resolver wins (line wins resolve first; leftover matching cells clear)"
+effect_id = &"board_count"
+effect_params = {"threshold": 6, "full_resolver": true}
+icon = ExtResource("2_icon")

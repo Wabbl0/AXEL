@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/C3.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"C3"
+display_name = "Locker Map Pin"
+rarity = 0
+family = ""
+description = "Normal-symbol spawn weight +8%"
+effect_id = &"spawn_weight_normals"
+effect_params = {"amount": 0.08}
+icon = ExtResource("2_icon")

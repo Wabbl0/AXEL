@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/U3.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"U3"
+display_name = "Weighted Trinity Die"
+rarity = 1
+family = ""
+description = "Total power-symbol spawn weight +10%"
+effect_id = &"power_symbol_weight"
+effect_params = {"amount": 0.1}
+icon = ExtResource("2_icon")

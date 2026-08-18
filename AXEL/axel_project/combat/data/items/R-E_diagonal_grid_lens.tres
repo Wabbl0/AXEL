@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/R-E.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"R-E"
+display_name = "Diagonal Grid Lens"
+rarity = 2
+family = "E"
+description = "Diagonal wins can spawn wilds on exact-3 middle cells (same spawn rule)"
+effect_id = &"diagonal"
+effect_params = {"mode": "both", "wilds": true}
+icon = ExtResource("2_icon")

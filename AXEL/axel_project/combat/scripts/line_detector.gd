@@ -5,15 +5,29 @@ const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
 const ROWS := 5
 const COLS := 5
 
-static func find_lines(cells: Array) -> Array:
+static func find_lines(cells: Array, opts: Dictionary = {}) -> Array:
 	var lines: Array = []
 	for row in ROWS:
 		_scan_run(cells, lines, Vector2i(0, row), Vector2i(1, 0), COLS)
 	for col in COLS:
 		_scan_run(cells, lines, Vector2i(col, 0), Vector2i(0, 1), ROWS)
+	var mode := str(opts.get("mode", "none"))
+	if mode == "major" or mode == "both" or mode == "all":
+		_scan_run(cells, lines, Vector2i(0, 0), Vector2i(1, 1), COLS)
+	if mode == "both" or mode == "all":
+		_scan_run(cells, lines, Vector2i(COLS - 1, 0), Vector2i(-1, 1), COLS)
+	if mode == "all":
+		for start_col in range(1, COLS - 2):
+			_scan_run(cells, lines, Vector2i(start_col, 0), Vector2i(1, 1), COLS - start_col)
+		for start_row in range(1, ROWS - 2):
+			_scan_run(cells, lines, Vector2i(0, start_row), Vector2i(1, 1), ROWS - start_row)
+		for start_col in range(2, COLS - 1):
+			_scan_run(cells, lines, Vector2i(start_col, 0), Vector2i(-1, 1), start_col + 1)
+		for start_row in range(1, ROWS - 2):
+			_scan_run(cells, lines, Vector2i(COLS - 1, start_row), Vector2i(-1, 1), ROWS - start_row)
 	return lines
 
-static func score_wild_at(cells: Array, at: Vector2i) -> int:
+static func score_wild_at(cells: Array, at: Vector2i, opts: Dictionary = {}) -> int:
 	if at.x < 0 or at.x >= COLS or at.y < 0 or at.y >= ROWS:
 		return -1
 	var best := 0
@@ -21,6 +35,11 @@ static func score_wild_at(cells: Array, at: Vector2i) -> int:
 		best = maxi(best, _score_axis_with_wild(cells, at, Vector2i(0, row), Vector2i(1, 0), COLS))
 	for col in COLS:
 		best = maxi(best, _score_axis_with_wild(cells, at, Vector2i(col, 0), Vector2i(0, 1), ROWS))
+	var mode := str(opts.get("mode", "none"))
+	if mode == "major" or mode == "both" or mode == "all":
+		best = maxi(best, _score_axis_with_wild(cells, at, Vector2i(0, 0), Vector2i(1, 1), COLS))
+	if mode == "both" or mode == "all":
+		best = maxi(best, _score_axis_with_wild(cells, at, Vector2i(COLS - 1, 0), Vector2i(-1, 1), COLS))
 	return best
 
 static func _scan_run(cells: Array, out_lines: Array, start: Vector2i, delta: Vector2i, length: int) -> void:
@@ -60,7 +79,7 @@ static func _emit_run(run_cells: Array[Vector2i], run_symbol_id: StringName, out
 		"symbol_id": final_symbol,
 		"cells": run_cells.duplicate(),
 		"length": run_cells.size(),
-		"axis": "h" if delta.x != 0 else "v",
+		"axis": _axis_name(delta),
 	})
 
 static func _emit_run_for_symbol(run_cells: Array[Vector2i], sid: StringName, out_lines: Array, delta: Vector2i, emitted_keys: Dictionary, cells: Array) -> void:
@@ -74,7 +93,7 @@ static func _emit_run_for_symbol(run_cells: Array[Vector2i], sid: StringName, ou
 			break
 	if not has_base_symbol:
 		return
-	var axis := "h" if delta.x != 0 else "v"
+	var axis := _axis_name(delta)
 	var coords_key := ""
 	for idx in run_cells.size():
 		var c: Vector2i = run_cells[idx]
@@ -114,6 +133,12 @@ static func _matches_id(cells: Array, forced_wild: Vector2i, pos: Vector2i, sid:
 	if sym == null or sym.tier == SymbolDefScript.Tier.HAZARD:
 		return false
 	return sym.tier == SymbolDefScript.Tier.WILD or sym.id == sid
+
+static func _axis_name(delta: Vector2i) -> String:
+	if delta.x != 0 and delta.y != 0:
+		return "d"
+	return "h" if delta.x != 0 else "v"
+
 
 static func _coords_to_strings(coords: Array[Vector2i]) -> Array:
 	var out: Array = []

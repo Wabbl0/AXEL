@@ -14,3 +14,7 @@ func randf() -> float:
 
 func randi_range(a: int, b: int) -> int:
 	return _rng.randi_range(a, b)
+
+
+func randf_range(a: float, b: float) -> float:
+	return _rng.randf_range(a, b)

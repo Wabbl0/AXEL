@@ -14,6 +14,8 @@ const DOOR_ZONE_GRACE_SEC := 0.15
 
 var _door_interact_area: Area2D
 var _flashlight_interact_area: Area2D
+var _flashlight_visual: Node2D
+var _flashlight_glow_tween: Tween
 var _active_zone: String = ""
 var _is_transitioning := false
 var _flashlight_line_running := false
@@ -33,6 +35,9 @@ func _ready() -> void:
 	_flashlight_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/FlashlightInteractArea"
 	) as Area2D
+	_flashlight_visual = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/FlashlightVisual"
+	) as Node2D
 	_connect_zone(_door_interact_area, "door")
 	_connect_zone(_flashlight_interact_area, "flashlight")
 	_apply_flashlight_visibility()
@@ -53,12 +58,40 @@ func _connect_zone(area: Area2D, zone_id: String) -> void:
 
 
 func _apply_flashlight_visibility() -> void:
-	if not is_instance_valid(_flashlight_interact_area):
-		return
-	if GameManager.get_flag("hasFlashlight"):
+	var owned := GameManager.get_flag("hasFlashlight")
+	if is_instance_valid(_flashlight_interact_area) and owned:
 		_flashlight_interact_area.visible = false
 		_flashlight_interact_area.monitoring = false
 		_flashlight_interact_area.monitorable = false
+	if is_instance_valid(_flashlight_visual):
+		_flashlight_visual.visible = not owned
+		if owned:
+			_stop_flashlight_glow()
+		else:
+			_start_flashlight_glow()
+
+
+func _start_flashlight_glow() -> void:
+	_stop_flashlight_glow()
+	if not is_instance_valid(_flashlight_visual) or not _flashlight_visual.visible:
+		return
+	var glow := _flashlight_visual.get_node_or_null("Glow") as CanvasItem
+	if glow == null:
+		return
+	_flashlight_glow_tween = create_tween()
+	_flashlight_glow_tween.set_loops()
+	_flashlight_glow_tween.tween_property(glow, "modulate:a", 0.22, 1.6).set_trans(
+		Tween.TRANS_SINE
+	).set_ease(Tween.EASE_IN_OUT)
+	_flashlight_glow_tween.tween_property(glow, "modulate:a", 0.08, 1.6).set_trans(
+		Tween.TRANS_SINE
+	).set_ease(Tween.EASE_IN_OUT)
+
+
+func _stop_flashlight_glow() -> void:
+	if _flashlight_glow_tween != null and _flashlight_glow_tween.is_valid():
+		_flashlight_glow_tween.kill()
+	_flashlight_glow_tween = null
 
 
 func _play_enter_dialogue() -> void:
@@ -170,9 +203,9 @@ func _pickup_flashlight_async() -> void:
 	_hide_interact_prompt_immediate()
 	GameManager.set_flag("hasFlashlight", true)
 	GameManager.add_inventory_item("hasFlashlight", "Flashlight")
+	_apply_flashlight_visibility()
 	await _top_dialogue.show_line(FLASHLIGHT_LINE, 3.0)
 	_flashlight_line_running = false
-	_apply_flashlight_visibility()
 	if _active_zone == "flashlight":
 		_active_zone = ""
 	_hide_interact_prompt()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/U8.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"U8"
+display_name = "Love Charm"
+rarity = 1
+family = ""
+description = "Love symbol chance +12%; Love power transforms +1 extra symbol at 25% chance"
+effect_id = &"princess_charm"
+effect_params = {"princess": "love", "spawn_chance": 0.12, "extra_transform_chance": 0.25}
+icon = ExtResource("2_icon")

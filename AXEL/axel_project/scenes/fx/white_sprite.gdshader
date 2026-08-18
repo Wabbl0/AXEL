@@ -1,6 +1,6 @@
 shader_type canvas_item;
 
-#define LEAF_POLY_MAX 32
+#define LEAF_POLY_MAX 64
 
 uniform float leaf_fade_alpha : hint_range(0.0, 1.0) = 0.2;
 uniform float leaf_gate_softness = 18.0;
@@ -8,18 +8,19 @@ uniform float leaf_y_cutoff_0 = 1e9;
 uniform float leaf_y_cutoff_1 = 1e9;
 uniform float leaf_y_cutoff_2 = 1e9;
 uniform float player_anchor_y = -1.0e9;
+uniform int leaf_mask_use_anchor_y = 0;
 
 uniform vec2 leaf_poly_0[LEAF_POLY_MAX];
 uniform int leaf_poly_0_count = 0;
-uniform float leaf_poly_0_feather = 8.0;
+uniform float leaf_poly_0_feather = 2.0;
 
 uniform vec2 leaf_poly_1[LEAF_POLY_MAX];
 uniform int leaf_poly_1_count = 0;
-uniform float leaf_poly_1_feather = 8.0;
+uniform float leaf_poly_1_feather = 2.0;
 
 uniform vec2 leaf_poly_2[LEAF_POLY_MAX];
 uniform int leaf_poly_2_count = 0;
-uniform float leaf_poly_2_feather = 8.0;
+uniform float leaf_poly_2_feather = 2.0;
 
 varying vec2 world_pos;
 
@@ -70,8 +71,9 @@ float _polygon_feather_mask(vec2 sample_pos, vec2 points[LEAF_POLY_MAX], int cou
 }
 
 float _trunk_line_gate(float sample_y, float cutoff_y, float softness_px) {
+	// 1e9 = no trunk line (wall / unused). Allow the polygon mask to win.
 	if (cutoff_y > 1e8) {
-		return 0.0;
+		return 1.0;
 	}
 	float pixel_gate = smoothstep(cutoff_y + softness_px, cutoff_y - softness_px, sample_y);
 	float feet_gate = smoothstep(cutoff_y + softness_px, cutoff_y - softness_px, player_anchor_y);
@@ -87,12 +89,21 @@ void vertex() {
 
 void fragment() {
 	float tex_a = texture(TEXTURE, UV).a;
-	float leaf0 = _polygon_feather_mask(world_pos, leaf_poly_0, leaf_poly_0_count, leaf_poly_0_feather);
+	vec2 mask_pos = world_pos;
+	if (leaf_mask_use_anchor_y != 0) {
+		mask_pos = vec2(world_pos.x, player_anchor_y);
+	}
+	float leaf0 = _polygon_feather_mask(mask_pos, leaf_poly_0, leaf_poly_0_count, leaf_poly_0_feather);
 	float leaf1 = _polygon_feather_mask(world_pos, leaf_poly_1, leaf_poly_1_count, leaf_poly_1_feather);
 	float leaf2 = _polygon_feather_mask(world_pos, leaf_poly_2, leaf_poly_2_count, leaf_poly_2_feather);
 	float gate0 = _trunk_line_gate(world_pos.y, leaf_y_cutoff_0, leaf_gate_softness);
 	float gate1 = _trunk_line_gate(world_pos.y, leaf_y_cutoff_1, leaf_gate_softness);
 	float gate2 = _trunk_line_gate(world_pos.y, leaf_y_cutoff_2, leaf_gate_softness);
+	if (leaf_mask_use_anchor_y != 0) {
+		gate0 = 1.0;
+		gate1 = 1.0;
+		gate2 = 1.0;
+	}
 	float m0 = leaf0 * gate0;
 	float m1 = leaf1 * gate1;
 	float m2 = leaf2 * gate2;

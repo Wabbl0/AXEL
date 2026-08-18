@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/L-C.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"L-C"
+display_name = "Trinity Crucible"
+rarity = 4
+family = "C"
+description = "During Trinity Run, every spin applies chosen power + one extra random power at 60% potency"
+effect_id = &"trinity_run"
+effect_params = {"chosen_plus_random": 0.6}
+icon = ExtResource("2_icon")

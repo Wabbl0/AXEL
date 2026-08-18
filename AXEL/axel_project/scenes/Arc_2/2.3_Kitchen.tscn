@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
+[ext_resource type="Texture2D" uid="uid://c6k1w5876ojl5" path="res://exports/Drawings/Flashlight.png" id="9_flashlight"]
+[ext_resource type="Shader" uid="uid://bflqje1ag0nv8" path="res://scenes/fx/prop_ink_halo.gdshader" id="10_flashlight_glow"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(3508, 40)
@@ -16,13 +18,13 @@ size = Vector2(3508, 40)
 size = Vector2(40, 2480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_table"]
-size = Vector2(754, 1387.5)
+size = Vector2(669, 1343.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_right_shelves"]
 size = Vector2(498, 1982)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_top_left_shelves"]
-size = Vector2(862, 325)
+size = Vector2(862, 285)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_block"]
 size = Vector2(517, 62)
@@ -31,7 +33,13 @@ size = Vector2(517, 62)
 size = Vector2(629, 399)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_flashlight_interact"]
-size = Vector2(464, 364)
+size = Vector2(469, 349)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flashlight_glow"]
+shader = ExtResource("10_flashlight_glow")
+shader_parameter/spread = 12.0
+shader_parameter/intensity = 0.32
+shader_parameter/glow_color = Color(0, 0, 0, 1)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -79,7 +87,7 @@ shape = SubResource("RectangleShape2D_wall_vertical")
 position = Vector2(2175, 1832)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableBlock" unique_id=1746383868]
-position = Vector2(-15, -96.25)
+position = Vector2(-11.5, -74.25)
 shape = SubResource("RectangleShape2D_table")
 
 [node name="RightShelvesBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1780002063]
@@ -93,7 +101,7 @@ shape = SubResource("RectangleShape2D_right_shelves")
 position = Vector2(645, 250)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopLeftShelvesBlock" unique_id=1809542865]
-position = Vector2(47, -75.5)
+position = Vector2(47, -95.5)
 shape = SubResource("RectangleShape2D_top_left_shelves")
 
 [node name="DoorWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=973707253]
@@ -116,8 +124,32 @@ position = Vector2(550, 550)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/FlashlightInteractArea" unique_id=668854355]
-position = Vector2(-81, -256)
+position = Vector2(-83.5, -263.5)
 shape = SubResource("RectangleShape2D_flashlight_interact")
+
+[node name="FlashlightVisual" type="Node2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1847293651]
+z_index = 1
+position = Vector2(469, 294)
+scale = Vector2(0.2, 0.2)
+
+[node name="Glow" type="Sprite2D" parent="WalkableWorld/EnvironmentColliders/FlashlightVisual" unique_id=1928374650]
+modulate = Color(1, 1, 1, 0.14)
+z_index = -1
+texture_filter = 1
+material = SubResource("ShaderMaterial_flashlight_glow")
+position = Vector2(-319.99994, -607.5)
+scale = Vector2(0.7247706, 0.64419794)
+texture = ExtResource("9_flashlight")
+region_enabled = true
+region_rect = Rect2(23, 52, 1090, 1172)
+
+[node name="Sprite" type="Sprite2D" parent="WalkableWorld/EnvironmentColliders/FlashlightVisual" unique_id=1738492016]
+texture_filter = 1
+position = Vector2(-325, -615)
+scale = Vector2(0.7293578, 0.66296935)
+texture = ExtResource("9_flashlight")
+region_enabled = true
+region_rect = Rect2(23, 52, 1090, 1172)
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1068058929]
 script = ExtResource("7_camera_script")

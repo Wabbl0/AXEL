@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/R-B.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"R-B"
+display_name = "Meter Coil"
+rarity = 2
+family = "B"
+description = "x3/x4/x5 premium-line fills count as +2/+3/+4 instead of base"
+effect_id = &"premium_meter"
+effect_params = {"length_boost": 1}
+icon = ExtResource("2_icon")

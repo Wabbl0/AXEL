@@ -2,9 +2,9 @@
 class_name LeafOcclusionZone
 extends Area2D
 
-const MAX_SHADER_POINTS := 32
+const MAX_SHADER_POINTS := 64
 
-@export_range(0.0, 64.0, 0.5) var feather_px: float = 8.0:
+@export_range(0.0, 64.0, 0.5) var feather_px: float = 2.0:
 	set(value):
 		feather_px = maxf(value, 0.0)
 		queue_redraw()

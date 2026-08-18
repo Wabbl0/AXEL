@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/L-H.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"L-H"
+display_name = "True Name Tag"
+rarity = 4
+family = "H"
+description = "Encounter goal +35% on playtest Base target"
+effect_id = &"true_path_goal"
+effect_params = {"goal_percent": 0.35}
+icon = ExtResource("2_icon")

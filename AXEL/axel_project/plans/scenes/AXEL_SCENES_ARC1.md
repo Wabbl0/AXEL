@@ -27,6 +27,8 @@
 | Turn away    | Ending 1 |
 
 
+**Implemented (Godot):** `1.1_SchoolExterior.tscn` + `.gd` — walkable start. Door `[E]` → Corridor (`1.2`). Behind fade zones `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` (`feather_px = 2`). Trees use a trunk Y-gate; the right wall fades only inside its polygon. Layout details: `SCENE_BUILDING.md` (legacy Arc 1). No embedded post-FX.
+
 ---
 
 ### 1.2 Corridor (`scene_2`)

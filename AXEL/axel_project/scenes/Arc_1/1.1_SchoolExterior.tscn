@@ -12,7 +12,7 @@
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="18_exploration_viewport"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
-size = Vector2(1279, 32)
+size = Vector2(1218, 32)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
 size = Vector2(29.5, 1096)
@@ -20,8 +20,14 @@ size = Vector2(29.5, 1096)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_right"]
 size = Vector2(29.5, 741.5449)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_o6kf3"]
+size = Vector2(29.5, 310.77246)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_b508v"]
-size = Vector2(186.75, 27.5)
+size = Vector2(346.75, 27.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_qou8c"]
+size = Vector2(143, 27.5)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 16.0
@@ -62,7 +68,6 @@ polygon = PackedVector2Array(31.79132, 120.846725, 32.888794, 132.70966, -7.7176
 [node name="TreeLine_Bottom_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=1804677714]
 position = Vector2(546, 246)
 script = ExtResource("16_leaf_zone")
-feather_px = 4.0
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Bottom_Behind" unique_id=1865596340]
 position = Vector2(46, -147)
@@ -78,12 +83,11 @@ polygon = PackedVector2Array(26, 91, 26, 102, -12, 104, -11, 91)
 [node name="TreeLine_Top_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=153265421]
 position = Vector2(677, -68)
 script = ExtResource("16_leaf_zone")
-feather_px = 4.0
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Top_Behind" unique_id=1592128453]
-position = Vector2(-3.9999914, 19.000006)
-scale = Vector2(1.1583737, 1.1583737)
-polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 84, -89, 66, -76, 44.941437, -77.21301, 49.20691, -12.085918, 52.660034, 0.8632736, -0.86328125, 0.8632736, 4.316345, -10.35936, 12, -82, -10, -93, -14, -114, -15, -130, -8, -147, -12, -165, -8, -176, -1, -188, 11, -191, 44, -191)
+position = Vector2(-1.9819596, 9.000012)
+scale = Vector2(0.9922789, 1.0452387)
+polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 84, -89, 65.48755, -86.10475, 49.3631, -82.27786, 45.33197, -25.831429, 52.660034, 0.8632736, 7.036255, 1.9134293, 13.082947, -24.87471, 12, -82, -10, -93, -14, -114, -15, -130, -8, -147, -12, -165, -8, -176, -1, -188, 11, -191, 44, -191)
 
 [node name="Rocks_Left" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1796740676]
 
@@ -124,7 +128,7 @@ shape = SubResource("RectangleShape2D_wall_horizontal")
 position = Vector2(640, 704)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/BottomWall" unique_id=324826100]
-position = Vector2(-0.5, 119)
+position = Vector2(-31, 119)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="LeftWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1418059198]
@@ -134,6 +138,14 @@ position = Vector2(16, 360)
 position = Vector2(1.5, -75)
 shape = SubResource("RectangleShape2D_wall_vertical_left")
 
+[node name="RightWall_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=1643895102]
+position = Vector2(546, 246)
+script = ExtResource("16_leaf_zone")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/RightWall_Behind" unique_id=506836736]
+position = Vector2(267, -218)
+polygon = PackedVector2Array(398, 76, 92, 80, 91, 48, 400, -125)
+
 [node name="RightWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=432242208]
 position = Vector2(1264, 360)
 
@@ -142,19 +154,19 @@ position = Vector2(-345.75, 86.5)
 shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="CollisionShape2D2" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=1919725186]
-position = Vector2(-25.720947, -454.66916)
-rotation = -2.099631
-shape = SubResource("RectangleShape2D_wall_vertical_right")
+position = Vector2(-204.38623, -269)
+rotation = 1.5707964
+shape = SubResource("RectangleShape2D_o6kf3")
 
 [node name="CollisionShape2D3" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=175384946]
-position = Vector2(-65, -537.375)
+position = Vector2(-41, -453)
 rotation = 1.5707964
 shape = SubResource("RectangleShape2D_b508v")
 
 [node name="CollisionShape2D4" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=1226458457]
-position = Vector2(-352.25, 59.25)
+position = Vector2(-352.25, 59.5)
 rotation = 1.5707964
-shape = SubResource("RectangleShape2D_b508v")
+shape = SubResource("RectangleShape2D_qou8c")
 
 [node name="Doors" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1045591823]
 position = Vector2(-47, 13)

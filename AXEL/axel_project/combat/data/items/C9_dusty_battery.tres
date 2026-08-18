@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/C9.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"C9"
+display_name = "Dusty Battery"
+rarity = 0
+family = ""
+description = "First non-winning spin each encounter grants +6% power-symbol spawn for next spin"
+effect_id = &"first_dead_power_spawn"
+effect_params = {"amount": 0.06}
+icon = ExtResource("2_icon")

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/item_def.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://combat/art/item_icons/R5.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"R5"
+display_name = "Chain Wildseed"
+rarity = 2
+family = ""
+description = "Every 2nd wild created in an encounter automatically creates a bonus wild"
+effect_id = &"extra_wild_on_create"
+effect_params = {"every_nth": 2}
+icon = ExtResource("2_icon")

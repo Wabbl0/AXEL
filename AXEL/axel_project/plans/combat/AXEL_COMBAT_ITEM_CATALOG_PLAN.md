@@ -15,7 +15,7 @@ A detailed item catalog (combat-use, map-gathered) for implementation chats. Inc
 
 - Alignment target: [AI_DOCS.md](../core/AI_DOCS.md) and [AXEL_combat_implementation.md](AXEL_combat_implementation.md).
 - User-approved override path: diagonal and board-count wins are allowed as **item-scoped core resolver overrides** when equipped.
-- **Family G** (no top refill) changes spawn behavior in **base-game regular spins** only: respect Trinity Run / SUPER Free Spins refill rules as separate modes—item should **not** apply or uses explicit override flags per mode.
+- **Family G** (no top refill) changes spawn behavior in **base-game regular spins** only: respect Trinity Run / Free Spins refill rules as separate modes—item should **not** apply or uses explicit override flags per mode. Live combat is already gravity-only (no cascade refill); G’s live effect is the regular-spin payout bonus plus a refill skip-guard. G does not run in Trinity or Free Spins.
 - Terminology lock: Trinity Run naming and power alias map from [AXEL_combat_design.md](AXEL_combat_design.md).
 
 ## External Reference Correlation (Cloverpit)
@@ -32,7 +32,7 @@ Use Cloverpit-inspired archetypes, adapted to AXEL spin lifecycle (random trigge
 | `E-` | Epic-tier extended | `E1`…`E4` |
 | `L-` | Legendary-tier extended | `L1`…`L2` |
 
-**Family letters (second part):** **A** power chain, **B** premium meter, **C** Trinity Run, **D** SUPER Free Spins, **E** diagonal, **F** board-count, **M** corner multipliers, **G** sealed grid (no top refill, higher payout), **H** True-path passive (goal penalty, True Ending meta).
+**Family letters (second part):** **A** power chain, **B** premium meter, **C** Trinity Run, **D** Free Spins, **E** diagonal, **F** board-count, **M** corner multipliers, **G** sealed grid (no top refill, higher payout), **H** True-path passive (goal penalty, True Ending meta).
 
 ---
 
@@ -45,7 +45,7 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 > `◇` Common | `◈` Uncommon | `◆` Rare | `★` Epic | `✦` Legendary
 >
 > **Family Key:**
-> `A` Power Chain | `B` Premium Meter | `C` Trinity Run | `D` SUPER Free Spins
+> `A` Power Chain | `B` Premium Meter | `C` Trinity Run | `D` Free Spins
 > `E` Diagonal Wins | `F` Board-Count | `M` Corner Multipliers | `G` Sealed Grid | `H` True-path
 
 ---
@@ -74,11 +74,11 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 | `C-A` | **Echo Splinter** | `A` | When any power activates, `20%` chance one other random power activates at `25%` potency |
 | `C-B` | **Meter Scratch** | `B` | Premium meter gain from premium lines `+1` on first qualifying line each spin |
 | `C-C` | **Trinity Ash** | `C` | During Trinity Run, normal-symbol payout value `+15%` |
-| `C-D` | **Super Teaser** | `D` | When entering SUPER Free Spins, gain immediate payout burst (`+0.5x` stake) |
+| `C-D` | **Free Spins Teaser** | `D` | When entering Free Spins, gain immediate payout burst (`+0.5x` stake) |
 | `C-E` | **Diagonal Chalk** | `E` | Enables major-diagonal contiguous 3+ wins only |
 | `C-F` | **Threshold Trace** | `F` | If 8+ matching symbols on board after cascade, award a minor bonus win |
 | `C-M` | **Chalk Mark** | `M` | Roll individual random multipliers on random cells; top-left icon. When cell pays in a resolved line, bonus to that spin's winnings only (tune `x2`–`x2.5`) |
-| `C-G` | **Locker Tape** | `G` | **Base-game regular spins only** — after line clears + gravity, no new symbols spawn from top; empty cells stay empty until spin chain ends. Payout bonus `+12%` to compensate. Does not override Trinity Run / SUPER refill rules |
+| `C-G` | **Locker Tape** | `G` | **Base-game regular spins only** — after line clears + gravity, no new symbols spawn from top; empty cells stay empty until spin chain ends. Payout bonus `+12%` to compensate. Does not override Trinity Run / Free Spins refill rules |
 | `C-H` | **Loose Thread** | `H` | **Optional passive** — encounter goal **+8%** at start. Tracks toward True Ending meta |
 
 ---
@@ -105,7 +105,7 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 | `U-A` | **Echo Fuse** | `A` | `35%` chance one other power activates at `35%` potency |
 | `U-B` | **Meter Hook** | `B` | Premium meter gains x`1.25` |
 | `U-C` | **Trinity Matchbook** | `C` | At Trinity Run start, gain `+1` starting spin |
-| `U-D` | **Super Primer** | `D` | SUPER Free Spins start with `+2` extra spins |
+| `U-D` | **Free Spins Primer** | `D` | Free Spins start with `+2` extra spins |
 | `U-E` | **Diagonal Compass** | `E` | Enables both major diagonals for 3+ contiguous wins |
 | `U-F` | **Threshold Knot** | `F` | Threshold `7+`; bonus payout scalar increased |
 | `U-M` | **Ink Tag** | `M` | Same glyph UI as `C-M`; wider band / more tagged cells; winnings-only bonus (tune up to `x3`) |
@@ -134,7 +134,7 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 | `R-A` | **Echo Relay** | `A` | Whenever a power activates, one other power activates at `50%` potency |
 | `R-B` | **Meter Coil** | `B` | x3/x4/x5 premium-line fills count as `+2/+3/+4` instead of base |
 | `R-C` | **Trinity Syringe** | `C` | Each Trinity Run spin that wins grants `+0.2x` temporary run scalar |
-| `R-D` | **Super Injector** | `D` | During SUPER Free Spins, each cascade adds `+1` extra payout step |
+| `R-D` | **Free Spins Injector** | `D` | During Free Spins, each cascade adds `+1` extra payout step |
 | `R-E` | **Diagonal Grid Lens** | `E` | Diagonal wins can spawn wilds on exact-3 middle cells (same spawn rule) |
 | `R-F` | **Threshold Brand** | `F` | Threshold `6+`; can trigger once per cascade step |
 | `R-M` | **Scratch Ticket** | `M` | On match, split: part to spin winnings, part as one-shot bump to active multiplier on next cascade step (60%/40%) |
@@ -161,7 +161,7 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 | `E-A` | **Trinity Relay Spine** | `A` | Each power activation triggers both other powers at `50%` potency |
 | `E-B` | **Meter Furnace** | `B` | Premium meter fills on any winning premium line; `+1` extra if wild participates |
 | `E-C` | **Trinity Halo** | `C` | During Trinity Run, first non-winning spin triggers guaranteed chosen power |
-| `E-D` | **Super Engine** | `D` | First win each SUPER spin duplicates 1 winning symbol into wild |
+| `E-D` | **Free Spins Engine** | `D` | First win each Free Spins spin duplicates 1 winning symbol into wild |
 | `E-E` | **Diagonal Cruciform** | `E` | Diagonal wins contribute to premium meter at `75%` normal contribution |
 | `E-F` | **Threshold Tribunal** | `F` | Board-count wins can trigger premium meter gain at reduced rate |
 | `E-M` | **CRT Etching** | `M` | Majority of glyph value feeds active multiplier for rest of spin chain; minority flat spin payout |
@@ -184,10 +184,10 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 
 | ID | Name | Family | Effect |
 |:---:|:---|:---:|:---|
-| `L-A` | **Trinity Overclock** | `A` | Same rule as `L2` — full chain after each activation. *One implementation, two ids unless merged* |
+| `L-A` | **Trinity Overclock** | `A` | **Unused / not in playtest.** Same rule as `L2`. Dropped: playtest ships `L2` only. |
 | `L-B` | **Meter Blood Moon** | `B` | First premium win each spin fully fills one meter section; can overflow |
 | `L-C` | **Trinity Crucible** | `C` | During Trinity Run, every spin applies chosen power + one extra random power at `60%` potency |
-| `L-D` | **Super Catastrophe** | `D` | During SUPER Free Spins, each power activation chains one extra random power at `75%` potency |
+| `L-D` | **Free Spins Catastrophe** | `D` | During Free Spins, each power activation chains one extra random power at `75%` potency |
 | `L-E` | **Diagonal Covenant** | `E` | Diagonal wins treated as full standard line wins |
 | `L-F` | **Threshold Dominion** | `F` | Board-count wins become full resolver wins (strict priority order vs line wins) |
 | `L-M` | **Red Glyph** | `M` | Glyph value immediately to active total multiplier for the spin; late pool; high volatility |
@@ -203,7 +203,7 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 | **A** Power Chain | Echo Splinter | Echo Fuse | Echo Relay | Trinity Relay Spine | Trinity Overclock |
 | **B** Premium Meter | Meter Scratch | Meter Hook | Meter Coil | Meter Furnace | Meter Blood Moon |
 | **C** Trinity Run | Trinity Ash | Trinity Matchbook | Trinity Syringe | Trinity Halo | Trinity Crucible |
-| **D** SUPER Spins | Super Teaser | Super Primer | Super Injector | Super Engine | Super Catastrophe |
+| **D** Free Spins | Free Spins Teaser | Free Spins Primer | Free Spins Injector | Free Spins Engine | Free Spins Catastrophe |
 | **E** Diagonal | Diagonal Chalk | Diagonal Compass | Diagonal Grid Lens | Diagonal Cruciform | Diagonal Covenant |
 | **F** Board-Count | Threshold Trace | Threshold Knot | Threshold Brand | Threshold Tribunal | Threshold Dominion |
 | **M** Corner Mult. | Chalk Mark | Ink Tag | Scratch Ticket | CRT Etching | Red Glyph |
@@ -242,8 +242,8 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 ## Ordered Execution Strategy For Future Chats
 
 1. Baseline `C*` / `U*` / `R*` / `E*` / `L*` items + hooks.
-2. Extended **A–F**, **M** lines; dedupe **`L2`** and **`L-A`**.
-3. **G** line: refill suppression + payout scalar; mode checks (base vs Trinity Run vs SUPER).
+2. Extended **A–F**, **M** lines; **`L2` only** (`L-A` unused / not in playtest).
+3. **G** line: refill skip-guard + payout scalar; mode checks (base vs Trinity Run vs Free Spins).
 4. **H** line: goal % modifier + meta True Ending flags.
 5. Mythic variants after balance pass.
 
@@ -257,8 +257,18 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 ## Risks and Fallbacks
 
 - **G + empty grid:** edge cases when board cannot refill — define lose-stuck or forced end-spin behavior in implementation.
-- **H stacking:** if multiple `*-H` equipped, clarify additive vs multiplicative goal % — recommend **additive stacking with cap** or **highest only**.
-- Resolver overrides (E/F families): keep scoped and logged.
+- **H stacking:** playtest uses **additive** goal percents on the Base target (`effective = round(base * (1 + sum H%))`).
+- Resolver overrides (E/F families): keep scoped and logged. **Family F vs lines:** line wins resolve first; L-F board-count full-resolver clears leftover matching cells not already paid this cascade step. Placeholder board-count bonuses: C-F `0.25×` stake, U-F `0.50×`, R-F `0.75×`.
+
+## Playtest HUD (combat_test only)
+
+Not player-final. Right-hand ITEMS list:
+
+- **Family rows** (C→E rank button, no Legendary on the slider): A Power Chain, B Premium Meter, C Trinity, D Free Spins, E Diagonal, F Board-count, M Corner glyphs, G Sealed grid, H True-path. Legendary of that family is a unique row (`L2` Overclock is the A legendary unique; `L-B`…`L-H` unique).
+- **Unique items** grouped by rarity (rainbow rarity text). `L-A` is not listed.
+- Header `ITEMS (n/max)` plus debug **Ignore slot cap** (off by default). Default cap 7, or 9 with Void Satchel.
+- **REROLLS** (paid EXECUTE spins only, not Free Spins remaining): Used SpinBox sets `_spins_used` (C1 / U1 / R1 / E4 / C10). Optional Budget + Limit spins gate. Does not reseed.
+- **GOAL:** Base Target (default 10000) + Progress. Effective = `round(base * (1 + sum of equipped H percents))`. Family H applies on the playtest Base target. `%GoalLabel` stays as display.
 
 ---
 

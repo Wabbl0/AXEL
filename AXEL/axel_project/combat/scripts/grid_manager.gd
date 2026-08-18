@@ -133,6 +133,26 @@ func refill(rng: CombatRNGScript, pool: Array, weights: Dictionary) -> void:
 		symbols_spawned.emit(spawns)
 
 
+## Nearest empty cell (Manhattan, then lower y, then lower x). Returns (-1,-1) if none.
+func nearest_empty(from: Vector2i) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := 999
+	for r in ROWS:
+		for c in COLS:
+			if cells[r][c] != null:
+				continue
+			var p := Vector2i(c, r)
+			var d: int = absi(p.x - from.x) + absi(p.y - from.y)
+			if d < best_d:
+				best_d = d
+				best = p
+				continue
+			if d == best_d:
+				if best.x < 0 or p.y < best.y or (p.y == best.y and p.x < best.x):
+					best = p
+	return best
+
+
 func snapshot_ids() -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	for r in ROWS:

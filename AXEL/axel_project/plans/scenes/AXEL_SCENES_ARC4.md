@@ -25,7 +25,7 @@
 | *(Hidden — click on scene advances memory sequence before key is found)* | → Teachers Memory → Key Pickup |
 
 
-**Implemented (Godot) — shell only, mini-games deferred:** `4.1_TeachersLounge.tscn` + `.gd` — walkable shell with flat placeholder background, Kitchen player profile, `STATIC_LOCKED` camera, one door back to `2.4_ClassroomsCorridor` (`classrooms_corridor_spawn_side="lounge_door"`). Canon enter lines play once via `GameManager.teachers_lounge_enter_line_seen`. Memory sequence / key pickup are **not** built yet — structure only, not arc-complete. Hub 1.3 still loads this file by path.
+**Implemented (Godot) — shell only, mini-games deferred:** `4.1_TeachersLounge.tscn` + `.gd` — walkable shell with hand-drawn `4.1_TeachersLounge.png` (3508×2480, white fill + black ink), Kitchen player profile, `STATIC_LOCKED` camera (art-centered, no `static_center` bias), one door back to `2.4_ClassroomsCorridor` (`classrooms_corridor_spawn_side="lounge_door"`). Placeholder `Line2D`/`Polygon2D` visuals removed. Furniture colliders sit on the drawing (left cabinet, table, chair, key bench, right clutter); floor papers are walkable. `InteractPromptOverlay` uses the shared zero `screen_offset` default. Canon enter lines play once via `GameManager.teachers_lounge_enter_line_seen`. Memory sequence / key pickup are **not** built yet — the key is drawn on the bench but is not an `[E]` zone. Hub 1.3 still loads this file by path. Re-tune furniture/door shapes in the editor if they sit off the ink.
 
 ---
 

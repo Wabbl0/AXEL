@@ -62,6 +62,7 @@ const ITEMS_BODY_FONT_SCALE := 1.25
 const SIDE_PANEL_HINT_FONT := 14
 const ITEM_PICKER_ROW_H_SEP := 4
 const ITEM_PICKER_CHECKBOX_ICON_MAX := 18
+const ITEM_ICON_DRAW_SIZE := 24
 const WINNINGS_READOUT_FONT := 31
 const CASCADE_MULT_READOUT_FONT := 24
 const WINNINGS_READOUT_OUTLINE := 0
@@ -140,6 +141,16 @@ var _history_spin_list: VBoxContainer
 var _item_picker_panel: PanelContainer
 var _item_picker_title: Label
 var _item_entries: Array = []
+var _family_rank: Dictionary = {}
+var _ignore_cap_checkbox: CheckBox
+var _reroll_used_spin: SpinBox
+var _reroll_budget_spin: SpinBox
+var _limit_spins_checkbox: CheckBox
+var _reroll_hint_label: Label
+var _goal_base_spin: SpinBox
+var _goal_progress_spin: SpinBox
+var _goal_effective_label: Label
+var _playtest_tuning: VBoxContainer
 var _stake_pill: PanelContainer
 var _economics_center: CenterContainer
 var _economics_stack: VBoxContainer
@@ -1379,6 +1390,7 @@ func _refresh_readouts() -> void:
 		bankroll_label.text = "%d/%d" % [bankroll_units, cap_units]
 	if goal_label != null:
 		goal_label.text = "GOAL\n%s" % _goal_progress_only(_safe_get_goal_label())
+	_refresh_playtest_readouts()
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
 
@@ -1939,48 +1951,256 @@ func _set_seed_spin_value_no_signal(seed_value: int) -> void:
 
 func _build_item_picker() -> void:
 	if _item_picker_panel != null and is_instance_valid(_item_picker_panel):
+		_rebuild_item_picker_contents()
 		return
 	var existing_panel := get_node_or_null("PlayArea/PlayRow/ItemPickerPanel") as PanelContainer
 	if existing_panel != null:
 		_item_picker_panel = existing_panel
 		_item_picker_title = _item_picker_panel.get_meta("header") as Label
-		_apply_item_picker_body_typography()
+	else:
+		_item_picker_panel = _make_side_panel("ITEMS")
+		_item_picker_panel.name = "ItemPickerPanel"
+		_item_picker_title = _item_picker_panel.get_meta("header") as Label
+		_item_picker_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		_item_picker_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		if _play_row != null:
+			_play_row.add_child(_item_picker_panel)
+			_reassert_node_ownership(_item_picker_panel)
+		else:
+			_add_preview_child(_item_picker_panel)
+	if _item_picker_title != null:
+		_style_side_panel_header(_item_picker_title)
+	_ensure_playtest_tuning()
+	_rebuild_item_picker_contents()
+
+
+func _ensure_playtest_tuning() -> void:
+	if _item_picker_panel == null:
 		return
-	_item_picker_panel = _make_side_panel("ITEMS")
-	_item_picker_panel.name = "ItemPickerPanel"
+	var vbox := _item_picker_panel.get_child(0) as VBoxContainer
+	if vbox == null:
+		return
+	var existing := vbox.get_node_or_null("PlaytestTuning") as VBoxContainer
+	if existing != null:
+		_playtest_tuning = existing
+		_reroll_used_spin = existing.find_child("RerollUsedSpin", true, false) as SpinBox
+		_reroll_budget_spin = existing.find_child("RerollBudgetSpin", true, false) as SpinBox
+		_limit_spins_checkbox = existing.find_child("LimitSpinsCheck", true, false) as CheckBox
+		_reroll_hint_label = existing.find_child("RerollHint", true, false) as Label
+		_goal_base_spin = existing.find_child("GoalBaseSpin", true, false) as SpinBox
+		_goal_progress_spin = existing.find_child("GoalProgressSpin", true, false) as SpinBox
+		_goal_effective_label = existing.find_child("GoalEffectiveLabel", true, false) as Label
+		_ignore_cap_checkbox = existing.find_child("IgnoreCapCheck", true, false) as CheckBox
+		return
+	_playtest_tuning = VBoxContainer.new()
+	_playtest_tuning.name = "PlaytestTuning"
+	_playtest_tuning.add_theme_constant_override("separation", 3)
+	_ignore_cap_checkbox = CheckBox.new()
+	_ignore_cap_checkbox.name = "IgnoreCapCheck"
+	_ignore_cap_checkbox.text = "Ignore slot cap"
+	_style_item_picker_checkbox(_ignore_cap_checkbox, SIDE_PANEL_HINT_FONT)
+	_ignore_cap_checkbox.toggled.connect(_on_ignore_cap_toggled)
+	_playtest_tuning.add_child(_ignore_cap_checkbox)
+	_playtest_tuning.add_child(_make_playtest_label("REROLLS"))
+	var used_row := _make_spin_row("Used", 0, 99, "RerollUsedSpin")
+	_reroll_used_spin = used_row.get_node("RerollUsedSpin") as SpinBox
+	_reroll_used_spin.value_changed.connect(_on_reroll_used_changed)
+	_playtest_tuning.add_child(used_row)
+	var budget_row := _make_spin_row("Budget", 0, 99, "RerollBudgetSpin")
+	_reroll_budget_spin = budget_row.get_node("RerollBudgetSpin") as SpinBox
+	_reroll_budget_spin.value_changed.connect(_on_reroll_budget_changed)
+	_playtest_tuning.add_child(budget_row)
+	_limit_spins_checkbox = CheckBox.new()
+	_limit_spins_checkbox.name = "LimitSpinsCheck"
+	_limit_spins_checkbox.text = "Limit spins"
+	_style_item_picker_checkbox(_limit_spins_checkbox, SIDE_PANEL_HINT_FONT)
+	_limit_spins_checkbox.toggled.connect(_on_limit_spins_toggled)
+	_playtest_tuning.add_child(_limit_spins_checkbox)
+	_reroll_hint_label = Label.new()
+	_reroll_hint_label.name = "RerollHint"
+	_reroll_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_reroll_hint_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	_playtest_tuning.add_child(_reroll_hint_label)
+	_playtest_tuning.add_child(_make_playtest_label("GOAL"))
+	var base_row := _make_spin_row("Base", 1, 999999, "GoalBaseSpin")
+	_goal_base_spin = base_row.get_node("GoalBaseSpin") as SpinBox
+	_goal_base_spin.value = 10000
+	_goal_base_spin.value_changed.connect(_on_goal_base_changed)
+	_playtest_tuning.add_child(base_row)
+	var prog_row := _make_spin_row("Progress", 0, 999999, "GoalProgressSpin")
+	_goal_progress_spin = prog_row.get_node("GoalProgressSpin") as SpinBox
+	_goal_progress_spin.value_changed.connect(_on_goal_progress_changed)
+	_playtest_tuning.add_child(prog_row)
+	_goal_effective_label = Label.new()
+	_goal_effective_label.name = "GoalEffectiveLabel"
+	_goal_effective_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	_playtest_tuning.add_child(_goal_effective_label)
+	vbox.add_child(_playtest_tuning)
+	vbox.move_child(_playtest_tuning, 1)
+	if _can_use_combat_api() and combat.has_method("get_playtest_spin_budget"):
+		_reroll_budget_spin.set_value_no_signal(float(combat.get_playtest_spin_budget()))
+		if combat.has_method("get_goal_base_target_cents"):
+			_goal_base_spin.set_value_no_signal(float(combat.get_goal_base_target_cents()))
 
+
+func _make_playtest_label(text: String) -> Label:
+	var lab := Label.new()
+	lab.text = text
+	lab.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	lab.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+	return lab
+
+
+func _make_spin_row(label_text: String, min_v: int, max_v: int, spin_name: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	var lab := Label.new()
+	lab.text = label_text
+	lab.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(lab)
+	var spin := SpinBox.new()
+	spin.name = spin_name
+	spin.min_value = min_v
+	spin.max_value = max_v
+	spin.step = 1
+	spin.custom_minimum_size.x = 88
+	row.add_child(spin)
+	return row
+
+
+func _rebuild_item_picker_contents() -> void:
+	if _item_picker_panel == null:
+		return
 	var items_vbox: VBoxContainer = _item_picker_panel.get_meta("list") as VBoxContainer
-
-	_item_picker_title = _item_picker_panel.get_meta("header") as Label
-	_item_picker_title.text = "ITEMS (0/%d)" % _safe_get_item_max_slots()
-	_style_side_panel_header(_item_picker_title)
-
+	if items_vbox == null:
+		return
+	for child in items_vbox.get_children():
+		items_vbox.remove_child(child)
+		child.free()
+	_item_entries.clear()
 	var available := _discover_available_items()
+	var by_id: Dictionary = {}
 	for item in available:
-		var cb := CheckBox.new()
-		var rarity_idx: int = clampi(int(item.get("rarity")), 0, RARITY_GLYPHS.size() - 1)
-		cb.text = "%s %s" % [RARITY_GLYPHS[rarity_idx], item.display_name]
-		cb.tooltip_text = "%s | %s" % [RARITY_NAMES[rarity_idx], item.description]
-		_style_item_picker_checkbox(cb)
-		cb.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
-		cb.toggled.connect(_on_item_checkbox_toggled.bind(item, cb))
-		items_vbox.add_child(cb)
-		_item_entries.append({"checkbox": cb, "item": item})
-
+		by_id[String(item.id)] = item
+	var family_defs := [
+		{"letter": "A", "name": "Power Chain"},
+		{"letter": "B", "name": "Premium Meter"},
+		{"letter": "C", "name": "Trinity"},
+		{"letter": "D", "name": "Free Spins"},
+		{"letter": "E", "name": "Diagonal"},
+		{"letter": "F", "name": "Board-count"},
+		{"letter": "M", "name": "Corner glyphs"},
+		{"letter": "G", "name": "Sealed grid"},
+		{"letter": "H", "name": "True-path"},
+	]
+	var fam_header := Label.new()
+	fam_header.text = "FAMILIES"
+	fam_header.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	fam_header.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+	items_vbox.add_child(fam_header)
+	for fam in family_defs:
+		var letter: String = str(fam["letter"])
+		if not _family_rank.has(letter):
+			_family_rank[letter] = 0
+		var rank: int = int(_family_rank[letter])
+		var item: Resource = _family_item_at_rank(by_id, letter, rank)
+		items_vbox.add_child(_make_family_row(letter, str(fam["name"]), item, rank))
+	var uniques: Dictionary = {0: [], 1: [], 2: [], 3: [], 4: []}
+	for item in available:
+		var family := str(item.get("family"))
+		var rarity: int = int(item.get("rarity"))
+		if family != "" and rarity < 4:
+			continue
+		uniques[rarity].append(item)
+	for rarity_idx in 5:
+		var group: Array = uniques[rarity_idx]
+		if group.is_empty():
+			continue
+		var rh := Label.new()
+		rh.text = RARITY_NAMES[rarity_idx]
+		rh.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+		rh.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
+		items_vbox.add_child(rh)
+		for item in group:
+			items_vbox.add_child(_make_unique_row(item))
 	if available.is_empty():
 		var empty_label := Label.new()
 		empty_label.text = "No items available"
 		empty_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
-		empty_label.add_theme_color_override("font_color", Color(0.5, 0.3, 0.3, 0.8))
 		items_vbox.add_child(empty_label)
+	_refresh_item_picker_title()
+	_refresh_playtest_readouts()
+	_apply_item_picker_body_typography()
 
-	_item_picker_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_item_picker_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	if _play_row != null:
-		_play_row.add_child(_item_picker_panel)
-		_reassert_node_ownership(_item_picker_panel)
-	else:
-		_add_preview_child(_item_picker_panel)
+
+func _family_item_at_rank(by_id: Dictionary, letter: String, rank: int) -> Resource:
+	var prefixes: Array[String] = ["C", "U", "R", "E"]
+	var r: int = clampi(rank, 0, 3)
+	var key := "%s-%s" % [prefixes[r], letter]
+	return by_id.get(key, null)
+
+
+func _make_item_icon(item: Resource) -> TextureRect:
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(ITEM_ICON_DRAW_SIZE, ITEM_ICON_DRAW_SIZE)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if item != null:
+		icon.texture = item.get("icon") as Texture2D
+	return icon
+
+
+func _make_family_row(letter: String, family_name: String, item: Resource, rank: int) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	var cb := CheckBox.new()
+	cb.text = ""
+	_style_item_picker_checkbox(cb)
+	cb.toggled.connect(_on_family_toggled.bind(letter, cb))
+	row.add_child(cb)
+	row.add_child(_make_item_icon(item))
+	var name_lab := Label.new()
+	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lab.text = family_name
+	name_lab.tooltip_text = item.description if item != null else family_name
+	name_lab.mouse_filter = Control.MOUSE_FILTER_PASS
+	var rarity_idx: int = clampi(rank, 0, 3)
+	name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
+	name_lab.add_theme_font_size_override("font_size", _resolved_items_body_font())
+	row.add_child(name_lab)
+	var rank_btn := Button.new()
+	rank_btn.text = RARITY_NAMES[rarity_idx]
+	rank_btn.custom_minimum_size.x = 88
+	rank_btn.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	rank_btn.pressed.connect(_on_family_rank_pressed.bind(letter))
+	row.add_child(rank_btn)
+	_item_entries.append({"kind": "family", "letter": letter, "checkbox": cb, "item": item, "icon": row.get_child(1), "name": name_lab, "rank_btn": rank_btn})
+	return row
+
+
+func _make_unique_row(item: Resource) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	var cb := CheckBox.new()
+	var rarity_idx: int = clampi(int(item.get("rarity")), 0, RARITY_GLYPHS.size() - 1)
+	cb.text = ""
+	cb.tooltip_text = "%s | %s" % [RARITY_NAMES[rarity_idx], item.description]
+	_style_item_picker_checkbox(cb)
+	cb.toggled.connect(_on_item_checkbox_toggled.bind(item, cb))
+	row.add_child(cb)
+	row.add_child(_make_item_icon(item))
+	var name_lab := Label.new()
+	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lab.text = "%s %s" % [RARITY_GLYPHS[rarity_idx], item.display_name]
+	name_lab.tooltip_text = cb.tooltip_text
+	name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
+	name_lab.add_theme_font_size_override("font_size", _resolved_items_body_font())
+	name_lab.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(name_lab)
+	_item_entries.append({"kind": "unique", "checkbox": cb, "item": item})
+	return row
+
 
 func _discover_available_items() -> Array:
 	var found: Array = []
@@ -1999,6 +2219,7 @@ func _discover_available_items() -> Array:
 	found.sort_custom(func(a, b): return String(a.id) < String(b.id))
 	return found
 
+
 func _on_item_checkbox_toggled(toggled_on: bool, item: Resource, cb: CheckBox) -> void:
 	if not _can_use_combat_api():
 		cb.set_pressed_no_signal(false)
@@ -2010,6 +2231,122 @@ func _on_item_checkbox_toggled(toggled_on: bool, item: Resource, cb: CheckBox) -
 	else:
 		combat.unequip_item(item)
 	_refresh_item_picker_title()
+	_refresh_playtest_readouts()
+
+
+func _on_family_toggled(toggled_on: bool, letter: String, cb: CheckBox) -> void:
+	if not _can_use_combat_api():
+		cb.set_pressed_no_signal(false)
+		return
+	var item: Resource = _current_family_item(letter)
+	if item == null:
+		cb.set_pressed_no_signal(false)
+		return
+	if toggled_on:
+		if not combat.equip_item(item):
+			cb.set_pressed_no_signal(false)
+			return
+	else:
+		combat.unequip_item(item)
+	_refresh_item_picker_title()
+	_refresh_playtest_readouts()
+
+
+func _current_family_item(letter: String) -> Resource:
+	for entry in _item_entries:
+		if str(entry.get("kind", "")) == "family" and str(entry.get("letter", "")) == letter:
+			return entry.get("item") as Resource
+	return null
+
+
+func _on_family_rank_pressed(letter: String) -> void:
+	var next_rank: int = (int(_family_rank.get(letter, 0)) + 1) % 4
+	_family_rank[letter] = next_rank
+	var by_id: Dictionary = {}
+	for item in _discover_available_items():
+		by_id[String(item.id)] = item
+	var new_item: Resource = _family_item_at_rank(by_id, letter, next_rank)
+	var entry: Dictionary = {}
+	for e in _item_entries:
+		if str(e.get("kind", "")) == "family" and str(e.get("letter", "")) == letter:
+			entry = e
+			break
+	if entry.is_empty():
+		return
+	var old_item: Resource = entry.get("item") as Resource
+	entry["item"] = new_item
+	var cb := entry.get("checkbox") as CheckBox
+	var icon := entry.get("icon") as TextureRect
+	var name_lab := entry.get("name") as Label
+	var rank_btn := entry.get("rank_btn") as Button
+	if icon != null and new_item != null:
+		icon.texture = new_item.get("icon") as Texture2D
+	if name_lab != null and new_item != null:
+		name_lab.tooltip_text = new_item.description
+		name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(next_rank, Color.WHITE))
+	if rank_btn != null:
+		rank_btn.text = RARITY_NAMES[next_rank]
+	if _can_use_combat_api() and cb != null and cb.button_pressed and old_item != null and new_item != null:
+		var idx: int = -1
+		if combat.inventory.has_method("index_of"):
+			idx = combat.inventory.index_of(old_item.id)
+		if idx >= 0 and combat.has_method("replace_item_at"):
+			if not combat.replace_item_at(idx, new_item):
+				cb.set_pressed_no_signal(false)
+		else:
+			combat.unequip_item(old_item)
+			if not combat.equip_item(new_item):
+				cb.set_pressed_no_signal(false)
+	_refresh_item_picker_title()
+	_refresh_playtest_readouts()
+
+
+func _on_ignore_cap_toggled(on: bool) -> void:
+	if _can_use_combat_api() and combat.has_method("set_ignore_slot_cap"):
+		combat.set_ignore_slot_cap(on)
+	_refresh_item_picker_title()
+
+
+func _on_reroll_used_changed(value: float) -> void:
+	if _can_use_combat_api() and combat.has_method("set_spins_used"):
+		combat.set_spins_used(int(value))
+	_refresh_playtest_readouts()
+
+
+func _on_reroll_budget_changed(value: float) -> void:
+	if _can_use_combat_api() and combat.has_method("set_spin_budget"):
+		combat.set_spin_budget(int(value))
+
+
+func _on_limit_spins_toggled(on: bool) -> void:
+	if _can_use_combat_api() and combat.has_method("set_limit_spins"):
+		combat.set_limit_spins(on)
+
+
+func _on_goal_base_changed(value: float) -> void:
+	if _can_use_combat_api() and combat.has_method("set_goal_base_target_cents"):
+		combat.set_goal_base_target_cents(int(value))
+	_refresh_playtest_readouts()
+
+
+func _on_goal_progress_changed(value: float) -> void:
+	if _can_use_combat_api() and combat.has_method("set_goal_progress_cents"):
+		combat.set_goal_progress_cents(int(value))
+	_refresh_playtest_readouts()
+
+
+func _refresh_playtest_readouts() -> void:
+	if _reroll_hint_label != null and _can_use_combat_api() and combat.has_method("get_reroll_item_hint"):
+		_reroll_hint_label.text = combat.get_reroll_item_hint()
+	if _goal_effective_label != null and _can_use_combat_api() and combat.has_method("get_effective_goal_target_cents"):
+		var eff: int = combat.get_effective_goal_target_cents()
+		var base: int = combat.get_goal_base_target_cents() if combat.has_method("get_goal_base_target_cents") else 10000
+		_goal_effective_label.text = "Effective %d (base %d)" % [eff, base]
+	if _reroll_used_spin != null and _can_use_combat_api():
+		_reroll_used_spin.set_value_no_signal(float(_safe_get_spins_used()))
+	if _goal_progress_spin != null and _can_use_combat_api():
+		_goal_progress_spin.set_value_no_signal(float(combat.get_chip_bar_goal_progress_cents()))
+
 
 func _refresh_item_picker_title() -> void:
 	if _item_picker_title != null:
