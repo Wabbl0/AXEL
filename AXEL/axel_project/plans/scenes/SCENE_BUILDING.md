@@ -96,11 +96,10 @@ Root (Node2D + scene script)
 
 ### `_ready()` order
 
-1. Capture texture-pixel spawn / glow positions from editor nodes.
-2. `PlayerCoverSync.bind_from_player` then `bind_design_from_background(background, camera.fit_mode)` (1.1/1.2 set `_OLD_BG_SCALE` first so bind_design no-ops).
-3. Bind PlayerLayer extras that should match the room (e.g. memory glow) via `bind_extra_node`.
-4. Connect `Camera2D.layout_applied` → sync `EnvironmentColliders` + `PlayerCoverSync.apply`.
-5. Layout via `BackgroundLayout.apply` (camera does this when `background_path` is set).
+1. `PlayerCoverSync.bind_from_player` then `bind_design_from_background(background, camera.fit_mode)` (1.1/1.2 set `_OLD_BG_SCALE` first so bind_design no-ops; 1.4 sets 1.2’s `0.546` the same way). Do **not** store a separate spawn constant.
+2. Bind PlayerLayer extras that should match the room (e.g. memory glow) via `bind_extra_node`. Capture glow editor positions if needed (`_foo_tex`).
+3. Connect `Camera2D.layout_applied` → sync `EnvironmentColliders` + `PlayerSpawnSync` + `PlayerCoverSync.apply`.
+4. Layout via `BackgroundLayout.apply` (camera does this when `background_path` is set).
 
 ```gdscript
 func _ready() -> void:
@@ -110,8 +109,13 @@ func _ready() -> void:
 	)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 
-func _on_background_layout_applied(scale_factor: float, bg_position: Vector2, _world_rect: Rect2) -> void:
-	_sync_environment_colliders(scale_factor, bg_position)
+func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
+	var env := $WalkableWorld/EnvironmentColliders
+	var tex := PlayerSpawnSync.capture_tex(env, _player)
+	env.position = bg_position
+	env.scale = Vector2.ONE * cover_scale
+	PlayerSpawnSync.apply_tex(env, _player, tex)
+	_player_cover_sync.apply(_player, cover_scale, bg_position)
 ```
 
 ### Background / camera helpers
@@ -120,7 +124,8 @@ func _on_background_layout_applied(scale_factor: float, bg_position: Vector2, _w
 - Camera: `scenes/core/background_camera_controller.gd`
 - Colliders: texture-pixel space under `WalkableWorld/EnvironmentColliders`
 - Player: world space under `WalkableWorld/Player` on **new** scenes (legacy 1.1/1.2 still use `PlayerLayer`)
-- Cover sync: `scenes/core/player_cover_sync.gd` — first layout uses the 1920×1280 (or legacy `_OLD_BG_SCALE`) baseline; later resizes keep the same Mike-vs-room ratio
+- Cover sync: `scenes/core/player_cover_sync.gd` — first layout uses the 1920×1280 (or legacy `_OLD_BG_SCALE`) baseline; later resizes keep the same Mike-vs-room ratio. 1.4 uses 1.2’s `0.546` (same 2400×1500 PNG size).
+- Spawn: `scenes/core/player_spawn_sync.gd` — the Player node is the spawn. Capture with `env.to_local` **before** moving `EnvironmentColliders`, apply with `env.to_global` after. Do this on the **first** layout, not only later resizes. Regression: `scenes/core/test/player_spawn_sync_check.gd`.
 
 ### Rule: do not retune Player `.tscn` scale for another computer
 
@@ -138,11 +143,22 @@ Scene enter / discovery lines use a GameManager `*_seen` flag. They must not rep
 
 When the player **walks off a scene edge** (`ExitTrigger`), save floor-relative height in `GameManager.walkoff_floor_offset_y` (player Y minus that room’s floor/wall junction) and apply it on the next room’s peek spawn. Background floor lines in the two drawings should line up. This does **not** apply to `[E]` door / room entries. Live: `1.2` ↔ `1.4`.
 
-### Rule: any node placed against the background must spawn from its own editor position
+### Rule: Player node is the spawn (mandatory)
 
-Player spawn points, memory-indicator glows, and any other node whose on-screen
+There is no separate spawn point. The `Player` node **is** the spawn.
+
+- Drag `PlayerLayer/Player` (or `WalkableWorld/Player` on new scenes) on the drawing. That is where Mike starts a fresh Play / F6.
+- **Forbidden:** hardcoded `env.to_global(Vector2(...))`, skipping the first cover-fit remap, teleporting default spawn onto a door / stones / interact shape, or storing a spawn constant that can go stale.
+- **Allowed elsewhere:** only GameManager peek / return when arriving from another room. Walk-off Y (`walkoff_floor_offset_y`) may adjust height after that spawn, not replace X/Y with a new point.
+- 1.1 intro may start off-screen and walk **to** the remapped Player node. Skip-intro leaves Mike on that node. Do not walk to a computed stones target instead.
+- Helper: `PlayerSpawnSync.capture_tex` before mutating `EnvironmentColliders`, then `apply_tex` after. Works for both unscaled (2.1-style) and pre-scaled (1.2/1.4 `_OLD_BG_SCALE`) colliders.
+- Editor: assign `res://assets/sprites/mike_sprite_frames.tres` on `AnimatedSprite` / `ShadowOutline` so Mike is visible on the node while you drag. Play still rebuilds frames in `Player.gd`.
+
+### Rule: any other node placed against the background must spawn from its own editor position
+
+Memory-indicator glows and any other node whose on-screen
 spot should match where you dragged it in the editor MUST follow this pattern
-— never hardcode a spawn constant, and never re-derive a node's runtime
+— never hardcode a position constant, and never re-derive a node's runtime
 position from a *different* node (e.g. snapping onto an interact area's shape).
 That silently makes the node's own editor position dead/unused, so nudging it
 in the editor does nothing at runtime.
@@ -155,8 +171,9 @@ in the editor does nothing at runtime.
 3. To move the spot, drag the node itself in the editor — do not add an
    offset constant or point it at another node's position.
 
-See `2.3_Kitchen.gd` (`_player_spawn_tex`) and `2.1_Cafeteria.gd`
-(`_player_spawn_tex`, `_memory_indicator_tex`) for reference implementations.
+Player spawn uses `PlayerSpawnSync` (above), not a `_player_spawn_tex` copy of
+`player.position`. See `2.1_Cafeteria.gd` (`_memory_indicator_tex`) for the
+glow pattern.
 
 ### Rule: no visual offset from the node (default)
 
@@ -205,7 +222,7 @@ After `_ready`, headless smoke MUST call:
 - `QaCanonValidators.collect_background_camera_findings(root, scene_path)`
 - `QaCanonValidators.collect_background_editor_lock_findings` (background must have `metadata/_edit_lock_`)
 
-New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_design_from_background`). Regression lock: `scenes/core/test/player_cover_sync_check.gd` (scale/cover constant across two covers, including first apply).
+New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_design_from_background`) and spawn through `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`.
 
 ### Playtest variants (optional)
 
@@ -215,7 +232,7 @@ Inherited child `.tscn` that instances the canonical scene and overrides only pl
 
 - Base `1920×1280` (3:2) in `project.godot`. Stretch stays **disabled** (no letterbox / Keep-aspect canvas stretch — that shrank dialogue fonts).
 - Game tab / OS window may be any size or aspect; `BackgroundCamera` cover-fits the PNG and recomputes on `size_changed`.
-- Mike, walls (`EnvironmentColliders`), and art share one cover scale via `PlayerCoverSync` from the 1920×1280 baseline (1.1/1.2: `_OLD_BG_SCALE`).
+- Mike, walls (`EnvironmentColliders`), and art share one cover scale via `PlayerCoverSync` from the 1920×1280 baseline (1.1/1.2: `_OLD_BG_SCALE`; 1.4: same `0.546` as 1.2).
 - `exploration_viewport.gd` is **inert** (kept so 1.1/1.2 still load).
 
 ## Canonical filename invariant

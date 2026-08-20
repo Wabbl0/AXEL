@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_elx0u"]
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_p5syx"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="11_top_dialogue"]
 [ext_resource type="Script" uid="uid://bj16cjcb4p1kx" path="res://scenes/Arc_1/1.1_SchoolExterior.gd" id="12_school_ext"]
 [ext_resource type="Texture2D" uid="uid://cwowj33yu3igx" path="res://exports/Drawings/1.1_SchoolExterior.png" id="13_bg_drawing"]
@@ -210,14 +211,19 @@ sprite_sheet = ExtResource("3_p5syx")
 animation_fps = 5.0
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=663540772]
+sprite_frames = ExtResource("3_mike_frames")
+animation = &"idle"
+autoplay = &"idle"
 
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=124778921]
 modulate = Color(0, 0, 0, 0.55)
 z_index = -1
-position = Vector2(0, 0.5)
 scale = Vector2(1.06, 1.06)
+sprite_frames = ExtResource("3_mike_frames")
+animation = &"idle"
 
 [node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player" unique_id=506965154]
+visible = false
 color = Color(0.36, 0.85, 0.94, 1)
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 

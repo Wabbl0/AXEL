@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scenes/Arc_5/5.1_Classroom.gd" id="1_classroom"]
 [ext_resource type="Script" path="res://scripts/Player.gd" id="2_player_script"]
 [ext_resource type="Texture2D" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
 [ext_resource type="Texture2D" path="res://exports/Drawings/5.1_Classroom.png" id="4_classroom_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
@@ -101,13 +102,19 @@ collision_inward_margin = 4.0
 collision_lower_body_ratio = 0.42
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player"]
+sprite_frames = ExtResource("3_mike_frames")
+animation = &"idle"
+autoplay = &"idle"
 
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player"]
 modulate = Color(0, 0, 0, 0.55)
 z_index = -1
 scale = Vector2(1.08, 1.08)
+sprite_frames = ExtResource("3_mike_frames")
+animation = &"idle"
 
 [node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player"]
+visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player"]

@@ -12,6 +12,3 @@ polygon = PackedVector2Array(78, -46, 89, 10, 65, 47, 51, 50, 51, 109, 62.200195
 
 [node name="CollisionShape2D3" parent="EnvironmentColliders/RightWall" parent_id_path=PackedInt32Array(432242208) index="2" unique_id=175384946]
 position = Vector2(-66, -561)
-
-[node name="Player" parent="PlayerLayer" parent_id_path=PackedInt32Array(1984527034) index="0" unique_id=304166626]
-position = Vector2(-50, 246)

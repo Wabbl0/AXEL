@@ -424,16 +424,10 @@ func _on_background_layout_applied(
 
 func _sync_environment_colliders(cover_scale: float, bg_position: Vector2) -> void:
 	var env := $WalkableWorld/EnvironmentColliders
-	var tex_pos := Vector2.ZERO
-	var remap_pos := (
-		is_instance_valid(_player) and _player_cover_sync.has_reference()
-	)
-	if remap_pos:
-		tex_pos = env.to_local(_player.global_position)
+	var tex_pos := PlayerSpawnSync.capture_tex(env, _player)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
-	if remap_pos:
-		_player.global_position = env.to_global(tex_pos)
+	PlayerSpawnSync.apply_tex(env, _player, tex_pos)
 	if is_instance_valid(_player):
 		_player_cover_sync.apply(_player, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")

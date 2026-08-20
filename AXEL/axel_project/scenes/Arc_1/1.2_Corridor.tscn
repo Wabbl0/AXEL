@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://c06a0uigsapjy" path="res://scenes/Arc_1/1.2_Corridor.gd" id="1_462mc"]
 [ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_player_script"]
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
 [ext_resource type="Texture2D" uid="uid://cnnga4avp6u0u" path="res://exports/Drawings/1.2_Corridor.png" id="4_corridor_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="11_interact_prompt"]
@@ -16,14 +17,14 @@ size = Vector2(2368.0889, 24)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
 size = Vector2(38.5, 1515)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
-size = Vector2(80, 1520.1465)
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exterior_interact"]
 size = Vector2(200, 500)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
+size = Vector2(80, 1520.1465)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
-size = Vector2(2413.9194, 90)
+size = Vector2(2423.0767, 90)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
@@ -97,7 +98,7 @@ shape = SubResource("RectangleShape2D_exit_trigger")
 position = Vector2(1172, 659)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LockerWall" unique_id=1200780002]
-position = Vector2(42.285522, 84.7215)
+position = Vector2(37.706665, 103.0365)
 shape = SubResource("RectangleShape2D_upper_block")
 debug_color = Color(0.49424207, 0.87887543, 0.9511325, 0.41960785)
 
@@ -120,7 +121,7 @@ layer = 100
 follow_viewport_enabled = true
 
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=558325098]
-position = Vector2(4, 403)
+position = Vector2(4, 440.80487)
 scale = Vector2(3, 3)
 script = ExtResource("2_player_script")
 speed = 253.4
@@ -132,20 +133,22 @@ collision_inward_margin = 4.0
 collision_lower_body_ratio = 0.42
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1306492370]
-position = Vector2(0, 37.80487)
+sprite_frames = ExtResource("3_mike_frames")
+animation = &"idle"
+autoplay = &"idle"
 
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1138124680]
 modulate = Color(0, 0, 0, 0.55)
 z_index = -1
-position = Vector2(1, 38.58539)
 scale = Vector2(1.08, 1.08)
+sprite_frames = ExtResource("3_mike_frames")
+animation = &"idle"
 
 [node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player" unique_id=1889231691]
-position = Vector2(0, 47.561035)
+visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=641622148]
-position = Vector2(0, 41.46344)
 shape = SubResource("CircleShape2D_player")
 
 [node name="TopDialogueOverlay" parent="." unique_id=529892493 instance=ExtResource("10_top_dialogue")]

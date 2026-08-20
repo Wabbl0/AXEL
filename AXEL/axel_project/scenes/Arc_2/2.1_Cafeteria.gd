@@ -43,15 +43,12 @@ var _kitchen_zone_armed := true
 var _backyard_zone_armed := true
 var _classrooms_zone_armed := true
 var _table_zone_armed := true
-## Texture-pixel spawn captured from the Player node's editor position.
-var _player_spawn_tex := Vector2.ZERO
 ## Texture-pixel position captured from the MemoryIndicator node's editor position.
 var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
-	_player_spawn_tex = _player.position
 	if is_instance_valid(_memory_indicator):
 		_memory_indicator_tex = _memory_indicator.position
 	_player_cover_sync.bind_from_player(_player)
@@ -299,10 +296,7 @@ func _on_background_layout_applied(
 func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var env := $WalkableWorld/EnvironmentColliders
 	var player_node := $PlayerLayer/Player
-	var tex_pos := Vector2.ZERO
-	var remap_pos := _player_spawn_applied and _player_cover_sync.has_reference()
-	if remap_pos:
-		tex_pos = env.to_local(player_node.global_position)
+	var tex_pos := PlayerSpawnSync.capture_tex(env, player_node)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
 	if not _player_spawn_applied:
@@ -331,10 +325,10 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 			_pending_table_peek = false
 			_arm_table_zone_grace()
 		else:
-			player_node.global_position = env.to_global(_player_spawn_tex)
+			PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 		_player_spawn_applied = true
-	elif remap_pos:
-		player_node.global_position = env.to_global(tex_pos)
+	else:
+		PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	_sync_memory_indicator()
 	call_deferred("_wake_static_colliders")

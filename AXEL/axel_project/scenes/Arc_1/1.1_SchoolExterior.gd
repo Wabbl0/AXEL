@@ -10,7 +10,6 @@ enum IntroState {
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
-@onready var _rocks_left: StaticBody2D = $EnvironmentColliders/Rocks_Left
 @onready var _left_wall_collision: CollisionShape2D = $EnvironmentColliders/LeftWall/CollisionShape2D
 @onready var _trunk_lines: Array[StaticBody2D] = [
 	get_node("EnvironmentColliders/TreeLine_Bottom") as StaticBody2D,
@@ -94,13 +93,10 @@ func _ready() -> void:
 		# Leave left road open so walking off still reaches Ending 1.
 		if is_instance_valid(_left_wall_collision):
 			_left_wall_collision.set_deferred("disabled", true)
-		if is_instance_valid(_player):
-			if _pending_corridor_door_spawn:
-				_player.global_position = _door_interact_anchor()
-				_pending_corridor_door_spawn = false
-				_arm_exit_trigger_grace()
-			else:
-				_player.global_position = _left_stones_stand_target()
+		if is_instance_valid(_player) and _pending_corridor_door_spawn:
+			_player.global_position = _door_interact_anchor()
+			_pending_corridor_door_spawn = false
+			_arm_exit_trigger_grace()
 		_enable_player_control()
 		_refresh_door_interact_prompt()
 		return
@@ -148,7 +144,8 @@ func _run_forced_intro_sequence() -> void:
 
 	AxelEventFx.start_interface_distortion()
 
-	var stones_target := _left_stones_stand_target()
+	# Walk to the Player node's remapped spawn — never a hardcoded stand target.
+	var spawn_target := _player.global_position if is_instance_valid(_player) else Vector2.ZERO
 	var cam := $Camera2D as BackgroundCamera
 	# Camera starts above the road, then tilts down onto the stand point with
 	# follow off. Enabling follow while Mike is still off-screen left used to
@@ -159,17 +156,17 @@ func _run_forced_intro_sequence() -> void:
 		cam.position_smoothing_enabled = false
 		cam.set_follow_enabled(false)
 		cam.place_center_clamped(
-			Vector2(stones_target.x, stones_target.y - INTRO_CAMERA_START_LIFT_PX)
+			Vector2(spawn_target.x, spawn_target.y - INTRO_CAMERA_START_LIFT_PX)
 		)
 	if is_instance_valid(_player):
-		_player.global_position = _intro_offscreen_left_spawn(stones_target)
+		_player.global_position = _intro_offscreen_left_spawn(spawn_target)
 
 	await get_tree().create_timer(INTRO_START_WAIT_SEC).timeout
 	if cam != null:
-		await _intro_camera_tilt_to(cam, stones_target)
-	await _scripted_walk_horizontal_to(stones_target)
+		await _intro_camera_tilt_to(cam, spawn_target)
+	await _scripted_walk_horizontal_to(spawn_target)
 	if cam != null:
-		cam.place_center_clamped(stones_target)
+		cam.place_center_clamped(spawn_target)
 		cam.position_smoothing_enabled = saved_smoothing
 		cam.set_follow_enabled(true)
 
@@ -284,18 +281,6 @@ func _scripted_walk_horizontal_to(target: Vector2) -> void:
 		if _player.has_method("clear_scripted_velocity"):
 			_player.clear_scripted_velocity()
 			_player.velocity = Vector2.ZERO
-
-
-func _left_stones_stand_target() -> Vector2:
-	var poly2 := _rocks_left.get_node_or_null("CollisionPolygon2D2") as CollisionPolygon2D
-	var poly3 := _rocks_left.get_node_or_null("CollisionPolygon2D3") as CollisionPolygon2D
-	if poly2 == null or poly3 == null or poly2.polygon.is_empty() or poly3.polygon.is_empty():
-		if is_instance_valid(_player):
-			return _player.global_position + Vector2(80.0, 40.0)
-		return Vector2(249.0, 402.0)
-	var centroid2 := _polygon_global_centroid(poly2)
-	var centroid3 := _polygon_global_centroid(poly3)
-	return (centroid2 + centroid3) * 0.5
 
 
 func _polygon_global_centroid(poly: CollisionPolygon2D) -> Vector2:
@@ -497,19 +482,13 @@ func _sync_environment_colliders(new_scale_factor: float, new_bg_position: Vecto
 	var env := get_node_or_null("EnvironmentColliders") as Node2D
 	if env == null:
 		return
-	var tex_pos := Vector2.ZERO
-	var remap_pos := (
-		is_instance_valid(_player) and _player_cover_sync.has_reference()
-	)
-	if remap_pos:
-		tex_pos = env.to_local(_player.global_position)
+	var tex_pos := PlayerSpawnSync.capture_tex(env, _player)
 	var env_scale := Vector2(
 		new_scale_factor / _OLD_BG_SCALE.x, new_scale_factor / _OLD_BG_SCALE.y
 	)
 	env.position = new_bg_position - env_scale * _OLD_BG_POSITION
 	env.scale = env_scale
-	if remap_pos:
-		_player.global_position = env.to_global(tex_pos)
+	PlayerSpawnSync.apply_tex(env, _player, tex_pos)
 	if is_instance_valid(_player):
 		_player_cover_sync.apply(_player, new_scale_factor, new_bg_position)
 	call_deferred("_wake_static_colliders")

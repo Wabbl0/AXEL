@@ -17,12 +17,10 @@ var _is_transitioning := false
 var _player_spawn_applied := false
 var _pending_door_peek := false
 var _door_zone_armed := true
-var _player_spawn_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
-	_player_spawn_tex = _player.position
 	_player_cover_sync.bind_from_player(_player)
 	var _bg := $WalkableWorld/Background as Sprite2D
 	var _cam := $Camera2D
@@ -150,10 +148,7 @@ func _on_background_layout_applied(
 func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var env := $WalkableWorld/EnvironmentColliders
 	var player_node := $PlayerLayer/Player
-	var tex_pos := Vector2.ZERO
-	var remap_pos := _player_spawn_applied and _player_cover_sync.has_reference()
-	if remap_pos:
-		tex_pos = env.to_local(player_node.global_position)
+	var tex_pos := PlayerSpawnSync.capture_tex(env, player_node)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
 	if not _player_spawn_applied:
@@ -162,11 +157,11 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 			_pending_door_peek = false
 			_arm_door_zone_grace()
 		else:
-			player_node.global_position = env.to_global(_player_spawn_tex)
+			PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 			_arm_door_zone_grace()
 		_player_spawn_applied = true
-	elif remap_pos:
-		player_node.global_position = env.to_global(tex_pos)
+	else:
+		PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
 	if _pending_door_peek:

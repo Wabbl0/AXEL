@@ -476,6 +476,34 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 			"Assign sprite_sheet on Player or fix asset path under res://assets/sprites/."
 		))
 
+	var child_pos_eps := 0.05
+	for child_name in ["AnimatedSprite", "ShadowOutline", "FallbackBody", "CollisionShape2D"]:
+		var child := player.get_node_or_null(child_name) as Node2D
+		if child == null:
+			continue
+		if child.position.length() > child_pos_eps:
+			findings.append(make_finding(
+				"movement.player_child_offset",
+				"major",
+				"REGRESSION",
+				scene_path,
+				"Player/%s position=%s (must be (0, 0))" % [child_name, child.position],
+				"Zero the child offset and move the Player node instead."
+			))
+
+	var scene_script := root.get_script() as Script
+	if scene_script != null and scene_script.resource_path.begins_with("res://scenes/"):
+		var src := FileAccess.get_file_as_string(scene_script.resource_path)
+		if src.contains("env.to_global(Vector2("):
+			findings.append(make_finding(
+				"movement.hardcoded_player_spawn",
+				"major",
+				"REGRESSION",
+				scene_path,
+				"Scene script hardcodes env.to_global(Vector2(...)) spawn",
+				"Use PlayerSpawnSync from the Player node. Never overwrite default spawn."
+			))
+
 	if scene_path == "res://scenes/Arc_1/1.1_SchoolExterior.tscn":
 		var camera := root.get_node_or_null("Camera2D") as Camera2D
 		if camera != null:

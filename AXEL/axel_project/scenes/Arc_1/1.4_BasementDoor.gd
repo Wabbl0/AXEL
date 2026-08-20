@@ -6,6 +6,9 @@ const DOOR_LINE := "Not yet."
 ## Just left of CafeteriaInteractArea so only a sliver peeks on the right.
 const CAFETERIA_PEEK_MARGIN_PX := 12.0
 const CAFETERIA_ZONE_GRACE_SEC := 0.15
+## Same 2400×1500 plate as 1.2 — share the corridor's authored cover baseline
+## so Mike is the same on-screen size (do not use 1920×1280 bind_design).
+const _OLD_BG_SCALE := Vector2(0.546, 0.546)
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
@@ -25,9 +28,11 @@ var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
+	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
 	_player_cover_sync.bind_from_player(_player)
 	var _bg := $WalkableWorld/Background as Sprite2D
 	var _cam := $Camera2D
+	# Legacy 1.2 baseline already set; bind_design no-ops (do not switch to 1920x1280).
 	_player_cover_sync.bind_design_from_background(
 		_bg, _cam.fit_mode, _cam.background_y
 	)
@@ -217,10 +222,7 @@ func _on_background_layout_applied(
 func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var env := $WalkableWorld/EnvironmentColliders
 	var player_node := $PlayerLayer/Player
-	var tex_pos := Vector2.ZERO
-	var remap_pos := _player_spawn_applied and _player_cover_sync.has_reference()
-	if remap_pos:
-		tex_pos = env.to_local(player_node.global_position)
+	var tex_pos := PlayerSpawnSync.capture_tex(env, player_node)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
 	if not _player_spawn_applied:
@@ -229,11 +231,11 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 			_pending_cafeteria_peek = false
 			_arm_cafeteria_zone_grace()
 		else:
-			player_node.global_position = env.to_global(Vector2(250.0, 950.0))
+			PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 			_apply_walkoff_y_if_pending(player_node)
 		_player_spawn_applied = true
-	elif remap_pos:
-		player_node.global_position = env.to_global(tex_pos)
+	else:
+		PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
 	if _pending_cafeteria_peek:

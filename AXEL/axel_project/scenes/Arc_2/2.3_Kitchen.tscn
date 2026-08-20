@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://hog8fykx64jt" path="res://scenes/Arc_2/2.3_Kitchen.gd" id="1_kitchen"]
 [ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_player_script"]
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
 [ext_resource type="Texture2D" uid="uid://b7dbnd4xub63k" path="res://exports/Drawings/2.3_Kitchen.png" id="4_kitchen_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
@@ -175,20 +176,22 @@ collision_inward_margin = 4.0
 collision_lower_body_ratio = 0.42
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1026204946]
-position = Vector2(2.333334, 1)
+sprite_frames = ExtResource("3_mike_frames")
+animation = &"idle"
+autoplay = &"idle"
 
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=407781672]
 modulate = Color(0, 0, 0, 0.55)
 z_index = -1
-position = Vector2(3.333334, 1.7805252)
 scale = Vector2(1.08, 1.08)
+sprite_frames = ExtResource("3_mike_frames")
+animation = &"idle"
 
 [node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player" unique_id=563718849]
-position = Vector2(4.333334, 5.333336)
+visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=7676243]
-position = Vector2(2.333334, 4.6585693)
 shape = SubResource("CircleShape2D_player")
 
 [node name="TopDialogueOverlay" parent="." unique_id=1427198189 instance=ExtResource("5_top_dialogue")]

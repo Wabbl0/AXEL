@@ -4577,3 +4577,54 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Docs only. Gameplay unchanged.
 - Verification: Compared write-ups to live `.tscn` / `.gd` (7.1 `COWARD_COUNT=100`; 2.1 `KitchenInteractArea` y `880`; 2.3 Player scale `5.0`; `walkoff_floor_offset_y` on 1.2/1.4).
 - Notes: Implement entries for today are the three sections above. Walk-off floor alignment still wants a playtest look.
+
+### Scene 1.4 — Mike size matches 1.2 cover baseline
+- Request: 1.4 player model was quite wrong; make it exactly the same size as 1.2 (background texture same size as 1.2).
+- Implementation: Both plates were already 2400×1500. 1.4 was using 1920×1280 cover as PlayerCoverSync baseline (~0.853) while 1.2 uses `_OLD_BG_SCALE` `0.546`, so Mike looked ~56% smaller in 1.4. 1.4 now shares 1.2’s `0.546` baseline (bind_design no-ops). Background + `EnvironmentColliders` authored scale set to `0.546` like 1.2. Placeholders left as-is.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Walking 1.2 → 1.4, Mike stays the same size vs the room. Door placeholders unchanged.
+- Verification: PNG sizes 2400×1500 both files; 1.4 `_OLD_BG_SCALE` equals 1.2’s `0.546`.
+- Notes: Do not switch 1.4 back to 1920×1280 `bind_design` or Mike will shrink again.
+
+### Player node is the spawn (no scene overwrite)
+- Request: Player model spawn must be exactly the Player node in real time; no scene may overwrite that spawn. Fix 1.2 and 1.4. Make the rule permanent in AI_DOCS, SCENE_BUILDING, and governance.
+- Implementation: Added `PlayerSpawnSync` (`env.to_local` before cover-fit, `env.to_global` after, including first layout). Removed 1.4 hardcoded `(250, 950)`. 1.2 now remaps on first layout. 1.1 skip-intro and intro walk use the Player node (not stones). All other walkable rooms use the same helper for default spawn; peek/return from another room still allowed. Zeroed Player visual child offsets; shared `mike_sprite_frames.tres` so Mike is visible on the node in the editor.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/player_spawn_sync.gd`
+  - `AXEL/axel_project/scenes/core/test/player_spawn_sync_check.gd`
+  - `AXEL/axel_project/assets/sprites/mike_sprite_frames.tres`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior_Playtest.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Drag the Player node to set spawn. Play starts there (cover-fit remaps it). 1.4 no longer ignores the node. 1.2 no longer misses the first remap. 1.1 intro/skip use that node.
+- Verification: Headless `player_spawn_sync_check.gd`, `player_cover_sync_check.gd`, `scene_smoke_check.gd`.
+- Notes: Peek/return from another room still places at the door/edge. Walk-off Y still adjusts height after spawn.
