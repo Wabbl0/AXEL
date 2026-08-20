@@ -27,7 +27,7 @@
 | Turn away    | Ending 1 |
 
 
-**Implemented (Godot):** `1.1_SchoolExterior.tscn` + `.gd` — walkable start. Door `[E]` → Corridor (`1.2`). Behind fade zones `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` (`feather_px = 2`). Trees use a trunk Y-gate; the right wall fades only inside its polygon. Layout details: `SCENE_BUILDING.md` (legacy Arc 1). No embedded post-FX.
+**Implemented (Godot):** `1.1_SchoolExterior.tscn` + `.gd` — walkable start. Door `[E]` → Corridor (`1.2`). After the intro, the left road stays open; left-edge `ExitTrigger` → Ending 1 (`7.1_Ending1.tscn`). Return from 1.2 peeks at the school doors via `exterior_spawn_side="corridor_door"` (skips intro). Behind fade zones `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` (`feather_px = 2`). Trees use a trunk Y-gate; the right wall fades only inside its polygon. Layout details: `SCENE_BUILDING.md` (legacy Arc 1). No embedded post-FX.
 
 ---
 
@@ -44,13 +44,13 @@
 **Choices:**
 
 
-| Button label      | Target     |
-| ----------------- | ---------- |
-| Go to your locker | Locker Hub |
-| Turn away         | Ending 1   |
+| Button label      | Target           |
+| ----------------- | ---------------- |
+| Go to your locker | Locker Hub       |
+| Return outside    | School Exterior  |
 
 
-**Implemented (Godot):** `1.2_Corridor.tscn` + `1.2_Corridor.gd` — walkable corridor (`STATIC_LOCKED`/`COVER`); locker `[E]` zone → `1.3_LockerHub.tscn`; right-edge `ExitTrigger` → `1.4_BasementDoor.tscn`; return position saved as `corridor_return_pos`. Once-ever smell + locker lines via `GameManager`. No embedded post-FX.
+**Implemented (Godot):** `1.2_Corridor.tscn` + `1.2_Corridor.gd` — walkable corridor (`STATIC_LOCKED`/`COVER`); locker `[E]` zone → `1.3_LockerHub.tscn`; left-edge `ExteriorInteractArea` `[E]` at spawn → `1.1_SchoolExterior.tscn` (`exterior_spawn_side="corridor_door"`); right-edge `ExitTrigger` → `1.4_BasementDoor.tscn` (walk-off carries floor-relative Y via `walkoff_floor_offset_y`); return position saved as `corridor_return_pos`. Once-ever smell + locker lines via `GameManager`. No embedded post-FX.
 
 ---
 
@@ -90,6 +90,6 @@
 
 > Not yet.
 
-**Implemented (Godot):** `1.4_BasementDoor.tscn` + `1.4_BasementDoor.gd` — walkable room with `exports/Drawings/1.4_BasementDoor.png` (`STATIC_LOCKED`/`COVER`, `margin_px=12` to hide CRT red fringe; no `RoomOutline` line), chained-door interact art, floor/wall divider, `[E]` near door plays `"Not yet."` when the dialogue bar is closed (bar still up → skip/advance only; `basement_door_line_seen` saved but not an interact gate), left-edge `ExitTrigger` auto-return to `1.2_Corridor.tscn` with right-edge peek spawn (`corridor_spawn_side="basement_right"`), right-edge `CafeteriaInteractArea` `[E]` → `2.1_Cafeteria.tscn` (`cafeteria_spawn_side="basement_left"`; return from cafeteria peeks on 1.4 right via `basement_spawn_side="cafeteria_right"`; `RightWall` moved like 1.2). Reachable from `1.2_Corridor.tscn` right-edge `ExitTrigger` (approved `RightWall` move). No embedded post-FX.
+**Implemented (Godot):** `1.4_BasementDoor.tscn` + `1.4_BasementDoor.gd` — walkable room with `exports/Drawings/1.4_BasementDoor.png` (`STATIC_LOCKED`/`COVER`, `margin_px=12` to hide CRT red fringe; no `RoomOutline` line). Mike authored scale `3.0` / speed `253.4` matching 1.2 (sprite / shadow / collision children use the same relative positions as 1.2). Chained-door placeholder: grey `DoorWall` poly hidden, `DoorBody` black, `DoorVisuals` `z_index=10` so chains show through noir. Floor/wall divider aligned toward 1.2’s floor junction (`FloorDividerLine` y `790`). `[E]` near door plays `"Not yet."` when the dialogue bar is closed (bar still up → skip/advance only; `basement_door_line_seen` saved but not an interact gate). Left-edge `ExitTrigger` auto-return to `1.2_Corridor.tscn` with right-edge peek spawn (`corridor_spawn_side="basement_right"`; walk-off carries floor-relative Y via `walkoff_floor_offset_y`). Right-edge `CafeteriaInteractArea` `[E]` → `2.1_Cafeteria.tscn` (`cafeteria_spawn_side="basement_left"`; return from cafeteria peeks on 1.4 right via `basement_spawn_side="cafeteria_right"`; `RightWall` moved like 1.2). Reachable from `1.2_Corridor.tscn` right-edge `ExitTrigger` (approved `RightWall` move). No embedded post-FX.
 
 ---

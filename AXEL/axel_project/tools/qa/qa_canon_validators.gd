@@ -422,7 +422,10 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 	if player == null:
 		return findings
 
+	# Prefer authored (pre-cover-sync) values — live scale/speed track the Game window.
 	var speed := float(player.get("speed"))
+	if player.has_meta("axel_authored_speed"):
+		speed = float(player.get_meta("axel_authored_speed"))
 	var speed_min := float(profile.get("speed_min", 0.0))
 	var speed_max := float(profile.get("speed_max", 9999.0))
 	if speed < speed_min or speed > speed_max:
@@ -437,6 +440,8 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 		))
 
 	var scale_xy := player.scale
+	if player.has_meta("axel_authored_scale"):
+		scale_xy = player.get_meta("axel_authored_scale") as Vector2
 	var scale_min := float(profile.get("scale_min", 0.0))
 	var scale_max := float(profile.get("scale_max", 99.0))
 	var scale_avg := (scale_xy.x + scale_xy.y) * 0.5

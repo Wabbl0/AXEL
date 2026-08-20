@@ -6,6 +6,7 @@ extends Node2D
 
 const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
 const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
+const EXTERIOR_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const LOCKER_LINE := "This was your locker."
 ## Just left of ExitTrigger so only a sliver of the scale-3 player peeks on the right.
 const BASEMENT_PEEK_MARGIN_PX := 12.0
@@ -14,10 +15,13 @@ const EXIT_TRIGGER_GRACE_SEC := 0.15
 const _OLD_BG_SCALE := Vector2(0.546, 0.546)
 
 var _locker_interact_area: Area2D
+var _exterior_interact_area: Area2D
 var _exit_trigger: Area2D
 var _spawn_line_active := false
 var _is_transitioning := false
 var _locker_zone_active := false
+var _exterior_zone_active := false
+var _exterior_zone_armed := true
 var _locker_line_running := false
 var _locker_enter_token := 0
 var _pending_basement_peek := false
@@ -28,12 +32,24 @@ var _player_cover_sync := PlayerCoverSync.new()
 func _ready() -> void:
 	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
 	_player_cover_sync.bind_from_player(_player)
+	# Legacy baseline already set; bind_design no-ops (do not switch to 1920x1280).
+	_player_cover_sync.bind_design_from_background(
+		get_node_or_null("WalkableWorld/Background") as Sprite2D,
+		$Camera2D.fit_mode,
+		$Camera2D.background_y,
+	)
 	_locker_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/LockerInteractArea"
 	) as Area2D
 	if is_instance_valid(_locker_interact_area):
 		_locker_interact_area.body_entered.connect(_on_locker_body_entered)
 		_locker_interact_area.body_exited.connect(_on_locker_body_exited)
+	_exterior_interact_area = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/ExteriorInteractArea"
+	) as Area2D
+	if is_instance_valid(_exterior_interact_area):
+		_exterior_interact_area.body_entered.connect(_on_exterior_body_entered)
+		_exterior_interact_area.body_exited.connect(_on_exterior_body_exited)
 	_exit_trigger = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/ExitTrigger"
 	) as Area2D
@@ -42,6 +58,7 @@ func _ready() -> void:
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	call_deferred("_restore_player_position_if_needed")
+	_arm_exterior_zone_grace()
 	_show_spawn_line()
 
 
@@ -75,14 +92,58 @@ func _arm_exit_trigger_grace() -> void:
 	_exit_trigger_armed = true
 
 
-func _basement_right_peek_global() -> Vector2:
+func _basement_right_peek_global(apply_walkoff: bool = true) -> Vector2:
 	var pos := _player.global_position
 	var left_edge := _exit_trigger_left_edge_x()
 	if left_edge > -INF:
 		pos.x = left_edge - BASEMENT_PEEK_MARGIN_PX
-	if is_instance_valid(_exit_trigger):
+	if apply_walkoff and GameManager.has_walkoff_floor_offset_y():
+		pos.y = _floor_marker_global_y() + GameManager.take_walkoff_floor_offset_y()
+		pos.y = _clamp_walkable_y(pos.y)
+	elif is_instance_valid(_exit_trigger):
 		pos.y = _exit_trigger.global_position.y
 	return pos
+
+
+func _floor_marker_global_y() -> float:
+	var locker_wall := get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/LockerWall"
+	) as StaticBody2D
+	if not is_instance_valid(locker_wall):
+		return _player.global_position.y if is_instance_valid(_player) else 0.0
+	var shape := locker_wall.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape == null or not (shape.shape is RectangleShape2D):
+		return locker_wall.global_position.y
+	var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
+	return locker_wall.to_global(Vector2(shape.position.x, shape.position.y + half_height)).y
+
+
+func _clamp_walkable_y(y: float) -> float:
+	var min_y := _floor_marker_global_y() + 8.0
+	var max_y := y
+	var bottom := get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/BottomWall"
+	) as StaticBody2D
+	if is_instance_valid(bottom):
+		var shape := bottom.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape != null and shape.shape is RectangleShape2D:
+			var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
+			max_y = bottom.to_global(
+				Vector2(shape.position.x, shape.position.y - half_height)
+			).y - 8.0
+		else:
+			max_y = bottom.global_position.y - 8.0
+	if max_y < min_y:
+		return y
+	return clampf(y, min_y, max_y)
+
+
+func _save_walkoff_floor_offset() -> void:
+	if not is_instance_valid(_player):
+		return
+	GameManager.set_walkoff_floor_offset_y(
+		_player.global_position.y - _floor_marker_global_y()
+	)
 
 
 func _refresh_locker_zone_state() -> void:
@@ -110,6 +171,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _is_interaction_event(event):
 		return
+	if _is_player_near_exterior() and _exterior_zone_armed:
+		_begin_exterior_transition()
+		return
 	if not _is_player_near_locker():
 		return
 	_begin_locker_transition()
@@ -133,6 +197,15 @@ func _is_player_near_locker() -> bool:
 	return false
 
 
+func _is_player_near_exterior() -> bool:
+	if not is_instance_valid(_exterior_interact_area) or not is_instance_valid(_player):
+		return false
+	for body in _exterior_interact_area.get_overlapping_bodies():
+		if body == _player:
+			return true
+	return false
+
+
 func _locker_interact_anchor() -> Vector2:
 	if not is_instance_valid(_locker_interact_area):
 		return Vector2.ZERO
@@ -140,6 +213,15 @@ func _locker_interact_anchor() -> Vector2:
 	if poly == null:
 		return _locker_interact_area.global_position
 	return _polygon_global_centroid(poly)
+
+
+func _exterior_interact_anchor() -> Vector2:
+	if not is_instance_valid(_exterior_interact_area):
+		return Vector2.ZERO
+	var shape := _exterior_interact_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape != null and shape.shape is RectangleShape2D:
+		return shape.global_position
+	return _exterior_interact_area.global_position
 
 
 func _polygon_global_centroid(poly: CollisionPolygon2D) -> Vector2:
@@ -166,6 +248,22 @@ func _on_locker_body_exited(body: Node) -> void:
 	if _is_transitioning:
 		return
 	_hide_locker_interact_prompt()
+
+
+func _on_exterior_body_entered(body: Node) -> void:
+	if body != _player or _is_transitioning:
+		return
+	_exterior_zone_active = true
+	_try_show_exterior_interact_prompt()
+
+
+func _on_exterior_body_exited(body: Node) -> void:
+	if body != _player:
+		return
+	_exterior_zone_active = false
+	if _is_transitioning:
+		return
+	_hide_exterior_interact_prompt()
 
 
 func _handle_locker_zone_entered() -> void:
@@ -205,6 +303,8 @@ func _play_locker_line_async(token: int) -> void:
 func _try_show_locker_interact_prompt() -> void:
 	if _is_transitioning or not _locker_zone_active:
 		return
+	if _exterior_zone_active and _exterior_zone_armed:
+		return
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.show_prompt(_locker_interact_anchor())
@@ -213,15 +313,62 @@ func _try_show_locker_interact_prompt() -> void:
 func _hide_locker_interact_prompt() -> void:
 	if _is_transitioning:
 		return
+	if _exterior_zone_active and _exterior_zone_armed:
+		_try_show_exterior_interact_prompt()
+		return
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.hide_prompt()
+
+
+func _try_show_exterior_interact_prompt() -> void:
+	if _is_transitioning or not _exterior_zone_active or not _exterior_zone_armed:
+		return
+	if not is_instance_valid(_interact_prompt):
+		return
+	_interact_prompt.show_prompt(_exterior_interact_anchor())
+
+
+func _hide_exterior_interact_prompt() -> void:
+	if _is_transitioning:
+		return
+	if _locker_zone_active:
+		_try_show_locker_interact_prompt()
+		return
+	if not is_instance_valid(_interact_prompt):
+		return
+	_interact_prompt.hide_prompt()
+
+
+func _arm_exterior_zone_grace() -> void:
+	_exterior_zone_armed = false
+	await get_tree().create_timer(EXIT_TRIGGER_GRACE_SEC).timeout
+	_exterior_zone_armed = true
+	if _exterior_zone_active:
+		_try_show_exterior_interact_prompt()
 
 
 func _begin_locker_transition() -> void:
 	if not is_instance_valid(_player):
 		return
 	_begin_scene_transition(LOCKER_HUB_SCENE, _player.global_position)
+
+
+func _begin_exterior_transition() -> void:
+	if _is_transitioning:
+		return
+	_is_transitioning = true
+	GameManager.set_exterior_spawn_side("corridor_door")
+	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
+		_interact_prompt.hide_prompt_immediate()
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
+	var err := get_tree().change_scene_to_file(EXTERIOR_SCENE)
+	if err != OK:
+		push_error("Failed to change scene to %s (error %d)." % [EXTERIOR_SCENE, err])
+		_is_transitioning = false
+		if is_instance_valid(AxelPostFxStack):
+			AxelPostFxStack.apply_to_scene(get_tree().current_scene)
 
 
 func _on_exit_trigger_body_entered(body: Node) -> void:
@@ -233,11 +380,13 @@ func _on_exit_trigger_body_entered(body: Node) -> void:
 func _begin_basement_transition() -> void:
 	if not is_instance_valid(_player):
 		return
+	_save_walkoff_floor_offset()
 	_begin_scene_transition(BASEMENT_DOOR_SCENE, _safe_basement_return_pos())
 
 
 func _safe_basement_return_pos() -> Vector2:
-	return _basement_right_peek_global()
+	# Peek X only — do not consume walkoff Y (that offset is for 1.4).
+	return _basement_right_peek_global(false)
 
 
 func _exit_trigger_left_edge_x() -> float:

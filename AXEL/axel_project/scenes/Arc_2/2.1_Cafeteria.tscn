@@ -162,7 +162,7 @@ position = Vector2(872, -1090)
 shape = SubResource("RectangleShape2D_table_interact")
 
 [node name="KitchenInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=201792129]
-position = Vector2(3000, 1100)
+position = Vector2(3000, 880)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/KitchenInteractArea" unique_id=977331617]

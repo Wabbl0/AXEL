@@ -29,6 +29,11 @@ var _player_cover_sync := PlayerCoverSync.new()
 func _ready() -> void:
 	_player_spawn_tex = _player.position
 	_player_cover_sync.bind_from_player(_player)
+	var _bg := $WalkableWorld/Background as Sprite2D
+	var _cam := $Camera2D
+	_player_cover_sync.bind_design_from_background(
+		_bg, _cam.fit_mode, _cam.background_y
+	)
 	_cafeteria_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/CafeteriaInteractArea"
 	) as Area2D

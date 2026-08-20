@@ -1,15 +1,14 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" path="res://scenes/Endings/7.1_Ending1.gd" id="1_ending"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="2_top_dialogue"]
 
-[node name="ScenePlaceholder" type="Control"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_scene_placeholder")
-scene_id = "7.1"
-location_label = "ENDING #1"
-dialogue = PackedStringArray("Coward", "Coward", "Coward", "Coward", "...")
+[node name="7_1_Ending1" type="Node2D"]
+script = ExtResource("1_ending")
+
+[node name="VoidFill" type="Polygon2D" parent="."]
+z_index = -100
+color = Color(1, 1, 1, 1)
+polygon = PackedVector2Array(-4000, -4000, 8000, -4000, 8000, 8000, -4000, 8000)
+
+[node name="TopDialogueOverlay" parent="." instance=ExtResource("2_top_dialogue")]

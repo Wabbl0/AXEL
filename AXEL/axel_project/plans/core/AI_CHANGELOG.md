@@ -4495,3 +4495,85 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Docs only. Gameplay unchanged.
 - Verification: Compared write-ups to live `.tscn` / `.gd` (3.2 uses `3.1_Backyard_Memory.png`; 2.3 `FlashlightVisual`; catalog playtest HUD already in the catalog plan).
 - Notes: Changelog already had today’s implement entries (behind fades, 3.1+3.2 memory, no-offset canon, 1.1 wall fade, flashlight, full item catalog, new plates).
+
+## 2026-08-20
+
+### Player / room shared cover scale
+- Request: Mike looked a different size on another computer / Game-window resolution (especially 2.1). Scale player, background, and collisions the same amount on every window size and aspect — do not keep making per-computer `.tscn` scale tweaks.
+- Implementation: `PlayerCoverSync` now uses a stable baseline (this PNG’s cover-fit at 1920×1280, or 1.1/1.2 `_OLD_BG_SCALE`) on the **first** layout, not the first Game-window size. Empty-viewport fallback in `BackgroundLayout` is 1920×1280 (was 1280×720). Every walkable scene calls `bind_design_from_background`; 2.1 / 3.1 memory glows use `bind_extra_node`. QA movement checks read authored scale/speed metas so live cover-sync values do not fail profiles. Locked into `AI_DOCS.md`, `SCENE_BUILDING.md`, and `.cursor/rules/axel-ai-docs-governance.mdc`. Stretch stays disabled.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/player_cover_sync.gd`
+  - `AXEL/axel_project/scenes/core/background_layout.gd`
+  - `AXEL/axel_project/scenes/core/test/player_cover_sync_check.gd`
+  - `AXEL/axel_project/scenes/core/test/mock_cover_player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike, walls, and room art stay the same size relative to each other on any Game tab / monitor. Do not retune Player `.tscn` scale to “fix” another computer.
+- Verification: `scenes/core/test/player_cover_sync_check.gd` (scale/cover constant across two covers, including first apply).
+- Notes: 1.1 / 1.2 keep `_OLD_BG_SCALE` as baseline (legacy; do not migrate without approval).
+
+### Upgrade Godot editor to 4.7.2
+- Request: Update all references for the new Godot 4.7.2 executable already present in the repo root, then check the game still runs.
+- Implementation: Pointed `tools/cmd/godot.cmd`, `tools/Godot.code-workspace`, `.vscode/settings.json`, `AXEL/.vscode/settings.json`, `README.md`, and `AGENTS.md` at `Godot_v4.7.2-stable_win64.exe` (console variant too). Removed the previous `Godot_v4.7.1-stable_*` binaries. Left `project.godot` `config/features` as `"4.7"` (maintenance release of 4.7).
+- Files changed:
+  - `tools/cmd/godot.cmd`
+  - `tools/Godot.code-workspace`
+  - `.vscode/settings.json`
+  - `AXEL/.vscode/settings.json`
+  - `README.md`
+  - `AGENTS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: CLI wrappers and editor integration use Godot 4.7.2; no AXEL script/shader changes required (4.7.x compatible maintenance build, no known incompatibilities with 4.7.1).
+- Verification: `Godot_v4.7.2-stable_win64_console.exe --version` → `4.7.2.stable.official.ed1daf0bf`; `tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd` → `Determinism check OK (100 spins, seed 12345)`. Princess, scaffold, scene smoke (10 scenes), player-cover-sync, and main-menu `--quit-after 90` also exit 0. Arc 1 exterior bot still times out on intro unlock on both 4.7.1 and 4.7.2 (pre-existing; not a 4.7.2 regression).
+- Notes: Historical changelog entries still cite older console invocations where recorded at implementation time.
+
+### Multi-scene playtest fixes
+- Request: Wire 1.1 left-road Ending 1 (100× `"Coward."` → main menu) and 1.2 `[E]` back to 1.1; show 1.4 chain placeholder through noir; match 1.4 Mike to 1.2; carry walk-off Y on side exits (1.2 ↔ 1.4); strip 2.2 quotes/action lines; 2.1 enter line once only; raise 2.1 kitchen `[E]` 220px; grow 2.3 Mike 150%.
+- Implementation: 1.1 left `ExitTrigger` stays open after intro → `7.1_Ending1.tscn` (`7.1_Ending1.gd` plays 100 `"Coward."` then main menu). 1.2 `ExteriorInteractArea` at spawn returns to 1.1 doors (`exterior_spawn_side="corridor_door"`, skips intro). 1.4: hide grey door-wall poly, black door body, raise `DoorVisuals`; sprite/collision children match 1.2 (scale still 3.0). `GameManager.walkoff_floor_offset_y` carries floor-relative height 1.2 ↔ 1.4; 1.4 floor line nudged to y `790`. 2.2 lines match ARC2 rewrite. `cafeteria_enter_line_seen` gates 2.1 chatter. `KitchenInteractArea` `(3000, 880)`. 2.3 authored scale `3.0` → `5.0`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Endings/7.1_Ending1.tscn`
+  - `AXEL/axel_project/scenes/Endings/7.1_Ending1.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC7.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Turning left after the 1.1 intro is Ending 1. 1.2 spawn `[E]` returns to the school doors. 1.4 chains read through noir; Mike matches 1.2. Walking 1.2 ↔ 1.4 keeps floor height. 2.1 chatter plays once. Kitchen hotspot is higher. Kitchen Mike is larger.
+- Verification: Headless scene smoke (10 scenes, exit 0). Walk-off floor seam still needs a visual check in play (high and low on the 1.2 ↔ 1.4 edge).
+- Notes: 1.4 chain art is still a placeholder. Walk-off Y is for side `ExitTrigger`s only, not `[E]` doors.
+
+### Docs sync — 2026-08-20 live scenes
+- Request: `update todays docs` after cover-scale, Godot 4.7.2, and the multi-scene playtest list.
+- Implementation: Scene write-ups and canon now match live files. `AI_DOCS.md` notes first-visit enter lines and walk-off Y. `SCENE_BUILDING.md` adds those two rules. ARC1/ARC2/ARC7 Implemented notes cover Ending 1, 1.2 return, 1.4 chains + Mike match + floor Y, 2.1 kitchen zone / once-ever enter, 2.2 rewrite lines, 2.3 scale `5.0`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC7.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Gameplay unchanged.
+- Verification: Compared write-ups to live `.tscn` / `.gd` (7.1 `COWARD_COUNT=100`; 2.1 `KitchenInteractArea` y `880`; 2.3 Player scale `5.0`; `walkoff_floor_offset_y` on 1.2/1.4).
+- Notes: Implement entries for today are the three sections above. Walk-off floor alignment still wants a playtest look.

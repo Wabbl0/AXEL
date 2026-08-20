@@ -10,22 +10,19 @@
 
 **Dialogue:**
 
-> Coward
+> Coward.
 >
-> Coward
->
-> Coward
->
-> Coward
->
-> ...
+> *(repeat `"Coward."` 100 times)*
 
 **Choices:**
 
 
-| Button label | Target                       |
-| ------------ | ----------------------------- |
-| Start again  | School Exterior (full reset) |
+| Button label | Target    |
+| ------------ | --------- |
+| *(auto)*     | Main Menu |
+
+
+**Implemented (Godot):** `7.1_Ending1.tscn` + `.gd` — white void fill + `TopDialogueOverlay`; plays `"Coward."` 100 times via `show_lines` (skip/auto-advance allowed), then `change_scene_to_file` to `0.1_MainMenu.tscn`. Reachable by walking left off `1.1_SchoolExterior` after the intro. No embedded post-FX.
 
 
 ---

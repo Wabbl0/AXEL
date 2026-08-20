@@ -21,6 +21,7 @@ var _door_interact_area: Area2D
 var _intro_state: IntroState = IntroState.FORCED_SEQUENCE
 
 const _NEXT_SCENE_PATH := "res://scenes/Arc_1/1.2_Corridor.tscn"
+const _ENDING_1_SCENE_PATH := "res://scenes/Endings/7.1_Ending1.tscn"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 const _LEAF_Y_CUTOFF_MARGIN := 0.0
@@ -40,11 +41,15 @@ const INTRO_CAMERA_START_LIFT_PX := 320.0
 const INTRO_CAMERA_TILT_DURATION_SEC := 3.4
 ## Extra world px beyond the left view edge so Mike starts fully off-screen.
 const INTRO_OFFSCREEN_PAD_PX := 96.0
+const EXIT_TRIGGER_GRACE_SEC := 0.15
 
 var _is_transitioning := false
 var _unlock_position: Vector2 = Vector2.ZERO
 var _second_dialogue_fired := false
 var _watching_movement := false
+var _exit_trigger: Area2D
+var _exit_trigger_armed := true
+var _pending_corridor_door_spawn := false
 
 ## Background_1_1's hand-tuned position/scale before the camera migration to
 ## background_camera_controller.gd. EnvironmentColliders (walls/trees/rocks/doors)
@@ -61,20 +66,41 @@ func _ready() -> void:
 	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
 	_player_cover_sync.authored_bg_baseline_position = _OLD_BG_POSITION
 	_player_cover_sync.bind_from_player(_player)
+	# Legacy baseline already set; bind_design no-ops (do not switch to 1920x1280).
+	_player_cover_sync.bind_design_from_background(
+		get_node_or_null("Background_1_1") as Sprite2D,
+		$Camera2D.fit_mode,
+		$Camera2D.background_y,
+	)
 	_door_interact_area = get_node_or_null(
 		"EnvironmentColliders/Doors/DoorInteractArea"
 	) as Area2D
 	if is_instance_valid(_door_interact_area):
 		_door_interact_area.body_entered.connect(_on_door_interact_body_entered)
 		_door_interact_area.body_exited.connect(_on_door_interact_body_exited)
+	_exit_trigger = get_node_or_null(
+		"EnvironmentColliders/ExitTrigger"
+	) as Area2D
+	if is_instance_valid(_exit_trigger):
+		_exit_trigger.body_entered.connect(_on_exit_trigger_body_entered)
+	if GameManager.take_exterior_spawn_side() == "corridor_door":
+		_pending_corridor_door_spawn = true
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	_sync_environment_colliders_from_current_background()
 	_configure_leaf_occlusion_masks()
-	if _should_skip_intro():
+	if _pending_corridor_door_spawn or _should_skip_intro():
 		_intro_state = IntroState.PLAYER_FREE
+		# Leave left road open so walking off still reaches Ending 1.
+		if is_instance_valid(_left_wall_collision):
+			_left_wall_collision.set_deferred("disabled", true)
 		if is_instance_valid(_player):
-			_player.global_position = _left_stones_stand_target()
+			if _pending_corridor_door_spawn:
+				_player.global_position = _door_interact_anchor()
+				_pending_corridor_door_spawn = false
+				_arm_exit_trigger_grace()
+			else:
+				_player.global_position = _left_stones_stand_target()
 		_enable_player_control()
 		_refresh_door_interact_prompt()
 		return
@@ -147,8 +173,9 @@ func _run_forced_intro_sequence() -> void:
 		cam.position_smoothing_enabled = saved_smoothing
 		cam.set_follow_enabled(true)
 
+	# Keep LeftWall disabled so the player can walk back left into Ending 1.
 	if is_instance_valid(_left_wall_collision):
-		_left_wall_collision.set_deferred("disabled", false)
+		_left_wall_collision.set_deferred("disabled", true)
 
 	await AxelEventFx.stop_interface_distortion()
 
@@ -158,6 +185,7 @@ func _run_forced_intro_sequence() -> void:
 	_watching_movement = true
 	AxelEventFx.set_cadence_enabled(true)
 	_refresh_door_interact_prompt()
+	_arm_exit_trigger_grace()
 
 	_play_first_dialogue_line()
 
@@ -362,6 +390,35 @@ func _begin_door_transition() -> void:
 	var err := get_tree().change_scene_to_file(_NEXT_SCENE_PATH)
 	if err != OK:
 		push_error("Failed to change scene to %s (error %d)." % [_NEXT_SCENE_PATH, err])
+		_is_transitioning = false
+		AxelPostFxStack.apply_to_scene(get_tree().current_scene)
+
+
+func _on_exit_trigger_body_entered(body: Node) -> void:
+	if body != _player or _is_transitioning:
+		return
+	if _intro_state != IntroState.PLAYER_FREE or not _exit_trigger_armed:
+		return
+	call_deferred("_begin_ending_1_transition")
+
+
+func _arm_exit_trigger_grace() -> void:
+	_exit_trigger_armed = false
+	await get_tree().create_timer(EXIT_TRIGGER_GRACE_SEC).timeout
+	_exit_trigger_armed = true
+
+
+func _begin_ending_1_transition() -> void:
+	if _is_transitioning:
+		return
+	_is_transitioning = true
+	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
+		_interact_prompt.hide_prompt_immediate()
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
+	var err := get_tree().change_scene_to_file(_ENDING_1_SCENE_PATH)
+	if err != OK:
+		push_error("Failed to change scene to %s (error %d)." % [_ENDING_1_SCENE_PATH, err])
 		_is_transitioning = false
 		AxelPostFxStack.apply_to_scene(get_tree().current_scene)
 

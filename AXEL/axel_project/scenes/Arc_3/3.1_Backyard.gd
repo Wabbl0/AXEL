@@ -40,6 +40,13 @@ func _ready() -> void:
 	if is_instance_valid(_memory_indicator):
 		_memory_indicator_tex = _memory_indicator.position
 	_player_cover_sync.bind_from_player(_player)
+	var _bg := $WalkableWorld/Background as Sprite2D
+	var _cam := $Camera2D
+	_player_cover_sync.bind_design_from_background(
+		_bg, _cam.fit_mode, _cam.background_y
+	)
+	if is_instance_valid(_memory_indicator):
+		_player_cover_sync.bind_extra_node(_memory_indicator)
 	_door_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/DoorInteractArea"
 	) as Area2D

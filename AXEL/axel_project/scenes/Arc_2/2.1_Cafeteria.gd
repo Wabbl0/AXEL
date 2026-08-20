@@ -55,6 +55,13 @@ func _ready() -> void:
 	if is_instance_valid(_memory_indicator):
 		_memory_indicator_tex = _memory_indicator.position
 	_player_cover_sync.bind_from_player(_player)
+	var _bg := $WalkableWorld/Background as Sprite2D
+	var _cam := $Camera2D
+	_player_cover_sync.bind_design_from_background(
+		_bg, _cam.fit_mode, _cam.background_y
+	)
+	if is_instance_valid(_memory_indicator):
+		_player_cover_sync.bind_extra_node(_memory_indicator)
 	_table_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/TableInteractArea"
 	) as Area2D
@@ -106,6 +113,9 @@ func _connect_zone(area: Area2D, zone_id: String) -> void:
 func _play_enter_dialogue() -> void:
 	if not is_instance_valid(_top_dialogue):
 		return
+	if GameManager.cafeteria_enter_line_seen:
+		return
+	GameManager.set_cafeteria_enter_line_seen(true)
 	await _top_dialogue.show_line(ENTER_LINE, 3.0)
 
 

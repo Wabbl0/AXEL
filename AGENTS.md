@@ -2,13 +2,13 @@
 
 ## Cursor Cloud specific instructions
 
-AXEL is a single-product **Godot 4.7.1** game (GDScript). The engine binary is the
+AXEL is a single-product **Godot 4.7.2** game (GDScript). The engine binary is the
 only real dependency; the Godot project lives in `AXEL/axel_project`. There is no
 package manager, database, or backend service.
 
 ### Environment (provided by the startup update script)
 
-- `godot` (Godot 4.7.1-stable, Linux headless-capable build) is on `PATH` at
+- `godot` (Godot 4.7.2-stable, Linux headless-capable build) is on `PATH` at
   `/usr/local/bin/godot`.
 - `xvfb`, `ffmpeg`, and Mesa software renderers (`mesa-vulkan-drivers` /
   llvmpipe/lavapipe, `libgl1-mesa-dri`) are installed for GPU-less rendering.

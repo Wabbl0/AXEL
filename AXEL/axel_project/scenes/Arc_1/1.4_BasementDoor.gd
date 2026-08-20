@@ -26,6 +26,11 @@ var _player_cover_sync := PlayerCoverSync.new()
 
 func _ready() -> void:
 	_player_cover_sync.bind_from_player(_player)
+	var _bg := $WalkableWorld/Background as Sprite2D
+	var _cam := $Camera2D
+	_player_cover_sync.bind_design_from_background(
+		_bg, _cam.fit_mode, _cam.background_y
+	)
 	_door_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/DoorInteractArea"
 	) as Area2D
@@ -174,6 +179,7 @@ func _hide_interact_prompt_immediate() -> void:
 
 func _begin_corridor_return() -> void:
 	_is_transitioning = true
+	_save_walkoff_floor_offset()
 	GameManager.set_corridor_spawn_side("basement_right")
 	_hide_interact_prompt_immediate()
 	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
@@ -223,7 +229,8 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 			_pending_cafeteria_peek = false
 			_arm_cafeteria_zone_grace()
 		else:
-			player_node.global_position = env.to_global(Vector2(250.0, 550.0))
+			player_node.global_position = env.to_global(Vector2(250.0, 950.0))
+			_apply_walkoff_y_if_pending(player_node)
 		_player_spawn_applied = true
 	elif remap_pos:
 		player_node.global_position = env.to_global(tex_pos)
@@ -231,6 +238,53 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	call_deferred("_wake_static_colliders")
 	if _pending_cafeteria_peek:
 		call_deferred("_apply_cafeteria_peek_if_pending")
+
+
+func _apply_walkoff_y_if_pending(player_node: CharacterBody2D) -> void:
+	if not GameManager.has_walkoff_floor_offset_y():
+		return
+	var offset_y := GameManager.take_walkoff_floor_offset_y()
+	var pos := player_node.global_position
+	pos.y = _floor_marker_global_y() + offset_y
+	pos.y = _clamp_walkable_y(pos.y)
+	player_node.global_position = pos
+
+
+func _floor_marker_global_y() -> float:
+	var line := get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/FloorDividerLine"
+	) as Line2D
+	if is_instance_valid(line):
+		return line.global_position.y
+	return _player.global_position.y if is_instance_valid(_player) else 0.0
+
+
+func _clamp_walkable_y(y: float) -> float:
+	var min_y := _floor_marker_global_y() + 8.0
+	var max_y := y
+	var bottom := get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/BottomWall"
+	) as StaticBody2D
+	if is_instance_valid(bottom):
+		var shape := bottom.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape != null and shape.shape is RectangleShape2D:
+			var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
+			max_y = bottom.to_global(
+				Vector2(shape.position.x, shape.position.y - half_height)
+			).y - 8.0
+		else:
+			max_y = bottom.global_position.y - 8.0
+	if max_y < min_y:
+		return y
+	return clampf(y, min_y, max_y)
+
+
+func _save_walkoff_floor_offset() -> void:
+	if not is_instance_valid(_player):
+		return
+	GameManager.set_walkoff_floor_offset_y(
+		_player.global_position.y - _floor_marker_global_y()
+	)
 
 
 func _apply_cafeteria_peek_if_pending() -> void:

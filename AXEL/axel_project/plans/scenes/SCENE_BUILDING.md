@@ -37,6 +37,8 @@ Keep scenes visibly abandoned, looted, broken, and rotting while preserving read
 
 ## Player scale profiles
 
+These numbers are **authored at 1920×1280 cover-fit** of that scene’s PNG (not “whatever your Game tab is”). Runtime `PlayerCoverSync` multiplies them by `live_cover / baseline`.
+
 - `corridor_large`: scale `3.0`, speed `362` (~`180 × scale × 0.67` when retuning)
 - `classroom_large`: scale `0.86`, speed `160`
 - `library_large`: scale `0.78`, speed `145`
@@ -94,12 +96,18 @@ Root (Node2D + scene script)
 
 ### `_ready()` order
 
-1. Layout via `BackgroundLayout.apply` (camera does this when `background_path` is set).
-2. Sync `EnvironmentColliders` on `Camera2D.layout_applied`.
-3. Camera limits applied by `BackgroundCamera`.
+1. Capture texture-pixel spawn / glow positions from editor nodes.
+2. `PlayerCoverSync.bind_from_player` then `bind_design_from_background(background, camera.fit_mode)` (1.1/1.2 set `_OLD_BG_SCALE` first so bind_design no-ops).
+3. Bind PlayerLayer extras that should match the room (e.g. memory glow) via `bind_extra_node`.
+4. Connect `Camera2D.layout_applied` → sync `EnvironmentColliders` + `PlayerCoverSync.apply`.
+5. Layout via `BackgroundLayout.apply` (camera does this when `background_path` is set).
 
 ```gdscript
 func _ready() -> void:
+	_player_cover_sync.bind_from_player(_player)
+	_player_cover_sync.bind_design_from_background(
+		$WalkableWorld/Background, $Camera2D.fit_mode, $Camera2D.background_y
+	)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 
 func _on_background_layout_applied(scale_factor: float, bg_position: Vector2, _world_rect: Rect2) -> void:
@@ -112,7 +120,23 @@ func _on_background_layout_applied(scale_factor: float, bg_position: Vector2, _w
 - Camera: `scenes/core/background_camera_controller.gd`
 - Colliders: texture-pixel space under `WalkableWorld/EnvironmentColliders`
 - Player: world space under `WalkableWorld/Player` on **new** scenes (legacy 1.1/1.2 still use `PlayerLayer`)
-- Cover sync: `scenes/core/player_cover_sync.gd` so Mike scales with window resize
+- Cover sync: `scenes/core/player_cover_sync.gd` — first layout uses the 1920×1280 (or legacy `_OLD_BG_SCALE`) baseline; later resizes keep the same Mike-vs-room ratio
+
+### Rule: do not retune Player `.tscn` scale for another computer
+
+If Mike looks wrong vs the furniture **at 1920×1280**, change the authored scale in that scene. If he only looks wrong on a small Game tab / other monitor, the scaler is broken — fix `PlayerCoverSync`, not the scene number. Never edit Player `scale` to “match this window.”
+
+### Rule: PlayerLayer extras share the cover ratio
+
+Anything on `PlayerLayer` that should match the drawing (memory glow) gets the same cover ratio via `bind_extra_node` + `apply`. Props under `EnvironmentColliders` (e.g. kitchen flashlight) already follow `env.scale` — no second scaler.
+
+### Rule: first-visit enter lines play once
+
+Scene enter / discovery lines use a GameManager `*_seen` flag. They must not replay when returning from another room, a memory still, or a side peek. Same rule for every walkable scene.
+
+### Rule: walk-off Y carries across side exits
+
+When the player **walks off a scene edge** (`ExitTrigger`), save floor-relative height in `GameManager.walkoff_floor_offset_y` (player Y minus that room’s floor/wall junction) and apply it on the next room’s peek spawn. Background floor lines in the two drawings should line up. This does **not** apply to `[E]` door / room entries. Live: `1.2` ↔ `1.4`.
 
 ### Rule: any node placed against the background must spawn from its own editor position
 
@@ -181,14 +205,17 @@ After `_ready`, headless smoke MUST call:
 - `QaCanonValidators.collect_background_camera_findings(root, scene_path)`
 - `QaCanonValidators.collect_background_editor_lock_findings` (background must have `metadata/_edit_lock_`)
 
+New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_design_from_background`). Regression lock: `scenes/core/test/player_cover_sync_check.gd` (scale/cover constant across two covers, including first apply).
+
 ### Playtest variants (optional)
 
 Inherited child `.tscn` that instances the canonical scene and overrides only playtest flags (e.g. `skip_intro = true`). Do not duplicate the full tree. Example: `1.1_SchoolExterior_Playtest.tscn`.
 
 ## Window resolution (project-wide)
 
-- Base `1920×1280` (3:2) in `project.godot`; gameplay letterboxes when the window shape differs.
-- `BackgroundCamera` recomputes on `size_changed`.
+- Base `1920×1280` (3:2) in `project.godot`. Stretch stays **disabled** (no letterbox / Keep-aspect canvas stretch — that shrank dialogue fonts).
+- Game tab / OS window may be any size or aspect; `BackgroundCamera` cover-fits the PNG and recomputes on `size_changed`.
+- Mike, walls (`EnvironmentColliders`), and art share one cover scale via `PlayerCoverSync` from the 1920×1280 baseline (1.1/1.2: `_OLD_BG_SCALE`).
 - `exploration_viewport.gd` is **inert** (kept so 1.1/1.2 still load).
 
 ## Canonical filename invariant

@@ -3,12 +3,12 @@ extends Node2D
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const MEMORY_KEY := "cafeteria_memory"
 const MEMORY_LINES := [
-	"|other|\"Do you think I'm a bad person?\"",
-	"You answer, \"No.\"",
-	"\"I just - don't have the energy. To be around you.\"",
-	"\"Sorry.\"",
-	"|other|\"Oh,\" they sigh.",
-	"|other|\"No. I understand.\"",
+	"|other|Do you think I'm a bad person?",
+	"No.",
+	"I just |beat:1.5| don't have the energy. To be around you.",
+	"Sorry.",
+	"|other|Oh.",
+	"|other|No. I understand.",
 ]
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay

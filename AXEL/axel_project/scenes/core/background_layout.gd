@@ -10,6 +10,9 @@ enum FitMode {
 
 const DEFAULT_BACKGROUND_Y := 0.0
 const EDIT_LOCK_META := "_edit_lock_"
+## Project design size (3:2). Used when the viewport is missing or empty so
+## cover-fit never invents a third baseline (e.g. stale 1280x720).
+const DESIGN_VIEWPORT := Vector2(1920.0, 1280.0)
 
 
 static func ensure_editor_locked(sprite: Sprite2D) -> void:
@@ -22,10 +25,10 @@ static func ensure_editor_locked(sprite: Sprite2D) -> void:
 static func get_viewport_size(from_node: Node) -> Vector2:
 	var vp := from_node.get_viewport()
 	if vp == null:
-		return Vector2(1280.0, 720.0)
+		return DESIGN_VIEWPORT
 	var size := vp.get_visible_rect().size
 	if size.x <= 0.0 or size.y <= 0.0:
-		return Vector2(1280.0, 720.0)
+		return DESIGN_VIEWPORT
 	return size
 
 

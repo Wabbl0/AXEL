@@ -32,6 +32,9 @@ size = Vector2(143, 27.5)
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 16.0
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
+size = Vector2(80, 1096)
+
 [node name="1_1_SchoolExterior" type="Node2D" unique_id=521734377]
 script = ExtResource("12_school_ext")
 
@@ -137,6 +140,14 @@ position = Vector2(16, 360)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/LeftWall" unique_id=963137740]
 position = Vector2(1.5, -75)
 shape = SubResource("RectangleShape2D_wall_vertical_left")
+
+[node name="ExitTrigger" type="Area2D" parent="EnvironmentColliders" unique_id=1418059200]
+position = Vector2(-40, 360)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/ExitTrigger" unique_id=1418059201]
+position = Vector2(0, -75)
+shape = SubResource("RectangleShape2D_exit_trigger")
 
 [node name="RightWall_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=1643895102]
 position = Vector2(546, 246)

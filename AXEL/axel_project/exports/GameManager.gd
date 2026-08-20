@@ -23,6 +23,8 @@ var cafeteria_table_return_pos: Vector2 = INVALID_RETURN_POS
 var backyard_memory_return_pos: Vector2 = INVALID_RETURN_POS
 ## Transient (not persisted). e.g. "basement_right" when leaving 1.4 for 1.2.
 var corridor_spawn_side: String = ""
+## Transient (not persisted). e.g. "corridor_door" when leaving 1.2 for 1.1.
+var exterior_spawn_side: String = ""
 ## Transient (not persisted). e.g. "cafeteria_right" when leaving 2.1 for 1.4.
 var basement_spawn_side: String = ""
 ## Transient (not persisted). e.g. "basement_left" when leaving 1.4 for 2.1.
@@ -37,6 +39,10 @@ var classrooms_corridor_spawn_side: String = ""
 var teachers_lounge_spawn_side: String = ""
 ## Transient (not persisted). e.g. "corridor_door" when leaving 2.4 for 5.1.
 var classroom_spawn_side: String = ""
+## Transient (not persisted). Player Y minus floor-marker Y when walking off 1.2 ↔ 1.4.
+var walkoff_floor_offset_y: float = NAN
+## Once-ever cafeteria enter line (2.1).
+var cafeteria_enter_line_seen: bool = false
 ## Once-ever kitchen enter line (2.3).
 var kitchen_enter_line_seen: bool = false
 ## Once-ever backyard enter line (3.1).
@@ -84,6 +90,7 @@ func _load_persistent_state() -> void:
 	corridor_locker_line_seen = false
 	corridor_spawn_line_seen = false
 	basement_door_line_seen = false
+	cafeteria_enter_line_seen = false
 	kitchen_enter_line_seen = false
 	backyard_enter_line_seen = false
 	teachers_lounge_enter_line_seen = false
@@ -111,6 +118,7 @@ func _load_persistent_state() -> void:
 	corridor_locker_line_seen = bool(data.get("corridor_locker_line_seen", false))
 	corridor_spawn_line_seen = bool(data.get("corridor_spawn_line_seen", false))
 	basement_door_line_seen = bool(data.get("basement_door_line_seen", false))
+	cafeteria_enter_line_seen = bool(data.get("cafeteria_enter_line_seen", false))
 	kitchen_enter_line_seen = bool(data.get("kitchen_enter_line_seen", false))
 	backyard_enter_line_seen = bool(data.get("backyard_enter_line_seen", false))
 	teachers_lounge_enter_line_seen = bool(data.get("teachers_lounge_enter_line_seen", false))
@@ -139,6 +147,7 @@ func _save_persistent_state() -> void:
 		"corridor_locker_line_seen": corridor_locker_line_seen,
 		"corridor_spawn_line_seen": corridor_spawn_line_seen,
 		"basement_door_line_seen": basement_door_line_seen,
+		"cafeteria_enter_line_seen": cafeteria_enter_line_seen,
 		"kitchen_enter_line_seen": kitchen_enter_line_seen,
 		"backyard_enter_line_seen": backyard_enter_line_seen,
 		"teachers_lounge_enter_line_seen": teachers_lounge_enter_line_seen,
@@ -167,6 +176,10 @@ func set_corridor_spawn_line_seen(value: bool = true) -> void:
 
 func set_basement_door_line_seen(value: bool = true) -> void:
 	basement_door_line_seen = value
+	_save_persistent_state()
+
+func set_cafeteria_enter_line_seen(value: bool = true) -> void:
+	cafeteria_enter_line_seen = value
 	_save_persistent_state()
 
 func set_kitchen_enter_line_seen(value: bool = true) -> void:
@@ -237,6 +250,25 @@ func take_corridor_spawn_side() -> String:
 	var side := corridor_spawn_side
 	corridor_spawn_side = ""
 	return side
+
+func set_exterior_spawn_side(side: String) -> void:
+	exterior_spawn_side = side
+
+func take_exterior_spawn_side() -> String:
+	var side := exterior_spawn_side
+	exterior_spawn_side = ""
+	return side
+
+func set_walkoff_floor_offset_y(offset_y: float) -> void:
+	walkoff_floor_offset_y = offset_y
+
+func has_walkoff_floor_offset_y() -> bool:
+	return not is_nan(walkoff_floor_offset_y)
+
+func take_walkoff_floor_offset_y() -> float:
+	var offset_y := walkoff_floor_offset_y
+	walkoff_floor_offset_y = NAN
+	return offset_y
 
 func set_basement_spawn_side(side: String) -> void:
 	basement_spawn_side = side

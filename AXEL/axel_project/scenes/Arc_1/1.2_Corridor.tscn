@@ -19,6 +19,9 @@ size = Vector2(38.5, 1515)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
 size = Vector2(80, 1520.1465)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exterior_interact"]
+size = Vector2(200, 500)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
 size = Vector2(2413.9194, 90)
 
@@ -67,6 +70,13 @@ position = Vector2(37, 762)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=830387823]
 position = Vector2(-20.14652, 0)
 shape = SubResource("RectangleShape2D_wall_vertical")
+
+[node name="ExteriorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1349544680]
+position = Vector2(80, 740)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExteriorInteractArea" unique_id=1349544681]
+shape = SubResource("RectangleShape2D_exterior_interact")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=158922864]
 position = Vector2(2700, 763)
