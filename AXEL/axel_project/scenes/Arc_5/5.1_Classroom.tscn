@@ -10,6 +10,9 @@
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="PackedScene" path="res://scenes/fx/MemoryIndicator.tscn" id="9_memory_indicator"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(3508, 40)
@@ -25,9 +28,6 @@ size = Vector2(618, 242)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_desk_interact"]
 size = Vector2(396, 330)
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
-radius = 5.5
 
 [node name="5_1_Classroom" type="Node2D" unique_id=1589544695]
 script = ExtResource("1_classroom")
@@ -191,8 +191,16 @@ animation = &"idle"
 visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=88999588]
-shape = SubResource("CircleShape2D_player")
+[node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=88999588]
+shape = ExtResource("hb_front")
+
+[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player"]
+disabled = true
+shape = ExtResource("hb_back")
+
+[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player"]
+disabled = true
+shape = ExtResource("hb_side")
 
 [node name="MemoryIndicator" parent="PlayerLayer" unique_id=90059802 instance=ExtResource("9_memory_indicator")]
 position = Vector2(2712, 2160)

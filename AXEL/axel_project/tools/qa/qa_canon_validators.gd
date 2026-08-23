@@ -477,7 +477,7 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 		))
 
 	var child_pos_eps := 0.05
-	for child_name in ["AnimatedSprite", "ShadowOutline", "FallbackBody", "CollisionShape2D"]:
+	for child_name in ["AnimatedSprite", "ShadowOutline", "FallbackBody", "CollisionShape2D", "CollisionFront", "CollisionBack", "CollisionSide"]:
 		var child := player.get_node_or_null(child_name) as Node2D
 		if child == null:
 			continue

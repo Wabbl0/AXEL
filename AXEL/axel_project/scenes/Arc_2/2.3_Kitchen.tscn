@@ -11,6 +11,9 @@
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="Texture2D" uid="uid://c6k1w5876ojl5" path="res://exports/Drawings/Flashlight.png" id="9_flashlight"]
 [ext_resource type="Shader" uid="uid://bflqje1ag0nv8" path="res://scenes/fx/prop_ink_halo.gdshader" id="10_flashlight_glow"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(3508, 40)
@@ -41,9 +44,6 @@ shader = ExtResource("10_flashlight_glow")
 shader_parameter/spread = 12.0
 shader_parameter/intensity = 0.32
 shader_parameter/glow_color = Color(0, 0, 0, 1)
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
-radius = 5.5
 
 [node name="2_3_Kitchen" type="Node2D" unique_id=1359178989]
 script = ExtResource("1_kitchen")
@@ -191,8 +191,16 @@ animation = &"idle"
 visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=7676243]
-shape = SubResource("CircleShape2D_player")
+[node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=7676243]
+shape = ExtResource("hb_front")
+
+[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player"]
+disabled = true
+shape = ExtResource("hb_back")
+
+[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player"]
+disabled = true
+shape = ExtResource("hb_side")
 
 [node name="TopDialogueOverlay" parent="." unique_id=1427198189 instance=ExtResource("5_top_dialogue")]
 

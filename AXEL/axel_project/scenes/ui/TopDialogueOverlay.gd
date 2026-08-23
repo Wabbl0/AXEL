@@ -1,6 +1,8 @@
 extends CanvasLayer
 
 const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
+const OPEN_STREAM: AudioStreamWAV = preload("res://assets/audio/axel_typewriter_open.wav")
+const TYPE_STREAM: AudioStreamWAV = preload("res://assets/audio/axel_typewriter_v4.wav")
 
 ## Non-blocking bottom-centered dialogue bar; does not pause physics or capture input.
 ## While typing: Tab / E / Space / Enter / click → instantly reveal the full line.
@@ -43,6 +45,10 @@ const BAR_MIN_HEIGHT := 136.0
 const PLAYER_LINE_COLOR := Color(1, 1, 1, 1)
 const OTHER_SPEAKER_COLOR := Color(1, 0, 0, 1)
 
+## Shared typewriter tape position across rooms (seconds into v4).
+static var _type_loop_pos_sec := 0.0
+static var _reversed_open_stream: AudioStreamWAV = null
+
 ## Legacy fixed gap; ignored when `bottom_gap_viewport_fraction` > 0.
 @export var bottom_gap_px := BOTTOM_GAP_PX_FULL
 ## Playtest: lift bar by this fraction of window height above the bottom edge. 0 = use `bottom_gap_px`.
@@ -64,6 +70,8 @@ const OTHER_SPEAKER_COLOR := Color(1, 0, 0, 1)
 @onready var _bloom: ColorRect = $ViewportRoot/RootMargin/BarPanel/Bloom
 @onready var _inner_panel: PanelContainer = $ViewportRoot/RootMargin/BarPanel/InnerPanel
 @onready var _label: Label = $ViewportRoot/RootMargin/BarPanel/InnerPanel/LineLabel
+@onready var _open_close_player: AudioStreamPlayer = $OpenClosePlayer
+@onready var _type_loop_player: AudioStreamPlayer = $TypeLoopPlayer
 
 var _line_phase := LinePhase.NONE
 var _advance_requested := false
@@ -82,6 +90,8 @@ var _cursor_active := false
 var _cursor_text := ""
 var _rest_offset_bottom := 0.0
 var _rest_offset_top := 0.0
+## True while type loop should keep wrapping (letters appearing).
+var _type_loop_wanted := false
 
 
 func _ready() -> void:
@@ -98,6 +108,7 @@ func _ready() -> void:
 	set_process(fx_cursor)
 	get_viewport().size_changed.connect(_lock_bottom_layout)
 	tree_exiting.connect(_on_tree_exiting)
+	_setup_audio_players()
 	_begin_layout()
 
 
@@ -270,9 +281,159 @@ func _compose(visible_text: String) -> String:
 	return visible_text + (CURSOR_GLYPH if on else " ")
 
 
+func _setup_audio_players() -> void:
+	if is_instance_valid(_open_close_player):
+		_open_close_player.stream = OPEN_STREAM
+	if is_instance_valid(_type_loop_player):
+		_type_loop_player.stream = TYPE_STREAM
+		if not _type_loop_player.finished.is_connected(_on_type_loop_finished):
+			_type_loop_player.finished.connect(_on_type_loop_finished)
+	_ensure_reversed_open_stream()
+
+
+func _ensure_reversed_open_stream() -> void:
+	if _reversed_open_stream != null:
+		return
+	_reversed_open_stream = _make_reversed_wav(OPEN_STREAM)
+
+
+static func _make_reversed_wav(src: AudioStreamWAV) -> AudioStreamWAV:
+	var out := AudioStreamWAV.new()
+	out.format = src.format
+	out.mix_rate = src.mix_rate
+	out.stereo = src.stereo
+	var data := src.data
+	var bytes_per_frame := 2
+	match src.format:
+		AudioStreamWAV.FORMAT_8_BITS:
+			bytes_per_frame = 1
+		AudioStreamWAV.FORMAT_16_BITS:
+			bytes_per_frame = 2
+		_:
+			# Compressed formats cannot be frame-reversed safely; fall back to original.
+			out.data = data
+			return out
+	if src.stereo:
+		bytes_per_frame *= 2
+	if bytes_per_frame <= 0 or data.size() < bytes_per_frame:
+		out.data = data
+		return out
+	var frame_count := data.size() / bytes_per_frame
+	var reversed := PackedByteArray()
+	reversed.resize(frame_count * bytes_per_frame)
+	for i in range(frame_count):
+		var src_i := (frame_count - 1 - i) * bytes_per_frame
+		var dst_i := i * bytes_per_frame
+		for b in range(bytes_per_frame):
+			reversed[dst_i + b] = data[src_i + b]
+	out.data = reversed
+	return out
+
+
+func _type_stream_length_sec() -> float:
+	var bytes_per_frame := 2
+	match TYPE_STREAM.format:
+		AudioStreamWAV.FORMAT_8_BITS:
+			bytes_per_frame = 1
+		AudioStreamWAV.FORMAT_16_BITS:
+			bytes_per_frame = 2
+		_:
+			return 0.0
+	if TYPE_STREAM.stereo:
+		bytes_per_frame *= 2
+	if bytes_per_frame <= 0 or TYPE_STREAM.mix_rate <= 0:
+		return 0.0
+	return float(TYPE_STREAM.data.size() / bytes_per_frame) / float(TYPE_STREAM.mix_rate)
+
+
+func _play_open_sound() -> void:
+	if not is_instance_valid(_open_close_player):
+		return
+	_open_close_player.stream = OPEN_STREAM
+	_open_close_player.play(0.0)
+
+
+func _play_close_sound() -> void:
+	if not is_instance_valid(_open_close_player):
+		return
+	_ensure_reversed_open_stream()
+	if _reversed_open_stream != null:
+		_open_close_player.stream = _reversed_open_stream
+	else:
+		_open_close_player.stream = OPEN_STREAM
+	_open_close_player.play(0.0)
+
+
+func _stop_open_close_sound() -> void:
+	if is_instance_valid(_open_close_player) and _open_close_player.playing:
+		_open_close_player.stop()
+
+
+func _save_type_loop_pos() -> void:
+	if is_instance_valid(_type_loop_player) and _type_loop_player.playing:
+		_type_loop_pos_sec = _type_loop_player.get_playback_position()
+
+
+func _start_type_loop() -> void:
+	if not is_instance_valid(_type_loop_player):
+		return
+	_type_loop_wanted = true
+	if _type_loop_player.playing:
+		_type_loop_player.stream_paused = false
+		return
+	var length := _type_stream_length_sec()
+	var from_pos := _type_loop_pos_sec
+	if length > 0.0:
+		from_pos = fposmod(from_pos, length)
+	_type_loop_player.stream_paused = false
+	_type_loop_player.play(from_pos)
+
+
+func _pause_type_loop() -> void:
+	_type_loop_wanted = false
+	if not is_instance_valid(_type_loop_player):
+		return
+	if _type_loop_player.playing:
+		_type_loop_pos_sec = _type_loop_player.get_playback_position()
+		_type_loop_player.stream_paused = true
+	elif not _type_loop_player.stream_paused:
+		_save_type_loop_pos()
+
+
+func _stop_type_loop() -> void:
+	_type_loop_wanted = false
+	if not is_instance_valid(_type_loop_player):
+		return
+	if _type_loop_player.playing or _type_loop_player.stream_paused:
+		_type_loop_pos_sec = _type_loop_player.get_playback_position()
+	_type_loop_player.stream_paused = false
+	_type_loop_player.stop()
+
+
+func _jump_type_loop_forward(delta_sec: float) -> void:
+	_save_type_loop_pos()
+	var length := _type_stream_length_sec()
+	if length <= 0.0:
+		_pause_type_loop()
+		return
+	_type_loop_pos_sec = fposmod(_type_loop_pos_sec + maxf(delta_sec, 0.0), length)
+	if is_instance_valid(_type_loop_player):
+		if _type_loop_player.playing:
+			_type_loop_player.seek(_type_loop_pos_sec)
+		_type_loop_wanted = false
+		_type_loop_player.stream_paused = true
+
+
+func _on_type_loop_finished() -> void:
+	_type_loop_pos_sec = 0.0
+	if _type_loop_wanted and is_instance_valid(_type_loop_player):
+		_type_loop_player.play(0.0)
+
+
 func _fade_in() -> void:
 	_lock_bottom_layout()
 	_fade_root.visible = true
+	_play_open_sound()
 	if fx_crt_power:
 		await _crt_power_on()
 		if not is_instance_valid(self):
@@ -430,6 +591,8 @@ func interrupt_line() -> void:
 	_skip_requested = false
 	_cursor_active = false
 	_stop_border_pulse()
+	_stop_type_loop()
+	_stop_open_close_sound()
 	_cancel_crt_power()
 	if is_instance_valid(_fade_root):
 		_fade_root.visible = false
@@ -449,6 +612,7 @@ func cancel_pending_line() -> void:
 	_skip_requested = false
 	_cursor_active = false
 	_stop_border_pulse()
+	_pause_type_loop()
 
 
 func is_bar_visible() -> bool:
@@ -592,10 +756,12 @@ func _run_typewriter(
 		# Reading timer starts when the line is fully shown, not when typing begins.
 		_active_line_start_ms = Time.get_ticks_msec()
 		_line_phase = LinePhase.READY
+		_pause_type_loop()
 		return
 
 	_line_phase = LinePhase.TYPING
 	_start_border_pulse()
+	_start_type_loop()
 	var cps := maxf(chars_per_sec, 4.0)
 	var delay := 1.0 / cps
 	var revealed := ""
@@ -604,6 +770,7 @@ func _run_typewriter(
 	for segment in segments:
 		if token >= 0 and not _line_alive(token):
 			_stop_border_pulse()
+			_pause_type_loop()
 			_line_phase = LinePhase.NONE
 			return
 		if allow_skip and _skip_requested:
@@ -611,11 +778,13 @@ func _run_typewriter(
 			break
 
 		if str(segment.get("kind", "")) == "beat":
+			_pause_type_loop()
 			var beat_sec: float = float(segment.get("sec", 0.0))
 			var end_ms := Time.get_ticks_msec() + int(beat_sec * 1000.0)
 			while Time.get_ticks_msec() < end_ms:
 				if token >= 0 and not _line_alive(token):
 					_stop_border_pulse()
+					_pause_type_loop()
 					_line_phase = LinePhase.NONE
 					return
 				if allow_skip and _skip_requested:
@@ -624,14 +793,18 @@ func _run_typewriter(
 					break
 				if not await _await_process_frame():
 					_stop_border_pulse()
+					_pause_type_loop()
 					_line_phase = LinePhase.NONE
 					return
+			if _line_phase == LinePhase.TYPING:
+				_start_type_loop()
 			continue
 
 		var chunk: String = str(segment.get("text", ""))
 		for ci in range(chunk.length()):
 			if token >= 0 and not _line_alive(token):
 				_stop_border_pulse()
+				_pause_type_loop()
 				_line_phase = LinePhase.NONE
 				return
 			if allow_skip and _skip_requested:
@@ -660,6 +833,12 @@ func _run_typewriter(
 		if abort_to_full:
 			break
 
+	if abort_to_full:
+		var remaining := display_text.length() - revealed.length()
+		_jump_type_loop_forward(float(remaining) / cps)
+	else:
+		_pause_type_loop()
+
 	_cursor_active = false
 	_label.text = display_text
 	_stop_border_pulse()
@@ -677,8 +856,10 @@ func hide_line() -> void:
 		return
 	_cursor_active = false
 	_stop_border_pulse()
+	_pause_type_loop()
 	_line_phase = LinePhase.NONE
 	_sequence_active = true
+	_play_close_sound()
 	if fx_crt_power:
 		await _crt_power_off()
 		if not _line_alive(token):

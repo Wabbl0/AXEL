@@ -11,10 +11,11 @@ Prefer the **live project tree** when this file and disk disagree — update thi
 
 ## Current top-level layout (live)
 
-- `assets/` — runtime art (`sprites/` today; expand textures/audio/ui/fonts as needed)
+- `assets/` — runtime art (`sprites/`) and first game audio (`audio/` — typewriter WAVs)
 - `scenes/`
   - `Main_Menu/`, `Arc_1/` … `Arc_7/`, `Endings/`
   - `core/` — background/camera/player helpers, placeholders
+  - `player/` — shared facing hitboxes (`hitbox_front.tres` / `hitbox_side.tres` / `hitbox_back.tres`)
   - `ui/` — dialogue, interact prompt, shared UI
   - `fx/` — noir/scanline/CRT overlays, memory indicator, glitch/pulse
 - `scripts/`

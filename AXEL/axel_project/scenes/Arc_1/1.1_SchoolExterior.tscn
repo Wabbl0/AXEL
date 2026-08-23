@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://cftime1h11ofo"]
 
 [ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_elx0u"]
+[ext_resource type="SpriteFrames" uid="uid://4eiekoqcuo44" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_p5syx"]
-[ext_resource type="SpriteFrames" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
-[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="11_top_dialogue"]
+[ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="11_top_dialogue"]
 [ext_resource type="Script" uid="uid://bj16cjcb4p1kx" path="res://scenes/Arc_1/1.1_SchoolExterior.gd" id="12_school_ext"]
 [ext_resource type="Texture2D" uid="uid://cwowj33yu3igx" path="res://exports/Drawings/1.1_SchoolExterior.png" id="13_bg_drawing"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="14_camera_script"]
@@ -11,12 +11,18 @@
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="16_leaf_zone"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="17_bg_lock"]
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="18_exploration_viewport"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(1218, 32)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
 size = Vector2(29.5, 1096)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
+size = Vector2(80, 1096)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_right"]
 size = Vector2(29.5, 741.5449)
@@ -30,12 +36,6 @@ size = Vector2(346.75, 27.5)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_qou8c"]
 size = Vector2(143, 27.5)
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
-radius = 16.0
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
-size = Vector2(80, 1096)
-
 [node name="1_1_SchoolExterior" type="Node2D" unique_id=521734377]
 script = ExtResource("12_school_ext")
 
@@ -44,6 +44,7 @@ script = ExtResource("18_exploration_viewport")
 design_viewport = Vector2i(1400, 1400)
 
 [node name="Background_1_1" type="Sprite2D" parent="." unique_id=1347460712]
+visible = false
 z_index = -100
 position = Vector2(32, -297)
 scale = Vector2(0.33494318, 0.32130682)
@@ -213,7 +214,7 @@ animation_fps = 5.0
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=663540772]
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
-autoplay = &"idle"
+autoplay = "idle"
 
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=124778921]
 modulate = Color(0, 0, 0, 0.55)
@@ -223,12 +224,19 @@ sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
 
 [node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player" unique_id=506965154]
-visible = false
 color = Color(0.36, 0.85, 0.94, 1)
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=1911443813]
-shape = SubResource("CircleShape2D_player")
+[node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=1911443813]
+shape = ExtResource("hb_front")
+
+[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player"]
+disabled = true
+shape = ExtResource("hb_back")
+
+[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player"]
+disabled = true
+shape = ExtResource("hb_side")
 
 [node name="TopDialogueOverlay" parent="." unique_id=875088782 instance=ExtResource("11_top_dialogue")]
 

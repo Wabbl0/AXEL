@@ -9,6 +9,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
+[ext_resource type="Shape2D" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(2400, 24)
@@ -27,9 +30,6 @@ size = Vector2(301.25, 487.75)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_cafeteria_interact"]
 size = Vector2(120, 695.0576)
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
-radius = 5.5
 
 [node name="1_4_BasementDoor" type="Node2D" unique_id=76111603]
 script = ExtResource("1_basement_door")
@@ -174,8 +174,16 @@ animation = &"idle"
 visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=1700796881]
-shape = SubResource("CircleShape2D_player")
+[node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=1700796881]
+shape = ExtResource("hb_front")
+
+[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player"]
+disabled = true
+shape = ExtResource("hb_back")
+
+[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player"]
+disabled = true
+shape = ExtResource("hb_side")
 
 [node name="TopDialogueOverlay" parent="." unique_id=1974690157 instance=ExtResource("5_top_dialogue")]
 

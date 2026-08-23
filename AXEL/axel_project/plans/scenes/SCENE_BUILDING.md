@@ -82,7 +82,7 @@ Root (Node2D + scene script)
 
 **Layer order (UI):** dialogue above `[E]` prompt; both above CRT / baseline post-FX. Hub/map chrome (red `X`, travel choices) that must stay readable: CanvasLayer ~110 (above CRT 108, below dialogue 111) — do not rely on root Control `z_index`. See `AI_DOCS.md` § Style and FX.
 
-**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white.
+**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Tune volume on `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players.
 
 **Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked.
 
@@ -174,6 +174,8 @@ There is no separate spawn point. The `Player` node **is** the spawn.
 - 1.1 intro may start off-screen and walk **to** the remapped Player node. Skip-intro leaves Mike on that node. Do not walk to a computed stones target instead.
 - Helper: `PlayerSpawnSync.capture_tex` before mutating `EnvironmentColliders`, then `apply_tex` after. Works for both unscaled (2.1-style) and pre-scaled (1.2/1.4 `_OLD_BG_SCALE`) colliders.
 - Editor: assign `res://assets/sprites/mike_sprite_frames.tres` on `AnimatedSprite` / `ShadowOutline` so Mike is visible on the node while you drag. Play still rebuilds frames in `Player.gd`.
+- Shared facing hitboxes (default): `CollisionFront` / `CollisionBack` / `CollisionSide` all point at `res://scenes/player/hitbox_front.tres`, `hitbox_back.tres`, `hitbox_side.tres`. Play enables Front toward camera, Side for A/D (flips for left), Back walking away. Edit a `.tres` or any room’s matching shape — it is the same resource, so every room updates. New walkable scenes only need `Player.gd`; `_ensure_facing_hitboxes()` creates the three nodes if missing. Keep those children at `(0, 0)`.
+- Alpha hitbox (opt-in): set `use_alpha_collision` on that Player. Select `Player` for the cyan editor preview of the traced outline.
 
 ### Rule: any other node placed against the background must spawn from its own editor position
 
@@ -201,7 +203,8 @@ glow pattern.
 By default the **player model**, **memory glow**, and **`[E]` interact chip**
 must sit on their node. No extra offset.
 
-- Player: `AnimatedSprite`, `ShadowOutline`, and `CollisionShape2D` stay at
+- Player: `AnimatedSprite`, `ShadowOutline`, and facing hitboxes
+  (`CollisionFront` / `CollisionBack` / `CollisionSide`) stay at
   `(0, 0)` on the Player node. Do not author a sprite/collision child offset
   to “fix” spawn. Move the Player node itself.
 - Memory glow: `MemoryIndicator.visual_offset` stays `Vector2.ZERO`. Align
@@ -217,6 +220,8 @@ one specific nudge (then scope it to that one zone/node).
 ### Rule: each CollisionShape2D gets its own Shape2D resource
 
 Never share one `RectangleShape2D` / `CircleShape2D` / other `Shape2D` SubResource across two `CollisionShape2D` nodes that should resize or scale independently.
+
+**Exception:** Mike’s three facing hitboxes are *meant* to share `res://scenes/player/hitbox_*.tres` across every room. Do not Make Unique those.
 
 Godot stores the shape as a shared resource. If two doors point at the same SubResource, editing size/scale on one changes the other.
 

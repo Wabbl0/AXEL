@@ -1,0 +1,4 @@
+[gd_resource type="ConvexPolygonShape2D" format=3]
+
+[resource]
+points = PackedVector2Array(75.62506, 80.6666, 75.62506, 131.08335, 90.75006, 196.6251, 50.41669, 201.66685, 60.50006, 126.0416, 60.50006, 80.6666)

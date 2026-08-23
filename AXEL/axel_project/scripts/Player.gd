@@ -1,3 +1,4 @@
+@tool
 extends CharacterBody2D
 
 enum SheetLayoutMode {
@@ -19,6 +20,9 @@ const _MIKE_FRAME_INDICES := {
 }
 
 const _MIKE_FRAME_COUNT := 12
+const _HITBOX_FRONT := preload("res://scenes/player/hitbox_front.tres")
+const _HITBOX_BACK := preload("res://scenes/player/hitbox_back.tres")
+const _HITBOX_SIDE := preload("res://scenes/player/hitbox_side.tres")
 
 @export var speed: float = 220.0
 @export var overworld_tint: Color = Color(1.0, 1.0, 1.0, 1.0)
@@ -33,8 +37,9 @@ const _MIKE_FRAME_COUNT := 12
 @export var frame_width: int = 0
 @export var frame_height: int = 0
 @export var animation_fps: float = 10.0
-## Builds CharacterBody2D collision from sprite alpha instead of the scene circle.
-@export var use_alpha_collision: bool = true
+## If true, traces collision from sprite alpha. Default is the shared facing hitboxes
+## (`res://scenes/player/hitbox_front.tres` / `hitbox_back.tres` / `hitbox_side.tres`).
+@export var use_alpha_collision: bool = false
 ## Frame index on the Mike sheet when `collision_use_all_frames_union` is false.
 @export_range(0, 11) var collision_frame_index: int = 0
 ## Union all walk frames so walk cycles do not poke past the collider.
@@ -68,9 +73,13 @@ var _step_distance_accumulator: float = 0.0
 var _last_step_position: Vector2 = Vector2.ZERO
 
 const _STEP_DISTANCE_PX := 8.0
+const _EDITOR_HITBOX_FILL := Color(0.0, 0.92, 0.95, 0.22)
+const _EDITOR_HITBOX_LINE := Color(0.0, 0.92, 0.95, 0.95)
 
 var _layout: SheetLayoutMode = SheetLayoutMode.HORIZONTAL_13
 var _cell: Vector2i = Vector2i(32, 32)
+var _editor_hitbox_polys: Array[PackedVector2Array] = []
+var _editor_hitbox_sig: String = ""
 
 
 func set_input_enabled(enabled: bool) -> void:
@@ -91,7 +100,17 @@ func set_scripted_velocity(v: Vector2) -> void:
 func clear_scripted_velocity() -> void:
 	_scripted_velocity = Vector2.ZERO
 
+func _enter_tree() -> void:
+	if Engine.is_editor_hint():
+		set_process(true)
+		set_physics_process(false)
+
+
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		_ensure_facing_hitboxes()
+		_refresh_editor_hitbox_preview()
+		return
 	_last_step_position = global_position
 	if sprite_sheet == null:
 		sprite_sheet = _try_load_default_sprite_sheet()
@@ -99,14 +118,17 @@ func _ready() -> void:
 		_resolve_layout_and_cell()
 		_build_sprite_frames()
 		_setup_shadow_outline()
+		_ensure_facing_hitboxes()
 		_setup_alpha_collision()
 		fallback_body.visible = false
 		animated_sprite.visible = true
 		_apply_overworld_tint()
 	else:
+		_ensure_facing_hitboxes()
 		fallback_body.visible = true
 		animated_sprite.visible = false
 		shadow_outline.visible = false
+	_sync_manual_facing_collision()
 
 func _try_load_default_sprite_sheet() -> Texture2D:
 	var candidates: Array[String] = [
@@ -195,17 +217,33 @@ func _setup_shadow_outline() -> void:
 
 
 func _setup_alpha_collision() -> void:
+	if Engine.is_editor_hint():
+		return
 	if not use_alpha_collision:
 		return
-	var sheet_image := _get_sheet_image()
-	if sheet_image == null:
-		push_warning("Player: could not read sprite sheet for alpha collision; keeping scene collision shape.")
+	var pending_shapes := _collect_alpha_collision_polygons()
+	if pending_shapes.is_empty():
+		push_warning("Player: could not build alpha collision; keeping scene collision shape.")
 		return
+	call_deferred("_apply_alpha_collision_polygons", pending_shapes)
 
+
+func _collect_alpha_collision_polygons() -> Array[PackedVector2Array]:
+	var empty: Array[PackedVector2Array] = []
+	if not use_alpha_collision:
+		return empty
+	if sprite_sheet == null:
+		if Engine.is_editor_hint():
+			return empty
+		sprite_sheet = _try_load_default_sprite_sheet()
+	var sheet_image := _get_sheet_image()
+	if sheet_image == null or sprite_sheet == null:
+		return empty
+	_resolve_layout_and_cell()
 	var fw := _cell.x
 	var fh := _cell.y
 	if fw <= 0 or fh <= 0:
-		return
+		return empty
 
 	var bitmap := BitMap.new()
 	if collision_use_all_frames_union:
@@ -219,17 +257,12 @@ func _setup_alpha_collision() -> void:
 	bitmap = _erode_bitmap(bitmap, collision_alpha_shrink_pixels)
 	if not _bitmap_has_opaque_pixels(bitmap):
 		bitmap = raw_bitmap
+	return _polygons_from_alpha_bitmap(bitmap, fw, fh)
 
-	call_deferred("_apply_alpha_collision_shapes", bitmap, fw, fh)
 
-
-func _apply_alpha_collision_shapes(bitmap: BitMap, fw: int, fh: int) -> void:
-	if not is_inside_tree():
-		return
-
+func _polygons_from_alpha_bitmap(bitmap: BitMap, fw: int, fh: int) -> Array[PackedVector2Array]:
 	var polygons: Array = bitmap.opaque_to_polygons(Rect2i(0, 0, fw, fh), collision_polygon_epsilon)
 	var frame_center := Vector2(float(fw) * 0.5, float(fh) * 0.5)
-	var anchor_pos := animated_sprite.position
 	var pending_shapes: Array[PackedVector2Array] = []
 
 	for poly in polygons:
@@ -252,10 +285,19 @@ func _apply_alpha_collision_shapes(bitmap: BitMap, fw: int, fh: int) -> void:
 		var fallback := _circle_points_from_bitmap(bitmap, fw, fh, frame_center)
 		if fallback.size() >= 3:
 			pending_shapes.append(fallback)
-		else:
-			push_warning("Player: alpha collision produced no valid shapes; keeping scene collision shape.")
-			return
+	return pending_shapes
 
+
+func _apply_alpha_collision_polygons(pending_shapes: Array[PackedVector2Array]) -> void:
+	if Engine.is_editor_hint() or not is_inside_tree():
+		return
+	if pending_shapes.is_empty():
+		push_warning("Player: alpha collision produced no valid shapes; keeping scene collision shape.")
+		return
+	if animated_sprite == null:
+		return
+
+	var anchor_pos := animated_sprite.position
 	_clear_collision_shapes()
 	var insert_index := animated_sprite.get_index() + 1
 	for centered in pending_shapes:
@@ -555,11 +597,75 @@ func set_leaf_occlusion_active(_active: bool) -> void:
 	pass
 
 
+func _ensure_facing_hitboxes() -> void:
+	if use_alpha_collision:
+		return
+	_bind_facing_hitbox("CollisionFront", _HITBOX_FRONT)
+	_bind_facing_hitbox("CollisionBack", _HITBOX_BACK)
+	_bind_facing_hitbox("CollisionSide", _HITBOX_SIDE)
+	var legacy := _manual_collision("CollisionShape2D")
+	if legacy != null:
+		legacy.disabled = true
+
+
+func _bind_facing_hitbox(node_name: String, shape: Shape2D) -> CollisionShape2D:
+	var node := _manual_collision(node_name)
+	if node == null:
+		node = CollisionShape2D.new()
+		node.name = node_name
+		add_child(node)
+		if Engine.is_editor_hint():
+			node.owner = null
+	node.shape = shape
+	node.position = Vector2.ZERO
+	node.scale = Vector2.ONE
+	node.set_meta("authored_pos", Vector2.ZERO)
+	return node
+
+
+func _manual_collision(node_name: String) -> CollisionShape2D:
+	return get_node_or_null(node_name) as CollisionShape2D
+
+
+func _sync_manual_facing_collision() -> void:
+	if Engine.is_editor_hint() or use_alpha_collision:
+		return
+	var front := _manual_collision("CollisionFront")
+	if front == null:
+		front = _manual_collision("CollisionShape2D")
+	var back := _manual_collision("CollisionBack")
+	var side := _manual_collision("CollisionSide")
+	if back == null and side == null:
+		if front != null:
+			_apply_collision_horizontal_flip(front, not (_last_facing == Facing.SIDE and not _last_side_is_right))
+		return
+	if front != null:
+		front.disabled = _last_facing != Facing.FRONT
+		_apply_collision_horizontal_flip(front, true)
+	if back != null:
+		back.disabled = _last_facing != Facing.BACK
+		_apply_collision_horizontal_flip(back, true)
+	if side != null:
+		side.disabled = _last_facing != Facing.SIDE
+		_apply_collision_horizontal_flip(side, _last_side_is_right)
+
+
+func _apply_collision_horizontal_flip(collision: CollisionShape2D, face_right: bool) -> void:
+	if not collision.has_meta("authored_pos"):
+		collision.set_meta("authored_pos", collision.position)
+	var authored: Vector2 = collision.get_meta("authored_pos")
+	var sign_x := 1.0 if face_right else -1.0
+	collision.scale.x = sign_x
+	collision.position = Vector2(authored.x * sign_x, authored.y)
+
+
 func _get_collision_feet_anchor_y() -> float:
 	var anchor_y := -1.0e9
 	for child in get_children():
 		if child is CollisionShape2D:
 			var collision := child as CollisionShape2D
+			if collision.disabled:
+				continue
 			var shape := collision.shape
 			if shape is ConvexPolygonShape2D:
 				var poly := shape as ConvexPolygonShape2D
@@ -578,7 +684,64 @@ func _update_leaf_occlusion_anchor() -> void:
 	mat.set_shader_parameter("player_anchor_y", _get_collision_feet_anchor_y())
 
 
+func _process(_delta: float) -> void:
+	if not Engine.is_editor_hint():
+		return
+	var sig := _editor_hitbox_signature()
+	if sig != _editor_hitbox_sig:
+		_refresh_editor_hitbox_preview()
+
+
+func _draw() -> void:
+	if not Engine.is_editor_hint() or not use_alpha_collision:
+		return
+	var anchor := Vector2.ZERO
+	if animated_sprite != null:
+		anchor = animated_sprite.position
+	for poly in _editor_hitbox_polys:
+		if poly.size() < 3:
+			continue
+		var drawn := PackedVector2Array()
+		drawn.resize(poly.size())
+		for i in poly.size():
+			drawn[i] = poly[i] + anchor
+		draw_colored_polygon(drawn, _EDITOR_HITBOX_FILL)
+		for i in drawn.size():
+			draw_line(drawn[i], drawn[(i + 1) % drawn.size()], _EDITOR_HITBOX_LINE, 8.0)
+
+
+func _editor_hitbox_signature() -> String:
+	var sheet_path := ""
+	if sprite_sheet != null:
+		sheet_path = sprite_sheet.resource_path
+	return "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s" % [
+		use_alpha_collision,
+		collision_frame_index,
+		collision_use_all_frames_union,
+		collision_alpha_threshold,
+		collision_polygon_epsilon,
+		collision_alpha_shrink_pixels,
+		collision_smooth_iterations,
+		collision_inward_margin,
+		collision_lower_body_ratio,
+		sheet_path,
+		sheet_layout_mode,
+		sheet_columns,
+		sheet_rows,
+		frame_width,
+		frame_height,
+	]
+
+
+func _refresh_editor_hitbox_preview() -> void:
+	_editor_hitbox_sig = _editor_hitbox_signature()
+	_editor_hitbox_polys = _collect_alpha_collision_polygons()
+	queue_redraw()
+
+
 func _physics_process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	_update_leaf_occlusion_anchor()
 	if not _input_enabled:
 		if _scripted_velocity != Vector2.ZERO:
@@ -699,6 +862,7 @@ func _update_animation(direction: Vector2) -> void:
 		shadow_outline.play()
 
 	_sync_shadow_animation()
+	_sync_manual_facing_collision()
 
 
 func _play_idle_for_facing() -> void:
@@ -718,6 +882,7 @@ func _play_idle_for_facing() -> void:
 		animated_sprite.play(anim)
 		shadow_outline.play(anim)
 	_sync_shadow_animation()
+	_sync_manual_facing_collision()
 
 
 func _sync_shadow_animation() -> void:

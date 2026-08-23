@@ -4779,3 +4779,58 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Docs only. Gameplay unchanged.
 - Verification: Compared write-ups to live `.tscn` Player scales and today’s implement chats.
 - Notes: Changelog already had most of today’s implement entries; this pass added the missing 5.1 +50% log and synced stale scale/FX text.
+
+### Dialogue typewriter audio
+- Request: Play `axel_typewriter_open.wav` when the dialogue bar turns on, that clip backwards when it turns off, and `axel_typewriter_v4.wav` looping only while letters type (skip jumps the loop, then pause).
+- Implementation: Copied the two WAVs into `assets/audio/`. Added `OpenClosePlayer` and `TypeLoopPlayer` on `TopDialogueOverlay` so every room that already instances the bar gets the sounds. Open plays at CRT on / fade-in. Real `hide_line` plays a cached reverse of the open clip. Type loop uses a static tape position across rooms; pauses on beats / full line; skip jumps leftover letters÷CPS then pauses. `interrupt_line` stops both with no reverse. User later set open/close volume to `-12` dB.
+- Files changed:
+  - `AXEL/axel_project/assets/audio/axel_typewriter_open.wav`
+  - `AXEL/axel_project/assets/audio/axel_typewriter_v4.wav`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.tscn`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: First game audio. Opening a line clicks, typing ticks, closing clicks in reverse. New rooms keep the typewriter tape where it left off.
+- Verification: Overlay hook points reviewed in source. Headless cannot prove sound — listen in the editor.
+- Notes: Volume is Inspector `Volume Db` on the two players (`OpenClosePlayer` live `-12`, `TypeLoopPlayer` live `0`). No G:\\ paths. Skip stays instant full-line reveal.
+
+### Shared player facing hitboxes
+- Request: Manual corridor Front / Side / Back shapes should work on every room and stay the default for new scenes.
+- Implementation: Saved the 1.2 polygons as `scenes/player/hitbox_front.tres` / `hitbox_side.tres` / `hitbox_back.tres`. Pointed every walkable room at those same files (`CollisionFront` / `CollisionSide` / `CollisionBack`). `Player.gd` applies Front toward camera, Side for A/D (flips left), Back walking away, and creates the three nodes if a new scene is missing them. `use_alpha_collision` is now opt-in (cyan editor preview still exists for that path).
+- Files changed:
+  - `AXEL/axel_project/scenes/player/hitbox_front.tres`
+  - `AXEL/axel_project/scenes/player/hitbox_side.tres`
+  - `AXEL/axel_project/scenes/player/hitbox_back.tres`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: One shared hitbox set for all rooms. Edit a `.tres` (or any room’s matching shape and save the resource) and every room updates. New rooms only need `Player.gd`.
+- Verification: Scene nodes and shared ExtResources reviewed; QA child-name list includes the three facing shapes.
+- Notes: Do not Make Unique the player `.tres` files. Alpha trace is opt-in only.
+
+### Docs sync — rest of 2026-08-23
+- Request: `update rest of the days docs` after the morning docs pass (typewriter audio + shared facing hitboxes).
+- Implementation: Logged the two afternoon builds. Canon / how-to / folder map now name the audio players, volume knobs, shared hitboxes, and the “do not Make Unique” exception. Governance rule adds the hitbox line. 2.4 write-up no longer says “Kitchen profile.”
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Gameplay unchanged.
+- Verification: Compared write-ups to live overlay players, `hitbox_*.tres`, and `Player.gd` facing switch.
+- Notes: No Aug 21 or Aug 22 implement chats to backfill. Morning Aug 23 work was already in the earlier docs sync.
+
