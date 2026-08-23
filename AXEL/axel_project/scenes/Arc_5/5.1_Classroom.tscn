@@ -1,14 +1,15 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bderkhjpprbmx"]
 
-[ext_resource type="Script" path="res://scenes/Arc_5/5.1_Classroom.gd" id="1_classroom"]
-[ext_resource type="Script" path="res://scripts/Player.gd" id="2_player_script"]
-[ext_resource type="Texture2D" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
-[ext_resource type="SpriteFrames" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
-[ext_resource type="Texture2D" path="res://exports/Drawings/5.1_Classroom.png" id="4_classroom_bg"]
+[ext_resource type="Script" uid="uid://d23lf353tkxee" path="res://scenes/Arc_5/5.1_Classroom.gd" id="1_classroom"]
+[ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_player_script"]
+[ext_resource type="SpriteFrames" uid="uid://4eiekoqcuo44" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
+[ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
+[ext_resource type="Texture2D" uid="uid://110jjnuxv7b0" path="res://exports/Drawings/5.1_Classroom.png" id="4_classroom_bg"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
-[ext_resource type="Script" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
-[ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
+[ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
+[ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
+[ext_resource type="PackedScene" path="res://scenes/fx/MemoryIndicator.tscn" id="9_memory_indicator"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(3508, 40)
@@ -17,20 +18,23 @@ size = Vector2(3508, 40)
 size = Vector2(40, 2480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_block"]
-size = Vector2(80, 420)
+size = Vector2(3484, 49)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
-size = Vector2(180, 420)
+size = Vector2(618, 242)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_desk_interact"]
+size = Vector2(396, 330)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 5.5
 
-[node name="5_1_Classroom" type="Node2D"]
+[node name="5_1_Classroom" type="Node2D" unique_id=1589544695]
 script = ExtResource("1_classroom")
 
-[node name="WalkableWorld" type="Node2D" parent="."]
+[node name="WalkableWorld" type="Node2D" parent="." unique_id=1226634432]
 
-[node name="Background" type="Sprite2D" parent="WalkableWorld"]
+[node name="Background" type="Sprite2D" parent="WalkableWorld" unique_id=1771590218]
 z_index = -100
 texture_filter = 1
 texture = ExtResource("4_classroom_bg")
@@ -38,60 +42,130 @@ centered = false
 script = ExtResource("8_bg_lock")
 metadata/_edit_lock_ = true
 
-[node name="EnvironmentColliders" type="Node2D" parent="WalkableWorld"]
+[node name="EnvironmentColliders" type="Node2D" parent="WalkableWorld" unique_id=37954409]
 
-[node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+[node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=534441503]
 position = Vector2(1754, 20)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall" unique_id=1731563676]
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
-[node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+[node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=223035916]
 position = Vector2(1754, 2460)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=1642301856]
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
-[node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+[node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=341451573]
 position = Vector2(20, 1240)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=939984681]
 shape = SubResource("RectangleShape2D_wall_vertical")
 
-[node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+[node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=617357436]
 position = Vector2(3488, 1240)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=911177184]
 shape = SubResource("RectangleShape2D_wall_vertical")
 
-[node name="DoorWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders"]
+[node name="DoorWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=109877904]
 position = Vector2(40, 950)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorWall"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorWall" unique_id=130491347]
+position = Vector2(1722, -525.5)
 shape = SubResource("RectangleShape2D_door_block")
 
-[node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders"]
+[node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=673914663]
 position = Vector2(220, 950)
 monitorable = false
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea" unique_id=1936399810]
+position = Vector2(2911, -383)
 shape = SubResource("RectangleShape2D_door_interact")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="FurnitureBlock1" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2099666733]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock1" unique_id=60084956]
+position = Vector2(-394, -74.75)
+scale = Vector2(0.93333334, 0.9125)
+polygon = PackedVector2Array(900, 1400, 1200, 1400, 1200, 1600, 900, 1600)
+
+[node name="FurnitureBlock2" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2010153999]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock2" unique_id=714519642]
+position = Vector2(-78.45825, 8.25)
+scale = Vector2(0.9458333, 0.8625)
+polygon = PackedVector2Array(1300, 1400, 1600, 1400, 1600, 1600, 1300, 1600)
+
+[node name="FurnitureBlock3" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1705943164]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock3" unique_id=1476034703]
+position = Vector2(720.49695, 796.08997)
+scale = Vector2(0.94904435, 0.9662109)
+polygon = PackedVector2Array(1700, 1400, 2000, 1400, 2000, 1600, 1700, 1600)
+
+[node name="FurnitureBlock4" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1403731633]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock4" unique_id=406103989]
+position = Vector2(-216, 372)
+polygon = PackedVector2Array(900, 1728, 1212, 1572, 1776, 1824, 1524, 2004)
+
+[node name="FurnitureBlock5" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1154658211]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock5" unique_id=1320981389]
+position = Vector2(1763.1459, 391)
+scale = Vector2(0.93541664, 1.025)
+polygon = PackedVector2Array(1300, 1700, 1600, 1700, 1600, 1900, 1300, 1900)
+
+[node name="FurnitureBlock6" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=62507423]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock6" unique_id=932135054]
+position = Vector2(-1360, -880)
+polygon = PackedVector2Array(1700, 1700, 2240, 1712, 2240, 2016, 1696, 2016)
+
+[node name="FurnitureBlock7" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=880484881]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock7" unique_id=1990377531]
+position = Vector2(-1056, -384)
+polygon = PackedVector2Array(2100, 1200, 2592, 1216, 2592, 1520, 2096, 1520)
+
+[node name="FurnitureBlock8" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1330758847]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock8" unique_id=1536479665]
+position = Vector2(-331.6128, 640.0001)
+scale = Vector2(0.97851574, 0.9999999)
+polygon = PackedVector2Array(2600, 1100, 3100, 1100, 3104, 1408, 2592, 1408)
+
+[node name="FurnitureBlock9" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2080597719]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock9" unique_id=1877076947]
+position = Vector2(563.51074, 144)
+scale = Vector2(0.9672272, 1)
+polygon = PackedVector2Array(2400, 1600, 2913, 1616, 2913, 1904, 2401, 1904)
+
+[node name="DeskInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=505360998]
+position = Vector2(1500, 1550)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DeskInteractArea" unique_id=385359057]
+position = Vector2(1212, 610)
+shape = SubResource("RectangleShape2D_desk_interact")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=347518324]
 script = ExtResource("7_camera_script")
 background_path = NodePath("../WalkableWorld/Background")
 margin_px = 12.0
 target_path = NodePath("../PlayerLayer/Player")
 static_center = Vector2(560, 0)
 
-[node name="PlayerLayer" type="CanvasLayer" parent="."]
+[node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=26651695]
 layer = 100
 follow_viewport_enabled = true
 
-[node name="Player" type="CharacterBody2D" parent="PlayerLayer"]
+[node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=1236474763]
 z_index = 10
-position = Vector2(420, 950)
-scale = Vector2(3, 3)
+position = Vector2(3120, 567)
+scale = Vector2(0.2975205, 0.2975205)
 script = ExtResource("2_player_script")
 speed = 253.4
 sprite_sheet = ExtResource("3_player_sheet")
@@ -101,26 +175,29 @@ collision_alpha_shrink_pixels = 4
 collision_inward_margin = 4.0
 collision_lower_body_ratio = 0.42
 
-[node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player"]
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1280990906]
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
-autoplay = &"idle"
+autoplay = "idle"
 
-[node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player"]
+[node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=278106659]
 modulate = Color(0, 0, 0, 0.55)
 z_index = -1
 scale = Vector2(1.08, 1.08)
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
 
-[node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player"]
+[node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player" unique_id=1273397596]
 visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=88999588]
 shape = SubResource("CircleShape2D_player")
 
-[node name="TopDialogueOverlay" parent="." instance=ExtResource("5_top_dialogue")]
+[node name="MemoryIndicator" parent="PlayerLayer" unique_id=90059802 instance=ExtResource("9_memory_indicator")]
+position = Vector2(2712, 2160)
 
-[node name="InteractPromptOverlay" parent="." instance=ExtResource("6_interact_prompt")]
-screen_offset = Vector2(0, -52)
+[node name="TopDialogueOverlay" parent="." unique_id=1525273252 instance=ExtResource("5_top_dialogue")]
+visible = false
+
+[node name="InteractPromptOverlay" parent="." unique_id=789816105 instance=ExtResource("6_interact_prompt")]

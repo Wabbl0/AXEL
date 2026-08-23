@@ -6,23 +6,27 @@ enum SheetLayoutMode {
 	GRID,
 }
 
+## Last facing for idle: front / back / side. Side also tracks flip via _last_side_is_right.
+enum Facing { FRONT, BACK, SIDE }
+
 const _MIKE_FRAME_INDICES := {
 	&"idle": [0],
-	&"walk_right": [1, 2, 3],
-	&"walk_left": [4, 5, 6],
-	&"walk_up_right": [7, 8, 9],
-	&"walk_up_left": [10, 11, 12],
+	&"idle_back": [5],
+	&"idle_side": [8],
+	&"walk_down": [0, 1, 2, 3],
+	&"walk_up": [4, 5, 6],
+	&"walk_right": [7, 8, 9, 10, 11],
 }
 
-const _MIKE_FRAME_COUNT := 13
+const _MIKE_FRAME_COUNT := 12
 
 @export var speed: float = 220.0
 @export var overworld_tint: Color = Color(1.0, 1.0, 1.0, 1.0)
 ## When empty, tries common paths under res://assets/sprites/ (including mike walking exports).
 @export var sprite_sheet: Texture2D
-## AUTO: wide strip if width divisible by 13; else if width and height divisible by sheet_columns / sheet_rows, use GRID.
+## AUTO: wide strip if width divisible by frame count; else if width and height divisible by sheet_columns / sheet_rows, use GRID.
 @export var sheet_layout_mode: SheetLayoutMode = SheetLayoutMode.AUTO
-## For GRID / AUTO grid: your Aseprite “Sheet” export is often 4×4 cells (13 frames used).
+## For GRID / AUTO grid: optional multi-row sheet layout.
 @export var sheet_columns: int = 4
 @export var sheet_rows: int = 4
 ## Forced cell size; if 0, derived from texture and layout (recommended).
@@ -32,8 +36,8 @@ const _MIKE_FRAME_COUNT := 13
 ## Builds CharacterBody2D collision from sprite alpha instead of the scene circle.
 @export var use_alpha_collision: bool = true
 ## Frame index on the Mike sheet when `collision_use_all_frames_union` is false.
-@export_range(0, 12) var collision_frame_index: int = 0
-## Union all 13 frames so walk cycles do not poke past the collider.
+@export_range(0, 11) var collision_frame_index: int = 0
+## Union all walk frames so walk cycles do not poke past the collider.
 @export var collision_use_all_frames_union: bool = true
 @export_range(0.0, 1.0) var collision_alpha_threshold: float = 0.1
 ## Higher values simplify the traced outline (fewer sharp corners).
@@ -54,7 +58,8 @@ const _MIKE_FRAME_COUNT := 13
 @onready var shadow_outline: AnimatedSprite2D = $ShadowOutline
 @onready var fallback_body: Polygon2D = $FallbackBody
 
-## Right-side walks (walk_right / walk_up_right) vs left-side; W-only and S-only use this. Idle does not clear it.
+var _last_facing: Facing = Facing.FRONT
+## Right-facing side walks vs left (flip_h); used for side idle and A/D.
 var _last_side_is_right: bool = true
 
 var _input_enabled: bool = true
@@ -631,10 +636,7 @@ func _update_animation(direction: Vector2) -> void:
 		return
 
 	if direction == Vector2.ZERO:
-		_sync_shadow_animation()
-		if animated_sprite.animation != &"idle":
-			animated_sprite.play(&"idle")
-			shadow_outline.play(&"idle")
+		_play_idle_for_facing()
 		return
 
 	var up := direction.y < 0.0
@@ -643,30 +645,51 @@ func _update_animation(direction: Vector2) -> void:
 	var right := direction.x > 0.0
 
 	var anim: StringName
-	if up and right:
-		anim = &"walk_up_right"
-		_last_side_is_right = true
-	elif up and left:
-		anim = &"walk_up_left"
-		_last_side_is_right = false
+	var flip := false
+
+	if up and (left or right):
+		# Up + side diagonal keeps the up (back) cycle.
+		anim = &"walk_up"
+		_last_facing = Facing.BACK
+		if right:
+			_last_side_is_right = true
+		elif left:
+			_last_side_is_right = false
+		flip = false
 	elif up:
-		anim = &"walk_up_right" if _last_side_is_right else &"walk_up_left"
-	elif down and right:
+		anim = &"walk_up"
+		_last_facing = Facing.BACK
+		flip = false
+	elif down and (left or right):
+		# Down + side diagonal uses the side cycle.
 		anim = &"walk_right"
-		_last_side_is_right = true
-	elif down and left:
-		anim = &"walk_left"
-		_last_side_is_right = false
+		_last_facing = Facing.SIDE
+		if right:
+			_last_side_is_right = true
+			flip = false
+		else:
+			_last_side_is_right = false
+			flip = true
 	elif down:
-		anim = &"walk_right" if _last_side_is_right else &"walk_left"
+		anim = &"walk_down"
+		_last_facing = Facing.FRONT
+		flip = false
 	elif right:
 		anim = &"walk_right"
+		_last_facing = Facing.SIDE
 		_last_side_is_right = true
+		flip = false
 	elif left:
-		anim = &"walk_left"
+		anim = &"walk_right"
+		_last_facing = Facing.SIDE
 		_last_side_is_right = false
+		flip = true
 	else:
-		anim = &"idle"
+		_play_idle_for_facing()
+		return
+
+	animated_sprite.flip_h = flip
+	shadow_outline.flip_h = flip
 
 	if animated_sprite.animation != anim:
 		animated_sprite.play(anim)
@@ -677,8 +700,29 @@ func _update_animation(direction: Vector2) -> void:
 
 	_sync_shadow_animation()
 
+
+func _play_idle_for_facing() -> void:
+	var anim: StringName
+	var flip := false
+	match _last_facing:
+		Facing.BACK:
+			anim = &"idle_back"
+		Facing.SIDE:
+			anim = &"idle_side"
+			flip = not _last_side_is_right
+		_:
+			anim = &"idle"
+	animated_sprite.flip_h = flip
+	shadow_outline.flip_h = flip
+	if animated_sprite.animation != anim:
+		animated_sprite.play(anim)
+		shadow_outline.play(anim)
+	_sync_shadow_animation()
+
+
 func _sync_shadow_animation() -> void:
 	if shadow_outline.animation != animated_sprite.animation:
 		shadow_outline.play(animated_sprite.animation)
 	shadow_outline.frame = animated_sprite.frame
 	shadow_outline.frame_progress = animated_sprite.frame_progress
+	shadow_outline.flip_h = animated_sprite.flip_h

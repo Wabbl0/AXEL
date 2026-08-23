@@ -26,7 +26,7 @@ Pre-commit (`tools/qa/check_combat_test_scaffold.py --staged`): if staged `comba
 
 - `res://combat/combat_test.tscn` — scaffold nodes, duplicate CombatRoot grid stack, grid cell count
 - `res://scenes/Arc_1/1.1_SchoolExterior.tscn` — player/camera/interact contract, speed/scale profile, `ExplorationViewport` (`1400×1400` design window; leaf behind-zone fade: manual F5 only — see shipped `1.1_SchoolExterior.gd`)
-- `res://scenes/Arc_1/1.2_Corridor.tscn` — player/overlay contract, corridor_large speed/scale profile (`362` / scale `3.0`), `WalkableWorld/EnvironmentColliders/*` paths, `ExplorationViewport` (`1920×1200` design window)
+- `res://scenes/Arc_1/1.2_Corridor.tscn` — player/overlay contract, corridor_large speed/scale profile (`253.4` / scale `~0.198` for the 12-cell tall Mike sheet), `WalkableWorld/EnvironmentColliders/*` paths, `ExplorationViewport` (`1920×1200` design window)
 - **New exploration scenes** using `background_camera_controller.gd` — `collect_background_camera_findings` (camera view must stay inside computed art rect; no-op on legacy 1.1/1.2)
 
 Profile bounds come from `plans/scenes/SCENE_BUILDING.md` large-scene player profiles. Background/camera pipeline: same file.

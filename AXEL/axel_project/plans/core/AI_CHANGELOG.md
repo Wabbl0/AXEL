@@ -4628,3 +4628,154 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Drag the Player node to set spawn. Play starts there (cover-fit remaps it). 1.4 no longer ignores the node. 1.2 no longer misses the first remap. 1.1 intro/skip use that node.
 - Verification: Headless `player_spawn_sync_check.gd`, `player_cover_sync_check.gd`, `scene_smoke_check.gd`.
 - Notes: Peek/return from another room still places at the door/edge. Walk-off Y still adjusts height after spawn.
+
+## 2026-08-23
+
+### Classroom 5.1 furniture, desk [E], and real 5.2
+
+- Request: Fill classroom 5.1 with furniture blockers, one-shot desk [E], board memory glow; rebuild 5.2 as timed empty→hand→desk still-scene; return disables desk [E].
+- Implementation: Added `classroom_desk_seen` + transient `classroom_desk_return_pos` on GameManager (no memory credit). Extended 5.1 with nine starter furniture polygons, DeskInteractArea, MemoryIndicator remap, zero chip offset. Rebuilt 5.2 from 2.2 still shell with local shake/dim and canon lines.
+- Files changed:
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.2_ClassroomDesk.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.2_ClassroomDesk.gd`
+  - `AXEL/axel_project/exports/Drawings/desk_empty.png`
+  - `AXEL/axel_project/exports/Drawings/desk_hand.png`
+  - `AXEL/axel_project/exports/Drawings/desk.png`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike can be blocked by classroom furniture once polygons are dragged; desk [E] plays 5.2 once then vanishes; board glow loops for later 5.3 wiring.
+- Verification: Scripted file checks; drag furniture/desk/glow in editor then Play.
+- Notes: 5.3/5.4 board puzzle deferred. Desk is not a 5/5 memory.
+
+### 2.4 extra door interact stubs
+- Request: Add 3 extra interact areas on the unused 2.4 doors, with dialogue "Try the next one." / "No, the next one." / "You missed it."
+- Implementation: Added `ExtraDoor1/2/3InteractArea` under `EnvironmentColliders` (same `[E]` + `TopDialogueOverlay` stub pattern as the future door). Door 1 is the south-wall extra between future and classroom; door 2 is the east-wall extra between lounge and cafeteria; door 3 is the north-end extra right of the cafeteria door. No scene changes.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The three extra doors show an `[E]` chip and the matching one-line stub. Live cafeteria / lounge / classroom doors and the future `"Not yet."` stub are unchanged.
+- Verification: Scene nodes and stub line map reviewed in source.
+- Notes: Drag the new Area2D nodes in the editor if a box sits off the ink.
+
+### New Mike walk sheet (12-cell front/back/side)
+- Request: Pack hand-drawn `kävely_etu` / `kävely_sivu` into a Play-ready strip with solid head plate, real front/back/side walks, left via flip, last-facing idle, same on-screen height.
+- Implementation: Baked a 12-cell horizontal strip (430×968 cells) from ink-box cuts (not grid slice), filled a white head plate behind scribble/eye holes, flattened soft charcoal, and overwrote `mike_walking-Sheet.png` (legacy 13-frame backup kept). `Player.gd` now uses walk_down / walk_up / walk_right + flip_h for left, with idle / idle_back / idle_side. Authored Player scales retuned by `old × 64/968` on walkable rooms.
+- Files changed:
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet.png`
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet_legacy13.png`
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet_meta.txt`
+  - `AXEL/axel_project/assets/sprites/mike_sprite_frames.tres`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: S = front walk, W = back walk, A/D = side (left mirrored). Idle keeps last facing. Head reads as solid white after the overworld filter; empty around Mike stays transparent.
+- Verification: Headless smoke / cover / spawn checks (see implement session).
+- Notes: Re-bake with `python AXEL/axel_project/tools/pack_mike_walk_sheet.py` (ASCII copies `kavely_*.png` under Drawings). Rollback: restore legacy13 over the live sheet and revert Player + scales.
+
+### 4.1 collision borders → polygons
+- Request: 4.1 collision borders should be polygons because the debris is more defined.
+- Implementation: Replaced lounge wall/furniture `CollisionShape2D` boxes with `CollisionPolygon2D` traced from the ink. Added `LeftUpperBlock` for the thin left strip. Floor papers stay walkable. Door `[E]` zone stays a rectangle.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike stops on the tilted table, chair, bench, cabinet, and right clutter instead of their old boxes. Papers on the floor are still walkable.
+- Verification: Polygon vertices overlaid on `4.1_TeachersLounge.png`; scene file parsed for `CollisionPolygon2D` on each former box.
+- Notes: Drag polygon vertex handles in the editor if one edge sits off the ink.
+
+### 2.4 vertical walk size ramp
+- Request: On the first (vertical) leg of 2.4, Mike should grow from 100% near the cafeteria to 150% at the corner so he matches the zooming perspective; keep last size after leave; lounge/classroom enter at 150%.
+- Implementation: Added `VerticalSizeRampArea` (walk-through `Area2D` in texture-pixel space under `EnvironmentColliders`). 2.4 script tracks `_depth_factor` from walk Y inside the box, seeds from spawn side, and after every `PlayerCoverSync.apply()` multiplies scale + speed by that factor. Export `vertical_far_scale` (default 1.5). Shared cover-sync helper unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Walking down the vertical arm grows Mike (and walk speed); past the corner he stays large; walking back up shrinks him. Fresh/cafeteria start at 100%; lounge/classroom at 150%.
+- Verification: Headless `player_cover_sync_check.gd`; manual walk of vertical leg + corner + return peeks.
+- Notes: Drag `VerticalSizeRampArea` in the editor if growth starts too early/late. Grow is around the Player node (same as window resize), not feet-plant.
+
+### Mike head hole-fill black (not white)
+- Request: Empty spaces in Mike's head (eyes, scribble gaps) were solid white; they should be black so the in-game model is white with black eyes. Player is not noir-inverted.
+- Implementation: Head plate fill is now black; ink flattens to white. `white_sprite.gdshader` keeps dark texels black instead of forcing every opaque pixel white. Re-baked `mike_walking-Sheet.png`.
+- Files changed:
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Overworld Mike is a white figure with black eyes/holes. Transparent pixels around him are unchanged.
+- Verification: Re-bake counts match old white-fill pixel counts now as black; front/side head crops show black eye holes.
+- Notes: Re-bake with `python AXEL/axel_project/tools/pack_mike_walk_sheet.py`. Godot may need to reimport the sheet if the editor is already open.
+
+### Mike face keep brush gaps (less filter crush)
+- Request: In-game face was a blown-out white blob vs the original charcoal PNG; decrease the filter so brushes stay defined.
+- Implementation: Removed the solid head plate (it filled every gap between strokes). Pack now inverts charcoal to white and keeps source alpha. `white_sprite` no longer 1-bit thresholds the face. CRT player white-boost dropped 0.8→0.2 and player CRT reduction raised 0.33→0.7 so scan/chroma smear the head less.
+- Files changed:
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/fx/CrtPluginOverlay.tscn`
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet.png`
+  - `AXEL/axel_project/assets/sprites/mike_sprite_frames.tres`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike’s head shows white brush strokes with dark gaps (eyes/scribble holes). Still a white figure; empty gaps stay dark because they are not filled.
+- Verification: Re-baked sheet; front head crop shows stroke texture and open eye holes instead of a solid plate.
+- Notes: Stop Play and Play again so Godot reimports the sheet. CRT knobs are on `CrtPluginOverlay.tscn` → `FilterRect` if you want even less glow.
+
+### Mike solid body + black head plate
+- Request: Body from the chin down was too see-through (restore the older solid look). Eye sockets / face holes showed the room; they need a head-only fill so the in-game look is white body, black eyes.
+- Implementation: Detect the chin (widest head row, then neck). Black convex plate only on the head, with white brush strokes drawn on top so holes stay black and opaque. From the chin down, ink is hard opaque white again (no plate).
+- Files changed:
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet.png`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Face keeps brush detail on a black backing (no room through the eyes). Neck/arms/legs are solid white lines.
+- Verification: Re-bake; eye crop on a red test background stays black, not red.
+- Notes: Stop Play and Play again so Godot reimports the sheet.
+
+### 5.1 classroom Mike +50%
+- Request: 5.1 player model size should be increased by 50%.
+- Implementation: Raised authored `PlayerLayer/Player` scale from `0.198347` to `0.2975205`. Speed left at `253.4`. Shared cover-sync / other rooms unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike is 50% larger in the classroom only.
+- Verification: Scene file scale confirmed.
+- Notes: Tune further in the `.tscn` if the room still looks off at 1920×1280.
+
+### Docs sync — 2026-08-23 live scenes + Mike sheet
+- Request: `update docs` after today’s classroom furniture/5.2, 2.4 door stubs + size ramp, 4.1 polygons, new Mike walk sheet, head/body pack passes, and 5.1 +50% size.
+- Implementation: Canon now matches live files. `AI_DOCS.md` notes overworld Mike (white body, black eyes, not noir-inverted) and shipped CRT player knobs. `SCENE_BUILDING.md` lists live authored scales, pack rules, and the 2.4 walk-position size ramp. Arc write-ups no longer cite old 64 px scales (`3.0` / `5.0`).
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Gameplay unchanged.
+- Verification: Compared write-ups to live `.tscn` Player scales and today’s implement chats.
+- Notes: Changelog already had most of today’s implement entries; this pass added the missing 5.1 +50% log and synced stale scale/FX text.

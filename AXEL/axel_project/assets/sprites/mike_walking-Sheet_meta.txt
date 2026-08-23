@@ -1,0 +1,3 @@
+cell_w=439
+cell_h=971
+frames=12

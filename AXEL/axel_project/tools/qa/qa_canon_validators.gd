@@ -59,10 +59,10 @@ const COMBAT_ROOT_NO_SUFFIX2: Array[String] = [
 const MOVEMENT_SCENE_PROFILES: Dictionary = {
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn": {
 		"label": "school_exterior",
-		"speed_min": 150.0,
+		"speed_min": 100.0,
 		"speed_max": 210.0,
-		"scale_min": 1.0,
-		"scale_max": 1.35,
+		"scale_min": 0.07,
+		"scale_max": 0.09,
 		"required_paths": [
 			"PlayerLayer/Player",
 			"Camera2D",
@@ -73,10 +73,10 @@ const MOVEMENT_SCENE_PROFILES: Dictionary = {
 	},
 	"res://scenes/Arc_1/1.2_Corridor.tscn": {
 		"label": "corridor_large",
-		"speed_min": 350.0,
+		"speed_min": 240.0,
 		"speed_max": 375.0,
-		"scale_min": 2.8,
-		"scale_max": 3.2,
+		"scale_min": 0.18,
+		"scale_max": 0.22,
 		"required_paths": [
 			"PlayerLayer/Player",
 			"Camera2D",

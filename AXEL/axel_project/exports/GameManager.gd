@@ -19,6 +19,8 @@ var basement_door_line_seen: bool = false
 var corridor_return_pos: Vector2 = INVALID_RETURN_POS
 ## Transient (not persisted). Texture-pixel standing spot when leaving 2.1 for 2.2.
 var cafeteria_table_return_pos: Vector2 = INVALID_RETURN_POS
+## Transient (not persisted). Texture-pixel standing spot when leaving 5.1 for 5.2.
+var classroom_desk_return_pos: Vector2 = INVALID_RETURN_POS
 ## Transient (not persisted). Texture-pixel standing spot when leaving 3.1 for 3.2.
 var backyard_memory_return_pos: Vector2 = INVALID_RETURN_POS
 ## Transient (not persisted). e.g. "basement_right" when leaving 1.4 for 1.2.
@@ -51,6 +53,8 @@ var backyard_enter_line_seen: bool = false
 var teachers_lounge_enter_line_seen: bool = false
 ## Once-ever classroom enter line (5.1).
 var classroom_enter_line_seen: bool = false
+## Once-ever classroom desk still-scene (5.2). Not a 5/5 memory.
+var classroom_desk_seen: bool = false
 ## Once-ever cafeteria memory lines (2.2).
 var cafeteria_memory_line_seen: bool = false
 ## Once-ever backyard memory lines (3.2).
@@ -95,6 +99,7 @@ func _load_persistent_state() -> void:
 	backyard_enter_line_seen = false
 	teachers_lounge_enter_line_seen = false
 	classroom_enter_line_seen = false
+	classroom_desk_seen = false
 	cafeteria_memory_line_seen = false
 	backyard_memory_line_seen = false
 	backyard_cigarette_line_seen = false
@@ -123,6 +128,7 @@ func _load_persistent_state() -> void:
 	backyard_enter_line_seen = bool(data.get("backyard_enter_line_seen", false))
 	teachers_lounge_enter_line_seen = bool(data.get("teachers_lounge_enter_line_seen", false))
 	classroom_enter_line_seen = bool(data.get("classroom_enter_line_seen", false))
+	classroom_desk_seen = bool(data.get("classroom_desk_seen", false))
 	cafeteria_memory_line_seen = bool(data.get("cafeteria_memory_line_seen", false))
 	backyard_memory_line_seen = bool(data.get("backyard_memory_line_seen", false))
 	backyard_cigarette_line_seen = bool(data.get("backyard_cigarette_line_seen", false))
@@ -152,6 +158,7 @@ func _save_persistent_state() -> void:
 		"backyard_enter_line_seen": backyard_enter_line_seen,
 		"teachers_lounge_enter_line_seen": teachers_lounge_enter_line_seen,
 		"classroom_enter_line_seen": classroom_enter_line_seen,
+		"classroom_desk_seen": classroom_desk_seen,
 		"cafeteria_memory_line_seen": cafeteria_memory_line_seen,
 		"backyard_memory_line_seen": backyard_memory_line_seen,
 		"backyard_cigarette_line_seen": backyard_cigarette_line_seen,
@@ -198,6 +205,10 @@ func set_classroom_enter_line_seen(value: bool = true) -> void:
 	classroom_enter_line_seen = value
 	_save_persistent_state()
 
+func set_classroom_desk_seen(value: bool = true) -> void:
+	classroom_desk_seen = value
+	_save_persistent_state()
+
 func set_cafeteria_memory_line_seen(value: bool = true) -> void:
 	cafeteria_memory_line_seen = value
 	_save_persistent_state()
@@ -230,6 +241,17 @@ func has_cafeteria_table_return_pos() -> bool:
 func take_cafeteria_table_return_pos() -> Vector2:
 	var pos := cafeteria_table_return_pos
 	cafeteria_table_return_pos = INVALID_RETURN_POS
+	return pos
+
+func set_classroom_desk_return_pos(pos: Vector2) -> void:
+	classroom_desk_return_pos = pos
+
+func has_classroom_desk_return_pos() -> bool:
+	return classroom_desk_return_pos != INVALID_RETURN_POS
+
+func take_classroom_desk_return_pos() -> Vector2:
+	var pos := classroom_desk_return_pos
+	classroom_desk_return_pos = INVALID_RETURN_POS
 	return pos
 
 func set_backyard_memory_return_pos(pos: Vector2) -> void:

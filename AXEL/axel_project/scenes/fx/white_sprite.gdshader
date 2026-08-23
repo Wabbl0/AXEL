@@ -88,7 +88,6 @@ void vertex() {
 }
 
 void fragment() {
-	float tex_a = texture(TEXTURE, UV).a;
 	vec2 mask_pos = world_pos;
 	if (leaf_mask_use_anchor_y != 0) {
 		mask_pos = vec2(world_pos.x, player_anchor_y);
@@ -108,7 +107,9 @@ void fragment() {
 	float m1 = leaf1 * gate1;
 	float m2 = leaf2 * gate2;
 	float mask_coverage = clamp(max(max(m0, m1), m2), 0.0, 1.0);
-	float base_alpha = tex_a * COLOR.a;
+	vec4 tex = texture(TEXTURE, UV);
+	float base_alpha = tex.a * COLOR.a;
 	float blended_alpha = base_alpha * mix(1.0, leaf_fade_alpha, mask_coverage);
-	COLOR = vec4(1.0, 1.0, 1.0, blended_alpha);
+	// Keep packed brush brightness (white ink, empty gaps). Do not 1-bit the face.
+	COLOR = vec4(tex.rgb, blended_alpha);
 }

@@ -1,6 +1,7 @@
 extends Node2D
 
 const CORRIDOR_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
+const DESK_SCENE := "res://scenes/Arc_5/5.2_ClassroomDesk.tscn"
 const ENTER_LINES := [
 	"This is where the shit went down.",
 	"If shit going down is you, highly caffinated, ignoring your teachers and usually skipping class to go for a smoke.",
@@ -11,27 +12,40 @@ const DOOR_ZONE_GRACE_SEC := 0.15
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
+@onready var _memory_indicator: Node2D = get_node_or_null("PlayerLayer/MemoryIndicator")
 
 var _door_interact_area: Area2D
+var _desk_interact_area: Area2D
 var _active_zone: String = ""
 var _is_transitioning := false
 var _player_spawn_applied := false
 var _pending_door_peek := false
 var _door_zone_armed := true
+## Texture-pixel position captured from MemoryIndicator editor placement.
+var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
+	if is_instance_valid(_memory_indicator):
+		_memory_indicator_tex = _memory_indicator.position
 	_player_cover_sync.bind_from_player(_player)
 	var _bg := $WalkableWorld/Background as Sprite2D
 	var _cam := $Camera2D
 	_player_cover_sync.bind_design_from_background(
 		_bg, _cam.fit_mode, _cam.background_y
 	)
+	if is_instance_valid(_memory_indicator):
+		_player_cover_sync.bind_extra_node(_memory_indicator)
 	_door_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/DoorInteractArea"
 	) as Area2D
+	_desk_interact_area = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/DeskInteractArea"
+	) as Area2D
 	_connect_zone(_door_interact_area, "door")
+	_connect_zone(_desk_interact_area, "desk")
+	_apply_desk_seen_state()
 	if GameManager.take_classroom_spawn_side() == "corridor_door":
 		_pending_door_peek = true
 	set_process_unhandled_input(true)
@@ -70,6 +84,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _active_zone == "door":
 		_begin_return_to_corridor()
+	elif _active_zone == "desk":
+		_begin_go_to_desk()
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
@@ -96,13 +112,24 @@ func _on_zone_body_exited(body: Node, zone_id: String) -> void:
 		_hide_interact_prompt()
 
 
+func _zone_area(zone_id: String) -> Area2D:
+	match zone_id:
+		"door":
+			return _door_interact_area
+		"desk":
+			return _desk_interact_area
+		_:
+			return null
+
+
 func _interact_anchor() -> Vector2:
-	if not is_instance_valid(_door_interact_area):
+	var area := _zone_area(_active_zone)
+	if not is_instance_valid(area):
 		return Vector2.ZERO
-	var shape := _door_interact_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	var shape := area.get_node_or_null("CollisionShape2D") as CollisionShape2D
 	if shape != null and shape.shape is RectangleShape2D:
 		return shape.global_position
-	return _door_interact_area.global_position
+	return area.global_position
 
 
 func _show_interact_prompt() -> void:
@@ -140,6 +167,51 @@ func _begin_return_to_corridor() -> void:
 			AxelPostFxStack.apply_to_scene(get_tree().current_scene)
 
 
+func _save_desk_return_pos() -> void:
+	if not is_instance_valid(_player):
+		return
+	var env := $WalkableWorld/EnvironmentColliders
+	GameManager.set_classroom_desk_return_pos(env.to_local(_player.global_position))
+
+
+func _begin_go_to_desk() -> void:
+	if _is_transitioning:
+		return
+	if GameManager.classroom_desk_seen:
+		return
+	_is_transitioning = true
+	_save_desk_return_pos()
+	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
+		_interact_prompt.hide_prompt_immediate()
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
+	var err := get_tree().change_scene_to_file(DESK_SCENE)
+	if err != OK:
+		push_error("Failed to change scene to %s (error %d)." % [DESK_SCENE, err])
+		_is_transitioning = false
+		if is_instance_valid(AxelPostFxStack):
+			AxelPostFxStack.apply_to_scene(get_tree().current_scene)
+
+
+func _apply_desk_seen_state() -> void:
+	if not GameManager.classroom_desk_seen:
+		return
+	if not is_instance_valid(_desk_interact_area):
+		return
+	_desk_interact_area.monitoring = false
+	_desk_interact_area.monitorable = false
+	var shape := _desk_interact_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape != null:
+		shape.disabled = true
+
+
+func _sync_memory_indicator() -> void:
+	if not is_instance_valid(_memory_indicator):
+		return
+	var env := $WalkableWorld/EnvironmentColliders
+	_memory_indicator.global_position = env.to_global(_memory_indicator_tex)
+
+
 func _on_background_layout_applied(
 	scale_factor: float, bg_position: Vector2, _world_rect: Rect2
 ) -> void:
@@ -153,7 +225,12 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
 	if not _player_spawn_applied:
-		if _pending_door_peek:
+		if GameManager.has_classroom_desk_return_pos():
+			player_node.global_position = env.to_global(
+				GameManager.take_classroom_desk_return_pos()
+			)
+			_arm_door_zone_grace()
+		elif _pending_door_peek:
 			player_node.global_position = _door_peek_global()
 			_pending_door_peek = false
 			_arm_door_zone_grace()
@@ -164,9 +241,19 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	else:
 		PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
+	_sync_memory_indicator()
 	call_deferred("_wake_static_colliders")
-	if _pending_door_peek:
+	if GameManager.has_classroom_desk_return_pos():
+		call_deferred("_apply_desk_return_if_pending")
+	elif _pending_door_peek:
 		call_deferred("_apply_door_peek_if_pending")
+
+
+func _apply_desk_return_if_pending() -> void:
+	if not GameManager.has_classroom_desk_return_pos() or not is_instance_valid(_player):
+		return
+	var env := $WalkableWorld/EnvironmentColliders
+	_player.global_position = env.to_global(GameManager.take_classroom_desk_return_pos())
 
 
 func _apply_door_peek_if_pending() -> void:

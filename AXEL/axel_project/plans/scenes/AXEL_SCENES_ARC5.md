@@ -26,7 +26,7 @@
 | Return to locker  | Locker Hub      |
 
 
-**Implemented (Godot) — shell only, mini-games deferred:** `5.1_Classroom.tscn` + `.gd` — walkable shell with hand-drawn `5.1_Classroom.png` (from `5.1_Classroom_v2`; white fill + black ink), Kitchen player profile, `STATIC_LOCKED` camera, one door back to `2.4_ClassroomsCorridor` (`classrooms_corridor_spawn_side="classroom_door"`). Placeholder desk/board polygons removed; door colliders are left for manual placement. Canon enter lines play once via `GameManager.classroom_enter_line_seen`. Desk/board puzzle scenes are **not** wired yet — structure only, not arc-complete. Hub 1.3 still loads this file by path.
+**Implemented (Godot):** `5.1_Classroom.tscn` + `.gd` — walkable room with hand-drawn art, kept box walls plus nine drag-to-place furniture polygon blockers, door back to corridor, one-shot desk `[E]` → `5.2_ClassroomDesk`, looping `MemoryIndicator` (drag onto board; no board `[E]` yet). Authored Player scale `0.2975205` / speed `253.4` (50% larger than the shared sheet-retuned `0.198347`). Enter lines once via `GameManager.classroom_enter_line_seen`. After desk leave, `classroom_desk_seen` disables the desk zone and restores Mike via `classroom_desk_return_pos`. Interact chip offset is zero. 5.3/5.4 still deferred.
 
 ---
 
@@ -62,6 +62,10 @@
 | ------------- | --------- |
 | Close the lid | Classroom |
 
+
+---
+
+**Implemented (Godot):** `5.2_ClassroomDesk.tscn` + `.gd` — still-scene shell (locked bg, dialogue overlay, red X, E/Space/Enter leave). Timed plates `desk_empty.png` → `desk_hand.png` (+ local camera offset shake + dim) → `desk.png`, then canon lines with `|beat:1.5|`. Sets `classroom_desk_seen` on leave; does **not** call `add_memory_once`. Art copied from Finnish `pöytä_*` plates.
 
 ---
 

@@ -7,9 +7,9 @@ uniform float scanline_strength : hint_range(0.0, 0.5) = 0.12;
 uniform float mask_strength : hint_range(0.0, 1.0) = 0.35;
 uniform float vignette : hint_range(0.0, 1.0) = 0.22;
 uniform float chroma : hint_range(0.0, 0.01) = 0.0025;
-uniform float player_chroma : hint_range(0.0, 0.01) = 0.0002;
-uniform float player_crt_reduction : hint_range(0.0, 1.0) = 0.33;
-uniform float player_white_boost : hint_range(0.0, 1.0) = 0.8;
+uniform float player_chroma : hint_range(0.0, 0.01) = 0.0001;
+uniform float player_crt_reduction : hint_range(0.0, 1.0) = 0.7;
+uniform float player_white_boost : hint_range(0.0, 1.0) = 0.2;
 
 vec2 curve_uv(vec2 uv, float amount) {
 	vec2 c = uv - 0.5;

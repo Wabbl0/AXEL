@@ -39,10 +39,16 @@ Keep scenes visibly abandoned, looted, broken, and rotting while preserving read
 
 These numbers are **authored at 1920×1280 cover-fit** of that scene’s PNG (not “whatever your Game tab is”). Runtime `PlayerCoverSync` multiplies them by `live_cover / baseline`.
 
-- `corridor_large`: scale `3.0`, speed `362` (~`180 × scale × 0.67` when retuning)
-- `classroom_large`: scale `0.86`, speed `160`
-- `library_large`: scale `0.78`, speed `145`
-- `default`: scale `1.00`, speed `180`
+Mike’s live walk sheet is a 12-cell strip (`mike_walking-Sheet_meta.txt`: ~439×971). Authored scale keeps on-screen height near the old 64×scale look: `new_scale ≈ old_scale × (64 / cell_h)`.
+
+Live authored Player scales at **1920×1280** (then `PlayerCoverSync` multiplies):
+
+- Shared walkable (1.2 / 1.4 / 2.1 / 2.4 / 3.1 / 4.1): scale `0.198347`, speed `253.4` (2.1 speed stays `189.75`)
+- `1.1` exterior: scale `0.079339`, speed `120`
+- `2.3` kitchen: scale `0.330579`, speed `253.4`
+- `5.1` classroom: scale `0.2975205`, speed `253.4` (50% larger than the shared `0.198347`)
+
+Old profile names (`classroom_large` `0.86`, `library_large` `0.78`) are retired — do not copy those numbers onto the new sheet.
 
 ## Exploration scene template (mandatory for new PNG scenes)
 
@@ -126,6 +132,21 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 - Player: world space under `WalkableWorld/Player` on **new** scenes (legacy 1.1/1.2 still use `PlayerLayer`)
 - Cover sync: `scenes/core/player_cover_sync.gd` — first layout uses the 1920×1280 (or legacy `_OLD_BG_SCALE`) baseline; later resizes keep the same Mike-vs-room ratio. 1.4 uses 1.2’s `0.546` (same 2400×1500 PNG size).
 - Spawn: `scenes/core/player_spawn_sync.gd` — the Player node is the spawn. Capture with `env.to_local` **before** moving `EnvironmentColliders`, apply with `env.to_global` after. Do this on the **first** layout, not only later resizes. Regression: `scenes/core/test/player_spawn_sync_check.gd`.
+
+### Rule: Mike walk sheet (12-cell)
+
+Do not slice the raw `kävely_etu` / `kävely_sivu` drawings as a grid. Pack with `tools/pack_mike_walk_sheet.py` (ink-box cuts). Live look:
+
+- Head: black fill plate + white brush strokes on top (eyes/scribble holes stay black and opaque — no room showing through).
+- Chin down: solid white ink (not see-through).
+- Empty around Mike: transparent.
+- `white_sprite.gdshader` keeps packed RGB. Mike is **not** noir-inverted.
+
+`Player.gd` animations: `walk_down` / `walk_up` / `walk_right` + `flip_h` for left; idle / idle_back / idle_side keep last facing. Assign `res://assets/sprites/mike_sprite_frames.tres` in the editor. Rollback: restore `mike_walking-Sheet_legacy13.png` over the live sheet and revert Player + scales.
+
+### Rule: optional walk-position size ramp (2.4 only today)
+
+`PlayerCoverSync` is window/cover-fit only. If a drawing has zooming perspective, a scene-local walk-through `Area2D` may multiply scale + speed **after** `PlayerCoverSync.apply()`. Live: `2.4` `VerticalSizeRampArea` (100% at cafeteria end → `@export vertical_far_scale` `1.5` at the corner; last size kept after leave). Do not put this in the shared cover-sync helper. Grow around the Player node, not the feet.
 
 ### Rule: do not retune Player `.tscn` scale for another computer
 

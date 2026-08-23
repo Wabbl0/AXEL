@@ -122,7 +122,7 @@ follow_viewport_enabled = true
 
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=558325098]
 position = Vector2(4, 440.80487)
-scale = Vector2(3, 3)
+scale = Vector2(0.198347, 0.198347)
 script = ExtResource("2_player_script")
 speed = 253.4
 sprite_sheet = ExtResource("3_player_sheet")
