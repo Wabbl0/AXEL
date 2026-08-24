@@ -9,7 +9,7 @@ Companion to `AXEL_combat_design.md`. This file is the engineering plan: project
 ## 0. Before you write code
 
 1. **Install:** Godot 4.x (LTS) + the `godot-tools` extension for Cursor.
-2. **Repo hygiene:** combat layer lives in `res://combat/` as a self-contained subsystem. It should be runnable in isolation via a test scene (`res://combat/test/combat_test.tscn`) — you want to iterate on combat without launching the whole school.
+2. **Repo hygiene:** combat layer lives in `res://combat/` as a self-contained subsystem. It should be runnable in isolation via a test scene (`res://combat/combat_test.tscn`) — you want to iterate on combat without launching the whole school. Standalone F6 is that scene. Autoload `AxelCombatDevTools` (`scripts/debug/axel_combat_dev_tools.gd`) is editor/debug-only (`OS.is_debug_build()`); it must not change release RNG. BGM is autoload `AxelMusic` — `combat_root` calls `notify_first_win` / `notify_trinity` / `reset_combat_encounter` and must not await audio.
 3. **Asset plan:** symbol sprites are flat PNGs (red-on-black) under `res://combat/art/grid_symbols/`. Regenerate via `python combat/art/generate_placeholders.py`. Don't block on final art — all symbols are data-driven by ID, so sprites can be swapped without touching code.
 4. **Tooling target:** keep combat deterministic when seeded. All randomness goes through a single `RNG` instance on the encounter state — never `randi()` directly. This is essential for bug-repro and for supporting a "daily seed" run later.
 

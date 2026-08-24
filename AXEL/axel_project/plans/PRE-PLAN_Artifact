@@ -1,20 +1,43 @@
 PRE-PLAN
-AXEL — explore only. Do not implement or edit files.
+AXEL — explore only. You are a librarian, not an architect and not a coder.
+
+HARD RULES (never break):
+- Do not implement, patch, or “try a quick fix first.”
+- Do not edit any game files (scenes, scripts, assets, `.tscn`, `.gd`, `project.godot`, etc.).
+- Do not create new files. Do not edit this template or PREMIUM_Artifact to store findings.
+- Allowed: read, grep, search, web research. Not allowed: any write/apply/fix.
+- If this chat @-references this file, the whole chat is explore-only — even if the user described bugs or said “I want it so…”
+
+"Create PRE-PLAN_Artifact" rule:
+- If a prompt lists things to fix/change/research and then says something like `Create @AXEL/axel_project/plans/PRE-PLAN_Artifact`, those listed things are TOPICS for the artifact.
+- They are NOT a to-do list for this chat. Do not fix them here. Do not fix some of them and then also put them in the artifact.
+- Same meaning for close wording: “make a PRE-PLAN,” “run the artifact,” “explore this with PRE-PLAN_Artifact.”
+
+Role (facts only — do not decide):
+- Find where it lives. Quote files. Describe what the code does today.
+- If two files could own it, list both. If two causes fit, list both with evidence. Do not pick a winner.
+- Do not write a recommended approach, draft plan, or implementation steps. Premium does that later.
+- Web research (when asked, or for engine/hitbox practice): collect options + sources. Do not declare “the best way.”
+
 What I want (player/game terms):
 <What should happen? When? Example: first night in school yard → one glitch + one line, once per run.>
 Where I think it happens (optional — skip if unsure):
 <school outside / combat screen / dialogue box / not sure>
 What exists today (optional):
 <what already works or "nothing yet" / not sure>
-Please figure out for me:
-1. Which area (combat / scenes / narrative / vfx-overworld) and why.
-2. Where handled today — plain English, then 3–5 file paths.
-3. Canon risks (per AI_DOCS). Also skim other relevant plans/**/*.md (skip plans/archive/) for global context AI_DOCS alone might miss.
-4. Simple recommended approach (beginner-friendly steps).
-5. Any ambiguity — resolve via AskQuestion (yes/no or A/B; batch questions). Ask enough that nothing important is assumed.
+Please find for me (do not choose how to build it):
+1. Area label from where the files actually are (combat / scenes / narrative / vfx-overworld) — not where a new system “should” live.
+2. Current flow — plain English, then 3–5 verified file paths with line/node refs.
+3. Factual gap — what is missing today (e.g. “no once-per-run flag for this scene”).
+4. Similar existing systems — name them; do not say “reuse X.”
+5. Canon quotes from AI_DOCS (skim other plans/**/*.md too; skip plans/archive/) — paste relevant bullets; do not judge “risk.”
+6. Possible causes / owners — options with evidence; do not pick.
+7. Player-intent ambiguities only — AskQuestion (yes/no or A/B). Never ask which script, architecture, or approach to use.
+
 Keep explanations non-jargon; define Godot terms briefly when used.
 Questionnaire rule:
-- Use Cursor AskQuestion for ambiguities before the artifact.
+- Use Cursor AskQuestion for player-facing ambiguities only (when, how often, which room, how it should feel).
+- Do not ask the user to pick an implementation.
 - Do not post --- EXPLORATION ARTIFACT --- until I have answered (or there were none).
 - After answers, print the artifact once. Record outcomes under Decisions: — not as unanswered bullets.
 
@@ -26,14 +49,18 @@ Output rule (copy-paste handoff):
 
 Fill every field; quote line refs or node names where you read code:
 --- EXPLORATION ARTIFACT ---
-Area: <combat | scenes | narrative | vfx-overworld>
-Symptom: <what the player sees>
-Likely cause: <1–2 sentences>
+Area: <combat | scenes | narrative | vfx-overworld — from where files are>
+Symptom: <what the player sees / what they asked for>
+Current flow: <how it works today, in plain English>
+Possible causes: <2+ options with evidence; or "gap — nothing handles this yet">
 Files (verified):
-  - <path> — <role> — <relevant lines, nodes, or values>
+  - <path> — <what it does today> — <relevant lines, nodes, or values>
   - ...
-Canon risks: <from AI_DOCS, or "none">
-Draft approach: <3–5 beginner steps; no code yet>
-Decisions: <Q → answer from questionnaire; or "none — no ambiguities">
-Do-not-touch: <what must stay as-is>
+Gap: <what is missing today; or "none">
+Similar existing: <other scenes/systems that already do something like this; or "none">
+Canon quotes: <paste relevant AI_DOCS / plan bullets; or "none">
+Research notes: <web/engine options + sources if any; no winner; or "none">
+Decisions: <player-intent Q → answer; or "none — no ambiguities">
+Questions for Plan: <implementation choices for Premium; unanswered; or "none">
+Do-not-touch: <only what AI_DOCS already forbids, quoted; or "none">
 --- END ARTIFACT ---

@@ -264,6 +264,7 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 
 Not player-final. Right-hand ITEMS list:
 
+- Rebuilds from `combat/data/items/` at Play (FAMILIES + uniques). Rebind the live `ScrollContainer` children — do not trust scene-saved panel meta `Object()` copies (that froze the list on two old names). There is no separate “real combat” item list.
 - **Family rows** (C→E rank button, no Legendary on the slider): A Power Chain, B Premium Meter, C Trinity, D Free Spins, E Diagonal, F Board-count, M Corner glyphs, G Sealed grid, H True-path. Legendary of that family is a unique row (`L2` Overclock is the A legendary unique; `L-B`…`L-H` unique).
 - **Unique items** grouped by rarity (rainbow rarity text). `L-A` is not listed.
 - Header `ITEMS (n/max)` plus debug **Ignore slot cap** (off by default). Default cap 7, or 9 with Void Satchel.

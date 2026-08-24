@@ -52,12 +52,18 @@ func _on_exit_pressed() -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	if not (event is InputEventKey):
-		return false
-	var key_event := event as InputEventKey
-	if not key_event.pressed or key_event.echo:
-		return false
-	return key_event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		if not key_event.pressed or key_event.echo:
+			return false
+		return key_event.keycode in [KEY_TAB, KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		return touch_event.pressed
+	return false
 
 
 func _begin_return_to_backyard() -> void:

@@ -1951,12 +1951,13 @@ func _set_seed_spin_value_no_signal(seed_value: int) -> void:
 
 func _build_item_picker() -> void:
 	if _item_picker_panel != null and is_instance_valid(_item_picker_panel):
+		_bind_item_picker_live_nodes()
 		_rebuild_item_picker_contents()
 		return
 	var existing_panel := get_node_or_null("PlayArea/PlayRow/ItemPickerPanel") as PanelContainer
 	if existing_panel != null:
 		_item_picker_panel = existing_panel
-		_item_picker_title = _item_picker_panel.get_meta("header") as Label
+		_bind_item_picker_live_nodes()
 	else:
 		_item_picker_panel = _make_side_panel("ITEMS")
 		_item_picker_panel.name = "ItemPickerPanel"
@@ -1972,6 +1973,34 @@ func _build_item_picker() -> void:
 		_style_side_panel_header(_item_picker_title)
 	_ensure_playtest_tuning()
 	_rebuild_item_picker_contents()
+
+
+## Scene-saved metadata Object() copies are not the live children. Rebind to the tree.
+func _bind_item_picker_live_nodes() -> void:
+	if _item_picker_panel == null:
+		return
+	var header := _item_picker_panel.find_child("SectionHeader", true, false) as Label
+	if header != null:
+		_item_picker_title = header
+		_item_picker_panel.set_meta("header", header)
+	var scroll := _first_descendant_of_class(_item_picker_panel, "ScrollContainer") as ScrollContainer
+	if scroll == null:
+		return
+	_item_picker_panel.set_meta("scroll", scroll)
+	for child in scroll.get_children():
+		if child is VBoxContainer:
+			_item_picker_panel.set_meta("list", child)
+			break
+
+
+func _first_descendant_of_class(node: Node, class_nm: String) -> Node:
+	for child in node.get_children():
+		if child.is_class(class_nm):
+			return child
+		var nested := _first_descendant_of_class(child, class_nm)
+		if nested != null:
+			return nested
+	return null
 
 
 func _ensure_playtest_tuning() -> void:
@@ -1991,6 +2020,10 @@ func _ensure_playtest_tuning() -> void:
 		_goal_progress_spin = existing.find_child("GoalProgressSpin", true, false) as SpinBox
 		_goal_effective_label = existing.find_child("GoalEffectiveLabel", true, false) as Label
 		_ignore_cap_checkbox = existing.find_child("IgnoreCapCheck", true, false) as CheckBox
+		_hide_playtest_goal_controls(existing)
+		_goal_base_spin = null
+		_goal_progress_spin = null
+		_goal_effective_label = null
 		return
 	_playtest_tuning = VBoxContainer.new()
 	_playtest_tuning.name = "PlaytestTuning"
@@ -2021,26 +2054,33 @@ func _ensure_playtest_tuning() -> void:
 	_reroll_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_reroll_hint_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 	_playtest_tuning.add_child(_reroll_hint_label)
-	_playtest_tuning.add_child(_make_playtest_label("GOAL"))
-	var base_row := _make_spin_row("Base", 1, 999999, "GoalBaseSpin")
-	_goal_base_spin = base_row.get_node("GoalBaseSpin") as SpinBox
-	_goal_base_spin.value = 10000
-	_goal_base_spin.value_changed.connect(_on_goal_base_changed)
-	_playtest_tuning.add_child(base_row)
-	var prog_row := _make_spin_row("Progress", 0, 999999, "GoalProgressSpin")
-	_goal_progress_spin = prog_row.get_node("GoalProgressSpin") as SpinBox
-	_goal_progress_spin.value_changed.connect(_on_goal_progress_changed)
-	_playtest_tuning.add_child(prog_row)
-	_goal_effective_label = Label.new()
-	_goal_effective_label.name = "GoalEffectiveLabel"
-	_goal_effective_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
-	_playtest_tuning.add_child(_goal_effective_label)
+	# GOAL SpinBoxes live in AxelCombatDevTools (debug wrench menu).
+	_goal_base_spin = null
+	_goal_progress_spin = null
+	_goal_effective_label = null
 	vbox.add_child(_playtest_tuning)
 	vbox.move_child(_playtest_tuning, 1)
 	if _can_use_combat_api() and combat.has_method("get_playtest_spin_budget"):
 		_reroll_budget_spin.set_value_no_signal(float(combat.get_playtest_spin_budget()))
-		if combat.has_method("get_goal_base_target_cents"):
-			_goal_base_spin.set_value_no_signal(float(combat.get_goal_base_target_cents()))
+
+
+func _hide_playtest_goal_controls(tuning: VBoxContainer) -> void:
+	if tuning == null:
+		return
+	for child in tuning.get_children():
+		var n := child as Node
+		if n == null:
+			continue
+		var name_str := String(n.name)
+		if name_str == "GoalBaseSpin" or name_str == "GoalProgressSpin" or name_str == "GoalEffectiveLabel":
+			n.visible = false
+			continue
+		# Parent rows that wrap the SpinBoxes
+		if n.find_child("GoalBaseSpin", true, false) != null or n.find_child("GoalProgressSpin", true, false) != null:
+			n.visible = false
+			continue
+		if n is Label and String((n as Label).text).strip_edges() == "GOAL":
+			n.visible = false
 
 
 func _make_playtest_label(text: String) -> Label:
@@ -2072,6 +2112,9 @@ func _rebuild_item_picker_contents() -> void:
 	if _item_picker_panel == null:
 		return
 	var items_vbox: VBoxContainer = _item_picker_panel.get_meta("list") as VBoxContainer
+	if items_vbox == null or not items_vbox.is_inside_tree():
+		_bind_item_picker_live_nodes()
+		items_vbox = _item_picker_panel.get_meta("list") as VBoxContainer
 	if items_vbox == null:
 		return
 	for child in items_vbox.get_children():

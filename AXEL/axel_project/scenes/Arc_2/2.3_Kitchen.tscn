@@ -2,18 +2,16 @@
 
 [ext_resource type="Script" uid="uid://hog8fykx64jt" path="res://scenes/Arc_2/2.3_Kitchen.gd" id="1_kitchen"]
 [ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_player_script"]
+[ext_resource type="SpriteFrames" uid="uid://4eiekoqcuo44" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
-[ext_resource type="SpriteFrames" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
 [ext_resource type="Texture2D" uid="uid://b7dbnd4xub63k" path="res://exports/Drawings/2.3_Kitchen.png" id="4_kitchen_bg"]
-[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
+[ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="Texture2D" uid="uid://c6k1w5876ojl5" path="res://exports/Drawings/Flashlight.png" id="9_flashlight"]
-[ext_resource type="Shader" uid="uid://bflqje1ag0nv8" path="res://scenes/fx/prop_ink_halo.gdshader" id="10_flashlight_glow"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
+[ext_resource type="Shader" path="res://scenes/fx/prop_ink_halo.gdshader" id="10_flashlight_glow"]
+[ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(3508, 40)
@@ -22,10 +20,10 @@ size = Vector2(3508, 40)
 size = Vector2(40, 2480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_table"]
-size = Vector2(669, 1343.5)
+size = Vector2(765, 1426.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_right_shelves"]
-size = Vector2(498, 1982)
+size = Vector2(464, 1982)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_top_left_shelves"]
 size = Vector2(862, 285)
@@ -88,14 +86,14 @@ shape = SubResource("RectangleShape2D_wall_vertical")
 position = Vector2(2175, 1832)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableBlock" unique_id=1746383868]
-position = Vector2(-11.5, -74.25)
+position = Vector2(-9.5, -115.75)
 shape = SubResource("RectangleShape2D_table")
 
 [node name="RightShelvesBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1780002063]
 position = Vector2(3284, 935)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightShelvesBlock" unique_id=679239371]
-position = Vector2(-23, 531)
+position = Vector2(-6, 531)
 shape = SubResource("RectangleShape2D_right_shelves")
 
 [node name="TopLeftShelvesBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1124883453]
@@ -168,6 +166,8 @@ position = Vector2(2768, 2028)
 scale = Vector2(0.330579, 0.330579)
 script = ExtResource("2_player_script")
 speed = 253.4
+pose_nudge_back = Vector2(-114.725, 2.49)
+pose_nudge_side = Vector2(41.76, -15.86)
 sprite_sheet = ExtResource("3_player_sheet")
 animation_fps = 5.0
 collision_polygon_epsilon = 4.0
@@ -176,9 +176,10 @@ collision_inward_margin = 4.0
 collision_lower_body_ratio = 0.42
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1026204946]
+visible = false
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
-autoplay = &"idle"
+autoplay = "idle"
 
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=407781672]
 modulate = Color(0, 0, 0, 0.55)
@@ -193,15 +194,9 @@ visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
 [node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=7676243]
+position = Vector2(-37.812428, 126.04143)
 shape = ExtResource("hb_front")
-
-[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player"]
-disabled = true
-shape = ExtResource("hb_back")
-
-[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player"]
-disabled = true
-shape = ExtResource("hb_side")
+metadata/authored_pos = Vector2(-37.812428, 126.04143)
 
 [node name="TopDialogueOverlay" parent="." unique_id=1427198189 instance=ExtResource("5_top_dialogue")]
 

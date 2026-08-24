@@ -65,7 +65,7 @@
 
 ---
 
-**Implemented (Godot):** `5.2_ClassroomDesk.tscn` + `.gd` — still-scene shell (locked bg, dialogue overlay, red X, E/Space/Enter leave). Timed plates `desk_empty.png` → `desk_hand.png` (+ local camera offset shake + dim) → `desk.png`, then canon lines with `|beat:1.5|`. Sets `classroom_desk_seen` on leave; does **not** call `add_memory_once`. Art copied from Finnish `pöytä_*` plates.
+**Implemented (Godot):** `5.2_ClassroomDesk.tscn` + `.gd` — still-scene shell (locked bg, dialogue overlay, red X). After `_can_exit`, leave with `[X]`, left-click/tap, or Tab/E/Space/Enter. Timed plates `desk_empty.png` → `desk_hand.png` (+ local camera offset shake + dim) → `desk.png`, then canon lines with `|beat:1.5|`. Sets `classroom_desk_seen` on leave; does **not** call `add_memory_once`. Art copied from Finnish `pöytä_*` plates.
 
 ---
 

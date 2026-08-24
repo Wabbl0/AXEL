@@ -161,8 +161,14 @@ var _winnings_popup_target: Control = null
 var inventory := ItemInventoryScript.new()
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
+## Debug-only playtest guarantees (AxelCombatDevTools). Always false in release.
+var _dev_guarantee_trinity: bool = false
+var _dev_guarantee_fs_clear: bool = false
+var _dev_guarantee_payout_1000x: bool = false
+var _dev_skip_visuals: bool = false
 
 func _ready() -> void:
+	add_to_group("combat_root")
 	if _is_headless_runtime():
 		enable_symbol_fx = false
 		enable_transition_fx = false
@@ -318,6 +324,47 @@ func set_goal_progress_cents(n: int) -> void:
 	_encounter_goal_winnings_cents = maxi(n, 0)
 	_on_loadout_or_goal_changed()
 
+func set_bankroll_cents(n: int) -> void:
+	if not OS.is_debug_build():
+		return
+	_bankroll_cents = n
+	_clamp_bankroll()
+	emit_signal("readouts_progressed")
+
+func debug_set_guarantee_trinity(on: bool) -> void:
+	if not OS.is_debug_build():
+		return
+	_dev_guarantee_trinity = on
+
+func debug_set_guarantee_fs_clear(on: bool) -> void:
+	if not OS.is_debug_build():
+		return
+	_dev_guarantee_fs_clear = on
+
+func debug_set_guarantee_payout_1000x(on: bool) -> void:
+	if not OS.is_debug_build():
+		return
+	_dev_guarantee_payout_1000x = on
+
+func debug_get_guarantee_trinity() -> bool:
+	return OS.is_debug_build() and _dev_guarantee_trinity
+
+func debug_get_guarantee_fs_clear() -> bool:
+	return OS.is_debug_build() and _dev_guarantee_fs_clear
+
+func debug_get_guarantee_payout_1000x() -> bool:
+	return OS.is_debug_build() and _dev_guarantee_payout_1000x
+
+func debug_skip_current_loop() -> void:
+	if not OS.is_debug_build():
+		return
+	if _state == State.IDLE or _state == State.FREE_SPINS_CHOOSE or _state == State.ENDED:
+		return
+	_dev_skip_visuals = true
+	_kill_tween(_grid_flash_tween)
+	_kill_tween(_grid_border_tween)
+	_kill_tween(_power_intro_tween)
+
 func get_item_payout_scalar() -> float:
 	return _get_item_payout_scalar()
 
@@ -436,6 +483,7 @@ func setup_new_grid(seed_value: int) -> void:
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
+	_music_reset_combat_encounter()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
 
@@ -509,9 +557,11 @@ func spin() -> void:
 	goal_tracker.on_spin_completed(spin_summary)
 	if free_spins.active and goal_tracker.is_complete():
 		_settle_symbols_down_without_refill()
+	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
 	_apply_encounter_goal_from_spin(int(spin_summary["payout"]))
+	_music_notify_first_win_if_needed(spin_summary)
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
@@ -521,6 +571,7 @@ func spin() -> void:
 		_play_round_winnings_win_glow()
 	_refresh_multiplier_label()
 	_last_spin_summary = spin_summary.duplicate(true)
+	_dev_skip_visuals = false
 	emit_signal("readouts_progressed")
 	emit_signal("spin_finished")
 
@@ -585,9 +636,11 @@ func spin_sync() -> void:
 	goal_tracker.on_spin_completed(spin_summary)
 	if free_spins.active and goal_tracker.is_complete():
 		_settle_symbols_down_without_refill()
+	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
 	_apply_encounter_goal_from_spin(int(spin_summary["payout"]))
+	_music_notify_first_win_if_needed(spin_summary)
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
@@ -596,6 +649,7 @@ func spin_sync() -> void:
 	if _round_winnings_cents > 0:
 		_play_round_winnings_win_glow()
 	_last_spin_summary = spin_summary.duplicate(true)
+	_dev_skip_visuals = false
 	emit_signal("readouts_progressed")
 
 func debug_trigger_power() -> void:
@@ -682,10 +736,12 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
+	_music_reset_combat_encounter()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
 
 func _play_one_spin_async() -> Dictionary:
+	_dev_fill_meter_for_guarantee_trinity()
 	var summary := await _resolve_cascade_loop_async()
 	if not free_spins.active and meter.is_full():
 		var trinity_summary := await _run_trinity_round_async()
@@ -696,6 +752,7 @@ func _play_one_spin_async() -> Dictionary:
 	return summary
 
 func _play_one_spin_sync() -> Dictionary:
+	_dev_fill_meter_for_guarantee_trinity()
 	var summary := _resolve_cascade_loop_sync()
 	if not free_spins.active and meter.is_full():
 		var trinity_summary := _run_trinity_round_sync()
@@ -938,10 +995,13 @@ func _pause_visual(seconds: float) -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
-	if seconds <= 0.0:
+	if _dev_skip_visuals or seconds <= 0.0:
 		await tree.process_frame
 		return
-	await tree.create_timer(seconds).timeout
+	var remaining := seconds
+	while remaining > 0.0 and not _dev_skip_visuals:
+		await tree.process_frame
+		remaining -= get_process_delta_time()
 
 func _on_grid_populated() -> void:
 	if _suppress_grid_populated_fx:
@@ -1119,6 +1179,9 @@ func _cell_size_px() -> float:
 	return 32.0
 
 func _play_initial_grid_drop_fx() -> void:
+	if _dev_skip_visuals:
+		_refresh_cells_visual()
+		return
 	await _ensure_slot_positions()
 	var max_delay := 0.0
 	for r in GridManager.ROWS:
@@ -1456,6 +1519,44 @@ func _line_payout_cents(line: Dictionary) -> int:
 func _to_cents(amount: float) -> int:
 	return int(round(amount))
 
+func _dev_fill_meter_for_guarantee_trinity() -> void:
+	if not OS.is_debug_build() or not _dev_guarantee_trinity:
+		return
+	if free_spins.active:
+		return
+	var before := meter.sections_filled
+	meter.sections_filled = 3
+	if before != 3:
+		emit_signal("premium_meter_changed", before, 3)
+		emit_signal("readouts_progressed")
+
+func _dev_clear_non_wild_for_fs_guarantee() -> void:
+	if not OS.is_debug_build() or not _dev_guarantee_fs_clear:
+		return
+	if not _in_trinity_round:
+		return
+	var coords: Array = []
+	for r in GridManager.ROWS:
+		for c in GridManager.COLS:
+			var sym: SymbolDef = grid.cells[r][c]
+			if sym == null:
+				continue
+			if sym.tier == SymbolDef.Tier.WILD:
+				continue
+			coords.append(Vector2i(c, r))
+	if coords.is_empty():
+		return
+	grid.clear_cells_and_emit(coords)
+	_refresh_cells_visual()
+
+func _apply_dev_payout_override(spin_summary: Dictionary) -> void:
+	if not OS.is_debug_build() or not _dev_guarantee_payout_1000x:
+		return
+	var forced := _to_cents(1000.0 * total_bet)
+	spin_summary["payout"] = forced
+	_round_winnings_cents = forced
+	_refresh_round_winnings_label()
+
 func _get_item_payout_scalar() -> float:
 	var total := _item_fx.reroll_payout_scalar(inventory.items, _spins_used)
 	total += _item_fx.sealed_payout(inventory.items, _is_regular_spin_mode())
@@ -1582,7 +1683,7 @@ func _pick_power_for_current_spin() -> StringName:
 func _play_meter_full_transition_async() -> void:
 	emit_signal("meter_full_transition_started")
 	emit_signal("readouts_progressed")
-	if not enable_transition_fx:
+	if _dev_skip_visuals or not enable_transition_fx:
 		await _pause_visual(pause_after_power_sec * 0.6)
 		return
 	var border_target := Color(1.0, 1.0, 1.0, 1.0)
@@ -1658,6 +1759,8 @@ func _layout_power_intro_fallback_label() -> void:
 	_power_intro_fallback_label.pivot_offset = power_intro_icon.pivot_offset
 
 func _play_power_intro_flash_async(power_id: StringName) -> void:
+	if _dev_skip_visuals:
+		return
 	if not enable_power_intro_fx or power_intro_layer == null or power_intro_icon == null:
 		return
 	var sym := _power_symbol_by_id.get(power_id, null) as SymbolDef
@@ -1742,6 +1845,7 @@ func _run_trinity_round_async() -> Dictionary:
 	multiplier.reset()
 	_refresh_multiplier_label()
 	_in_trinity_round = true
+	_music_notify_trinity()
 	_item_fx.trinity_win_scalar_accum = 0.0
 	_item_fx.trinity_first_dead_done = false
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
@@ -1751,6 +1855,7 @@ func _run_trinity_round_async() -> Dictionary:
 		var extra := await _resolve_trinity_cascade_loop_async()
 		_merge_spin_summary(out, extra)
 		await _apply_trinity_spin_followup_async(out, extra, chosen)
+		_dev_clear_non_wild_for_fs_guarantee()
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
 			_finish_trinity_round()
@@ -1767,6 +1872,7 @@ func _run_trinity_round_async() -> Dictionary:
 		var post_power := await _resolve_trinity_cascade_loop_async()
 		_merge_spin_summary(out, post_power)
 		await _apply_trinity_spin_followup_async(out, post_power, chosen)
+		_dev_clear_non_wild_for_fs_guarantee()
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
 			break
@@ -1779,6 +1885,7 @@ func _run_trinity_round_sync() -> Dictionary:
 	var chosen: StringName = meter.saved_active_princess
 	multiplier.reset()
 	_in_trinity_round = true
+	_music_notify_trinity()
 	_item_fx.trinity_win_scalar_accum = 0.0
 	_item_fx.trinity_first_dead_done = false
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
@@ -1788,6 +1895,7 @@ func _run_trinity_round_sync() -> Dictionary:
 		var extra := _resolve_trinity_cascade_loop_sync()
 		_merge_spin_summary(out, extra)
 		_apply_trinity_spin_followup_sync(out, extra, chosen)
+		_dev_clear_non_wild_for_fs_guarantee()
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
 			_finish_trinity_round()
@@ -1802,6 +1910,7 @@ func _run_trinity_round_sync() -> Dictionary:
 		var post_power := _resolve_trinity_cascade_loop_sync()
 		_merge_spin_summary(out, post_power)
 		_apply_trinity_spin_followup_sync(out, post_power, chosen)
+		_dev_clear_non_wild_for_fs_guarantee()
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
 			break
@@ -2115,3 +2224,25 @@ func _apply_glyph_payouts(lines: Array, out: Dictionary) -> void:
 				multiplier.add(maxi(1, int(round(mult * 0.7))))
 			else:
 				multiplier.add(maxi(1, int(round(mult))))
+
+
+func _music_notify_first_win_if_needed(spin_summary: Dictionary) -> void:
+	if free_spins.active:
+		return
+	if int(spin_summary.get("payout", 0)) <= 0:
+		return
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("notify_first_win"):
+		music.call("notify_first_win")
+
+
+func _music_notify_trinity() -> void:
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("notify_trinity"):
+		music.call("notify_trinity")
+
+
+func _music_reset_combat_encounter() -> void:
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("reset_combat_encounter"):
+		music.call("reset_combat_encounter")

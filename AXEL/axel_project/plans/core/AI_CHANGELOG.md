@@ -5016,3 +5016,231 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared write-ups to `axel_music.gd`, `default_bus_layout.tres`, overlay buses, 1.1 Player Y `405`, and today’s implement chats.
 - Notes: 1.1 stump/rocks behind filters and shared ShadowOutline were already in this day’s changelog before this pass.
 
+### Menu p2 + New Game crossfade to p1
+- Request: Refresh the `B_Goes_Down` WAVs from the archive; play p2 on the Main Menu; start a long p2→p1 crossfade (at least 10s) when pressing New Game, with both stems overlapping.
+- Implementation: Copied the new `B_Goes_Down_p1.wav` / `B_Goes_Down_p2.wav` (same names, new audio). Swapped live roles: menu layer is p2, overworld layer is p1. `to_overworld()` now starts a 10s linear-amplitude crossfade immediately instead of waiting for a loop point / hard-cut. Typewriter WAVs in the archive matched the project, so they were left alone. Extra archive stems (`Drums_*`, p3, p4, `casino_*`) were not copied in.
+- Files changed:
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_p1.wav`
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_p2.wav`
+  - `AXEL/axel_project/scripts/autoload/axel_music.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Title plays p2. New Game fades p2 out and p1 in together over 10s, then p1 stays on in later rooms.
+- Verification: Archive hashes matched after copy; music script path reviewed. Listen in the editor (headless cannot prove sound). Godot must reimport the new WAVs on next Play.
+- Notes: This replaces the old p1-on-menu / wait-for-loop / hard-cut-to-p2 rule.
+
+### Casino combat music layers
+- Request: Copy new `B_Goes_Down` + casino WAVs; casino music only in combat — fade out scene music, start synced casino stems; first win → finish drums loop → `like_that` solo once → drums_p1+p1; Trinity → drums_p2+p1+p2 immediately.
+- Implementation: Copied archive stems into `assets/audio/music/` (including unused `B_Goes_Down_Drums_*` / p3 / p4). Extended `AxelMusic` with a second synced player for five casino layers. Combat scenes fade overworld (~2s) then intro drums. `combat_root` calls `notify_first_win` / `notify_trinity` / `reset_combat_encounter` without awaiting audio. Trimmed `casino_like_that` trailing silence and padded to drums loop length (6.857s) so the regular mix returns on the beat. `to_combat()` ready for a future overworld door.
+- Files changed:
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_p1.wav`
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_p2.wav`
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_Drums_p1.wav`
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_Drums_p2.wav`
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_p3.wav`
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_p4.wav`
+  - `AXEL/axel_project/assets/audio/music/casino_Drums_p1.wav`
+  - `AXEL/axel_project/assets/audio/music/casino_Drums_p2.wav`
+  - `AXEL/axel_project/assets/audio/music/casino_p1.wav`
+  - `AXEL/axel_project/assets/audio/music/casino_p2.wav`
+  - `AXEL/axel_project/assets/audio/music/casino_like_that.wav`
+  - `AXEL/axel_project/scripts/autoload/axel_music.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 `combat_test` plays casino drums; first win triggers like_that then drums+p1; Trinity switches to drums_p2+p1+p2. Overworld no longer incorrectly gets B_Goes_Down when opening combat.
+- Verification: WAV lengths checked (casino loops 6.857s; like_that padded to match). Headless combat tests should stay deterministic (no awaits on music). Listen in editor for mix timing.
+- Notes: No overworld combat interactable yet — `to_combat()` is the future entry API.
+
+## 2026-08-24
+
+### ShadowOutline visible in editor + same fit on every pose
+- Request: In 1.4 the `ShadowOutline` eye was off and could not be turned on. Also confirm the silhouette stays the same on every spritesheet pose after the recent Mike-sheet / pose-nudge work.
+- Implementation: Editor tool was forcing `ShadowOutline.visible = false` every frame (and saving that into 1.2 / 1.4). It now keeps the node on and syncs the current pose. Pose-stack faded poses draw the same black copy. `white_sprite.gdshader` now multiplies `COLOR.rgb` so Play’s black modulate is actually black (it was drawing a faint white copy). Shadow `offset` is divided by the outline scale so Back/Side nudges no longer shift the silhouette relative to Front.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Editor 2D view shows the black outline on Front, Back, and Side. Play shows a real black silhouette in every room. Outline alignment matches across walk/idle facings.
+- Verification: 1.4 / 1.2 ShadowOutline no longer authored `visible = false`. Click the 1.4 Player in the 2D view — the eye on `ShadowOutline` should stay on; switch Pose Nudge preview Front/Back/Side.
+- Notes: The extra head plate stays gone. A thin black fringe around the head is the scaled copy, not a new fill.
+
+### Restore Mike ShadowOutline during Play
+- Request: Shadow outline missing on the player model in scene 1.4.
+- Implementation: `Player.gd` shows `ShadowOutline` again at Play (it had been hidden after the no-head-plate sheet so the larger black copy would not spill past the head). Fixed 1.4’s authored silhouette Y (was flipped positive) back to the shared 1.2 fit, and zeroed `AnimatedSprite` position. Editor still hides the node and draws the pose stack instead.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Overworld Mike has the black silhouette outline again in every room, including 1.4. The extra head plate stays gone; a thin black fringe can still peek around the head because the outline is a slightly larger copy.
+- Verification: 1.4 ShadowOutline position/scale matches 1.2; Play sets `shadow_outline.visible = true` after sprite setup.
+- Notes: If the head fringe is too strong, retune shared scale — do not hide the node again.
+
+### Combat Dev Tools wrench menu
+
+- Request: Debug-only top-left wrench menu for combat playtest (guarantee Trinity / Free Spins / 1000× payout, bankroll & goal +/−, skip current spin FX).
+- Implementation: Added autoload `AxelCombatDevTools` (CanvasLayer 2100, combat scenes only, `OS.is_debug_build()` gate). Extended `CombatRoot` with debug-guarded bankroll setter, guarantee flags, skippable `_pause_visual`, and Trinity/FS-clear/payout hooks on both async and sync spin paths. Hid duplicate GOAL SpinBoxes from the item-picker PlaytestTuning panel.
+- Files changed:
+  - `AXEL/axel_project/scripts/debug/axel_combat_dev_tools.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 combat test shows a wrench menu for playtest guarantees; release builds unchanged. Trinity → Free Spins sequence still walks the real handoff UI.
+- Verification: Headless scaffold, determinism, and princess checks.
+- Notes: 1000× is a payout override vs total bet (not chip-bar / FS cascade caps). Skip only short-circuits visuals of the in-flight spin — never starts a second spin.
+
+### Mike — no extra head fill (use painted `kävely_*`)
+- Request: Black fill behind Mike spilled over the head on red/white backgrounds. Source `kävely_etu` / `kävely_sivu` already have white on the face, so stop adding fill and keep usual CRT/noir.
+- Implementation: Packer no longer draws a convex black head plate. Face uses inverted source pixels (painted white → black holes); chin-down stays solid white. Straight-alpha paste so soft edges are not baked onto black. Play hides `ShadowOutline` (the larger black copy was still spilling past the head). CRT + noir stack unchanged.
+- Files changed:
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet.png`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Overworld Mike is still a white figure with black eyes. No extra black plate/outline around the head. Room CRT and noir are the same.
+- Verification: Re-baked 12-cell sheet; front-cell top edge has 0 dark pixels on a red composite. Stop Play and Play again so Godot reimports the sheet.
+- Notes: `ShadowOutline` node and 1.2 fit stay in scenes for editor/QA; it is only hidden during Play.
+
+### Explore template — librarian only (no draft approach)
+- Request: PRE-PLAN on Composer must not plan or implement. “Create PRE-PLAN_Artifact” after a list of wants means those are artifact topics, not fixes in that chat. Composer never touches game files; Premium invents the approach from a fact pack.
+- Implementation: Rewrote `PRE-PLAN_Artifact`: hard no-write rules, Create-PRE-PLAN topic rule, facts-only fields (current flow / possible causes / gap / similar / canon quotes / research notes / questions for Plan). Dropped recommended approach, likely-cause winner, and draft approach. PREMIUM now treats Possible causes / Questions for Plan as its choices. AI_DOCS Explore row + handoff note updated.
+- Files changed:
+  - `AXEL/axel_project/plans/PRE-PLAN_Artifact`
+  - `AXEL/axel_project/plans/PREMIUM_Artifact`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs/templates only. Gameplay unchanged.
+- Verification: Templates read as explore-only; artifact fields no longer include Draft approach.
+- Notes: AskQuestion in Explore is player-intent only (when / how often / which room), not architecture.
+
+### Restore 1.1 circle hitboxes (2.1 table slide)
+
+- Request: After walking into a 2.1 table with D, W / W+D should slide along the edge instead of sticking until A. Keep the user’s 1.1 circle placements as the shared hitbox (not origin-centered).
+- Implementation: Confirmed `Player.gd` already reapplies shared 1.1 Collision* positions on Play (`HITBOX_FRONT_POS` / `HITBOX_BACK_POS` / `HITBOX_SIDE_POS`); `hitbox_*.tres` stay radius-only circles; all walkable rooms already copy those placements. Updated canon so facing hitboxes are an allowed child-offset exception (same pattern as ShadowOutline). Left table/wall geometry and Player cover-fit scale alone.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd` (already had 1.1 positions — kept)
+  - `AXEL/axel_project/scenes/player/hitbox_front.tres` / `hitbox_back.tres` / `hitbox_side.tres` (radius-only — kept)
+  - Walkable room `Collision*` nodes (1.1 placements — kept)
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike’s feet circles stay where authored in 1.1 across every room, so rectangular tables should allow edge slide (FLOATING + safe_margin 0.1). Docs no longer tell agents to zero Collision*.
+- Verification: Grep confirmed positions/radii on Player.gd, `.tres`, and nine walkable scenes. Headless scene smoke OK. Headless cafeteria slide probe: D into TableBlockLeft then W slid (dy≈6.7); A backed off (dx≈3.0). Manual: Play 2.1 → D into first table → W / W+D must slide; Debug Visible Collision Shapes match 1.1 editor.
+- Notes: If a specific table still snags after this, tune that table’s collider — not Mike’s scale.
+
+### Slim always-on governance rule (pointer only)
+- Request: `.cursor/rules/axel-ai-docs-governance.mdc` should only hold global defaults — always read `AI_DOCS` then the matching plan — not music/VFX/cover-scale specifics.
+- Implementation: Replaced duplicated Style/FX bullets with a read-then-route pointer (`AI_DOCS` always; `SCENE_BUILDING` for rooms/player; combat plans when asked; changelog only for recent history). Kept ask-before-large, no layer-blur, combat determinism, and Explore librarian-only. Noted in `AI_DOCS` How to work that the `.mdc` is not the rulebook.
+- Files changed:
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs/rules only. Gameplay unchanged. Spawn, hitboxes, cover-fit, music, and post-FX stay in `AI_DOCS` / `SCENE_BUILDING`.
+- Verification: `.mdc` no longer contains `0.546`, hitbox paths, or music/VFX recipes.
+- Notes: New chats pick up the slim rule; this thread may still show the old always-on text until a new chat.
+
+### Player pose nudge fields (shared Front/Back/Side)
+
+- Request: Add Inspector fields so poses can be nudged by hand and stay lined up (SpriteFrames overlay does not persist).
+- Implementation: Shared `pose_nudge.tres` (Front/Back/Side Vector2) applied as `AnimatedSprite.offset` on facing change. Player Inspector group **Pose Nudge** plus editor preview dropdown. Node `position` stays `(0, 0)`. Nudges are not saved per room.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/player/mike_pose_nudge.gd`
+  - `AXEL/axel_project/scenes/player/pose_nudge.tres`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Changing Pose Nudge Front/Back/Side on any Player moves that facing’s drawing in every room. Hitboxes are unchanged. Left-facing side flips the X nudge.
+- Verification: Script parse of new exports/helpers; editor path is Player → Inspector → Pose Nudge.
+- Notes: Do not drag SpriteFrames frames. Ctrl+S after nudging so `pose_nudge.tres` is written.
+
+### Retire CollisionBack / CollisionSide (one Front hitbox)
+
+- Request: After lining up poses with nudges in 1.4, remove CollisionBack and CollisionSide so they do not come back.
+- Implementation: `Player.gd` keeps only `CollisionFront` (`hitbox_front.tres` at 1.1 Front). On load it deletes CollisionBack / CollisionSide instead of recreating them. Facing no longer swaps or flips extra circles. Locked 1.4 nudges into `pose_nudge.tres` (back `-114.725, 2.49`, side `41.76, -15.86`).
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - Walkable room `.tscn` Player trees (Back/Side nodes + ext_resources removed)
+  - `AXEL/axel_project/scenes/player/pose_nudge.tres`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: One circle for every facing. Drawings use pose nudge to sit on that circle. Back/Side nodes no longer appear in the editor or at Play.
+- Verification: Grep found no remaining CollisionBack/CollisionSide in `scenes/`. Player.gd lints clean.
+- Notes: Unused `hitbox_back.tres` / `hitbox_side.tres` files remain on disk but are not wired.
+
+### Mirror Front hitbox when walking left
+
+- Request: Left-walk hitbox sat off the model; right-walk was correct. Left should be a copy of right.
+- Implementation: `CollisionFront` now flips its X with A (same authored Front, mirrored) so it stays on the flipped side pose. D / front / back keep the authored placement.
+- Files changed:
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Holding A puts the cyan circle on Mike the same way D does.
+- Verification: Logic mirrors `_last_side_is_right`; pose nudge already negated X for left.
+- Notes: No second Side hitbox. One Front circle, flipped on left.
+
+### Memory still leave — click / tap / interact
+- Request: After any memory ends, pressing the screen or any interact button should quit the memory, not only the red X.
+- Implementation: After `_can_exit`, 2.2 / 3.2 / 5.2 now treat left-click, tap, and Tab/E/Space/Enter the same as the X button. Those keys still skip/advance while lines are playing; leave waits until the bar is closed.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.2_BackyardMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.2_ClassroomDesk.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: After the last line, click/tap/E also returns to the room. X still works.
+- Verification: Shared `_is_interaction_event` on the three still scripts; leave still gated on `_can_exit`.
+- Notes: No extra glitch; same scene-change as X.
+
+### Combat test ITEMS list rebuilds from catalog
+- Request: New catalog items were missing from the combat_test ITEMS panel while using the wrench menu.
+- Implementation: The panel was a saved snapshot (Ash Reroll Token + Void Satchel). Play now rebinds live ScrollContainer children and rebuilds FAMILIES + uniques from `combat/data/items/`. There is no separate “real combat” item list.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 `combat_test` shows the full catalog (54 rows at the time of the check). Wrench menu unchanged.
+- Verification: Temporary headless picker count found 54 items, then the check script was deleted.
+- Notes: Stop Play and F6 again so the rebuilt list appears.
+
+### Docs sync — rest of 2026-08-24
+- Request: `update rest of todays docs` after the morning docs pass (soundtrack / typewriter / 1.1 behind filters).
+- Implementation: Canon now matches work after that pass: menu p2→p1 crossfade, casino combat music, combat wrench, Mike no-head-plate + ShadowOutline, pose nudge, one Front hitbox (left-walk mirror), Explore librarian-only, slim `.mdc`, memory click-leave, and ITEMS picker rebuild. Scene write-ups no longer say 1.4 collision children sit at `(0, 0)`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Gameplay unchanged.
+- Verification: Compared write-ups to live memory scripts, `combat_test.gd` picker, `pose_nudge.tres`, `project.godot` autoloads, and today’s implement chats after 11:34.
+- Notes: Morning changelog already had later implement entries; this pass filled the two missing logs (memory leave, ITEMS picker) and leftover stale scene/structure text.
+

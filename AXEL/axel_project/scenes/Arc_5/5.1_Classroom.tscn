@@ -11,8 +11,6 @@
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="PackedScene" path="res://scenes/fx/MemoryIndicator.tscn" id="9_memory_indicator"]
 [ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(3508, 40)
@@ -193,15 +191,9 @@ visible = false
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
 [node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=88999588]
+position = Vector2(-37.812428, 126.04143)
 shape = ExtResource("hb_front")
-
-[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player"]
-disabled = true
-shape = ExtResource("hb_back")
-
-[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player"]
-disabled = true
-shape = ExtResource("hb_side")
+metadata/authored_pos = Vector2(-37.812428, 126.04143)
 
 [node name="MemoryIndicator" parent="PlayerLayer" unique_id=90059802 instance=ExtResource("9_memory_indicator")]
 position = Vector2(2712, 2160)

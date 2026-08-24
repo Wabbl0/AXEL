@@ -11,9 +11,7 @@
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="16_leaf_zone"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="17_bg_lock"]
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="18_exploration_viewport"]
-[ext_resource type="Shape2D" uid="uid://dbn1b4dod2u42" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
 [ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
-[ext_resource type="Shape2D" uid="uid://duceuefjqn2yl" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(1218, 32)
@@ -231,7 +229,7 @@ animation_fps = 5.0
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=663540772]
 sprite_frames = ExtResource("3_mike_frames")
-animation = &"idle_side"
+animation = &"idle"
 autoplay = "idle"
 
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=124778921]
@@ -247,18 +245,10 @@ color = Color(0.36, 0.85, 0.94, 1)
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
 [node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=1911443813]
+position = Vector2(-37.812428, 126.04143)
 shape = ExtResource("hb_front")
 debug_color = Color(0, 0.70980394, 0.9490196, 0.41960785)
-metadata/authored_pos = Vector2(0, 0)
-
-[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=787592421]
-shape = ExtResource("hb_back")
-metadata/authored_pos = Vector2(0, 0)
-
-[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=123524789]
-shape = ExtResource("hb_side")
-debug_color = Color(0.3197123, 0.89684623, 0.99999994, 0.41960785)
-metadata/authored_pos = Vector2(0, 0)
+metadata/authored_pos = Vector2(-37.812428, 126.04143)
 
 [node name="TopDialogueOverlay" parent="." unique_id=875088782 instance=ExtResource("11_top_dialogue")]
 

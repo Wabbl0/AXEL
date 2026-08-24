@@ -15,12 +15,13 @@ const MIN_GAP := 10
 const SPECK_MAX := 12
 const ISLAND_MAX := 120
 const CELL_PAD := 20
-const HEAD_FILL := Color(0, 0, 0, 1)
 const BODY_INK := Color(1, 1, 1, 1)
 const NECK_WIDTH_RATIO := 0.28
 const CHIN_PAD_PX := 6
 const FACE_BELOW_PEAK := 0.62
 const NECK_THIN_ROWS := 6
+const FACE_FRINGE_LUMA := 90.0 / 255.0
+const FACE_FRINGE_ALPHA := 80.0 / 255.0
 
 
 func _init() -> void:
@@ -238,48 +239,10 @@ func _chin_y(pose: Image) -> int:
 	return circle_bottom
 
 
-func _fill_polygon(img: Image, poly: PackedVector2Array, color: Color) -> void:
-	var min_y := 1e9
-	var max_y := -1e9
-	for p in poly:
-		min_y = minf(min_y, p.y)
-		max_y = maxf(max_y, p.y)
-	var y0 := maxi(0, int(min_y))
-	var y1 := mini(img.get_height() - 1, int(max_y))
-	var n := poly.size()
-	for y in range(y0, y1 + 1):
-		var nodes: Array[float] = []
-		for i in n:
-			var p1: Vector2 = poly[i]
-			var p2: Vector2 = poly[(i + 1) % n]
-			if (p1.y < float(y) and p2.y >= float(y)) or (p2.y < float(y) and p1.y >= float(y)):
-				var t := (float(y) - p1.y) / (p2.y - p1.y)
-				nodes.append(p1.x + t * (p2.x - p1.x))
-		nodes.sort()
-		var j := 0
-		while j + 1 < nodes.size():
-			var x_a := maxi(0, int(nodes[j]))
-			var x_b := mini(img.get_width() - 1, int(nodes[j + 1]))
-			for x in range(x_a, x_b + 1):
-				img.set_pixel(x, y, color)
-			j += 2
-
-
 func _finish_pose(pose: Image) -> Image:
 	var w := pose.get_width()
 	var h := pose.get_height()
 	var chin := _chin_y(pose)
-	var pts: PackedVector2Array = PackedVector2Array()
-	for y in chin:
-		for x in w:
-			if pose.get_pixel(x, y).a * 255.0 > float(INK_THRESH):
-				pts.append(Vector2(x, y))
-	var plate := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	plate.fill(Color(0, 0, 0, 0))
-	if pts.size() >= 3:
-		var hull := Geometry2D.convex_hull(pts)
-		if hull.size() >= 3:
-			_fill_polygon(plate, hull, HEAD_FILL)
 	var ink := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	ink.fill(Color(0, 0, 0, 0))
 	for y in h:
@@ -290,9 +253,10 @@ func _finish_pose(pose: Image) -> Image:
 					ink.set_pixel(x, y, BODY_INK)
 				else:
 					var inv := 1.0 - (oc.r + oc.g + oc.b) / 3.0
+					if inv < FACE_FRINGE_LUMA and oc.a < FACE_FRINGE_ALPHA:
+						continue
 					ink.set_pixel(x, y, Color(inv, inv, inv, oc.a))
-	plate.blend_rect(ink, Rect2i(0, 0, w, h), Vector2i.ZERO)
-	return plate
+	return ink
 
 
 func _keep_main_island(pose: Image) -> Image:

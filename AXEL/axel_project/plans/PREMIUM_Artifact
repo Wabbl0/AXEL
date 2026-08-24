@@ -8,6 +8,7 @@ CRITICAL — do not edit this template file:
 
 Tool rule: Do NOT read, grep, search, or explore the codebase.
 Use ONLY the EXPLORATION ARTIFACT pasted in the chat (not stored in this file). If a path, line, or behavior is missing or unclear, ask me in one batched question list — do not verify in the repo yourself.
+The artifact is a fact pack (files, current flow, possible causes, canon quotes). It will not contain a draft approach — you invent the numbered steps. Treat Possible causes / Questions for Plan as choices for you, not as already decided.
 @AXEL/axel_project/plans/core/AI_DOCS.md (canon only — no file hunting)
 
 Expected user message shape:

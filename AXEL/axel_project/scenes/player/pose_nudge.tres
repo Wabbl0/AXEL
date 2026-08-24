@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="MikePoseNudge" format=3 uid="uid://ber425j8kxvum"]
+
+[ext_resource type="Script" uid="uid://d2g6ayvnideh3" path="res://scenes/player/mike_pose_nudge.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+back = Vector2(-114.725, 2.49)
+side = Vector2(41.76, -15.86)

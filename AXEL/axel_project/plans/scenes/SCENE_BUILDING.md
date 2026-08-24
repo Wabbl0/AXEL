@@ -84,7 +84,7 @@ Root (Node2D + scene script)
 
 **Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Typing ticks use the `Typewriter` bus; open/close uses `TypewriterOpen` (Panner for the bar click only). Per-clip mix is `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players.
 
-**Music:** Do not instance soundtrack players in menu/overworld `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p1` menu loop with 10s fade-in → hard-cut to `p2` after New Game finishes the current p1 loop). Loudness: `Music` bus in `default_bus_layout.tres`.
+**Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; combat casino layers via `to_combat` / first-win / Trinity hooks). Loudness: `Music` bus in `default_bus_layout.tres`.
 
 **Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked.
 
@@ -139,11 +139,11 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 
 Do not slice the raw `kävely_etu` / `kävely_sivu` drawings as a grid. Pack with `tools/pack_mike_walk_sheet.py` (ink-box cuts). Live look:
 
-- Head: black fill plate + white brush strokes on top (eyes/scribble holes stay black and opaque — no room showing through).
+- Head: inverted source face (painted white in `kävely_*` becomes black holes — no extra fill plate). Eyes/scribble holes stay opaque.
 - Chin down: solid white ink (not see-through).
 - Empty around Mike: transparent.
 - Packer drops far-off specks (`FAR_BLOB_DIST`) and extra islands under 120 px (stray waist/head strokes).
-- `white_sprite.gdshader` keeps packed RGB. Mike is **not** noir-inverted.
+- `white_sprite.gdshader` keeps packed RGB and multiplies `COLOR.rgb` so `ShadowOutline` modulate can be black. Mike is **not** noir-inverted. CRT still runs on him. Play and the editor show `ShadowOutline` with the shared 1.2 fit (a slightly larger black copy behind the white figure) on every pose. Pose nudges must not shift that silhouette — `Player.gd` divides the shadow offset by the outline scale. Do not force `ShadowOutline.visible = false` in the editor tool.
 
 `Player.gd` animations: `walk_down` / `walk_up` / `walk_right` + `flip_h` for left; idle / idle_back / idle_side keep last facing. Assign `res://assets/sprites/mike_sprite_frames.tres` in the editor. Rollback: restore `mike_walking-Sheet_legacy13.png` over the live sheet and revert Player + scales.
 
@@ -163,6 +163,10 @@ Anything on `PlayerLayer` that should match the drawing (memory glow) gets the s
 
 Scene enter / discovery lines use a GameManager `*_seen` flag. They must not replay when returning from another room, a memory still, or a side peek. Same rule for every walkable scene.
 
+### Rule: memory still leave (after the bar closes)
+
+Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialogue finished, or already-seen skip), leave with: red `[X]`, left-click, tap, or Tab/E/Space/Enter. Same keys during lines still skip/advance — they must not leave until the bar is closed. Live: `2.2`, `3.2`, `5.2`.
+
 ### Rule: walk-off Y carries across side exits
 
 When the player **walks off a scene edge** (`ExitTrigger`), save floor-relative height in `GameManager.walkoff_floor_offset_y` (player Y minus that room’s floor/wall junction) and apply it on the next room’s peek spawn. Background floor lines in the two drawings should line up. This does **not** apply to `[E]` door / room entries. Live: `1.2` ↔ `1.4`.
@@ -176,8 +180,8 @@ There is no separate spawn point. The `Player` node **is** the spawn.
 - **Allowed elsewhere:** only GameManager peek / return when arriving from another room. Walk-off Y (`walkoff_floor_offset_y`) may adjust height after that spawn, not replace X/Y with a new point.
 - 1.1 intro may start off-screen and walk **to** the remapped Player node. Skip-intro leaves Mike on that node. Do not walk to a computed stones target instead.
 - Helper: `PlayerSpawnSync.capture_tex` before mutating `EnvironmentColliders`, then `apply_tex` after. Works for both unscaled (2.1-style) and pre-scaled (1.2/1.4 `_OLD_BG_SCALE`) colliders.
-- Editor: assign `res://assets/sprites/mike_sprite_frames.tres` on `AnimatedSprite` / `ShadowOutline` so Mike is visible on the node while you drag. Play still rebuilds frames in `Player.gd`.
-- Shared facing hitboxes (default): `CollisionFront` / `CollisionBack` / `CollisionSide` all point at `res://scenes/player/hitbox_front.tres`, `hitbox_back.tres`, `hitbox_side.tres`. Play enables Front toward camera, Side for A/D (flips for left), Back walking away. Edit a `.tres` or any room’s matching shape — it is the same resource, so every room updates. New walkable scenes only need `Player.gd`; `_ensure_facing_hitboxes()` creates the three nodes if missing. Keep those children at `(0, 0)`.
+- Editor: assign `res://assets/sprites/mike_sprite_frames.tres` on `AnimatedSprite` / `ShadowOutline` so Mike is visible on the node while you drag. Play still rebuilds frames in `Player.gd`. Keep `ShadowOutline` visible in the editor (the pose-nudge tool must not force it off). `AnimatedSprite` stays hidden in the 2D view because the pose stack draws it.
+- Shared hitbox (default): `CollisionFront` points at `res://scenes/player/hitbox_front.tres`. That `.tres` is **radius only**; node `position` is the shared 1.1 Front `(-37.812428, 126.04143)`. Pose nudges line every facing onto this one circle. Walking left (A) mirrors Front X so the circle stays on the flipped side pose (right/D is the authored side). `Player.gd` reapplies Front on Play and removes `CollisionBack` / `CollisionSide` if they still exist. Copy the 1.1 Front position into a new room’s `.tscn` so the editor preview matches. Do not recreate Back/Side.
 - Alpha hitbox (opt-in): set `use_alpha_collision` on that Player. Select `Player` for the cyan editor preview of the traced outline.
 
 ### Rule: any other node placed against the background must spawn from its own editor position
@@ -206,14 +210,27 @@ glow pattern.
 By default the **player model**, **memory glow**, and **`[E]` interact chip**
 must sit on their node. No extra offset.
 
-- Player: `AnimatedSprite` and facing hitboxes
-  (`CollisionFront` / `CollisionBack` / `CollisionSide`) stay at
-  `(0, 0)` on the Player node. Do not author a sprite/collision child offset
-  to “fix” spawn. Move the Player node itself.
-- Shared exception: `ShadowOutline` uses the 1.2 fit on every walkable room
+- Player: `AnimatedSprite` **position** stays at `(0, 0)` on the Player node. Do not
+  author a sprite child `position` to “fix” spawn. Move the Player node itself.
+- Shared exception — pose nudge: `AnimatedSprite.offset` comes from
+  `res://scenes/player/pose_nudge.tres` (Front / Back / Side). Select the
+  **Player** node → Inspector group **Pose Nudge**. `Editor Pose Preview`
+  switches which pose is solid; the other two stay faded on top in the 2D
+  view (live). Type roughly 80–200 on X/Y — tiny values like `1` will not
+  show. A yellow cross is the Player origin. Do not drag frames in
+  SpriteFrames — Play rebuilds those. One edit is shared by every room; Ctrl+S
+  so `pose_nudge.tres` is saved.
+- Shared exception — hitbox: `CollisionFront` uses the shared 1.1 Front
+  `(-37.812428, 126.04143)`. `Player.gd` reapplies it at Play and removes
+  `CollisionBack` / `CollisionSide`. Copy Front into a new room’s `.tscn` so
+  the editor preview matches. Do not zero it or invent a per-room player polygon.
+- Shared exception — `ShadowOutline`: uses the 1.2 fit on every walkable room
   (`position` `(-5.0416956, -5.041732)`, `scale` `(1.0335996, 0.9969109)`).
-  `Player.gd` reapplies this at Play. Copy those values into a new room’s
-  `.tscn` so the editor preview matches. Do not invent a per-room silhouette.
+  `Player.gd` reapplies this at Play and in the editor. The same fit is used
+  for every spritesheet pose; pose-nudge `offset` is divided by that scale so
+  Front / Back / Side do not shift the silhouette. Copy the 1.2 position/scale
+  into a new room’s `.tscn` so the editor preview matches. Do not invent a
+  per-room silhouette.
 - Memory glow: `MemoryIndicator.visual_offset` stays `Vector2.ZERO`. Align
   `MemoryInteractArea` to the same editor point as the glow node.
 - `[E]` chip: `InteractPromptOverlay.screen_offset` stays `Vector2.ZERO`
@@ -228,7 +245,7 @@ one specific nudge (then scope it to that one zone/node).
 
 Never share one `RectangleShape2D` / `CircleShape2D` / other `Shape2D` SubResource across two `CollisionShape2D` nodes that should resize or scale independently.
 
-**Exception:** Mike’s three facing hitboxes are *meant* to share `res://scenes/player/hitbox_*.tres` across every room. Do not Make Unique those.
+**Exception:** Mike’s `CollisionFront` is *meant* to share `res://scenes/player/hitbox_front.tres` across every room. Do not Make Unique that.
 
 Godot stores the shape as a shared resource. If two doors point at the same SubResource, editing size/scale on one changes the other.
 

@@ -10,9 +10,7 @@
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="14_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="15_bg_lock"]
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="16_exploration_viewport"]
-[ext_resource type="Shape2D" uid="uid://dbn1b4dod2u42" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
 [ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
-[ext_resource type="Shape2D" uid="uid://duceuefjqn2yl" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(2368.0889, 24)
@@ -126,6 +124,8 @@ position = Vector2(44, 452)
 scale = Vector2(0.198347, 0.198347)
 script = ExtResource("2_player_script")
 speed = 253.4
+pose_nudge_back = Vector2(-114.725, 2.49)
+pose_nudge_side = Vector2(41.76, -15.86)
 sprite_sheet = ExtResource("3_player_sheet")
 animation_fps = 5.0
 collision_polygon_epsilon = 4.0
@@ -134,6 +134,7 @@ collision_inward_margin = 4.0
 collision_lower_body_ratio = 0.42
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1306492370]
+visible = false
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
 autoplay = "idle"
@@ -151,21 +152,9 @@ position = Vector2(-40.333355, -9.099561)
 polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
 [node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=641622148]
-visible = false
+position = Vector2(-37.812428, 126.04143)
 shape = ExtResource("hb_front")
-metadata/authored_pos = Vector2(0, 0)
-
-[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=1128200065]
-visible = false
-shape = ExtResource("hb_back")
-disabled = true
-metadata/authored_pos = Vector2(0, 0)
-
-[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=68443734]
-visible = false
-shape = ExtResource("hb_side")
-disabled = true
-metadata/authored_pos = Vector2(0, 0)
+metadata/authored_pos = Vector2(-37.812428, 126.04143)
 
 [node name="TopDialogueOverlay" parent="." unique_id=529892493 instance=ExtResource("10_top_dialogue")]
 

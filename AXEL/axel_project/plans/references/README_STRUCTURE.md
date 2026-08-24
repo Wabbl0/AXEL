@@ -11,16 +11,17 @@ Prefer the **live project tree** when this file and disk disagree — update thi
 
 ## Current top-level layout (live)
 
-- `assets/` — runtime art (`sprites/`) and game audio (`audio/` — typewriter WAVs plus `music/` stems for autoload BGM: live `B_Goes_Down_p1.wav` / `B_Goes_Down_p2.wav`)
+- `assets/` — runtime art (`sprites/`) and game audio (`audio/` — typewriter WAVs plus `music/` stems: live `B_Goes_Down_p2` menu / `B_Goes_Down_p1` overworld; combat casino `casino_Drums_p1`/`p2`, `casino_p1`/`p2`, `casino_like_that`; unused on-disk `B_Goes_Down_Drums_*`, `p3`/`p4`)
 - `default_bus_layout.tres` — `Master`, `Music` (~`-12` dB), `Typewriter` (typing loop), `TypewriterOpen` (bar open/close + Panner)
 - `scenes/`
   - `Main_Menu/`, `Arc_1/` … `Arc_7/`, `Endings/`
   - `core/` — background/camera/player helpers, placeholders
-  - `player/` — shared facing hitboxes (`hitbox_front.tres` / `hitbox_side.tres` / `hitbox_back.tres`)
+  - `player/` — shared Front hitbox (`hitbox_front.tres`), shared pose nudge (`pose_nudge.tres` + `mike_pose_nudge.gd`); `hitbox_back.tres` / `hitbox_side.tres` are unused leftovers
   - `ui/` — dialogue, interact prompt, shared UI
   - `fx/` — noir/scanline/CRT overlays, memory indicator, glitch/pulse
 - `scripts/`
   - `autoload/` — `AxelPostFxStack`, `AxelEventFx`, `AxelMusic`
+  - `debug/` — `AxelCombatDevTools` (editor/debug-only combat wrench menu)
   - `Player.gd` (and related gameplay scripts as they land under `gameplay/` / `ui/` / `debug/`)
 - `combat/` — self-contained combat subsystem (`scripts/`, `scenes/`, `art/`, `data/`, `test/`, …)
 - `tools/` — QA, bots, capture, visual-style helpers

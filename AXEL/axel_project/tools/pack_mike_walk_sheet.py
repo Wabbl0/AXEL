@@ -15,7 +15,7 @@ import shutil
 from collections import deque
 from typing import List, Tuple
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DRAWINGS = os.path.join(ROOT, "exports", "Drawings")
@@ -32,12 +32,14 @@ FAR_BLOB_DIST = 40
 # After pack, drop extra islands smaller than this (stray strokes near head/feet).
 ISLAND_MAX_PIXELS = 120
 CELL_PAD = 20
-HEAD_FILL_RGBA = (0, 0, 0, 255)
 BODY_INK_RGBA = (255, 255, 255, 255)
 NECK_WIDTH_RATIO = 0.28
 CHIN_PAD_PX = 6
 FACE_BELOW_PEAK = 0.62
 NECK_THIN_ROWS = 6
+# Soft painted-white overflow inverts to a dark halo; drop those faint pixels.
+FACE_FRINGE_LUMA = 90
+FACE_FRINGE_ALPHA = 80
 
 
 def _find_source(preferred: str, *needles: str) -> str:
@@ -277,27 +279,6 @@ def _extract_poses(path: str, expect: int) -> List[Image.Image]:
 	return poses
 
 
-def _convex_hull(points: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
-	pts = sorted(set(points))
-	if len(pts) <= 2:
-		return pts
-
-	def cross(o, a, b):
-		return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-
-	lower: List[Tuple[int, int]] = []
-	for p in pts:
-		while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
-			lower.pop()
-		lower.append(p)
-	upper: List[Tuple[int, int]] = []
-	for p in reversed(pts):
-		while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
-			upper.pop()
-		upper.append(p)
-	return lower[:-1] + upper[:-1]
-
-
 def _chin_y(pose: Image.Image) -> int:
 	"""Bottom of the head: finish the circle below the widest row, then the neck."""
 	w, h = pose.size
@@ -334,33 +315,25 @@ def _chin_y(pose: Image.Image) -> int:
 
 
 def _finish_pose(pose: Image.Image) -> Image.Image:
-	"""Black plate just around the head; brushy white face; solid white body from chin down."""
+	"""Invert charcoal on the face (painted white becomes black holes). Solid white body from chin down. No extra head plate."""
 	w, h = pose.size
 	chin = _chin_y(pose)
 	pix = pose.load()
-	pts: List[Tuple[int, int]] = []
-	for y in range(0, chin):
-		for x in range(w):
-			if pix[x, y][3] > INK_THRESH:
-				pts.append((x, y))
-	plate = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-	if len(pts) >= 3:
-		hull = _convex_hull(pts)
-		if len(hull) >= 3:
-			ImageDraw.Draw(plate).polygon(hull, fill=HEAD_FILL_RGBA)
 	ink = Image.new("RGBA", (w, h), (0, 0, 0, 0))
 	ip = ink.load()
 	for y in range(h):
 		for x in range(w):
 			r, g, b, a = pix[x, y]
-			if a > INK_THRESH:
-				if y >= chin:
-					ip[x, y] = BODY_INK_RGBA
-				else:
-					inv = 255 - (int(r) + int(g) + int(b)) // 3
-					ip[x, y] = (inv, inv, inv, a)
-	# Plate first so eye/face holes stay black; strokes sit on top.
-	return Image.alpha_composite(plate, ink)
+			if a <= INK_THRESH:
+				continue
+			if y >= chin:
+				ip[x, y] = BODY_INK_RGBA
+				continue
+			inv = 255 - (int(r) + int(g) + int(b)) // 3
+			if inv < FACE_FRINGE_LUMA and a < FACE_FRINGE_ALPHA:
+				continue
+			ip[x, y] = (inv, inv, inv, a)
+	return ink
 
 
 def _pack(poses: List[Image.Image]) -> Tuple[Image.Image, int, int]:
@@ -375,7 +348,7 @@ def _pack(poses: List[Image.Image]) -> Tuple[Image.Image, int, int]:
 		# Head-top align: paste at CELL_PAD from top; center horizontally
 		ox = i * cell_w + (cell_w - pose.size[0]) // 2
 		oy = CELL_PAD
-		sheet.paste(pose, (ox, oy), pose)
+		sheet.paste(pose, (ox, oy))
 	return sheet, cell_w, cell_h
 
 
@@ -398,7 +371,7 @@ def main() -> None:
 	all_poses = etu + sivu  # 0-3 front, 4-6 back, 7-11 side
 	assert len(all_poses) == 12
 
-	print("Head plate + solid body…")
+	print("Invert face, solid body (no head plate)…")
 	processed = [_keep_main_island(_finish_pose(p)) for p in all_poses]
 
 	sheet, cell_w, cell_h = _pack(processed)

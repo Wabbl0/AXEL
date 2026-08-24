@@ -21,13 +21,44 @@ const _MIKE_FRAME_INDICES := {
 
 const _MIKE_FRAME_COUNT := 12
 const _HITBOX_FRONT := preload("res://scenes/player/hitbox_front.tres")
-const _HITBOX_BACK := preload("res://scenes/player/hitbox_back.tres")
-const _HITBOX_SIDE := preload("res://scenes/player/hitbox_side.tres")
 ## Shared ShadowOutline fit authored in 1.2; applied on every room so the silhouette stays aligned.
 const SHADOW_OUTLINE_POS := Vector2(-5.0416956, -5.041732)
 const SHADOW_OUTLINE_SCALE := Vector2(1.0335996, 0.9969109)
+## Shared Front circle placement authored in 1.1; applied on every room. Back/Side retired.
+const HITBOX_FRONT_POS := Vector2(-37.812428, 126.04143)
+const _POSE_NUDGE_PATH := "res://scenes/player/pose_nudge.tres"
 
 @export var speed: float = 220.0
+@export_group("Pose Nudge")
+## Editor only: which idle pose is solid. The other two stay faded on top. Does not change Play.
+@export_enum("Front", "Back", "Side") var editor_pose_preview: int = 0:
+	get:
+		return _editor_pose_preview
+	set(value):
+		_editor_pose_preview = value
+		_on_pose_nudge_edited()
+## Moves the front drawing (S / idle). Sprite pixels — try 80 to 200 if you see no move.
+@export var pose_nudge_front: Vector2 = Vector2.ZERO:
+	get:
+		return _pose_nudge_front
+	set(value):
+		_pose_nudge_front = value
+		_on_pose_nudge_edited()
+## Moves the back drawing (W / idle_back). Sprite pixels — try 80 to 200 if you see no move.
+@export var pose_nudge_back: Vector2 = Vector2.ZERO:
+	get:
+		return _pose_nudge_back
+	set(value):
+		_pose_nudge_back = value
+		_on_pose_nudge_edited()
+## Moves the side drawing (A/D / idle_side). Sprite pixels — try 80 to 200 if you see no move.
+@export var pose_nudge_side: Vector2 = Vector2.ZERO:
+	get:
+		return _pose_nudge_side
+	set(value):
+		_pose_nudge_side = value
+		_on_pose_nudge_edited()
+@export_group("")
 @export var overworld_tint: Color = Color(1.0, 1.0, 1.0, 1.0)
 ## When empty, tries common paths under res://assets/sprites/ (including mike walking exports).
 @export var sprite_sheet: Texture2D
@@ -40,8 +71,8 @@ const SHADOW_OUTLINE_SCALE := Vector2(1.0335996, 0.9969109)
 @export var frame_width: int = 0
 @export var frame_height: int = 0
 @export var animation_fps: float = 10.0
-## If true, traces collision from sprite alpha. Default is the shared facing hitboxes
-## (`res://scenes/player/hitbox_front.tres` / `hitbox_back.tres` / `hitbox_side.tres`).
+## If true, traces collision from sprite alpha. Default is the shared Front hitbox
+## (`res://scenes/player/hitbox_front.tres`). CollisionBack / CollisionSide are retired.
 @export var use_alpha_collision: bool = false
 ## Frame index on the Mike sheet when `collision_use_all_frames_union` is false.
 @export_range(0, 11) var collision_frame_index: int = 0
@@ -69,6 +100,11 @@ const SHADOW_OUTLINE_SCALE := Vector2(1.0335996, 0.9969109)
 var _last_facing: Facing = Facing.FRONT
 ## Right-facing side walks vs left (flip_h); used for side idle and A/D.
 var _last_side_is_right: bool = true
+var _pose_nudge_res: Resource
+var _editor_pose_preview: int = 0
+var _pose_nudge_front: Vector2 = Vector2.ZERO
+var _pose_nudge_back: Vector2 = Vector2.ZERO
+var _pose_nudge_side: Vector2 = Vector2.ZERO
 
 var _input_enabled: bool = true
 var _scripted_velocity: Vector2 = Vector2.ZERO
@@ -104,16 +140,28 @@ func clear_scripted_velocity() -> void:
 	_scripted_velocity = Vector2.ZERO
 
 func _enter_tree() -> void:
+	_load_pose_nudge_from_disk()
 	if Engine.is_editor_hint():
 		set_process(true)
 		set_physics_process(false)
+		set_notify_transform(true)
 
 
 func _ready() -> void:
+	_load_pose_nudge_from_disk()
 	if Engine.is_editor_hint():
 		_ensure_facing_hitboxes()
 		_refresh_editor_hitbox_preview()
+		_apply_editor_pose_preview()
+		_apply_pose_nudge()
+		_sync_editor_sprite_visibility()
+		var editor_shadow := _pose_shadow()
+		if editor_shadow != null:
+			editor_shadow.visible = true
+		queue_redraw()
 		return
+	motion_mode = MOTION_MODE_FLOATING
+	safe_margin = 0.1
 	_last_step_position = global_position
 	if sprite_sheet == null:
 		sprite_sheet = _try_load_default_sprite_sheet()
@@ -132,6 +180,7 @@ func _ready() -> void:
 		animated_sprite.visible = false
 		shadow_outline.visible = false
 	_sync_manual_facing_collision()
+	_apply_pose_nudge()
 
 func _try_load_default_sprite_sheet() -> Texture2D:
 	var candidates: Array[String] = [
@@ -212,13 +261,14 @@ func _build_sprite_frames() -> void:
 	animated_sprite.play(&"idle")
 
 func _setup_shadow_outline() -> void:
-	shadow_outline.position = SHADOW_OUTLINE_POS
-	shadow_outline.scale = SHADOW_OUTLINE_SCALE
 	shadow_outline.sprite_frames = animated_sprite.sprite_frames
 	shadow_outline.animation = animated_sprite.animation
 	shadow_outline.frame = animated_sprite.frame
 	shadow_outline.frame_progress = animated_sprite.frame_progress
 	shadow_outline.play(animated_sprite.animation)
+	shadow_outline.visible = true
+	shadow_outline.modulate = Color(0.0, 0.0, 0.0, 0.55)
+	_apply_shadow_outline_fit(_pose_nudge_value(_last_facing))
 
 
 func _setup_alpha_collision() -> void:
@@ -631,17 +681,27 @@ func set_leaf_occlusion_active(_active: bool) -> void:
 
 
 func _ensure_facing_hitboxes() -> void:
+	_remove_retired_facing_hitbox("CollisionBack")
+	_remove_retired_facing_hitbox("CollisionSide")
 	if use_alpha_collision:
 		return
-	_bind_facing_hitbox("CollisionFront", _HITBOX_FRONT)
-	_bind_facing_hitbox("CollisionBack", _HITBOX_BACK)
-	_bind_facing_hitbox("CollisionSide", _HITBOX_SIDE)
+	_bind_facing_hitbox("CollisionFront", _HITBOX_FRONT, HITBOX_FRONT_POS)
 	var legacy := _manual_collision("CollisionShape2D")
 	if legacy != null:
 		legacy.disabled = true
 
 
-func _bind_facing_hitbox(node_name: String, shape: Shape2D) -> CollisionShape2D:
+func _remove_retired_facing_hitbox(node_name: String) -> void:
+	var node := get_node_or_null(node_name)
+	if node == null:
+		return
+	if Engine.is_editor_hint():
+		node.owner = null
+	remove_child(node)
+	node.free()
+
+
+func _bind_facing_hitbox(node_name: String, shape: Shape2D, authored_pos: Vector2) -> CollisionShape2D:
 	var node := _manual_collision(node_name)
 	if node == null:
 		node = CollisionShape2D.new()
@@ -650,9 +710,9 @@ func _bind_facing_hitbox(node_name: String, shape: Shape2D) -> CollisionShape2D:
 		if Engine.is_editor_hint():
 			node.owner = null
 	node.shape = shape
-	node.position = Vector2.ZERO
+	node.position = authored_pos
 	node.scale = Vector2.ONE
-	node.set_meta("authored_pos", Vector2.ZERO)
+	node.set_meta("authored_pos", authored_pos)
 	return node
 
 
@@ -666,21 +726,11 @@ func _sync_manual_facing_collision() -> void:
 	var front := _manual_collision("CollisionFront")
 	if front == null:
 		front = _manual_collision("CollisionShape2D")
-	var back := _manual_collision("CollisionBack")
-	var side := _manual_collision("CollisionSide")
-	if back == null and side == null:
-		if front != null:
-			_apply_collision_horizontal_flip(front, not (_last_facing == Facing.SIDE and not _last_side_is_right))
+	if front == null:
 		return
-	if front != null:
-		front.disabled = _last_facing != Facing.FRONT
-		_apply_collision_horizontal_flip(front, true)
-	if back != null:
-		back.disabled = _last_facing != Facing.BACK
-		_apply_collision_horizontal_flip(back, true)
-	if side != null:
-		side.disabled = _last_facing != Facing.SIDE
-		_apply_collision_horizontal_flip(side, _last_side_is_right)
+	front.disabled = false
+	var face_right := _last_facing != Facing.SIDE or _last_side_is_right
+	_apply_collision_horizontal_flip(front, face_right)
 
 
 func _apply_collision_horizontal_flip(collision: CollisionShape2D, face_right: bool) -> void:
@@ -717,16 +767,231 @@ func _update_leaf_occlusion_anchor() -> void:
 	mat.set_shader_parameter("player_anchor_y", _get_collision_feet_anchor_y())
 
 
+func _pose_nudge_resource() -> Resource:
+	if _pose_nudge_res != null:
+		return _pose_nudge_res
+	if ResourceLoader.exists(_POSE_NUDGE_PATH):
+		_pose_nudge_res = load(_POSE_NUDGE_PATH)
+	return _pose_nudge_res
+
+
+func _load_pose_nudge_from_disk() -> void:
+	var res := _pose_nudge_resource()
+	if res == null:
+		return
+	_pose_nudge_front = res.get("front")
+	_pose_nudge_back = res.get("back")
+	_pose_nudge_side = res.get("side")
+
+
+func _save_pose_nudge_to_disk() -> void:
+	var res := _pose_nudge_resource()
+	if res == null:
+		return
+	if (
+		res.get("front") == _pose_nudge_front
+		and res.get("back") == _pose_nudge_back
+		and res.get("side") == _pose_nudge_side
+	):
+		return
+	res.set("front", _pose_nudge_front)
+	res.set("back", _pose_nudge_back)
+	res.set("side", _pose_nudge_side)
+	res.emit_changed()
+	if Engine.is_editor_hint():
+		ResourceSaver.save(res, _POSE_NUDGE_PATH)
+
+
+func _on_pose_nudge_edited() -> void:
+	if not is_inside_tree():
+		return
+	_apply_editor_pose_preview()
+	_apply_pose_nudge()
+	_sync_editor_sprite_visibility()
+	queue_redraw()
+	if Engine.is_editor_hint():
+		_save_pose_nudge_to_disk()
+
+
+func _sync_editor_sprite_visibility() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var sprite := _pose_sprite()
+	var has_frames := sprite != null and sprite.sprite_frames != null
+	if sprite != null:
+		# Pose stack draws the white figure; hide the node so it does not double.
+		sprite.visible = not has_frames
+	# Do not overwrite ShadowOutline.visible every frame — that locked the Inspector eye off.
+
+
+func _shadow_offset_for_nudge(nudge: Vector2) -> Vector2:
+	# Scale is applied to offset. Divide so the silhouette stays around the figure
+	# the same way for Front / Back / Side (pose nudges must not shift the outline).
+	return Vector2(
+		nudge.x / SHADOW_OUTLINE_SCALE.x,
+		nudge.y / SHADOW_OUTLINE_SCALE.y
+	)
+
+
+func _apply_shadow_outline_fit(nudge: Vector2) -> void:
+	var shadow := _pose_shadow()
+	if shadow == null:
+		return
+	shadow.position = SHADOW_OUTLINE_POS
+	shadow.scale = SHADOW_OUTLINE_SCALE
+	shadow.offset = _shadow_offset_for_nudge(nudge)
+
+
+func _draw_one_editor_pose(
+	frames: SpriteFrames,
+	anim: StringName,
+	nudge: Vector2,
+	tint: Color,
+	include_shadow: bool
+) -> void:
+	if not frames.has_animation(anim) or frames.get_frame_count(anim) < 1:
+		return
+	var tex := frames.get_frame_texture(anim, 0)
+	if tex == null:
+		return
+	var origin := nudge - tex.get_size() * 0.5
+	if include_shadow:
+		var shadow_tl := (
+			SHADOW_OUTLINE_POS
+			+ (_shadow_offset_for_nudge(nudge) - tex.get_size() * 0.5) * SHADOW_OUTLINE_SCALE
+		)
+		draw_set_transform(shadow_tl, 0.0, SHADOW_OUTLINE_SCALE)
+		draw_texture(tex, Vector2.ZERO, Color(0.0, 0.0, 0.0, 0.55))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_texture(tex, origin, tint)
+
+
+func _draw_editor_pose_stack() -> void:
+	var sprite := _pose_sprite()
+	if sprite == null or sprite.sprite_frames == null:
+		return
+	var frames := sprite.sprite_frames
+	var front_tint := Color(1.0, 1.0, 1.0, 0.42)
+	var back_tint := Color(1.0, 0.4, 0.4, 0.42)
+	var side_tint := Color(0.4, 0.75, 1.0, 0.42)
+	# Faded poses draw their own silhouette. The solid pose uses the ShadowOutline node.
+	if editor_pose_preview != 0:
+		_draw_one_editor_pose(frames, &"idle", pose_nudge_front, front_tint, true)
+	if editor_pose_preview != 1:
+		_draw_one_editor_pose(frames, &"idle_back", pose_nudge_back, back_tint, true)
+	if editor_pose_preview != 2:
+		_draw_one_editor_pose(frames, &"idle_side", pose_nudge_side, side_tint, true)
+	match editor_pose_preview:
+		1:
+			_draw_one_editor_pose(frames, &"idle_back", pose_nudge_back, Color.WHITE, false)
+		2:
+			_draw_one_editor_pose(frames, &"idle_side", pose_nudge_side, Color.WHITE, false)
+		_:
+			_draw_one_editor_pose(frames, &"idle", pose_nudge_front, Color.WHITE, false)
+	draw_line(Vector2(-18, 0), Vector2(18, 0), Color(1.0, 1.0, 0.0, 0.9), 4.0)
+	draw_line(Vector2(0, -18), Vector2(0, 18), Color(1.0, 1.0, 0.0, 0.9), 4.0)
+
+
+func _pose_nudge_value(facing: Facing) -> Vector2:
+	match facing:
+		Facing.BACK:
+			return pose_nudge_back
+		Facing.SIDE:
+			return pose_nudge_side
+		_:
+			return pose_nudge_front
+
+
+func _editor_preview_anim() -> StringName:
+	match editor_pose_preview:
+		1:
+			return &"idle_back"
+		2:
+			return &"idle_side"
+		_:
+			return &"idle"
+
+
+func _apply_editor_pose_preview() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var sprite := _pose_sprite()
+	if sprite == null or sprite.sprite_frames == null:
+		return
+	var anim := _editor_preview_anim()
+	if not sprite.sprite_frames.has_animation(anim):
+		return
+	if sprite.animation != anim:
+		sprite.animation = anim
+		sprite.frame = 0
+	var shadow := _pose_shadow()
+	if shadow != null:
+		if shadow.sprite_frames != sprite.sprite_frames:
+			shadow.sprite_frames = sprite.sprite_frames
+		if shadow.animation != anim:
+			shadow.animation = anim
+			shadow.frame = 0
+		shadow.flip_h = sprite.flip_h
+		shadow.modulate = Color(0.0, 0.0, 0.0, 0.55)
+	match editor_pose_preview:
+		1:
+			_last_facing = Facing.BACK
+		2:
+			_last_facing = Facing.SIDE
+			_last_side_is_right = true
+		_:
+			_last_facing = Facing.FRONT
+
+
+func _pose_sprite() -> AnimatedSprite2D:
+	if animated_sprite != null:
+		return animated_sprite
+	return get_node_or_null("AnimatedSprite") as AnimatedSprite2D
+
+
+func _pose_shadow() -> AnimatedSprite2D:
+	if shadow_outline != null:
+		return shadow_outline
+	return get_node_or_null("ShadowOutline") as AnimatedSprite2D
+
+
+func _apply_pose_nudge() -> void:
+	var sprite := _pose_sprite()
+	if sprite == null:
+		return
+	var facing := _last_facing
+	if Engine.is_editor_hint():
+		match editor_pose_preview:
+			1:
+				facing = Facing.BACK
+			2:
+				facing = Facing.SIDE
+			_:
+				facing = Facing.FRONT
+	var nudge := _pose_nudge_value(facing)
+	if facing == Facing.SIDE and not _last_side_is_right:
+		nudge.x = -nudge.x
+	sprite.offset = nudge
+	_apply_shadow_outline_fit(nudge)
+
+
 func _process(_delta: float) -> void:
 	if not Engine.is_editor_hint():
 		return
 	var sig := _editor_hitbox_signature()
 	if sig != _editor_hitbox_sig:
 		_refresh_editor_hitbox_preview()
+	_apply_editor_pose_preview()
+	_apply_pose_nudge()
+	_sync_editor_sprite_visibility()
+	queue_redraw()
 
 
 func _draw() -> void:
-	if not Engine.is_editor_hint() or not use_alpha_collision:
+	if not Engine.is_editor_hint():
+		return
+	_draw_editor_pose_stack()
+	if not use_alpha_collision:
 		return
 	var anchor := Vector2.ZERO
 	if animated_sprite != null:
@@ -896,6 +1161,7 @@ func _update_animation(direction: Vector2) -> void:
 
 	_sync_shadow_animation()
 	_sync_manual_facing_collision()
+	_apply_pose_nudge()
 
 
 func _play_idle_for_facing() -> void:
@@ -916,6 +1182,7 @@ func _play_idle_for_facing() -> void:
 		shadow_outline.play(anim)
 	_sync_shadow_animation()
 	_sync_manual_facing_collision()
+	_apply_pose_nudge()
 
 
 func _sync_shadow_animation() -> void:
