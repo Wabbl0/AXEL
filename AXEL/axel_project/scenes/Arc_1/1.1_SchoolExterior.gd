@@ -11,10 +11,6 @@ enum IntroState {
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
 @onready var _left_wall_collision: CollisionShape2D = $EnvironmentColliders/LeftWall/CollisionShape2D
-@onready var _trunk_lines: Array[StaticBody2D] = [
-	get_node("EnvironmentColliders/TreeLine_Bottom") as StaticBody2D,
-	get_node("EnvironmentColliders/TreeLine_Top") as StaticBody2D,
-]
 
 var _door_interact_area: Area2D
 var _intro_state: IntroState = IntroState.FORCED_SEQUENCE
@@ -24,6 +20,23 @@ const _ENDING_1_SCENE_PATH := "res://scenes/Endings/7.1_Ending1.tscn"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 const _LEAF_Y_CUTOFF_MARGIN := 0.0
+## Behind-zone names in shader slot order. Empty gate body = no Y-gate (polygon only).
+const _BEHIND_ZONE_NAMES: PackedStringArray = [
+	"TreeLine_Bottom_Behind",
+	"TreeLine_Top_Behind",
+	"RightWall_Behind",
+	"Stump_Left_Behind",
+	"Rocks_Left_Behind",
+	"Rocks_Right_Behind",
+]
+const _BEHIND_GATE_BODIES: PackedStringArray = [
+	"TreeLine_Bottom",
+	"TreeLine_Top",
+	"",
+	"Stump_Left",
+	"Rocks_Left",
+	"Rocks_Right",
+]
 
 const _STONES_ARRIVE_DISTANCE := 36.0
 const _SCRIPTED_WALK_SPEED_SCALE := 0.5
@@ -413,16 +426,21 @@ func _get_leaf_occlusion_zones() -> Array[Area2D]:
 	if colliders == null:
 		return []
 	var zones: Array[Area2D] = []
-	for zone_name in ["TreeLine_Bottom_Behind", "TreeLine_Top_Behind", "RightWall_Behind"]:
-		var zone := colliders.get_node_or_null(zone_name) as Area2D
+	for zone_name in _BEHIND_ZONE_NAMES:
+		zones.append(colliders.get_node_or_null(zone_name) as Area2D)
+	var found := false
+	for zone in zones:
 		if zone != null:
-			zones.append(zone)
-	if zones.is_empty():
+			found = true
+			break
+	if not found:
+		zones.clear()
 		for legacy_name in ["TreeLine_Bottom_Leaves", "TreeLine_Top_Leaves"]:
 			var zone := colliders.get_node_or_null(legacy_name) as Area2D
 			if zone != null:
 				zones.append(zone)
-	if zones.is_empty():
+				found = true
+	if not found:
 		push_warning("1.1_SchoolExterior: no leaf occlusion zones found under EnvironmentColliders.")
 	return zones
 
@@ -434,21 +452,37 @@ func _configure_leaf_occlusion_masks() -> void:
 		return
 	var polygons: Array[PackedVector2Array] = []
 	var feathers: Array[float] = []
+	var slot_parts: Array = []
+	var slot_part_cutoffs: Array = []
+	var zone_cutoffs := _behind_zone_y_cutoffs()
+	var zone_i := 0
 	for leaf_zone in _get_leaf_occlusion_zones():
-		if is_instance_valid(leaf_zone) and leaf_zone.has_method("get_shader_polygon"):
-			polygons.append(leaf_zone.call("get_shader_polygon"))
-			feathers.append(float(leaf_zone.get("feather_px")))
-		else:
-			polygons.append(PackedVector2Array())
-			feathers.append(0.0)
-	while polygons.size() < 3:
+		var packed_points := PackedVector2Array()
+		var packed_parts := Vector4i.ZERO
+		var feather := 0.0
+		var shader_polys: Array = []
+		if is_instance_valid(leaf_zone) and leaf_zone.has_method("get_packed_shader_points"):
+			packed_points = leaf_zone.call("get_packed_shader_points")
+			packed_parts = leaf_zone.call("get_packed_part_counts")
+			feather = float(leaf_zone.get("feather_px"))
+			if leaf_zone.has_method("get_shader_polygons"):
+				shader_polys = leaf_zone.call("get_shader_polygons")
+		elif is_instance_valid(leaf_zone) and leaf_zone.has_method("get_shader_polygon"):
+			packed_points = leaf_zone.call("get_shader_polygon")
+			feather = float(leaf_zone.get("feather_px"))
+		polygons.append(packed_points)
+		feathers.append(feather)
+		slot_parts.append(packed_parts)
+		var slot_cutoff: float = zone_cutoffs[zone_i] if zone_i < zone_cutoffs.size() else 1e9
+		slot_part_cutoffs.append(
+			_part_y_cutoffs_for_zone(zone_i, shader_polys, slot_cutoff)
+		)
+		zone_i += 1
+	while polygons.size() < 6:
 		polygons.append(PackedVector2Array())
 		feathers.append(0.0)
-	var y_cutoffs: Array[float] = []
-	for trunk_body in _trunk_lines:
-		y_cutoffs.append(_trunk_line_y_cutoff(trunk_body))
-	while y_cutoffs.size() < 3:
-		y_cutoffs.append(1e9)
+		slot_parts.append(Vector4i.ZERO)
+		slot_part_cutoffs.append(Vector4.ZERO)
 	_player.call(
 		"configure_leaf_occlusion_polygons",
 		polygons[0],
@@ -456,12 +490,24 @@ func _configure_leaf_occlusion_masks() -> void:
 		feathers[0],
 		feathers[1],
 		_LEAF_FADE_ALPHA,
-		y_cutoffs[0],
-		y_cutoffs[1],
+		zone_cutoffs[0],
+		zone_cutoffs[1],
 		_LEAF_GATE_SOFTNESS,
 		polygons[2],
 		feathers[2],
-		y_cutoffs[2],
+		zone_cutoffs[2],
+		false,
+		polygons[3],
+		feathers[3],
+		zone_cutoffs[3],
+		polygons[4],
+		feathers[4],
+		zone_cutoffs[4],
+		polygons[5],
+		feathers[5],
+		zone_cutoffs[5],
+		slot_parts,
+		slot_part_cutoffs,
 	)
 
 
@@ -504,16 +550,106 @@ func _wake_static_colliders() -> void:
 			child.position = child.position
 
 
-func _trunk_line_y_cutoff(trunk_body: StaticBody2D) -> float:
-	if not is_instance_valid(trunk_body):
+func _behind_zone_y_cutoffs() -> Array[float]:
+	var colliders := get_node_or_null("EnvironmentColliders")
+	var cutoffs: Array[float] = []
+	for i in _BEHIND_ZONE_NAMES.size():
+		var body_name := _BEHIND_GATE_BODIES[i] if i < _BEHIND_GATE_BODIES.size() else ""
+		if body_name.is_empty() or colliders == null:
+			cutoffs.append(1e9)
+			continue
+		var body := colliders.get_node_or_null(body_name) as StaticBody2D
+		cutoffs.append(_collision_front_y_cutoff(body))
+	while cutoffs.size() < 6:
+		cutoffs.append(1e9)
+	return cutoffs
+
+
+func _collision_front_y_cutoff(body: StaticBody2D) -> float:
+	if not is_instance_valid(body):
 		return 1e9
-	var polygon_node := trunk_body.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
-	if polygon_node == null or polygon_node.polygon.is_empty():
-		return trunk_body.global_position.y - _LEAF_Y_CUTOFF_MARGIN
+	var max_y := -INF
+	for child in body.get_children():
+		var polygon_node := child as CollisionPolygon2D
+		if polygon_node == null or polygon_node.polygon.is_empty():
+			continue
+		max_y = maxf(max_y, _polygon_node_front_y(polygon_node))
+	if max_y == -INF:
+		return body.global_position.y - _LEAF_Y_CUTOFF_MARGIN
+	return max_y
+
+
+func _part_y_cutoffs_for_zone(
+	zone_index: int, shader_polys: Array, slot_cutoff: float
+) -> Vector4:
+	var cutoffs := Vector4(slot_cutoff, slot_cutoff, slot_cutoff, slot_cutoff)
+	var colliders := get_node_or_null("EnvironmentColliders")
+	if colliders == null or zone_index < 0 or zone_index >= _BEHIND_GATE_BODIES.size():
+		return cutoffs
+	var body_name := _BEHIND_GATE_BODIES[zone_index]
+	if body_name.is_empty():
+		return Vector4(1e9, 1e9, 1e9, 1e9)
+	var body := colliders.get_node_or_null(body_name) as StaticBody2D
+	if not is_instance_valid(body):
+		return cutoffs
+	var fronts: Array = []
+	for child in body.get_children():
+		var polygon_node := child as CollisionPolygon2D
+		if polygon_node == null or polygon_node.polygon.is_empty():
+			continue
+		fronts.append({
+			"centroid": _polygon_node_centroid_world(polygon_node),
+			"y": _polygon_node_front_y(polygon_node),
+		})
+	if fronts.is_empty() or shader_polys.is_empty():
+		return cutoffs
+	for part_i in mini(shader_polys.size(), 4):
+		var poly: PackedVector2Array = shader_polys[part_i]
+		var centroid := _packed_centroid(poly)
+		var best_y := slot_cutoff
+		var best_d := INF
+		for item in fronts:
+			var d: float = centroid.distance_squared_to(item.centroid)
+			if d < best_d:
+				best_d = d
+				best_y = item.y
+		match part_i:
+			0:
+				cutoffs.x = best_y
+			1:
+				cutoffs.y = best_y
+			2:
+				cutoffs.z = best_y
+			3:
+				cutoffs.w = best_y
+	return cutoffs
+
+
+func _polygon_node_front_y(polygon_node: CollisionPolygon2D) -> float:
 	var max_y := -INF
 	for local_point in polygon_node.polygon:
-		var world_point := polygon_node.to_global(local_point)
-		max_y = maxf(max_y, world_point.y)
+		max_y = maxf(max_y, polygon_node.to_global(local_point).y)
 	if max_y == -INF:
 		return 1e9
 	return max_y - _LEAF_Y_CUTOFF_MARGIN
+
+
+func _polygon_node_centroid_world(polygon_node: CollisionPolygon2D) -> Vector2:
+	return _packed_centroid(_world_points_of_polygon(polygon_node))
+
+
+func _world_points_of_polygon(polygon_node: CollisionPolygon2D) -> PackedVector2Array:
+	var world_points := PackedVector2Array()
+	world_points.resize(polygon_node.polygon.size())
+	for i in polygon_node.polygon.size():
+		world_points[i] = polygon_node.to_global(polygon_node.polygon[i])
+	return world_points
+
+
+func _packed_centroid(points: PackedVector2Array) -> Vector2:
+	if points.is_empty():
+		return Vector2.ZERO
+	var sum := Vector2.ZERO
+	for point in points:
+		sum += point
+	return sum / float(points.size())

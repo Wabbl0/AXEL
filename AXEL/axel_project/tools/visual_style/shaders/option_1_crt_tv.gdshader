@@ -18,6 +18,7 @@ uniform float roll_amount : hint_range(0.0, 1.0) = 0.35;
 uniform float roll_speed : hint_range(-8.0, 8.0) = 2.4;
 uniform float glitch_rate : hint_range(0.0, 12.0) = 4.5;
 uniform float glitch_shift : hint_range(0.0, 0.02) = 0.006;
+uniform float player_chroma : hint_range(0.0, 0.01) = 0.001;
 
 float hash21(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -29,9 +30,21 @@ vec2 curve_uv(vec2 uv, float amount) {
 	return uv + c * r2 * amount;
 }
 
+float player_sprite_mask(vec3 rgb) {
+	float lum = dot(rgb, vec3(0.299, 0.587, 0.114));
+	float balance = 1.0 - abs(rgb.r - rgb.g) - abs(rgb.g - rgb.b);
+	float white_body = smoothstep(0.32, 0.78, lum) * smoothstep(0.12, 0.45, balance);
+	float shadow = smoothstep(0.02, 0.22, lum) * (1.0 - smoothstep(0.35, 0.55, lum));
+	return clamp(max(white_body, shadow * 0.85), 0.0, 1.0);
+}
+
 void fragment() {
 	vec2 uv_screen = SCREEN_UV;
 	float t = TIME;
+	vec3 src = texture(screen_texture, uv_screen).rgb;
+	float p_chroma = player_sprite_mask(src);
+	p_chroma = max(p_chroma, player_sprite_mask(texture(screen_texture, uv_screen + vec2(chroma, 0.0)).rgb));
+	p_chroma = max(p_chroma, player_sprite_mask(texture(screen_texture, uv_screen - vec2(chroma, 0.0)).rgb));
 
 	// Occasional horizontal glitch burst
 	float burst_id = floor(t * glitch_rate);
@@ -45,7 +58,7 @@ void fragment() {
 
 	vec3 col = vec3(0.0);
 	if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-		float off = chroma;
+		float off = mix(chroma, player_chroma, p_chroma);
 		col.r = texture(screen_texture, uv + vec2(off, 0.0)).r;
 		col.g = texture(screen_texture, uv).g;
 		col.b = texture(screen_texture, uv - vec2(off, 0.0)).b;

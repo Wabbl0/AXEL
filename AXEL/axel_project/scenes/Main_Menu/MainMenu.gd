@@ -11,6 +11,9 @@ func _ready() -> void:
 	quit_button.pressed.connect(_on_quit_pressed)
 
 func _on_start_pressed() -> void:
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("to_overworld"):
+		music.call("to_overworld")
 	get_tree().change_scene_to_file("res://scenes/Arc_1/1.1_SchoolExterior.tscn")
 
 func _on_continue_pressed() -> void:

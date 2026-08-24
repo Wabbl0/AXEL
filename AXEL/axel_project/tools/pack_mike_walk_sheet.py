@@ -27,6 +27,10 @@ INK_THRESH = 8
 MIN_COL_INK = 6
 MIN_GAP = 10
 SPECK_MAX_PIXELS = 12
+# Isolated blobs this far from the main pose (pixels) are leftover brush, not body.
+FAR_BLOB_DIST = 40
+# After pack, drop extra islands smaller than this (stray strokes near head/feet).
+ISLAND_MAX_PIXELS = 120
 CELL_PAD = 20
 HEAD_FILL_RGBA = (0, 0, 0, 255)
 BODY_INK_RGBA = (255, 255, 255, 255)
@@ -143,6 +147,99 @@ def _drop_specks(mask: Image.Image, max_pixels: int = SPECK_MAX_PIXELS) -> Image
 	return out
 
 
+def _drop_far_blobs(pose: Image.Image, min_dist: int = FAR_BLOB_DIST) -> Image.Image:
+	"""Erase disconnected specks sitting well off the main silhouette."""
+	w, h = pose.size
+	pix = pose.load()
+	alpha = [[pix[x, y][3] > INK_THRESH for x in range(w)] for y in range(h)]
+	visited = [[False] * w for _ in range(h)]
+	dirs = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
+	comps: List[List[Tuple[int, int]]] = []
+	for y in range(h):
+		for x in range(w):
+			if visited[y][x] or not alpha[y][x]:
+				continue
+			q = deque([(x, y)])
+			visited[y][x] = True
+			comp = [(x, y)]
+			while q:
+				cx, cy = q.popleft()
+				for dx, dy in dirs:
+					nx, ny = cx + dx, cy + dy
+					if nx < 0 or ny < 0 or nx >= w or ny >= h:
+						continue
+					if visited[ny][nx] or not alpha[ny][nx]:
+						continue
+					visited[ny][nx] = True
+					q.append((nx, ny))
+					comp.append((nx, ny))
+			comps.append(comp)
+	if len(comps) <= 1:
+		return pose
+	comps.sort(key=len, reverse=True)
+	main = set(comps[0])
+	reach = min_dist * min_dist
+	out = pose.copy()
+	op = out.load()
+	for comp in comps[1:]:
+		near = False
+		for x, y in comp:
+			for dx in range(-min_dist + 1, min_dist):
+				for dy in range(-min_dist + 1, min_dist):
+					if dx * dx + dy * dy >= reach:
+						continue
+					if (x + dx, y + dy) in main:
+						near = True
+						break
+				if near:
+					break
+			if near:
+				break
+		if not near:
+			for x, y in comp:
+				op[x, y] = (0, 0, 0, 0)
+	return out
+
+
+def _keep_main_island(pose: Image.Image, max_extra: int = ISLAND_MAX_PIXELS) -> Image.Image:
+	"""Erase leftover brush islands that sit near Mike but are not the body."""
+	w, h = pose.size
+	pix = pose.load()
+	visited = [[False] * w for _ in range(h)]
+	dirs = ((1, 0), (-1, 0), (0, 1), (0, -1))
+	comps: List[List[Tuple[int, int]]] = []
+	for y in range(h):
+		for x in range(w):
+			if visited[y][x] or pix[x, y][3] <= INK_THRESH:
+				continue
+			q = deque([(x, y)])
+			visited[y][x] = True
+			comp = [(x, y)]
+			while q:
+				cx, cy = q.popleft()
+				for dx, dy in dirs:
+					nx, ny = cx + dx, cy + dy
+					if nx < 0 or ny < 0 or nx >= w or ny >= h:
+						continue
+					if visited[ny][nx] or pix[nx, ny][3] <= INK_THRESH:
+						continue
+					visited[ny][nx] = True
+					q.append((nx, ny))
+					comp.append((nx, ny))
+			comps.append(comp)
+	if len(comps) <= 1:
+		return pose
+	comps.sort(key=len, reverse=True)
+	out = pose.copy()
+	op = out.load()
+	for comp in comps[1:]:
+		if len(comp) > max_extra:
+			continue
+		for x, y in comp:
+			op[x, y] = (0, 0, 0, 0)
+	return out
+
+
 def _extract_poses(path: str, expect: int) -> List[Image.Image]:
 	src = Image.open(path).convert("RGBA")
 	a = _alpha(src)
@@ -174,6 +271,7 @@ def _extract_poses(path: str, expect: int) -> List[Image.Image]:
 			for x in range(crop.size[0]):
 				if mpx[x, y]:
 					kp[x, y] = (rp[x, y], gp[x, y], bp[x, y], oap[x, y])
+		kept = _drop_far_blobs(kept)
 		poses.append(kept)
 		print(f"  pose {len(poses)}: {kept.size[0]}x{kept.size[1]} from x {xmin}-{xmax} y {ymin}-{ymax}")
 	return poses
@@ -301,7 +399,7 @@ def main() -> None:
 	assert len(all_poses) == 12
 
 	print("Head plate + solid body…")
-	processed = [_finish_pose(p) for p in all_poses]
+	processed = [_keep_main_island(_finish_pose(p)) for p in all_poses]
 
 	sheet, cell_w, cell_h = _pack(processed)
 	print(f"Sheet {sheet.size[0]}x{sheet.size[1]} cell {cell_w}x{cell_h}")

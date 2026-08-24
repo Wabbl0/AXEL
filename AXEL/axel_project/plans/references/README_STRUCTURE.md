@@ -11,7 +11,8 @@ Prefer the **live project tree** when this file and disk disagree — update thi
 
 ## Current top-level layout (live)
 
-- `assets/` — runtime art (`sprites/`) and first game audio (`audio/` — typewriter WAVs)
+- `assets/` — runtime art (`sprites/`) and game audio (`audio/` — typewriter WAVs plus `music/` stems for autoload BGM: live `B_Goes_Down_p1.wav` / `B_Goes_Down_p2.wav`)
+- `default_bus_layout.tres` — `Master`, `Music` (~`-12` dB), `Typewriter` (typing loop), `TypewriterOpen` (bar open/close + Panner)
 - `scenes/`
   - `Main_Menu/`, `Arc_1/` … `Arc_7/`, `Endings/`
   - `core/` — background/camera/player helpers, placeholders
@@ -19,7 +20,7 @@ Prefer the **live project tree** when this file and disk disagree — update thi
   - `ui/` — dialogue, interact prompt, shared UI
   - `fx/` — noir/scanline/CRT overlays, memory indicator, glitch/pulse
 - `scripts/`
-  - `autoload/` — `AxelPostFxStack`, `AxelEventFx`
+  - `autoload/` — `AxelPostFxStack`, `AxelEventFx`, `AxelMusic`
   - `Player.gd` (and related gameplay scripts as they land under `gameplay/` / `ui/` / `debug/`)
 - `combat/` — self-contained combat subsystem (`scripts/`, `scenes/`, `art/`, `data/`, `test/`, …)
 - `tools/` — QA, bots, capture, visual-style helpers

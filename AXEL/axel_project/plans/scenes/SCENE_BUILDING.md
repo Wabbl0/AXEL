@@ -82,7 +82,9 @@ Root (Node2D + scene script)
 
 **Layer order (UI):** dialogue above `[E]` prompt; both above CRT / baseline post-FX. Hub/map chrome (red `X`, travel choices) that must stay readable: CanvasLayer ~110 (above CRT 108, below dialogue 111) — do not rely on root Control `z_index`. See `AI_DOCS.md` § Style and FX.
 
-**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Tune volume on `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players.
+**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Typing ticks use the `Typewriter` bus; open/close uses `TypewriterOpen` (Panner for the bar click only). Per-clip mix is `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players.
+
+**Music:** Do not instance soundtrack players in menu/overworld `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p1` menu loop with 10s fade-in → hard-cut to `p2` after New Game finishes the current p1 loop). Loudness: `Music` bus in `default_bus_layout.tres`.
 
 **Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked.
 
@@ -140,6 +142,7 @@ Do not slice the raw `kävely_etu` / `kävely_sivu` drawings as a grid. Pack wit
 - Head: black fill plate + white brush strokes on top (eyes/scribble holes stay black and opaque — no room showing through).
 - Chin down: solid white ink (not see-through).
 - Empty around Mike: transparent.
+- Packer drops far-off specks (`FAR_BLOB_DIST`) and extra islands under 120 px (stray waist/head strokes).
 - `white_sprite.gdshader` keeps packed RGB. Mike is **not** noir-inverted.
 
 `Player.gd` animations: `walk_down` / `walk_up` / `walk_right` + `flip_h` for left; idle / idle_back / idle_side keep last facing. Assign `res://assets/sprites/mike_sprite_frames.tres` in the editor. Rollback: restore `mike_walking-Sheet_legacy13.png` over the live sheet and revert Player + scales.
@@ -203,10 +206,14 @@ glow pattern.
 By default the **player model**, **memory glow**, and **`[E]` interact chip**
 must sit on their node. No extra offset.
 
-- Player: `AnimatedSprite`, `ShadowOutline`, and facing hitboxes
+- Player: `AnimatedSprite` and facing hitboxes
   (`CollisionFront` / `CollisionBack` / `CollisionSide`) stay at
   `(0, 0)` on the Player node. Do not author a sprite/collision child offset
   to “fix” spawn. Move the Player node itself.
+- Shared exception: `ShadowOutline` uses the 1.2 fit on every walkable room
+  (`position` `(-5.0416956, -5.041732)`, `scale` `(1.0335996, 0.9969109)`).
+  `Player.gd` reapplies this at Play. Copy those values into a new room’s
+  `.tscn` so the editor preview matches. Do not invent a per-room silhouette.
 - Memory glow: `MemoryIndicator.visual_offset` stays `Vector2.ZERO`. Align
   `MemoryInteractArea` to the same editor point as the glow node.
 - `[E]` chip: `InteractPromptOverlay.screen_offset` stays `Vector2.ZERO`
@@ -290,10 +297,10 @@ Do not rewire without approval. Still deferred:
 
 Do not copy to new scenes without a design pass.
 
-- Zones: `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` + `leaf_occlusion_zone.gd`
+- Zones: `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` / `Stump_Left_Behind` / `Rocks_Left_Behind` / `Rocks_Right_Behind` + `leaf_occlusion_zone.gd`
 - Wired in `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_polygons` → `white_sprite.gdshader`
-- Trees use a trunk Y-gate. `RightWall_Behind` uses cutoff `1e9` (no trunk line) so only the polygon matters. Shader: cutoff `> 1e8` means “allow,” not “off.”
-- Canon `feather_px = 2.0` on all behind zones (1.1 trees + right wall, 2.1 tables/chairs, 3.1 wall/bush/well)
+- Trees, stump, and rocks use a collision-front Y-gate (same as the tree trunk line): fade only when standing behind the object, not when overlapping from the front. `RightWall_Behind` uses cutoff `1e9` (no Y-gate) so only the polygon matters. Shader: cutoff `> 1e8` means “allow,” not “off.” Extra `CollisionPolygon2D` children under one behind zone all count (max 4 per zone). Each extra polygon uses the nearest rock/stump collision as its own front line.
+- Shader has 6 behind slots. Canon `feather_px = 2.0` on all behind zones (1.1 trees + wall + stump + rocks, 2.1 tables/chairs, 3.1 wall/bush/well)
 
 ## What is walkable / shipped
 

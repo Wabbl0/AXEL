@@ -477,7 +477,7 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 		))
 
 	var child_pos_eps := 0.05
-	for child_name in ["AnimatedSprite", "ShadowOutline", "FallbackBody", "CollisionShape2D", "CollisionFront", "CollisionBack", "CollisionSide"]:
+	for child_name in ["AnimatedSprite", "FallbackBody", "CollisionShape2D", "CollisionFront", "CollisionBack", "CollisionSide"]:
 		var child := player.get_node_or_null(child_name) as Node2D
 		if child == null:
 			continue
@@ -489,6 +489,29 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 				scene_path,
 				"Player/%s position=%s (must be (0, 0))" % [child_name, child.position],
 				"Zero the child offset and move the Player node instead."
+			))
+
+	var shadow := player.get_node_or_null("ShadowOutline") as Node2D
+	if shadow != null:
+		var expected_pos := Vector2(-5.0416956, -5.041732)
+		var expected_scale := Vector2(1.0335996, 0.9969109)
+		if shadow.position.distance_to(expected_pos) > child_pos_eps:
+			findings.append(make_finding(
+				"movement.shadow_outline_fit",
+				"major",
+				"REGRESSION",
+				scene_path,
+				"Player/ShadowOutline position=%s (must match 1.2 fit %s)" % [shadow.position, expected_pos],
+				"Copy ShadowOutline position/scale from 1.2_Corridor (shared Mike silhouette fit)."
+			))
+		if shadow.scale.distance_to(expected_scale) > child_pos_eps:
+			findings.append(make_finding(
+				"movement.shadow_outline_fit",
+				"major",
+				"REGRESSION",
+				scene_path,
+				"Player/ShadowOutline scale=%s (must match 1.2 fit %s)" % [shadow.scale, expected_scale],
+				"Copy ShadowOutline position/scale from 1.2_Corridor (shared Mike silhouette fit)."
 			))
 
 	var scene_script := root.get_script() as Script

@@ -23,6 +23,9 @@ const _MIKE_FRAME_COUNT := 12
 const _HITBOX_FRONT := preload("res://scenes/player/hitbox_front.tres")
 const _HITBOX_BACK := preload("res://scenes/player/hitbox_back.tres")
 const _HITBOX_SIDE := preload("res://scenes/player/hitbox_side.tres")
+## Shared ShadowOutline fit authored in 1.2; applied on every room so the silhouette stays aligned.
+const SHADOW_OUTLINE_POS := Vector2(-5.0416956, -5.041732)
+const SHADOW_OUTLINE_SCALE := Vector2(1.0335996, 0.9969109)
 
 @export var speed: float = 220.0
 @export var overworld_tint: Color = Color(1.0, 1.0, 1.0, 1.0)
@@ -209,6 +212,8 @@ func _build_sprite_frames() -> void:
 	animated_sprite.play(&"idle")
 
 func _setup_shadow_outline() -> void:
+	shadow_outline.position = SHADOW_OUTLINE_POS
+	shadow_outline.scale = SHADOW_OUTLINE_SCALE
 	shadow_outline.sprite_frames = animated_sprite.sprite_frames
 	shadow_outline.animation = animated_sprite.animation
 	shadow_outline.frame = animated_sprite.frame
@@ -567,28 +572,56 @@ func configure_leaf_occlusion_polygons(
 	feather2: float = 0.0,
 	y_cutoff_2: float = 1e9,
 	use_anchor_y: bool = false,
+	poly3: PackedVector2Array = PackedVector2Array(),
+	feather3: float = 0.0,
+	y_cutoff_3: float = 1e9,
+	poly4: PackedVector2Array = PackedVector2Array(),
+	feather4: float = 0.0,
+	y_cutoff_4: float = 1e9,
+	poly5: PackedVector2Array = PackedVector2Array(),
+	feather5: float = 0.0,
+	y_cutoff_5: float = 1e9,
+	slot_parts: Array = [],
+	slot_part_cutoffs: Array = [],
 ) -> void:
 	var mat := animated_sprite.material as ShaderMaterial
 	if mat == null:
 		return
 	var gate := 12.0 if gate_softness < 0.0 else gate_softness
-	mat.set_shader_parameter("leaf_poly_0", _pad_leaf_polygon(poly0))
-	mat.set_shader_parameter("leaf_poly_0_count", mini(poly0.size(), _LEAF_POLY_SHADER_MAX))
-	mat.set_shader_parameter("leaf_poly_0_feather", maxf(feather0, 0.0))
-	mat.set_shader_parameter("leaf_poly_1", _pad_leaf_polygon(poly1))
-	mat.set_shader_parameter("leaf_poly_1_count", mini(poly1.size(), _LEAF_POLY_SHADER_MAX))
-	mat.set_shader_parameter("leaf_poly_1_feather", maxf(feather1, 0.0))
-	mat.set_shader_parameter("leaf_poly_2", _pad_leaf_polygon(poly2))
-	mat.set_shader_parameter("leaf_poly_2_count", mini(poly2.size(), _LEAF_POLY_SHADER_MAX))
-	mat.set_shader_parameter("leaf_poly_2_feather", maxf(feather2, 0.0))
+	_set_leaf_poly_slot(mat, 0, poly0, feather0, y_cutoff_0, slot_parts, slot_part_cutoffs)
+	_set_leaf_poly_slot(mat, 1, poly1, feather1, y_cutoff_1, slot_parts, slot_part_cutoffs)
+	_set_leaf_poly_slot(mat, 2, poly2, feather2, y_cutoff_2, slot_parts, slot_part_cutoffs)
+	_set_leaf_poly_slot(mat, 3, poly3, feather3, y_cutoff_3, slot_parts, slot_part_cutoffs)
+	_set_leaf_poly_slot(mat, 4, poly4, feather4, y_cutoff_4, slot_parts, slot_part_cutoffs)
+	_set_leaf_poly_slot(mat, 5, poly5, feather5, y_cutoff_5, slot_parts, slot_part_cutoffs)
 	mat.set_shader_parameter("leaf_fade_alpha", clampf(fade_alpha, 0.0, 1.0))
 	mat.set_shader_parameter("leaf_gate_softness", maxf(gate, 0.001))
-	mat.set_shader_parameter("leaf_y_cutoff_0", y_cutoff_0)
-	mat.set_shader_parameter("leaf_y_cutoff_1", y_cutoff_1)
-	mat.set_shader_parameter("leaf_y_cutoff_2", y_cutoff_2)
 	mat.set_shader_parameter("leaf_mask_use_anchor_y", 1 if use_anchor_y else 0)
 	if shadow_outline.material != mat:
 		shadow_outline.material = mat
+
+
+func _set_leaf_poly_slot(
+	mat: ShaderMaterial,
+	slot: int,
+	poly: PackedVector2Array,
+	feather: float,
+	y_cutoff: float,
+	slot_parts: Array = [],
+	slot_part_cutoffs: Array = [],
+) -> void:
+	mat.set_shader_parameter("leaf_poly_%d" % slot, _pad_leaf_polygon(poly))
+	mat.set_shader_parameter("leaf_poly_%d_count" % slot, mini(poly.size(), _LEAF_POLY_SHADER_MAX))
+	mat.set_shader_parameter("leaf_poly_%d_feather" % slot, maxf(feather, 0.0))
+	mat.set_shader_parameter("leaf_y_cutoff_%d" % slot, y_cutoff)
+	var parts := Vector4i.ZERO
+	if slot < slot_parts.size() and slot_parts[slot] is Vector4i:
+		parts = slot_parts[slot]
+	mat.set_shader_parameter("leaf_poly_%d_parts" % slot, parts)
+	var part_cutoffs := Vector4.ZERO
+	if slot < slot_part_cutoffs.size() and slot_part_cutoffs[slot] is Vector4:
+		part_cutoffs = slot_part_cutoffs[slot]
+	mat.set_shader_parameter("leaf_poly_%d_part_cutoffs" % slot, part_cutoffs)
 
 
 func set_leaf_occlusion_active(_active: bool) -> void:

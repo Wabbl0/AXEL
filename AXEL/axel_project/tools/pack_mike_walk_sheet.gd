@@ -13,6 +13,7 @@ const INK_THRESH := 8
 const MIN_COL_INK := 6
 const MIN_GAP := 10
 const SPECK_MAX := 12
+const ISLAND_MAX := 120
 const CELL_PAD := 20
 const HEAD_FILL := Color(0, 0, 0, 1)
 const BODY_INK := Color(1, 1, 1, 1)
@@ -47,7 +48,7 @@ func _main() -> void:
 
 	var processed: Array[Image] = []
 	for pose in all_poses:
-		processed.append(_finish_pose(pose))
+		processed.append(_keep_main_island(_finish_pose(pose)))
 
 	var max_w := 0
 	var max_h := 0
@@ -292,3 +293,47 @@ func _finish_pose(pose: Image) -> Image:
 					ink.set_pixel(x, y, Color(inv, inv, inv, oc.a))
 	plate.blend_rect(ink, Rect2i(0, 0, w, h), Vector2i.ZERO)
 	return plate
+
+
+func _keep_main_island(pose: Image) -> Image:
+	var w := pose.get_width()
+	var h := pose.get_height()
+	var visited := PackedByteArray()
+	visited.resize(w * h)
+	visited.fill(0)
+	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var comps: Array = []
+	for y in h:
+		for x in w:
+			var idx := y * w + x
+			if visited[idx] != 0 or pose.get_pixel(x, y).a * 255.0 <= float(INK_THRESH):
+				continue
+			var stack: Array[Vector2i] = [Vector2i(x, y)]
+			visited[idx] = 1
+			var comp: Array[Vector2i] = []
+			while not stack.is_empty():
+				var p: Vector2i = stack.pop_back()
+				comp.append(p)
+				for d in dirs:
+					var n: Vector2i = p + d
+					if n.x < 0 or n.y < 0 or n.x >= w or n.y >= h:
+						continue
+					var ni := n.y * w + n.x
+					if visited[ni] != 0:
+						continue
+					if pose.get_pixel(n.x, n.y).a * 255.0 <= float(INK_THRESH):
+						continue
+					visited[ni] = 1
+					stack.append(n)
+			comps.append(comp)
+	if comps.size() <= 1:
+		return pose
+	comps.sort_custom(func(a, b): return a.size() > b.size())
+	var out := pose.duplicate()
+	for i in range(1, comps.size()):
+		var extra: Array = comps[i]
+		if extra.size() > ISLAND_MAX:
+			continue
+		for p2 in extra:
+			out.set_pixel(p2.x, p2.y, Color(0, 0, 0, 0))
+	return out

@@ -11,9 +11,9 @@
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="16_leaf_zone"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="17_bg_lock"]
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="18_exploration_viewport"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
+[ext_resource type="Shape2D" uid="uid://dbn1b4dod2u42" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
+[ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
+[ext_resource type="Shape2D" uid="uid://duceuefjqn2yl" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(1218, 32)
@@ -25,16 +25,13 @@ size = Vector2(29.5, 1096)
 size = Vector2(80, 1096)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_right"]
-size = Vector2(29.5, 741.5449)
+size = Vector2(35, 741.27246)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_o6kf3"]
 size = Vector2(29.5, 310.77246)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_b508v"]
-size = Vector2(346.75, 27.5)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_qou8c"]
-size = Vector2(143, 27.5)
+size = Vector2(353.375, 31.75)
 
 [node name="1_1_SchoolExterior" type="Node2D" unique_id=521734377]
 script = ExtResource("12_school_ext")
@@ -44,7 +41,6 @@ script = ExtResource("18_exploration_viewport")
 design_viewport = Vector2i(1400, 1400)
 
 [node name="Background_1_1" type="Sprite2D" parent="." unique_id=1347460712]
-visible = false
 z_index = -100
 position = Vector2(32, -297)
 scale = Vector2(0.33494318, 0.32130682)
@@ -68,7 +64,7 @@ position = Vector2(546, 246)
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Bottom" unique_id=369581141]
 position = Vector2(68.032234, -185.61694)
 scale = Vector2(0.9111842, 1.1801473)
-polygon = PackedVector2Array(31.79132, 120.846725, 32.888794, 132.70966, -7.7176514, 132.70966, -4.425232, 119.999374)
+polygon = PackedVector2Array(31.79132, 118.30467, 33.986267, 136.09906, -9.912598, 137.79376, -4.425232, 118.30467)
 
 [node name="TreeLine_Bottom_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=1804677714]
 position = Vector2(546, 246)
@@ -83,7 +79,7 @@ position = Vector2(677, -68)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/TreeLine_Top" unique_id=303433852]
 position = Vector2(19, -111)
-polygon = PackedVector2Array(26, 91, 26, 102, -12, 104, -11, 91)
+polygon = PackedVector2Array(25, 87, 27, 107, -13, 110, -9, 87)
 
 [node name="TreeLine_Top_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=153265421]
 position = Vector2(677, -68)
@@ -98,29 +94,56 @@ polygon = PackedVector2Array(64, -184, 82, -128, 88, -108, 84, -89, 65.48755, -8
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left" unique_id=1199693288]
 position = Vector2(173, 473)
-polygon = PackedVector2Array(-7, -34, 14, -29, 24, -8, 42, 4, 48, 15, -32, 9)
+polygon = PackedVector2Array(-26, -3, 38, -3, 44, 5, 51, 16, -38, 14)
 
 [node name="CollisionPolygon2D2" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left" unique_id=1439809042]
-position = Vector2(270, 456)
-polygon = PackedVector2Array(0, 4, -28, 2, -5, -15, 2, -20, 12, -5, 17, 5)
+position = Vector2(274.00482, 445.07626)
+scale = Vector2(1.4858427, 1.6996837)
+polygon = PackedVector2Array(-23, 7, -34.15895, 7.2070007, -2.0223083, -17.106857, 3.361847, -17.106857, 18, 7)
 
-[node name="CollisionPolygon2D3" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left" unique_id=599931353]
-polygon = PackedVector2Array(243, 361, 254, 352, 247, 346, 238, 335, 228, 338, 217, 351, 215, 362, 202, 363, 207, 373)
+[node name="Rocks_Left_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=2101203]
+monitoring = false
+monitorable = false
+script = ExtResource("16_leaf_zone")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Left_Behind" unique_id=2101204]
+position = Vector2(-7, 4)
+polygon = PackedVector2Array(172, 438, 181, 433, 194, 437, 204, 459, 214, 464, 221, 472, 233, 490, 221, 491, 196, 491, 168, 489, 142, 487)
 
 [node name="Stump_Left" type="StaticBody2D" parent="EnvironmentColliders" unique_id=226973750]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Stump_Left" unique_id=555994690]
 position = Vector2(304, 125)
-polygon = PackedVector2Array(-25, -17, 8, -24, 33, -15, 29, 5, -24, 4)
+polygon = PackedVector2Array(-25, -20, 2, -24, 31, -20, 29, 5, -24, 4)
+
+[node name="Stump_Left_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=2101201]
+monitoring = false
+monitorable = false
+script = ExtResource("16_leaf_zone")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Stump_Left_Behind" unique_id=2101202]
+position = Vector2(320, 114)
+polygon = PackedVector2Array(-42, -4, -30, -10, -4, -11, 14, -6, 15, 0, 13, 22, -40, 18, -40, 4)
 
 [node name="Rocks_Right" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1101637411]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Right" unique_id=1459243302]
 position = Vector2(809, 689)
-polygon = PackedVector2Array(-47, -23, -77, -2, -88, 22, 60, 21, 56, -24, 26, -41, 8, -75, -14, -75, -19, -59, -34, -52)
+polygon = PackedVector2Array(-83, 6, -88, 22, 60, 21, 60, 5)
 
 [node name="CollisionPolygon2D2" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Right" unique_id=113757170]
-polygon = PackedVector2Array(677, 660, 683, 652, 690, 642, 703, 650, 709, 679, 668, 682, 667, 669)
+position = Vector2(-320.76697, -207.38658)
+scale = Vector2(1.4680246, 1.2986131)
+polygon = PackedVector2Array(691.2466, 635.5908, 705, 645, 708, 665, 709, 679, 666, 681, 667, 658, 685.7971, 635.5908)
+
+[node name="Rocks_Right_Behind" type="Area2D" parent="EnvironmentColliders" unique_id=2101205]
+monitoring = false
+monitorable = false
+script = ExtResource("16_leaf_zone")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Rocks_Right_Behind" unique_id=2101206]
+position = Vector2(61, -19)
+polygon = PackedVector2Array(790, 669, 808, 685, 815, 728, 655, 729, 666, 704, 681, 693, 704, 676, 717, 653, 732, 646, 742, 631, 759, 638, 772, 665)
 
 [node name="TopWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1058376895]
 position = Vector2(640, 16)
@@ -163,7 +186,7 @@ polygon = PackedVector2Array(398, 76, 92, 80, 91, 48, 400, -125)
 position = Vector2(1264, 360)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=455161837]
-position = Vector2(-345.75, 86.5)
+position = Vector2(-348.5, 86.63623)
 shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="CollisionShape2D2" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=1919725186]
@@ -172,22 +195,17 @@ rotation = 1.5707964
 shape = SubResource("RectangleShape2D_o6kf3")
 
 [node name="CollisionShape2D3" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=175384946]
-position = Vector2(-41, -453)
+position = Vector2(-43.125, -456.3125)
 rotation = 1.5707964
 shape = SubResource("RectangleShape2D_b508v")
-
-[node name="CollisionShape2D4" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=1226458457]
-position = Vector2(-352.25, 59.5)
-rotation = 1.5707964
-shape = SubResource("RectangleShape2D_qou8c")
 
 [node name="Doors" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1045591823]
 position = Vector2(-47, 13)
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Doors" unique_id=123314690]
-position = Vector2(-241.0259, 77.96611)
-scale = Vector2(1.1533451, 0.910815)
-polygon = PackedVector2Array(1029.5764, 283.99994, 1047.8591, 284.9999, 1045.6765, 438.1064, 1030.9368, 439.2043)
+position = Vector2(-2340.8533, 77.96611)
+scale = Vector2(3.1618047, 0.910815)
+polygon = PackedVector2Array(1035.1812, 285.49582, 1041.7043, 285.49582, 1041.7043, 437.00845, 1035.1812, 437.00845)
 
 [node name="DoorInteractArea" type="Area2D" parent="EnvironmentColliders/Doors" unique_id=1982745601]
 monitorable = false
@@ -195,7 +213,7 @@ monitorable = false
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="EnvironmentColliders/Doors/DoorInteractArea" unique_id=1982745602]
 position = Vector2(-2483.8662, 31.99997)
 scale = Vector2(3.2818022, 1.0000004)
-polygon = PackedVector2Array(1029.5764, 283.99994, 1047.8591, 284.9999, 1048.1638, 461.99985, 1030.1858, 454.99985)
+polygon = PackedVector2Array(1029.5764, 304.9999, 1047.8591, 304.9999, 1048.1638, 443.99985, 1029.5764, 443.99985)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=1984527034]
 layer = 100
@@ -204,7 +222,7 @@ follow_viewport_enabled = true
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=304166626]
 unique_name_in_owner = true
 z_index = 20
-position = Vector2(227, 430)
+position = Vector2(227, 405)
 scale = Vector2(0.079339, 0.079339)
 script = ExtResource("2_elx0u")
 speed = 120.0
@@ -213,13 +231,14 @@ animation_fps = 5.0
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=663540772]
 sprite_frames = ExtResource("3_mike_frames")
-animation = &"idle"
+animation = &"idle_side"
 autoplay = "idle"
 
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=124778921]
 modulate = Color(0, 0, 0, 0.55)
 z_index = -1
-scale = Vector2(1.06, 1.06)
+position = Vector2(-5.0416956, -5.041732)
+scale = Vector2(1.0335996, 0.9969109)
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
 
@@ -229,14 +248,17 @@ polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 
 [node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=1911443813]
 shape = ExtResource("hb_front")
+debug_color = Color(0, 0.70980394, 0.9490196, 0.41960785)
+metadata/authored_pos = Vector2(0, 0)
 
-[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player"]
-disabled = true
+[node name="CollisionBack" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=787592421]
 shape = ExtResource("hb_back")
+metadata/authored_pos = Vector2(0, 0)
 
-[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player"]
-disabled = true
+[node name="CollisionSide" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=123524789]
 shape = ExtResource("hb_side")
+debug_color = Color(0.3197123, 0.89684623, 0.99999994, 0.41960785)
+metadata/authored_pos = Vector2(0, 0)
 
 [node name="TopDialogueOverlay" parent="." unique_id=875088782 instance=ExtResource("11_top_dialogue")]
 

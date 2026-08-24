@@ -10,6 +10,7 @@ shader_parameter/roll_amount = 0.42
 shader_parameter/noise_amount = 0.08
 shader_parameter/glitch_rate = 2.0
 shader_parameter/glitch_shift = 0.003
+shader_parameter/player_chroma = 0.001
 
 [node name="InterfacePulseOverlay" type="CanvasLayer"]
 layer = 109

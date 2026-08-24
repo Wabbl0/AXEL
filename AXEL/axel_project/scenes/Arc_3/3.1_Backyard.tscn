@@ -177,7 +177,8 @@ autoplay = &"idle"
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=715808692]
 modulate = Color(0, 0, 0, 0.55)
 z_index = -1
-scale = Vector2(1.08, 1.08)
+position = Vector2(-5.0416956, -5.041732)
+scale = Vector2(1.0335996, 0.9969109)
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
 

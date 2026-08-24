@@ -10,9 +10,9 @@
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="14_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="15_bg_lock"]
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="16_exploration_viewport"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
+[ext_resource type="Shape2D" uid="uid://dbn1b4dod2u42" path="res://scenes/player/hitbox_back.tres" id="hb_back"]
+[ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
+[ext_resource type="Shape2D" uid="uid://duceuefjqn2yl" path="res://scenes/player/hitbox_side.tres" id="hb_side"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(2368.0889, 24)
@@ -21,7 +21,7 @@ size = Vector2(2368.0889, 24)
 size = Vector2(38.5, 1515)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exterior_interact"]
-size = Vector2(200, 500)
+size = Vector2(109.15751, 486.26373)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
 size = Vector2(80, 1520.1465)
@@ -77,6 +77,7 @@ position = Vector2(80, 740)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExteriorInteractArea" unique_id=1349544681]
+position = Vector2(-26.886448, 65.860794)
 shape = SubResource("RectangleShape2D_exterior_interact")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=158922864]
@@ -140,7 +141,8 @@ autoplay = "idle"
 [node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=1138124680]
 modulate = Color(0, 0, 0, 0.55)
 z_index = -1
-scale = Vector2(1.08, 1.08)
+position = Vector2(-5.0416956, -5.041732)
+scale = Vector2(1.0335996, 0.9969109)
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
 

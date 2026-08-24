@@ -6,7 +6,7 @@
 shader = ExtResource("1_crt_shader")
 shader_parameter/curvature = 0.08
 shader_parameter/chroma = 0.001
-shader_parameter/player_chroma = 0.0001
+shader_parameter/player_chroma = 0.0004
 shader_parameter/player_white_boost = 0.2
 shader_parameter/vignette = 0.3
 shader_parameter/scanline_strength = 0.12

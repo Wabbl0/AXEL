@@ -4834,3 +4834,185 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared write-ups to live overlay players, `hitbox_*.tres`, and `Player.gd` facing switch.
 - Notes: No Aug 21 or Aug 22 implement chats to backfill. Morning Aug 23 work was already in the earlier docs sync.
 
+### Tighter CRT chroma on new Mike
+- Request: RGB CRT ghosts on the new walk-sheet Mike sat too far off the body; pull them in.
+- Implementation: First pass widened the chroma mask. Follow-up (still too far / intro looked like two Mikes): drop spatial player chroma to `0`, use a 16px halo, skip barrel warp + edge vignette on Mike, and stop mixing uncurved `src` with curved CRT (that mix doubled him at the bezel). Scanlines still run on the body. Env CRT unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/fx/CrtPluginOverlay.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: One Mike. CRT lines sit on his ink. Intro walk-in from the screen edge should not spawn a second copy. Room CRT split is the same.
+- Verification: Shader + overlay uniforms reviewed. Stop Play and Play again so the CRT overlay reloads.
+- Notes: Tune on `CrtPluginOverlay.tscn` → `FilterRect` (`player_chroma` / `player_chroma_spread_px`). Remote tree while playing does not save.
+
+### Intro Mike stray-stroke debris
+- Request: After CRT chroma was pulled in, intro still showed broken brush-stroke “debris” around Mike (not one line on the body).
+- Implementation: Stripped disconnected ink islands off `mike_walking-Sheet.png` (side walk frames had leftover specks by the head/legs). Pack now drops extra islands under 120 px after the head plate. Intro `InterfacePulseOverlay` no longer chroma-splits, glitch-shifts, or grains Mike — those were turning specks into RGB spray.
+- Files changed:
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet.png`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/tools/visual_style/shaders/option_1_crt_tv.gdshader`
+  - `AXEL/axel_project/scenes/fx/InterfacePulseOverlay.tscn`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Intro walk-in should show one clean Mike. Room interference wave still runs; it just does not shatter him.
+- Verification: All 12 sheet cells are a single ink island. Stop Play and Play again so the sheet and pulse shader reload.
+- Notes: Face brush gaps on the head plate are kept. Only detached specks were removed.
+
+### Restore original CRT + smaller Mike RGB split
+- Request: Broken CRT around Mike after zero-chroma / unwarped-UV experiments; keep the original CRT look but pull red/blue closer to the body.
+- Implementation: Restored baseline `crt_plugin_overlay.gdshader` and `option_1_crt_tv.gdshader` structure (one curved UV pass, `mix(src, col, crt_mix)`). Only tightened offset: baseline CRT `player_chroma` `0.0004` (env stays `0.001`), looser white-stroke lum gate (`0.32`), ±`2*chroma` neighbor taps. Intro pulse keeps full CRT but uses `player_chroma` `0.001` on Mike via the same mask. Removed unwarped-UV mix, 16px halo, and zero-chroma path. Sheet speck cleanup kept.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/fx/CrtPluginOverlay.tscn`
+  - `AXEL/axel_project/tools/visual_style/shaders/option_1_crt_tv.gdshader`
+  - `AXEL/axel_project/scenes/fx/InterfacePulseOverlay.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike gets the same CRT treatment as the room; RGB fringe sits closer than before but is not zero. Intro walk-in should no longer show a split/doubled figure.
+- Verification: Shaders match original pass structure; shipped knobs on overlay `.tscn` files. Stop Play and Play again to reload.
+- Notes: Tune only `player_chroma` on `CrtPluginOverlay.tscn` → `FilterRect` if the fringe needs a nudge.
+
+## 2026-08-24
+
+### Scene 1.1 — stump / rocks behind filters
+- Request: Create a behind filter for scene 1.1 stump left, rocks left, and rocks right.
+- Implementation: Added `Stump_Left_Behind` / `Rocks_Left_Behind` / `Rocks_Right_Behind` `Area2D` zones (`leaf_occlusion_zone.gd`, `feather_px = 2`) with starter boxes on the colliders for editor dragging. Raised the Mike fade shader from 3 to 6 polygon slots so trees + right wall stay wired. Stump/rocks use no trunk Y-gate (`1e9`), same as the right wall.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike fades inside the new stump/rocks polygons as well as the existing tree and right-wall behind zones. 2.1 / 3.1 still use only the first 3 slots.
+- Verification: Scene nodes present under `EnvironmentColliders`; 1.1 script lists all six names after cover-fit layout.
+- Notes: Starter boxes sit on the collision clusters — drag the polygon vertices in the editor to match the drawing. Shader max is now 6 behind zones.
+
+### Scene 1.1 — stump / rocks behind filter front gate
+- Request: Walking from the front of the new 1.1 behind filters (at least left rocks and stump) still applied the fade. Tree behind filters already worked.
+- Implementation: Stump and both rock behind slots now use the same collision-front Y-gate as the trees (`Stump_Left` / `Rocks_Left` / `Rocks_Right` max collision Y). Fade only when standing behind that front line. `RightWall_Behind` stays polygon-only (`1e9`). Rock clusters scan every `CollisionPolygon2D` child so the gate uses the true front of the pile.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Approaching stump / left rocks / right rocks from the camera side stays opaque even if the body overlaps the object. Walking behind those objects still fades. Trees and right wall unchanged.
+- Verification: Manual F6 on `1.1_SchoolExterior` — walk into left rocks and stump from the front (no fade), then go behind (fade). Trees still fade only past the trunk.
+- Notes: Right wall is still polygon-only on purpose (building wall, not a ground object with a front line).
+
+### Scene 1.1 — extra behind polygons under one zone
+- Request: Duplicating `Rocks_Left_Behind` into `CollisionPolygon2D2` behind another rock did not activate the fade.
+- Implementation: Behind zones now send every `CollisionPolygon2D` child to the Mike fade shader (up to 4 per zone, 64 verts total). Extra polygons keep their own front gate from the nearest matching collision shape, so a second rock does not share the first rock’s line.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/leaf_occlusion_zone.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: `CollisionPolygon2D2` (and 3 / 4) under `Rocks_Left_Behind` now fade like the first polygon. Same for stump / right rocks if more children are added. 2.1 / 3.1 still use one polygon per zone unless they also add children and get the packed path later.
+- Verification: Stop Play and Play again on `1.1_SchoolExterior` so the shader reloads. Stand behind the second left rock inside `CollisionPolygon2D2` — fade on; walk in from that rock’s front — fade off.
+- Notes: Godot’s red collision debug can show you inside a shape even when the fade is off (front-gate). Duplicate under the same `*_Behind` Area2D; do not make a new Area2D unless a new shader slot is added.
+
+### Shared Mike ShadowOutline fit from 1.2
+- Request: Copy the manual 1.2 `ShadowOutline` position/scale to every other walkable scene.
+- Implementation: Applied 1.2’s authored silhouette (`position` `(-5.0416956, -5.041732)`, `scale` `(1.0335996, 0.9969109)`) on all other Player rooms. `Player.gd` reapplies the same fit at Play so a missed `.tscn` still matches. QA now checks this shared fit instead of requiring `ShadowOutline` at `(0, 0)`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike’s black outline sits in the same place relative to the sprite in every walkable room (same as 1.2). Combat unchanged.
+- Verification: Confirmed every `ShadowOutline` in walkable `.tscn` files now has the 1.2 position and scale.
+- Notes: This is the allowed exception to the default “no child offset” rule. AnimatedSprite and facing hitboxes stay at `(0, 0)`.
+
+### Mike side-walk waist dust
+- Request: First sideways walk frames showed leftover “dust” just off the waist; only visible in-game.
+- Implementation: Wiped the stray pixels from `mike_walking-Sheet.png` and the source side-walk drawing. Packer now drops far-off blobs (`FAR_BLOB_DIST`) as well as extra islands under 120 px (later intro-debris pass).
+- Files changed:
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet.png`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Left/right walk no longer flickers a stray stroke beside the waist.
+- Verification: Side-frame component check after wipe; leftover dust boxes had 0 opaque pixels.
+- Notes: Follow-up intro-debris pass on the same sheet is logged under 2026-08-23 (same morning).
+
+### 1.1 intro stand raised off left rocks
+- Request: Intro walk stuck on the left rocks (new hitbox sits lower than the old one).
+- Implementation: Moved the 1.1 `Player` node from `(227, 430)` to `(227, 405)`. Intro still walks to that node, not a separate stones target.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Fresh Play intro can reach the stand point without snagging the left rock pile.
+- Verification: Player node Y in the scene file.
+- Notes: Player node remains the spawn. Nudge the node in the editor if a later hitbox change snags again.
+
+### Synced soundtrack (menu p1 → overworld p2)
+- Request: Add `B_Goes_Down` stems; p1 loops on the title; New Game should continue into p2 without a gap; music must keep playing across later rooms.
+- Implementation: Autoload `AxelMusic` plays p1 + p2 in one `AudioStreamSynchronized`. Menu: p1 loops with a 10s fade-in. New Game: p1 finishes the current loop, then hard-cuts to p2 (no crossfade). `MainMenu.gd` calls `to_overworld()` before the scene swap. Later rooms stay on p2. `Music` bus ~`-12` dB. Env `AXEL_DISABLE_MUSIC=1` mutes BGM.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_music.gd`
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_p1.wav`
+  - `AXEL/axel_project/assets/audio/music/B_Goes_Down_p2.wav`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/default_bus_layout.tres`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Title has music. New Game keeps p1 until that loop ends, then p2 runs for the rest of the overworld.
+- Verification: Code path reviewed; listen in the editor (headless cannot prove sound).
+- Notes: Archive stems p3–p6 and `casino_*` were not copied in. Early crossfade versions were replaced by the hard cut.
+
+### Typewriter audio buses
+- Request: Typewriter effects on their own bus; later, pan only the open click (not the typing ticks).
+- Implementation: `default_bus_layout.tres` now has `Typewriter` (loop) and `TypewriterOpen` (open/close + Panner `pan = 0.5`). Overlay players route there. Overall typewriter loudness is those buses; per-clip mix stays on `OpenClosePlayer` (`-16`) / `TypeLoopPlayer` (`0`).
+- Files changed:
+  - `AXEL/axel_project/default_bus_layout.tres`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.tscn`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Bar click can be panned without moving the typing ticks. Music stays on the `Music` bus.
+- Verification: Overlay `bus` fields and bus layout names reviewed.
+- Notes: Pan the `TypewriterOpen` Panner in the Audio bus editor, not `Typewriter`.
+
+### Delete scratch `_sprite_preview/`
+- Request: Confirm whether `_sprite_preview/` can be deleted (user then deleted it).
+- Implementation: Folder was look-dev crops only (not loaded by the game). User deleted the tracked files.
+- Files changed:
+  - `_sprite_preview/` (removed)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None. Live Mike sheet is still `assets/sprites/mike_walking-Sheet.png`.
+- Verification: No gameplay path referenced `_sprite_preview/`.
+- Notes: Do not copy those crops into `assets/sprites/` — Godot would import them as extra sprites.
+
+### Docs sync — 2026-08-24
+- Request: `update todays docs` after soundtrack, typewriter buses, 1.1 behind filters, shared ShadowOutline, sheet dust, and intro stand nudge.
+- Implementation: Canon now matches live audio and 1.1 spawn. Behind-filter / ShadowOutline write-ups were already current from the implement chats. CRT Mike chroma / intro debris / restore-original-CRT were logged under 2026-08-23 (same morning).
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Gameplay unchanged.
+- Verification: Compared write-ups to `axel_music.gd`, `default_bus_layout.tres`, overlay buses, 1.1 Player Y `405`, and today’s implement chats.
+- Notes: 1.1 stump/rocks behind filters and shared ShadowOutline were already in this day’s changelog before this pass.
+
