@@ -70,7 +70,7 @@ const _POSE_NUDGE_PATH := "res://scenes/player/pose_nudge.tres"
 ## Forced cell size; if 0, derived from texture and layout (recommended).
 @export var frame_width: int = 0
 @export var frame_height: int = 0
-@export var animation_fps: float = 10.0
+@export var animation_fps: float = 5.0
 ## If true, traces collision from sprite alpha. Default is the shared Front hitbox
 ## (`res://scenes/player/hitbox_front.tres`). CollisionBack / CollisionSide are retired.
 @export var use_alpha_collision: bool = false

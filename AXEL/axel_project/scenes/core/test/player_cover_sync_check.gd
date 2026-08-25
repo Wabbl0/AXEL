@@ -5,10 +5,10 @@ extends SceneTree
 ##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://scenes/core/test/player_cover_sync_check.gd
 
 const PlayerCoverSyncScript := preload("res://scenes/core/player_cover_sync.gd")
+const PlayerWalkSpeedScript := preload("res://scenes/core/player_walk_speed.gd")
 const MockPlayerScript := preload("res://scenes/core/test/mock_cover_player.gd")
 
 const AUTHORED_SCALE := 3.0
-const AUTHORED_SPEED := 189.75
 const BASELINE := 0.5
 const COVER_A := 0.25
 const COVER_B := 1.0
@@ -21,7 +21,7 @@ func _init() -> void:
 
 func _make_player() -> CharacterBody2D:
 	var player: CharacterBody2D = MockPlayerScript.new()
-	player.speed = AUTHORED_SPEED
+	player.speed = 1.0 # stale; bind_from_player overwrites from scale
 	player.locked_feet_y = -1.0
 	player.scale = Vector2(AUTHORED_SCALE, AUTHORED_SCALE)
 	return player
@@ -33,6 +33,7 @@ func _main() -> void:
 	root.add_child(player)
 
 	sync.bind_from_player(player)
+	var authored_speed: float = PlayerWalkSpeedScript.from_scale(AUTHORED_SCALE)
 	sync.authored_bg_baseline = BASELINE
 	sync.authored_bg_baseline_position = Vector2.ZERO
 
@@ -48,7 +49,7 @@ func _main() -> void:
 		quit(1)
 		return
 	var speed_a := float(player.speed)
-	var expected_speed_a := AUTHORED_SPEED * (COVER_A / BASELINE)
+	var expected_speed_a: float = authored_speed * (COVER_A / BASELINE)
 	if absf(speed_a - expected_speed_a) > 0.01:
 		push_error(
 			"PlayerCoverSync FAIL: first apply speed=%.4f expected %.4f"

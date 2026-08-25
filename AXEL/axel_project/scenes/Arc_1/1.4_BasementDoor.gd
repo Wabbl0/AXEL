@@ -5,7 +5,10 @@ const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const DOOR_LINE := "Not yet."
 ## Just left of CafeteriaInteractArea so only a sliver peeks on the right.
 const CAFETERIA_PEEK_MARGIN_PX := 12.0
+## Just right of ExitTrigger so only a sliver peeks on the left.
+const CORRIDOR_PEEK_MARGIN_PX := 12.0
 const CAFETERIA_ZONE_GRACE_SEC := 0.15
+const EXIT_TRIGGER_GRACE_SEC := 0.15
 ## Same 2400×1500 plate as 1.2 — share the corridor's authored cover baseline
 ## so Mike is the same on-screen size (do not use 1920×1280 bind_design).
 const _OLD_BG_SCALE := Vector2(0.546, 0.546)
@@ -22,8 +25,10 @@ var _cafeteria_zone_active := false
 var _cafeteria_zone_armed := true
 var _is_transitioning := false
 var _door_line_running := false
-var _player_spawn_applied := false
 var _pending_cafeteria_peek := false
+var _pending_corridor_peek := false
+var _arrival_t := InteractArrival.DEFAULT_T
+var _exit_trigger_armed := true
 var _player_cover_sync := PlayerCoverSync.new()
 
 
@@ -53,10 +58,26 @@ func _ready() -> void:
 		_cafeteria_interact_area.body_exited.connect(_on_cafeteria_body_exited)
 	if is_instance_valid(_exit_trigger):
 		_exit_trigger.body_entered.connect(_on_exit_body_entered)
-	if GameManager.take_basement_spawn_side() == "cafeteria_right":
-		_pending_cafeteria_peek = true
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
+	# Match 1.2: take spawn side + t after first layout settles, then re-queue peek.
+	call_deferred("_restore_player_position_if_needed")
+
+
+func _restore_player_position_if_needed() -> void:
+	if not is_instance_valid(_player):
+		return
+	var basement_side := GameManager.take_basement_spawn_side()
+	if basement_side == "cafeteria_right":
+		_pending_cafeteria_peek = true
+		_arrival_t = InteractArrival.take_arrival_t_or_default()
+		call_deferred("_apply_cafeteria_peek_if_pending")
+		return
+	if basement_side == "corridor_left":
+		_pending_corridor_peek = true
+		_arrival_t = InteractArrival.take_arrival_t_or_default()
+		call_deferred("_apply_corridor_peek_if_pending")
+		return
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -126,7 +147,7 @@ func _on_cafeteria_body_exited(body: Node) -> void:
 
 
 func _on_exit_body_entered(body: Node) -> void:
-	if body != _player or _is_transitioning:
+	if body != _player or _is_transitioning or not _exit_trigger_armed:
 		return
 	call_deferred("_begin_corridor_return")
 
@@ -184,7 +205,10 @@ func _hide_interact_prompt_immediate() -> void:
 
 func _begin_corridor_return() -> void:
 	_is_transitioning = true
-	_save_walkoff_floor_offset()
+	if is_instance_valid(_player) and is_instance_valid(_exit_trigger):
+		GameManager.set_interact_arrival_t(
+			InteractArrival.fraction_along(_player, _exit_trigger, Vector2.AXIS_Y)
+		)
 	GameManager.set_corridor_spawn_side("basement_right")
 	_hide_interact_prompt_immediate()
 	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
@@ -201,6 +225,12 @@ func _begin_cafeteria_transition() -> void:
 	if _is_transitioning:
 		return
 	_is_transitioning = true
+	if is_instance_valid(_player) and is_instance_valid(_cafeteria_interact_area):
+		GameManager.set_interact_arrival_t(
+			InteractArrival.fraction_along(
+				_player, _cafeteria_interact_area, Vector2.AXIS_Y
+			)
+		)
 	GameManager.set_cafeteria_spawn_side("basement_left")
 	_hide_interact_prompt_immediate()
 	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
@@ -225,76 +255,51 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var tex_pos := PlayerSpawnSync.capture_tex(env, player_node)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
-	if not _player_spawn_applied:
-		if _pending_cafeteria_peek:
-			player_node.global_position = _cafeteria_right_peek_global()
-			_pending_cafeteria_peek = false
-			_arm_cafeteria_zone_grace()
-		else:
-			PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
-			_apply_walkoff_y_if_pending(player_node)
-		_player_spawn_applied = true
-	else:
-		PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
+	# Always remap Player node (1.2 style). Peek overwrite runs deferred after.
+	PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
 	if _pending_cafeteria_peek:
 		call_deferred("_apply_cafeteria_peek_if_pending")
-
-
-func _apply_walkoff_y_if_pending(player_node: CharacterBody2D) -> void:
-	if not GameManager.has_walkoff_floor_offset_y():
-		return
-	var offset_y := GameManager.take_walkoff_floor_offset_y()
-	var pos := player_node.global_position
-	pos.y = _floor_marker_global_y() + offset_y
-	pos.y = _clamp_walkable_y(pos.y)
-	player_node.global_position = pos
-
-
-func _floor_marker_global_y() -> float:
-	var line := get_node_or_null(
-		"WalkableWorld/EnvironmentColliders/FloorDividerLine"
-	) as Line2D
-	if is_instance_valid(line):
-		return line.global_position.y
-	return _player.global_position.y if is_instance_valid(_player) else 0.0
-
-
-func _clamp_walkable_y(y: float) -> float:
-	var min_y := _floor_marker_global_y() + 8.0
-	var max_y := y
-	var bottom := get_node_or_null(
-		"WalkableWorld/EnvironmentColliders/BottomWall"
-	) as StaticBody2D
-	if is_instance_valid(bottom):
-		var shape := bottom.get_node_or_null("CollisionShape2D") as CollisionShape2D
-		if shape != null and shape.shape is RectangleShape2D:
-			var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
-			max_y = bottom.to_global(
-				Vector2(shape.position.x, shape.position.y - half_height)
-			).y - 8.0
-		else:
-			max_y = bottom.global_position.y - 8.0
-	if max_y < min_y:
-		return y
-	return clampf(y, min_y, max_y)
-
-
-func _save_walkoff_floor_offset() -> void:
-	if not is_instance_valid(_player):
-		return
-	GameManager.set_walkoff_floor_offset_y(
-		_player.global_position.y - _floor_marker_global_y()
-	)
+	elif _pending_corridor_peek:
+		call_deferred("_apply_corridor_peek_if_pending")
 
 
 func _apply_cafeteria_peek_if_pending() -> void:
 	if not _pending_cafeteria_peek or not is_instance_valid(_player):
 		return
 	_pending_cafeteria_peek = false
-	_player.global_position = _cafeteria_right_peek_global()
+	_player.global_position = InteractArrival.place_on_area(
+		_player,
+		_cafeteria_interact_area,
+		_arrival_t,
+		Vector2.AXIS_Y,
+		InteractArrival.PeekEdge.LEFT,
+		-CAFETERIA_PEEK_MARGIN_PX
+	)
+	call_deferred("_clamp_arrived_player")
 	_arm_cafeteria_zone_grace()
+
+
+func _apply_corridor_peek_if_pending() -> void:
+	if not _pending_corridor_peek or not is_instance_valid(_player):
+		return
+	_pending_corridor_peek = false
+	_player.global_position = InteractArrival.place_on_area(
+		_player,
+		_exit_trigger,
+		_arrival_t,
+		Vector2.AXIS_Y,
+		InteractArrival.PeekEdge.RIGHT,
+		CORRIDOR_PEEK_MARGIN_PX
+	)
+	call_deferred("_clamp_arrived_player")
+	_arm_exit_trigger_grace()
+
+
+func _clamp_arrived_player() -> void:
+	if is_instance_valid(_player):
+		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_Y)
 
 
 func _arm_cafeteria_zone_grace() -> void:
@@ -305,26 +310,10 @@ func _arm_cafeteria_zone_grace() -> void:
 		_show_active_interact_prompt()
 
 
-func _cafeteria_right_peek_global() -> Vector2:
-	var pos := _player.global_position
-	var left_edge := _cafeteria_interact_left_edge_x()
-	if left_edge > -INF:
-		pos.x = left_edge - CAFETERIA_PEEK_MARGIN_PX
-	if is_instance_valid(_cafeteria_interact_area):
-		pos.y = _cafeteria_interact_area.global_position.y
-	return pos
-
-
-func _cafeteria_interact_left_edge_x() -> float:
-	if not is_instance_valid(_cafeteria_interact_area):
-		return -INF
-	var shape := _cafeteria_interact_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if shape == null or not (shape.shape is RectangleShape2D):
-		return -INF
-	var half_width: float = (shape.shape as RectangleShape2D).size.x * 0.5
-	return _cafeteria_interact_area.to_global(
-		Vector2(shape.position.x - half_width, shape.position.y)
-	).x
+func _arm_exit_trigger_grace() -> void:
+	_exit_trigger_armed = false
+	await get_tree().create_timer(EXIT_TRIGGER_GRACE_SEC).timeout
+	_exit_trigger_armed = true
 
 
 func _wake_static_colliders() -> void:

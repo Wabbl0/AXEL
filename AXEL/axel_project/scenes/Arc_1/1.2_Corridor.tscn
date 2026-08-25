@@ -12,17 +12,23 @@
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="16_exploration_viewport"]
 [ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
-size = Vector2(2368.0889, 24)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_top"]
+size = Vector2(2416.6453, 208)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
+size = Vector2(2416.6453, 116)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
+size = Vector2(99, 1515)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
 size = Vector2(38.5, 1515)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exterior_interact"]
-size = Vector2(109.15751, 486.26373)
+size = Vector2(109.15751, 364.01105)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
-size = Vector2(80, 1520.1465)
+size = Vector2(80, 690.4762)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
 size = Vector2(2423.0767, 90)
@@ -50,32 +56,29 @@ metadata/_edit_lock_ = true
 scale = Vector2(0.546, 0.546)
 
 [node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=850397541]
-position = Vector2(1172, 22)
+position = Vector2(1172, 104)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall" unique_id=1179354634]
-position = Vector2(45.054443, -31.000002)
-shape = SubResource("RectangleShape2D_wall_horizontal")
+shape = SubResource("RectangleShape2D_wall_top")
 
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1197718744]
-position = Vector2(1172, 1297)
+position = Vector2(1172, 1442)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=310166024]
-position = Vector2(40.454163, 159.04388)
-shape = SubResource("RectangleShape2D_wall_horizontal")
+shape = SubResource("RectangleShape2D_wall_bottom")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1349544675]
-position = Vector2(37, 762)
+position = Vector2(49.5, 762)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=830387823]
-position = Vector2(-20.14652, 0)
-shape = SubResource("RectangleShape2D_wall_vertical")
+shape = SubResource("RectangleShape2D_wall_vertical_left")
 
 [node name="ExteriorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1349544680]
 position = Vector2(80, 740)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExteriorInteractArea" unique_id=1349544681]
-position = Vector2(-26.886448, 65.860794)
+position = Vector2(-12.234436, 250.15564)
 shape = SubResource("RectangleShape2D_exterior_interact")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=158922864]
@@ -90,7 +93,7 @@ position = Vector2(2390, 763)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExitTrigger" unique_id=1200780202]
-position = Vector2(0, -8.421326)
+position = Vector2(10.989014, 388.09894)
 shape = SubResource("RectangleShape2D_exit_trigger")
 
 [node name="LockerWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1200780001]
@@ -121,13 +124,12 @@ follow_viewport_enabled = true
 
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=558325098]
 position = Vector2(44, 452)
-scale = Vector2(0.198347, 0.198347)
+scale = Vector2(0.198, 0.198)
 script = ExtResource("2_player_script")
-speed = 253.4
+speed = 185.3
 pose_nudge_back = Vector2(-114.725, 2.49)
 pose_nudge_side = Vector2(41.76, -15.86)
 sprite_sheet = ExtResource("3_player_sheet")
-animation_fps = 5.0
 collision_polygon_epsilon = 4.0
 collision_alpha_shrink_pixels = 4
 collision_inward_margin = 4.0

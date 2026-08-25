@@ -62,6 +62,7 @@ var _watching_movement := false
 var _exit_trigger: Area2D
 var _exit_trigger_armed := true
 var _pending_corridor_door_spawn := false
+var _arrival_t := InteractArrival.DEFAULT_T
 
 ## Background_1_1's hand-tuned position/scale before the camera migration to
 ## background_camera_controller.gd. EnvironmentColliders (walls/trees/rocks/doors)
@@ -97,6 +98,7 @@ func _ready() -> void:
 		_exit_trigger.body_entered.connect(_on_exit_trigger_body_entered)
 	if GameManager.take_exterior_spawn_side() == "corridor_door":
 		_pending_corridor_door_spawn = true
+		_arrival_t = InteractArrival.take_arrival_t_or_default()
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	_sync_environment_colliders_from_current_background()
@@ -106,9 +108,9 @@ func _ready() -> void:
 		# Leave left road open so walking off still reaches Ending 1.
 		if is_instance_valid(_left_wall_collision):
 			_left_wall_collision.set_deferred("disabled", true)
-		if is_instance_valid(_player) and _pending_corridor_door_spawn:
-			_player.global_position = _door_interact_anchor()
-			_pending_corridor_door_spawn = false
+		if _pending_corridor_door_spawn:
+			# Match 1.2: place after layout settles; re-queue from sync while pending.
+			call_deferred("_apply_corridor_door_peek_if_pending")
 			_arm_exit_trigger_grace()
 		_enable_player_control()
 		_refresh_door_interact_prompt()
@@ -344,6 +346,26 @@ func _door_interact_anchor() -> Vector2:
 	return _polygon_global_centroid(poly)
 
 
+func _apply_corridor_door_peek_if_pending() -> void:
+	if not _pending_corridor_door_spawn or not is_instance_valid(_player):
+		return
+	_pending_corridor_door_spawn = false
+	_player.global_position = InteractArrival.place_on_area(
+		_player,
+		_door_interact_area,
+		_arrival_t,
+		Vector2.AXIS_Y,
+		InteractArrival.PeekEdge.CENTER_X,
+		0.0
+	)
+	call_deferred("_clamp_arrived_player")
+
+
+func _clamp_arrived_player() -> void:
+	if is_instance_valid(_player):
+		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_Y)
+
+
 func _on_door_interact_body_entered(body: Node) -> void:
 	if body != _player:
 		return
@@ -383,6 +405,13 @@ func _refresh_door_interact_prompt() -> void:
 
 func _begin_door_transition() -> void:
 	_is_transitioning = true
+	if is_instance_valid(_player) and is_instance_valid(_door_interact_area):
+		GameManager.set_interact_arrival_t(
+			InteractArrival.fraction_along(
+				_player, _door_interact_area, Vector2.AXIS_Y
+			)
+		)
+	GameManager.set_corridor_spawn_side("exterior_door")
 	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
 		_interact_prompt.hide_prompt_immediate()
 	var err := get_tree().change_scene_to_file(_NEXT_SCENE_PATH)
@@ -539,6 +568,8 @@ func _sync_environment_colliders(new_scale_factor: float, new_bg_position: Vecto
 		_player_cover_sync.apply(_player, new_scale_factor, new_bg_position)
 	call_deferred("_wake_static_colliders")
 	call_deferred("_configure_leaf_occlusion_masks")
+	if _pending_corridor_door_spawn:
+		call_deferred("_apply_corridor_door_peek_if_pending")
 
 
 func _wake_static_colliders() -> void:

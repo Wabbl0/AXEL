@@ -19,7 +19,8 @@ var _flashlight_glow_tween: Tween
 var _active_zone: String = ""
 var _is_transitioning := false
 var _flashlight_line_running := false
-var _player_spawn_applied := false
+var _pending_cafeteria_peek := false
+var _arrival_t := InteractArrival.DEFAULT_T
 var _door_zone_armed := true
 var _player_cover_sync := PlayerCoverSync.new()
 
@@ -45,7 +46,17 @@ func _ready() -> void:
 	_apply_flashlight_visibility()
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
+	call_deferred("_restore_player_position_if_needed")
 	call_deferred("_play_enter_dialogue")
+
+
+func _restore_player_position_if_needed() -> void:
+	if not is_instance_valid(_player):
+		return
+	if GameManager.take_kitchen_spawn_side() == "cafeteria_door":
+		_pending_cafeteria_peek = true
+		_arrival_t = InteractArrival.take_arrival_t_or_default()
+		call_deferred("_apply_cafeteria_peek_if_pending")
 
 
 func _connect_zone(area: Area2D, zone_id: String) -> void:
@@ -217,6 +228,12 @@ func _begin_return_to_cafeteria() -> void:
 	if _is_transitioning:
 		return
 	_is_transitioning = true
+	if is_instance_valid(_player) and is_instance_valid(_door_interact_area):
+		GameManager.set_interact_arrival_t(
+			InteractArrival.fraction_along(
+				_player, _door_interact_area, Vector2.AXIS_X
+			)
+		)
 	GameManager.set_kitchen_spawn_side("kitchen_door")
 	_hide_interact_prompt_immediate()
 	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
@@ -241,14 +258,33 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var tex_pos := PlayerSpawnSync.capture_tex(env, player_node)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
-	if not _player_spawn_applied:
-		PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
-		_player_spawn_applied = true
-		_arm_door_zone_grace()
-	else:
-		PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
+	PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
+	if _pending_cafeteria_peek:
+		call_deferred("_apply_cafeteria_peek_if_pending")
+
+
+func _apply_cafeteria_peek_if_pending() -> void:
+	if not _pending_cafeteria_peek or not is_instance_valid(_player):
+		return
+	_pending_cafeteria_peek = false
+	# Door sits on the kitchen bottom — peek just above the interact top.
+	_player.global_position = InteractArrival.place_on_area(
+		_player,
+		_door_interact_area,
+		_arrival_t,
+		Vector2.AXIS_X,
+		InteractArrival.PeekEdge.TOP,
+		-12.0
+	)
+	call_deferred("_clamp_arrived_player")
+	_arm_door_zone_grace()
+
+
+func _clamp_arrived_player() -> void:
+	if is_instance_valid(_player):
+		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_X)
 
 
 func _arm_door_zone_grace() -> void:

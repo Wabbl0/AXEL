@@ -10,3 +10,6 @@
 # Reference/export folders (large, non-runtime; not needed in version control)
 /AXEL/axel_project/exports/
 /AXEL/html/
+
+# Local LimeZu icon clustering output (contact sheets + JSON)
+/AXEL/axel_project/tools/combat/.icon_scan/

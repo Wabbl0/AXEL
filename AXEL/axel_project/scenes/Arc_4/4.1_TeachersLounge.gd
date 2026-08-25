@@ -14,8 +14,8 @@ const DOOR_ZONE_GRACE_SEC := 0.15
 var _door_interact_area: Area2D
 var _active_zone: String = ""
 var _is_transitioning := false
-var _player_spawn_applied := false
 var _pending_door_peek := false
+var _arrival_t := InteractArrival.DEFAULT_T
 var _door_zone_armed := true
 var _player_cover_sync := PlayerCoverSync.new()
 
@@ -31,11 +31,19 @@ func _ready() -> void:
 		"WalkableWorld/EnvironmentColliders/DoorInteractArea"
 	) as Area2D
 	_connect_zone(_door_interact_area, "door")
-	if GameManager.take_teachers_lounge_spawn_side() == "corridor_door":
-		_pending_door_peek = true
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
+	call_deferred("_restore_player_position_if_needed")
 	call_deferred("_play_enter_dialogue")
+
+
+func _restore_player_position_if_needed() -> void:
+	if not is_instance_valid(_player):
+		return
+	if GameManager.take_teachers_lounge_spawn_side() == "corridor_door":
+		_pending_door_peek = true
+		_arrival_t = InteractArrival.take_arrival_t_or_default()
+		call_deferred("_apply_door_peek_if_pending")
 
 
 func _connect_zone(area: Area2D, zone_id: String) -> void:
@@ -126,6 +134,12 @@ func _begin_return_to_corridor() -> void:
 	if _is_transitioning:
 		return
 	_is_transitioning = true
+	if is_instance_valid(_player) and is_instance_valid(_door_interact_area):
+		GameManager.set_interact_arrival_t(
+			InteractArrival.fraction_along(
+				_player, _door_interact_area, Vector2.AXIS_X
+			)
+		)
 	GameManager.set_classrooms_corridor_spawn_side("lounge_door")
 	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
 		_interact_prompt.hide_prompt_immediate()
@@ -151,17 +165,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var tex_pos := PlayerSpawnSync.capture_tex(env, player_node)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
-	if not _player_spawn_applied:
-		if _pending_door_peek:
-			player_node.global_position = _door_peek_global()
-			_pending_door_peek = false
-			_arm_door_zone_grace()
-		else:
-			PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
-			_arm_door_zone_grace()
-		_player_spawn_applied = true
-	else:
-		PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
+	PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
 	if _pending_door_peek:
@@ -172,23 +176,21 @@ func _apply_door_peek_if_pending() -> void:
 	if not _pending_door_peek or not is_instance_valid(_player):
 		return
 	_pending_door_peek = false
-	_player.global_position = _door_peek_global()
+	_player.global_position = InteractArrival.place_on_area(
+		_player,
+		_door_interact_area,
+		_arrival_t,
+		Vector2.AXIS_X,
+		InteractArrival.PeekEdge.BOTTOM,
+		12.0
+	)
+	call_deferred("_clamp_arrived_player")
 	_arm_door_zone_grace()
 
 
-func _door_peek_global() -> Vector2:
-	var pos := _player.global_position
-	if not is_instance_valid(_door_interact_area):
-		return pos
-	var shape := _door_interact_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if shape == null or not (shape.shape is RectangleShape2D):
-		return _door_interact_area.global_position
-	var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
-	pos.y = _door_interact_area.to_global(
-		Vector2(shape.position.x, shape.position.y + half_height + 12.0)
-	).y
-	pos.x = shape.global_position.x
-	return pos
+func _clamp_arrived_player() -> void:
+	if is_instance_valid(_player):
+		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_X)
 
 
 func _arm_door_zone_grace() -> void:

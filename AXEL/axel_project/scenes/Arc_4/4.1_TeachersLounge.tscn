@@ -37,17 +37,17 @@ polygon = PackedVector2Array(0, 0, 3508, 0, 3508, 230, 0, 230)
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1097655148]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=1797683176]
-polygon = PackedVector2Array(0, 2440, 3508, 2440, 3508, 2480, 0, 2480)
+polygon = PackedVector2Array(0, 2364, 3508, 2364, 3508, 2480, 0, 2480)
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1753731718]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=1106015736]
-polygon = PackedVector2Array(0, 0, 48, 0, 48, 2480, 0, 2480)
+polygon = PackedVector2Array(0, 0, 98, 0, 98, 2480, 0, 2480)
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=35722453]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=2043471567]
-polygon = PackedVector2Array(3460, 0, 3508, 0, 3508, 2480, 3460, 2480)
+polygon = PackedVector2Array(3413, 0, 3508, 0, 3508, 2480, 3413, 2480)
 
 [node name="LeftUpperBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1617559011]
 
@@ -104,9 +104,9 @@ follow_viewport_enabled = true
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=1647216626]
 z_index = 10
 position = Vector2(1754, 480)
-scale = Vector2(0.198347, 0.198347)
+scale = Vector2(0.198, 0.198)
 script = ExtResource("2_player_script")
-speed = 253.4
+speed = 185.3
 sprite_sheet = ExtResource("3_player_sheet")
 animation_fps = 5.0
 collision_polygon_epsilon = 4.0

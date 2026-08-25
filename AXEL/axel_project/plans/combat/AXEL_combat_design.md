@@ -8,7 +8,7 @@ Design recap for the combat layer. Captures the narrative framing, the chosen me
 
 - **AXEL** is a top-down 2D psychological horror about a grown-up returning to the rotting school where they abandoned a friend.
 - Story-driven but non-linear — player choice shapes one of five endings.
-- Aesthetic: overworld VFX is **8-band inverted noir** (4 red / 2 warm grey / 2 black — see `AI_DOCS.md`). Combat is excluded from that post-FX stack and still ships as black/red CRT (placeholder art: red-on-black). VT323 / Space Mono type, glitch and shake FX.
+- Aesthetic: overworld VFX is **8-band inverted noir** (4 red / 2 warm grey / 2 black — see `AI_DOCS.md`). Combat is excluded from that post-FX stack and still ships as black/red CRT. Grid suits are hollow red outlines; premium/wild are hand-authored icons with a faint white halo. VT323 / Space Mono type, glitch and shake FX.
 - Core exploration loop: hub-and-spoke school, recover 5 memory fragments, collect intangible items (Flashlight, Key, Shovel, *Name*), speak the name over the grave.
 - Recurring motifs: lighter with "AXEL" scratched on it, cigarettes as a shared ritual / hint mechanic, the basement as literal + emotional burial, the locker as sanctuary/hub.
 - Open question the prototype leaves unanswered: **where does combat live?** This document is the answer.
@@ -56,7 +56,7 @@ Source references are listed at the bottom of this doc.
 
 ## 4. AXEL reskin — symbol map
 
-All symbols are placeholder art for now (red-on-black, respects the existing palette).
+Suit symbols are generated hollow red outlines (no fill, same stroke). Premium / wild icons are hand-authored 128×128 art plus a 1px faint white halo. Combat still sits on a black grid (no overworld noir stack).
 
 ### Low-paying symbols (the four "suit" symbols)
 

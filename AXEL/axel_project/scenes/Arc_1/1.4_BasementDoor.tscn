@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://bjr6nfmh10th5" path="res://scenes/Arc_1/1.4_BasementDoor.gd" id="1_basement_door"]
 [ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_player_script"]
 [ext_resource type="SpriteFrames" uid="uid://4eiekoqcuo44" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
+[ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
 [ext_resource type="Texture2D" uid="uid://b5qf63clcveot" path="res://exports/Drawings/1.4_BasementDoor.png" id="4_basement_bg"]
 [ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
@@ -10,8 +11,11 @@
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
-size = Vector2(2400, 24)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_top"]
+size = Vector2(2400, 208)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
+size = Vector2(2400, 116)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
 size = Vector2(63.25, 1515)
@@ -20,13 +24,13 @@ size = Vector2(63.25, 1515)
 size = Vector2(2405.5823, 39)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
-size = Vector2(80, 1493)
+size = Vector2(80, 668.49805)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
 size = Vector2(301.25, 606.5124)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_cafeteria_interact"]
-size = Vector2(143.89746, 521.978)
+size = Vector2(133.6997, 688.64465)
 
 [node name="1_4_BasementDoor" type="Node2D" unique_id=76111603]
 script = ExtResource("1_basement_door")
@@ -46,18 +50,16 @@ metadata/_edit_lock_ = true
 scale = Vector2(0.546, 0.546)
 
 [node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=791579241]
-position = Vector2(1200, 22)
+position = Vector2(1200, 104)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall" unique_id=97754539]
-position = Vector2(0, -12)
-shape = SubResource("RectangleShape2D_wall_horizontal")
+shape = SubResource("RectangleShape2D_wall_top")
 
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=219083867]
-position = Vector2(1200, 1297)
+position = Vector2(1200, 1442)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=1291792257]
-position = Vector2(0, 190)
-shape = SubResource("RectangleShape2D_wall_horizontal")
+shape = SubResource("RectangleShape2D_wall_bottom")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1253632539]
 position = Vector2(-400, 762)
@@ -93,7 +95,7 @@ position = Vector2(1157, 740)
 scale = Vector2(0.7, 0.7)
 
 [node name="DoorBody" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/DoorVisuals" unique_id=224281194]
-position = Vector2(311.06445, -84.58017)
+position = Vector2(-76.167725, -84.58017)
 scale = Vector2(2.0527577, 2.1919432)
 color = Color(0, 0, 0, 1)
 polygon = PackedVector2Array(-90, -140, 90, -140, 90, 140, -90, 140)
@@ -102,8 +104,8 @@ polygon = PackedVector2Array(-90, -140, 90, -140, 90, 140, -90, 140)
 position = Vector2(1090, 668)
 
 [node name="Polygon2D" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/DoorWall" unique_id=522653964]
-position = Vector2(1074, 764.4833)
-scale = Vector2(0.75418776, 0.9278523)
+position = Vector2(1074.0002, 757.54675)
+scale = Vector2(0.75418776, 1.0191202)
 color = Color(0.32156864, 0.32156864, 0.32156864, 1)
 polygon = PackedVector2Array(53.999878, -520, 180.11292, -516.4431, 176.99988, 76, 55.999878, 76)
 
@@ -112,7 +114,7 @@ position = Vector2(20, 701)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExitTrigger" unique_id=501447427]
-position = Vector2(0, 48.5)
+position = Vector2(-18.315018, 444.6045)
 shape = SubResource("RectangleShape2D_exit_trigger")
 
 [node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1020789747]
@@ -120,7 +122,7 @@ position = Vector2(1090, 668)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea" unique_id=1740011345]
-position = Vector2(287.28955, 23.534607)
+position = Vector2(16.22754, 23.534607)
 shape = SubResource("RectangleShape2D_door_interact")
 
 [node name="CafeteriaInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=723135021]
@@ -128,7 +130,7 @@ position = Vector2(2232, 701)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/CafeteriaInteractArea" unique_id=965764312]
-position = Vector2(-95.94873, 331.05127)
+position = Vector2(-101.04761, 449.1831)
 shape = SubResource("RectangleShape2D_cafeteria_interact")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1150417698]
@@ -143,12 +145,14 @@ layer = 100
 follow_viewport_enabled = true
 
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=1477260110]
-position = Vector2(96, 527)
-scale = Vector2(0.198347, 0.198347)
+position = Vector2(66, 470)
+scale = Vector2(0.198, 0.198)
 script = ExtResource("2_player_script")
+speed = 185.3
 editor_pose_preview = 1
 pose_nudge_back = Vector2(-114.725, 2.49)
 pose_nudge_side = Vector2(41.76, -15.86)
+sprite_sheet = ExtResource("3_player_sheet")
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=595289931]
 visible = false

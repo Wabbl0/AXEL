@@ -43,6 +43,8 @@ var teachers_lounge_spawn_side: String = ""
 var classroom_spawn_side: String = ""
 ## Transient (not persisted). Player Y minus floor-marker Y when walking off 1.2 ↔ 1.4.
 var walkoff_floor_offset_y: float = NAN
+## Transient (not persisted). 0..1 along the source [E] InteractArea for arrival mapping.
+var interact_arrival_t: float = NAN
 ## Once-ever cafeteria enter line (2.1).
 var cafeteria_enter_line_seen: bool = false
 ## Once-ever kitchen enter line (2.3).
@@ -291,6 +293,17 @@ func take_walkoff_floor_offset_y() -> float:
 	var offset_y := walkoff_floor_offset_y
 	walkoff_floor_offset_y = NAN
 	return offset_y
+
+func set_interact_arrival_t(t: float) -> void:
+	interact_arrival_t = t
+
+func has_interact_arrival_t() -> bool:
+	return not is_nan(interact_arrival_t)
+
+func take_interact_arrival_t() -> float:
+	var t := interact_arrival_t
+	interact_arrival_t = NAN
+	return t
 
 func set_basement_spawn_side(side: String) -> void:
 	basement_spawn_side = side

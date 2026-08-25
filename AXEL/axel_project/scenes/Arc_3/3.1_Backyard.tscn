@@ -16,8 +16,14 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(3508, 40)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
-size = Vector2(40, 2480)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
+size = Vector2(3508, 116)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
+size = Vector2(98, 2480)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_right"]
+size = Vector2(95, 2480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_side_right"]
 size = Vector2(80, 1768.5)
@@ -54,22 +60,22 @@ position = Vector2(-26, 871)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=412721754]
-position = Vector2(1754, 2460)
+position = Vector2(1754, 2422)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=1136595923]
-shape = SubResource("RectangleShape2D_wall_horizontal")
+shape = SubResource("RectangleShape2D_wall_bottom")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=447027364]
-position = Vector2(20, 1240)
+position = Vector2(49, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=1908869211]
-shape = SubResource("RectangleShape2D_wall_vertical")
+shape = SubResource("RectangleShape2D_wall_vertical_left")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1176999231]
-position = Vector2(3488, 1240)
+position = Vector2(3460.5, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=1912438790]
-shape = SubResource("RectangleShape2D_wall_vertical")
+shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="DoorSideRight" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2101001]
 position = Vector2(140, 1000)
@@ -157,9 +163,9 @@ follow_viewport_enabled = true
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=1171628940]
 z_index = 10
 position = Vector2(1754, 1376)
-scale = Vector2(0.198347, 0.198347)
+scale = Vector2(0.198, 0.198)
 script = ExtResource("2_player_script")
-speed = 253.4
+speed = 185.3
 sprite_sheet = ExtResource("3_player_sheet")
 animation_fps = 5.0
 collision_polygon_epsilon = 4.0

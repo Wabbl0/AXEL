@@ -41,12 +41,23 @@ These numbers are **authored at 1920×1280 cover-fit** of that scene’s PNG (no
 
 Mike’s live walk sheet is a 12-cell strip (`mike_walking-Sheet_meta.txt`: ~439×971). Authored scale keeps on-screen height near the old 64×scale look: `new_scale ≈ old_scale × (64 / cell_h)`.
 
-Live authored Player scales at **1920×1280** (then `PlayerCoverSync` multiplies):
+**Walk speed from scale (mandatory):** Authored `speed` comes from `PlayerWalkSpeed.from_scale(scale)` (`scenes/core/player_walk_speed.gd`). Stride constant `K = 169.8 / 0.198` (shared-room pair, **~33% slower** than the old `253.4` reference). Below scale `0.3`, add extra world speed linear in how far under that threshold (`1.1` at `0.079` gets `+33.5`; same slope everywhere). Result is rounded to one decimal. `PlayerCoverSync.bind_from_player` applies the formula; do not hand-tune Inspector speed against scale. Do not re-run the formula on live cover-sync or 2.4 depth ramp (those already multiply scale and speed together).
 
-- Shared walkable (1.2 / 1.4 / 2.1 / 2.4 / 3.1 / 4.1): scale `0.198347`, speed `253.4` (2.1 speed stays `189.75`)
-- `1.1` exterior: scale `0.079339`, speed `120`
-- `2.3` kitchen: scale `0.330579`, speed `253.4`
-- `5.1` classroom: scale `0.2975205`, speed `253.4` (50% larger than the shared `0.198347`)
+Live authored Player scale / speed at **1920×1280** (then `PlayerCoverSync` multiplies). Walk loop FPS is **5** everywhere. Scale is stored to three decimals; speed to one.
+
+| Scene | Scale | Speed |
+| --- | --- | --- |
+| 1.1 exterior | `0.079` | `101.2` |
+| 1.2 corridor | `0.198` | `185.3` |
+| 1.4 basement door | `0.198` | `185.3` |
+| 2.1 cafeteria | `0.298` | `255.9` |
+| 2.3 kitchen | `0.331` | `283.9` |
+| 2.4 classrooms corridor | `0.198` | `185.3` |
+| 3.1 backyard | `0.198` | `185.3` |
+| 4.1 teachers’ lounge | `0.198` | `185.3` |
+| 5.1 classroom | `0.298` | `255.9` |
+
+Kitchen is above scale `0.3` (no small-scale extra). 2.1 / 5.1 are 50% larger than the shared `0.198`. 1.1 gets the most below-0.3 extra.
 
 Old profile names (`classroom_large` `0.86`, `library_large` `0.78`) are retired — do not copy those numbers onto the new sheet.
 
@@ -145,7 +156,7 @@ Do not slice the raw `kävely_etu` / `kävely_sivu` drawings as a grid. Pack wit
 - Packer drops far-off specks (`FAR_BLOB_DIST`) and extra islands under 120 px (stray waist/head strokes).
 - `white_sprite.gdshader` keeps packed RGB and multiplies `COLOR.rgb` so `ShadowOutline` modulate can be black. Mike is **not** noir-inverted. CRT still runs on him. Play and the editor show `ShadowOutline` with the shared 1.2 fit (a slightly larger black copy behind the white figure) on every pose. Pose nudges must not shift that silhouette — `Player.gd` divides the shadow offset by the outline scale. Do not force `ShadowOutline.visible = false` in the editor tool.
 
-`Player.gd` animations: `walk_down` / `walk_up` / `walk_right` + `flip_h` for left; idle / idle_back / idle_side keep last facing. Assign `res://assets/sprites/mike_sprite_frames.tres` in the editor. Rollback: restore `mike_walking-Sheet_legacy13.png` over the live sheet and revert Player + scales.
+`Player.gd` animations: `walk_down` / `walk_up` / `walk_right` + `flip_h` for left; idle / idle_back / idle_side keep last facing. Walk loop FPS is **5** (`animation_fps`, same as 1.2). Assign `res://assets/sprites/mike_sprite_frames.tres` in the editor. Rollback: restore `mike_walking-Sheet_legacy13.png` over the live sheet and revert Player + scales.
 
 ### Rule: optional walk-position size ramp (2.4 only today)
 
@@ -167,9 +178,11 @@ Scene enter / discovery lines use a GameManager `*_seen` flag. They must not rep
 
 Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialogue finished, or already-seen skip), leave with: red `[X]`, left-click, tap, or Tab/E/Space/Enter. Same keys during lines still skip/advance — they must not leave until the bar is closed. Live: `2.2`, `3.2`, `5.2`.
 
-### Rule: walk-off Y carries across side exits
+### Rule: room-to-room spawn maps along leave/arrive boxes
 
-When the player **walks off a scene edge** (`ExitTrigger`), save floor-relative height in `GameManager.walkoff_floor_offset_y` (player Y minus that room’s floor/wall junction) and apply it on the next room’s peek spawn. Background floor lines in the two drawings should line up. This does **not** apply to `[E]` door / room entries. Live: `1.2` ↔ `1.4`.
+**Approved example (match this):** `1.2_Corridor` ↔ `1.4_BasementDoor` via each scene’s `ExitTrigger`. Top of the leave box → top of the arrive box; bottom → bottom. Do **not** copy world Y, floor-line offsets, or scene size.
+
+For `[E]` InteractAreas and other side `ExitTrigger`s, use the same helper: save `GameManager.interact_arrival_t` (0 = top/left of the source box, 1 = bottom/right). Measure `t` from the Front hitbox in `EnvironmentColliders` texture space (the circle sits below the Player node). Take `t` **once** on the destination (deferred restore after first layout, like `1.2`). On every `layout_applied`: always `PlayerSpawnSync` + cover-sync; if a door peek is still pending, `call_deferred` place — do **not** place-and-clear inside the first layout. Map `t` onto the matching dest box, keep the into-room peek on the short axis, land the Front circle on that point, then nudge with `InteractArrival.clamp_hitbox_to_walls`. Helper: `scenes/core/interact_arrival.gd`. Missing `t` (hub/map) falls back to center (`0.5`). Fresh Play / F6 still uses the Player node. Memory stills keep exact standing-spot restore. Live `[E]` pairs: `1.4`↔`2.1`, `2.1`↔`2.3`/`3.1`/`2.4`, `2.4`↔`4.1`/`5.1`, `1.1`↔`1.2`. Live walk-off: `1.2`↔`1.4`. Regression: `scenes/core/test/interact_arrival_check.gd`.
 
 ### Rule: Player node is the spawn (mandatory)
 
@@ -177,7 +190,7 @@ There is no separate spawn point. The `Player` node **is** the spawn.
 
 - Drag `PlayerLayer/Player` (or `WalkableWorld/Player` on new scenes) on the drawing. That is where Mike starts a fresh Play / F6.
 - **Forbidden:** hardcoded `env.to_global(Vector2(...))`, skipping the first cover-fit remap, teleporting default spawn onto a door / stones / interact shape, or storing a spawn constant that can go stale.
-- **Allowed elsewhere:** only GameManager peek / return when arriving from another room. Walk-off Y (`walkoff_floor_offset_y`) may adjust height after that spawn, not replace X/Y with a new point.
+- **Allowed elsewhere:** only GameManager peek / return when arriving from another room. Arrival along a dest InteractArea / ExitTrigger (`interact_arrival_t`) may place off the Player node.
 - 1.1 intro may start off-screen and walk **to** the remapped Player node. Skip-intro leaves Mike on that node. Do not walk to a computed stones target instead.
 - Helper: `PlayerSpawnSync.capture_tex` before mutating `EnvironmentColliders`, then `apply_tex` after. Works for both unscaled (2.1-style) and pre-scaled (1.2/1.4 `_OLD_BG_SCALE`) colliders.
 - Editor: assign `res://assets/sprites/mike_sprite_frames.tres` on `AnimatedSprite` / `ShadowOutline` so Mike is visible on the node while you drag. Play still rebuilds frames in `Player.gd`. Keep `ShadowOutline` visible in the editor (the pose-nudge tool must not force it off). `AnimatedSprite` stays hidden in the 2D view because the pose stack draws it.
@@ -253,6 +266,18 @@ Godot stores the shape as a shared resource. If two doors point at the same SubR
 2. In `.tscn` text: every door/interact/wall collider that must be tuned alone needs its own `[sub_resource type="RectangleShape2D" id="..."]` and a matching `shape = SubResource("...")`.
 3. Door blockers belong under their own `StaticBody2D` (e.g. `LoungeDoorBlock` → `Lounge_CollisionShape2D`), not as orphan `CollisionShape2D` children of `EnvironmentColliders`.
 
+### Rule: room-edge walls must hide Mike’s drawing (not only the feet circle)
+
+The Front circle is what `move_and_slide` stops. The walk cell (`439×971`) plus `ShadowOutline` stick past that circle, so a 40px `LeftWall` on the PNG edge lets the picture of Mike walk off the drawing.
+
+**Required inset** (from the picture edge to the wall’s inner face) = how far the drawing sticks past the circle in that facing, times live Player scale. The checker computes this; do not copy a one-size-fits-all texture width.
+
+- Grow `LeftWall` / `RightWall` / `TopWall` / `BottomWall` **from the PNG edge inward**. Give each wall its own `RectangleShape2D` (Make Unique) so one edit does not resize the opposite wall.
+- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play). Do not thin walls that already pass.
+- Furniture / door blockers are not this rule.
+
+Live: 1.1 Top only; 1.2 / 1.4 / 2.1 / 2.3 / 3.1 / 4.1 / 5.1 edge walls that were too thin. Kitchen example: unique Left `200×2480` / Right `158×2480` / Top `3508×346` / Bottom `3508×193`. Regression: `tools/qa/wall_sprite_clearance_check.gd` (`WALL_SPRITE_CLEARANCE OK`).
+
 ### Rule: interact-prompt "[E]" chip has no offset by default
 
 Same as the no-visual-offset rule above. `InteractPromptOverlay.gd`'s
@@ -272,7 +297,7 @@ After `_ready`, headless smoke MUST call:
 - `QaCanonValidators.collect_background_camera_findings(root, scene_path)`
 - `QaCanonValidators.collect_background_editor_lock_findings` (background must have `metadata/_edit_lock_`)
 
-New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_design_from_background`) and spawn through `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`.
+New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_design_from_background`) and spawn through `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_walk_speed_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`. Room-edge walls: `tools/qa/wall_sprite_clearance_check.gd`.
 
 ### Playtest variants (optional)
 

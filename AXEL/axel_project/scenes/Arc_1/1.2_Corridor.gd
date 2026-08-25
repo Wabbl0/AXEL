@@ -25,6 +25,8 @@ var _exterior_zone_armed := true
 var _locker_line_running := false
 var _locker_enter_token := 0
 var _pending_basement_peek := false
+var _pending_exterior_peek := false
+var _arrival_t := InteractArrival.DEFAULT_T
 var _exit_trigger_armed := true
 var _player_cover_sync := PlayerCoverSync.new()
 
@@ -65,12 +67,21 @@ func _ready() -> void:
 func _restore_player_position_if_needed() -> void:
 	if not is_instance_valid(_player):
 		return
-	if GameManager.take_corridor_spawn_side() == "basement_right":
+	var spawn_side := GameManager.take_corridor_spawn_side()
+	if spawn_side == "basement_right":
 		_pending_basement_peek = true
+		_arrival_t = InteractArrival.take_arrival_t_or_default()
 		# Discard any stale saved return pos; peek wins.
 		if GameManager.has_corridor_return_pos():
 			GameManager.take_corridor_return_pos()
 		call_deferred("_apply_basement_peek_if_pending")
+		return
+	if spawn_side == "exterior_door":
+		_pending_exterior_peek = true
+		_arrival_t = InteractArrival.take_arrival_t_or_default()
+		if GameManager.has_corridor_return_pos():
+			GameManager.take_corridor_return_pos()
+		call_deferred("_apply_exterior_peek_if_pending")
 		return
 	if not GameManager.has_corridor_return_pos():
 		return
@@ -82,68 +93,43 @@ func _apply_basement_peek_if_pending() -> void:
 	if not _pending_basement_peek or not is_instance_valid(_player):
 		return
 	_pending_basement_peek = false
-	_player.global_position = _basement_right_peek_global()
+	_player.global_position = InteractArrival.place_on_area(
+		_player,
+		_exit_trigger,
+		_arrival_t,
+		Vector2.AXIS_Y,
+		InteractArrival.PeekEdge.LEFT,
+		-BASEMENT_PEEK_MARGIN_PX
+	)
+	call_deferred("_clamp_arrived_player")
 	_arm_exit_trigger_grace()
+
+
+func _apply_exterior_peek_if_pending() -> void:
+	if not _pending_exterior_peek or not is_instance_valid(_player):
+		return
+	_pending_exterior_peek = false
+	_player.global_position = InteractArrival.place_on_area(
+		_player,
+		_exterior_interact_area,
+		_arrival_t,
+		Vector2.AXIS_Y,
+		InteractArrival.PeekEdge.RIGHT,
+		12.0
+	)
+	call_deferred("_clamp_arrived_player")
+	_arm_exterior_zone_grace()
+
+
+func _clamp_arrived_player() -> void:
+	if is_instance_valid(_player):
+		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_Y)
 
 
 func _arm_exit_trigger_grace() -> void:
 	_exit_trigger_armed = false
 	await get_tree().create_timer(EXIT_TRIGGER_GRACE_SEC).timeout
 	_exit_trigger_armed = true
-
-
-func _basement_right_peek_global(apply_walkoff: bool = true) -> Vector2:
-	var pos := _player.global_position
-	var left_edge := _exit_trigger_left_edge_x()
-	if left_edge > -INF:
-		pos.x = left_edge - BASEMENT_PEEK_MARGIN_PX
-	if apply_walkoff and GameManager.has_walkoff_floor_offset_y():
-		pos.y = _floor_marker_global_y() + GameManager.take_walkoff_floor_offset_y()
-		pos.y = _clamp_walkable_y(pos.y)
-	elif is_instance_valid(_exit_trigger):
-		pos.y = _exit_trigger.global_position.y
-	return pos
-
-
-func _floor_marker_global_y() -> float:
-	var locker_wall := get_node_or_null(
-		"WalkableWorld/EnvironmentColliders/LockerWall"
-	) as StaticBody2D
-	if not is_instance_valid(locker_wall):
-		return _player.global_position.y if is_instance_valid(_player) else 0.0
-	var shape := locker_wall.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if shape == null or not (shape.shape is RectangleShape2D):
-		return locker_wall.global_position.y
-	var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
-	return locker_wall.to_global(Vector2(shape.position.x, shape.position.y + half_height)).y
-
-
-func _clamp_walkable_y(y: float) -> float:
-	var min_y := _floor_marker_global_y() + 8.0
-	var max_y := y
-	var bottom := get_node_or_null(
-		"WalkableWorld/EnvironmentColliders/BottomWall"
-	) as StaticBody2D
-	if is_instance_valid(bottom):
-		var shape := bottom.get_node_or_null("CollisionShape2D") as CollisionShape2D
-		if shape != null and shape.shape is RectangleShape2D:
-			var half_height: float = (shape.shape as RectangleShape2D).size.y * 0.5
-			max_y = bottom.to_global(
-				Vector2(shape.position.x, shape.position.y - half_height)
-			).y - 8.0
-		else:
-			max_y = bottom.global_position.y - 8.0
-	if max_y < min_y:
-		return y
-	return clampf(y, min_y, max_y)
-
-
-func _save_walkoff_floor_offset() -> void:
-	if not is_instance_valid(_player):
-		return
-	GameManager.set_walkoff_floor_offset_y(
-		_player.global_position.y - _floor_marker_global_y()
-	)
 
 
 func _refresh_locker_zone_state() -> void:
@@ -358,6 +344,12 @@ func _begin_exterior_transition() -> void:
 	if _is_transitioning:
 		return
 	_is_transitioning = true
+	if is_instance_valid(_player) and is_instance_valid(_exterior_interact_area):
+		GameManager.set_interact_arrival_t(
+			InteractArrival.fraction_along(
+				_player, _exterior_interact_area, Vector2.AXIS_Y
+			)
+		)
 	GameManager.set_exterior_spawn_side("corridor_door")
 	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
 		_interact_prompt.hide_prompt_immediate()
@@ -380,23 +372,12 @@ func _on_exit_trigger_body_entered(body: Node) -> void:
 func _begin_basement_transition() -> void:
 	if not is_instance_valid(_player):
 		return
-	_save_walkoff_floor_offset()
-	_begin_scene_transition(BASEMENT_DOOR_SCENE, _safe_basement_return_pos())
-
-
-func _safe_basement_return_pos() -> Vector2:
-	# Peek X only — do not consume walkoff Y (that offset is for 1.4).
-	return _basement_right_peek_global(false)
-
-
-func _exit_trigger_left_edge_x() -> float:
-	if not is_instance_valid(_exit_trigger):
-		return -INF
-	var shape := _exit_trigger.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if shape == null or not (shape.shape is RectangleShape2D):
-		return -INF
-	var half_width: float = (shape.shape as RectangleShape2D).size.x * 0.5
-	return _exit_trigger.to_global(Vector2(shape.position.x - half_width, shape.position.y)).x
+	if is_instance_valid(_exit_trigger):
+		GameManager.set_interact_arrival_t(
+			InteractArrival.fraction_along(_player, _exit_trigger, Vector2.AXIS_Y)
+		)
+	GameManager.set_basement_spawn_side("corridor_left")
+	_begin_scene_transition(BASEMENT_DOOR_SCENE, _player.global_position)
 
 
 func _begin_scene_transition(scene_path: String, return_pos: Vector2) -> void:
@@ -433,6 +414,8 @@ func _sync_environment_colliders(cover_scale: float, bg_position: Vector2) -> vo
 	call_deferred("_wake_static_colliders")
 	if _pending_basement_peek:
 		call_deferred("_apply_basement_peek_if_pending")
+	elif _pending_exterior_peek:
+		call_deferred("_apply_exterior_peek_if_pending")
 
 
 func _wake_static_colliders() -> void:

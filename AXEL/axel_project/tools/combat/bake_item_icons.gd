@@ -1,11 +1,14 @@
 extends SceneTree
-## Bake 48x48 8-band+white item icons.
-## Usage:
-##   godot --headless --path AXEL/axel_project -s res://tools/combat/bake_item_icons.gd -- [source_root]
-## source_root is optional. Never hardcode machine-absolute paths in shipped game code.
-## If a source file is missing, writes an 8-band placeholder.
+## Bake 48x48 8-band+white item icons from LimeZu singles (optional).
+## Usage (from repo root):
+##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/combat/bake_item_icons.gd -- [interiors_singles_root] [exteriors_singles_root]
+## Paths are CLI-only. Never hardcode machine-absolute paths in shipped game code.
+## Mapping: res://tools/combat/item_icon_sources.json
+##   "L2": "interiors/4_Bedroom_Singles_48x48/Bedroom_Singles_48x48_387.png"
+## Missing mapping or missing file → keep 8-band placeholder for that id.
 
 const OUT_DIR := "res://combat/art/item_icons"
+const MAP_PATH := "res://tools/combat/item_icon_sources.json"
 const SIZE := 48
 
 const REDS: Array[Color] = [
@@ -24,33 +27,77 @@ const BLACKS: Array[Color] = [
 ]
 const WHITE := Color(1, 1, 1, 1)
 
+var _interiors_root: String = ""
+var _exteriors_root: String = ""
+var _map: Dictionary = {}
+
 
 func _init() -> void:
 	call_deferred("_main")
 
 
 func _main() -> void:
-	var source_root := ""
 	var args := OS.get_cmdline_user_args()
-	if not args.is_empty():
-		source_root = args[0]
+	if args.size() >= 1:
+		_interiors_root = args[0].strip_edges().trim_suffix("/").trim_suffix("\\")
+	if args.size() >= 2:
+		_exteriors_root = args[1].strip_edges().trim_suffix("/").trim_suffix("\\")
+	_map = _load_map()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	var ids := _item_ids()
 	var baked := 0
+	var from_source := 0
 	for item_id in ids:
 		var img := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
 		_fill_placeholder(img, item_id)
-		if source_root != "":
-			var src_path := _source_for(source_root, item_id)
-			if src_path != "" and FileAccess.file_exists(src_path):
-				var loaded := Image.new()
-				if loaded.load(src_path) == OK:
-					img = _crop_pad_remap(loaded)
+		var src_path := _source_for(item_id)
+		if src_path != "" and FileAccess.file_exists(src_path):
+			var loaded := Image.new()
+			if loaded.load(src_path) == OK:
+				img = _crop_pad_remap(loaded)
+				from_source += 1
 		var out_path := "%s/%s.png" % [OUT_DIR, item_id]
 		img.save_png(out_path)
 		baked += 1
-	print("BAKE_ITEM_ICONS wrote=%d source_root=%s" % [baked, source_root])
+	print(
+		"BAKE_ITEM_ICONS wrote=%d from_source=%d interiors=%s exteriors=%s"
+		% [baked, from_source, _interiors_root, _exteriors_root]
+	)
 	quit(0)
+
+
+func _load_map() -> Dictionary:
+	if not FileAccess.file_exists(MAP_PATH):
+		return {}
+	var f := FileAccess.open(MAP_PATH, FileAccess.READ)
+	if f == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return {}
+	return parsed as Dictionary
+
+
+func _source_for(item_id: String) -> String:
+	if not _map.has(item_id):
+		return ""
+	var rel := str(_map[item_id]).strip_edges().replace("\\", "/")
+	if rel.begins_with("interiors/"):
+		if _interiors_root == "":
+			return ""
+		return _interiors_root.path_join(rel.substr("interiors/".length()))
+	if rel.begins_with("exteriors/"):
+		if _exteriors_root == "":
+			return ""
+		return _exteriors_root.path_join(rel.substr("exteriors/".length()))
+	# Bare relative path: try interiors root first, then exteriors.
+	if _interiors_root != "":
+		var cand := _interiors_root.path_join(rel)
+		if FileAccess.file_exists(cand):
+			return cand
+	if _exteriors_root != "":
+		return _exteriors_root.path_join(rel)
+	return ""
 
 
 func _fill_placeholder(img: Image, item_id: String) -> void:
@@ -129,10 +176,6 @@ func _remap_noir(px: Color) -> Color:
 	if lum < 0.875:
 		return BLACKS[0]
 	return BLACKS[1]
-
-
-func _source_for(_root: String, _item_id: String) -> String:
-	return ""
 
 
 func _item_ids() -> PackedStringArray:

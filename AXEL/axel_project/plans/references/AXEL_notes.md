@@ -316,6 +316,8 @@ Combat symbol rendering uses a single canonical art folder for runtime:
 
 When adding or replacing symbols, add/update the PNG in `grid_symbols` and wire `SymbolDef.texture`. Only set `power_intro_texture` if a distinct intro asset is required later.
 
+**Generator (`combat/art/generate_placeholders.py`):** writes the four suit PNGs only (Unicode silhouettes → hollow red, stroke 7). Then paints a 1px faint white halo on the existing premium/wild files without redrawing them. Do not let the script overwrite cigarette / bottle / hand / skull art.
+
 ---
 
 ## 13. Terminology Lock (Trinity vs Free Spins)

@@ -266,10 +266,15 @@ Not player-final. Right-hand ITEMS list:
 
 - Rebuilds from `combat/data/items/` at Play (FAMILIES + uniques). Rebind the live `ScrollContainer` children — do not trust scene-saved panel meta `Object()` copies (that froze the list on two old names). There is no separate “real combat” item list.
 - **Family rows** (C→E rank button, no Legendary on the slider): A Power Chain, B Premium Meter, C Trinity, D Free Spins, E Diagonal, F Board-count, M Corner glyphs, G Sealed grid, H True-path. Legendary of that family is a unique row (`L2` Overclock is the A legendary unique; `L-B`…`L-H` unique).
-- **Unique items** grouped by rarity (rainbow rarity text). `L-A` is not listed.
+- **Unique items** grouped by rarity (rainbow rarity text). Within a rarity group, sort by real item number (`C1`…`C10`, not string `C1,C10,C2`). `L-A` is not listed.
 - Header `ITEMS (n/max)` plus debug **Ignore slot cap** (off by default). Default cap 7, or 9 with Void Satchel.
 - **REROLLS** (paid EXECUTE spins only, not Free Spins remaining): Used SpinBox sets `_spins_used` (C1 / U1 / R1 / E4 / C10). Optional Budget + Limit spins gate. Does not reseed.
 - **GOAL:** Base Target (default 10000) + Progress. Effective = `round(base * (1 + sum of equipped H percents))`. Family H applies on the playtest Base target. `%GoalLabel` stays as display.
+- **Hover description:** runtime `ItemDescOverlay` (not saved in the `.tscn`). Opens **under** the cursor and **under** the hovered row, clipped to the ITEMS panel rectangle (does not cover the name or spill onto the grid). 80% black fill, word wrap, 0.08s fade-in (text swap while open stays instant).
+- **Icons:** Playtest icons are 48×48 PNGs under `combat/art/item_icons/{id}.png`, remapped to the 8-band noir palette. Live catalog is fully mapped in `tools/combat/item_icon_sources.json` (`L-A` unused — skip). Sources are LimeZu singles folders (CLI args only — no machine-absolute paths in gameplay):
+  - Interiors: `Theme_Sorter_Singles_48x48` (room subfolders; filenames are a mixed 1…N index, not object types).
+  - Exteriors: `Modern_Exteriors_Complete_Singles_48x48` (keyworded filenames).
+  - Same relative path may be reused for C–E of one family (same effect, different ranks). Family A (C-A…E-A) must **not** reuse the L2 clock. Bake: `tools/combat/bake_item_icons.gd`. Recolor grouping helper: `tools/combat/cluster_item_tiles.gd` → gitignored `.icon_scan/` sheets (do not treat Theme_Sorter atlas cells as singles file numbers).
 
 ---
 

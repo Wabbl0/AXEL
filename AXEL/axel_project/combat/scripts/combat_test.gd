@@ -62,7 +62,15 @@ const ITEMS_BODY_FONT_SCALE := 1.25
 const SIDE_PANEL_HINT_FONT := 14
 const ITEM_PICKER_ROW_H_SEP := 4
 const ITEM_PICKER_CHECKBOX_ICON_MAX := 18
+const ITEM_PICKER_CHECKBOX_COL_W := 22
 const ITEM_ICON_DRAW_SIZE := 24
+const ITEM_RANK_BTN_W := 88
+const ITEM_DESC_Z := 40
+const ITEM_DESC_PREFERRED_WIDTH := 420.0
+const ITEM_DESC_CURSOR_GAP := 8.0
+const ITEM_DESC_PANEL_INSET := 8.0
+const ITEM_DESC_FADE_IN := 0.08
+const ITEM_DESC_BG_ALPHA := 0.8
 const WINNINGS_READOUT_FONT := 31
 const CASCADE_MULT_READOUT_FONT := 24
 const WINNINGS_READOUT_OUTLINE := 0
@@ -140,6 +148,11 @@ var _spin_history_panel: PanelContainer
 var _history_spin_list: VBoxContainer
 var _item_picker_panel: PanelContainer
 var _item_picker_title: Label
+var _item_desc_clip: Control
+var _item_desc_panel: PanelContainer
+var _item_desc_label: Label
+var _item_desc_hover_row: Control
+var _item_desc_fade: Tween
 var _item_entries: Array = []
 var _family_rank: Dictionary = {}
 var _ignore_cap_checkbox: CheckBox
@@ -1229,7 +1242,14 @@ func _apply_item_picker_body_typography() -> void:
 		return
 	var body_font := _resolved_items_body_font()
 	for child in _item_picker_panel.find_children("*", "CheckBox", true, false):
-		_style_item_picker_checkbox(child as CheckBox, body_font)
+		var cb := child as CheckBox
+		if cb == null:
+			continue
+		# Item rows use fixed checkbox columns; do not re-expand them.
+		if cb.get_meta("item_row_checkbox", false):
+			_style_item_row_checkbox(cb, body_font)
+		else:
+			_style_item_picker_checkbox(cb, body_font)
 	for child in _item_picker_panel.find_children("*", "Label", true, false):
 		var label := child as Label
 		if label == _item_picker_title:
@@ -1249,6 +1269,19 @@ func _style_item_picker_checkbox(cb: CheckBox, body_font: int = -1) -> void:
 	cb.add_theme_constant_override("icon_max_width", ITEM_PICKER_CHECKBOX_ICON_MAX)
 	cb.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+func _style_item_row_checkbox(cb: CheckBox, body_font: int = -1) -> void:
+	if cb == null:
+		return
+	if body_font < 0:
+		body_font = _resolved_items_body_font()
+	cb.add_theme_font_size_override("font_size", body_font)
+	cb.add_theme_constant_override("h_separation", ITEM_PICKER_ROW_H_SEP)
+	cb.add_theme_constant_override("icon_max_width", ITEM_PICKER_CHECKBOX_ICON_MAX)
+	cb.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	cb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	cb.custom_minimum_size.x = float(ITEM_PICKER_CHECKBOX_COL_W)
 
 func _make_side_panel_header_strip(header_text: String) -> PanelContainer:
 	var strip := PanelContainer.new()
@@ -1664,6 +1697,7 @@ func _layout_combat() -> void:
 		_layout_premium_bar_fallback(grid_w, max_host_h)
 		_shrink_grid_host_to_content(host_w)
 	_layout_execute_button_to_grid_width(grid_w)
+	_layout_item_desc_overlay()
 	if _is_editor_preview():
 		_ensure_editor_grid_shell_visible()
 
@@ -1971,6 +2005,7 @@ func _build_item_picker() -> void:
 			_add_preview_child(_item_picker_panel)
 	if _item_picker_title != null:
 		_style_side_panel_header(_item_picker_title)
+	_ensure_item_desc_overlay()
 	_ensure_playtest_tuning()
 	_rebuild_item_picker_contents()
 
@@ -2001,6 +2036,215 @@ func _first_descendant_of_class(node: Node, class_nm: String) -> Node:
 		if nested != null:
 			return nested
 	return null
+
+
+func _item_desc_style() -> StyleBoxFlat:
+	var style := _side_panel_style()
+	style.bg_color = Color(0.0, 0.0, 0.0, ITEM_DESC_BG_ALPHA)
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
+	return style
+
+
+func _ensure_item_desc_overlay() -> void:
+	if _item_desc_panel != null and is_instance_valid(_item_desc_panel):
+		_ensure_item_desc_scroll_hook()
+		return
+	_item_desc_clip = Control.new()
+	_item_desc_clip.name = "ItemDescClip"
+	_item_desc_clip.visible = false
+	_item_desc_clip.z_index = ITEM_DESC_Z
+	_item_desc_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_item_desc_clip.clip_contents = true
+	_item_desc_clip.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
+	add_child(_item_desc_clip)
+	_item_desc_panel = PanelContainer.new()
+	_item_desc_panel.name = "ItemDescOverlay"
+	_item_desc_panel.visible = false
+	_item_desc_panel.modulate.a = 0.0
+	_item_desc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_item_desc_panel.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
+	_item_desc_panel.add_theme_stylebox_override("panel", _item_desc_style())
+	_item_desc_label = Label.new()
+	_item_desc_label.name = "ItemDescLabel"
+	_item_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_item_desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_item_desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_item_desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_white_hud_text_style(_item_desc_label)
+	_item_desc_panel.add_child(_item_desc_label)
+	_item_desc_clip.add_child(_item_desc_panel)
+	_ensure_item_desc_scroll_hook()
+
+
+func _ensure_item_desc_scroll_hook() -> void:
+	if _item_picker_panel == null:
+		return
+	var scroll := _item_picker_panel.get_meta("scroll") as ScrollContainer
+	if scroll == null:
+		return
+	var bar := scroll.get_v_scroll_bar()
+	if bar != null and not bar.value_changed.is_connected(_on_item_picker_scrolled):
+		bar.value_changed.connect(_on_item_picker_scrolled)
+
+
+func _on_item_picker_scrolled(_value: float) -> void:
+	_layout_item_desc_overlay()
+
+
+func _item_desc_text_for_item(item: Resource, fallback: String = "") -> String:
+	if item == null:
+		return fallback.strip_edges()
+	return str(item.description).strip_edges()
+
+
+func _bind_item_row_hover(row: Control, desc: String) -> void:
+	if row == null:
+		return
+	row.set_meta("item_desc", desc)
+	_bind_item_hover_tree(row)
+
+
+func _bind_item_hover_tree(node: Node) -> void:
+	if node is Control:
+		var ctrl := node as Control
+		if not bool(ctrl.get_meta("item_desc_hover_bound", false)):
+			ctrl.set_meta("item_desc_hover_bound", true)
+			ctrl.mouse_entered.connect(_on_item_desc_source_entered.bind(ctrl))
+			ctrl.mouse_exited.connect(_on_item_desc_source_exited.bind(ctrl))
+	for child in node.get_children():
+		_bind_item_hover_tree(child)
+
+
+func _item_row_from_node(node: Node) -> Control:
+	var n := node
+	while n != null and n != _item_picker_panel:
+		if n is Control and (n as Control).has_meta("item_desc"):
+			return n as Control
+		n = n.get_parent()
+	return null
+
+
+func _on_item_desc_source_entered(source: Control) -> void:
+	var row := _item_row_from_node(source)
+	if row == null:
+		return
+	_show_item_desc_for_row(row)
+
+
+func _on_item_desc_source_exited(_source: Control) -> void:
+	call_deferred("_finish_item_row_unhover")
+
+
+func _finish_item_row_unhover() -> void:
+	if not is_instance_valid(_item_desc_hover_row):
+		_hide_item_desc()
+		return
+	var mouse := get_global_mouse_position()
+	if _item_desc_hover_row.get_global_rect().has_point(mouse):
+		return
+	if _item_picker_panel != null and _item_desc_panel != null:
+		var kept := _item_desc_panel.get_global_rect().intersection(_item_picker_panel.get_global_rect())
+		if kept.has_area() and kept.has_point(mouse):
+			return
+	_hide_item_desc()
+
+
+func _show_item_desc_for_row(row: Control) -> void:
+	_ensure_item_desc_overlay()
+	if _item_desc_label == null or _item_desc_panel == null:
+		return
+	var desc := str(row.get_meta("item_desc", "")).strip_edges()
+	if desc.is_empty():
+		_hide_item_desc()
+		return
+	var already_shown := _item_desc_panel.visible and _item_desc_panel.modulate.a > 0.05
+	_item_desc_hover_row = row
+	_item_desc_label.text = desc
+	_item_desc_label.add_theme_font_size_override("font_size", _resolved_items_body_font())
+	if _item_desc_clip != null:
+		_item_desc_clip.visible = true
+	_item_desc_panel.visible = true
+	_layout_item_desc_overlay()
+	call_deferred("_layout_item_desc_overlay")
+	if already_shown:
+		_stop_item_desc_fade()
+		_item_desc_panel.modulate.a = 1.0
+		return
+	_item_desc_panel.modulate.a = 0.0
+	_stop_item_desc_fade()
+	_item_desc_fade = create_tween()
+	_item_desc_fade.tween_property(_item_desc_panel, "modulate:a", 1.0, ITEM_DESC_FADE_IN)
+
+
+func _hide_item_desc() -> void:
+	_item_desc_hover_row = null
+	_stop_item_desc_fade()
+	if _item_desc_panel != null:
+		_item_desc_panel.visible = false
+		_item_desc_panel.modulate.a = 0.0
+	if _item_desc_clip != null:
+		_item_desc_clip.visible = false
+
+
+func _stop_item_desc_fade() -> void:
+	if _item_desc_fade != null and _item_desc_fade.is_valid():
+		_item_desc_fade.kill()
+	_item_desc_fade = null
+
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint() and not editor_preview_enabled:
+		return
+	if _item_desc_panel == null or not _item_desc_panel.visible:
+		return
+	_layout_item_desc_overlay()
+
+
+func _layout_item_desc_overlay() -> void:
+	if _item_desc_panel == null or not _item_desc_panel.visible or _item_desc_label == null:
+		return
+	if _item_picker_panel == null or not is_instance_valid(_item_desc_hover_row):
+		return
+	var items_rect := _item_picker_panel.get_global_rect()
+	var row_rect := _item_desc_hover_row.get_global_rect()
+	var list_rect := items_rect
+	var scroll := _item_picker_panel.get_meta("scroll") as Control
+	if scroll != null:
+		list_rect = scroll.get_global_rect()
+	if not list_rect.intersects(row_rect):
+		_hide_item_desc()
+		return
+	if _item_desc_clip != null:
+		_item_desc_clip.global_position = items_rect.position
+		_item_desc_clip.size = items_rect.size
+	var inset := ITEM_DESC_PANEL_INSET
+	var inner_w := maxf(items_rect.size.x - inset * 2.0, 64.0)
+	var desc_w := minf(ITEM_DESC_PREFERRED_WIDTH, inner_w)
+	var style := _item_desc_panel.get_theme_stylebox("panel") as StyleBox
+	var text_w := desc_w
+	if style != null:
+		text_w -= style.get_content_margin(Side.SIDE_LEFT) + style.get_content_margin(Side.SIDE_RIGHT)
+	text_w = maxf(text_w, 48.0)
+	_item_desc_label.custom_minimum_size.x = text_w
+	_item_desc_label.size.x = text_w
+	var desc_h := maxf(_item_desc_panel.get_combined_minimum_size().y, 32.0)
+	var mouse := get_global_mouse_position()
+	var local_mouse := mouse - items_rect.position
+	var row_bottom := row_rect.position.y + row_rect.size.y - items_rect.position.y
+	var x := local_mouse.x - desc_w * 0.5
+	var y := maxf(local_mouse.y, row_bottom) + ITEM_DESC_CURSOR_GAP
+	var x_min := inset
+	var x_max := items_rect.size.x - inset - desc_w
+	if x_max < x_min:
+		x = x_min
+	else:
+		x = clampf(x, x_min, x_max)
+	y = maxf(y, inset)
+	_item_desc_panel.position = Vector2(x, y)
+	_item_desc_panel.size = Vector2(desc_w, desc_h)
 
 
 func _ensure_playtest_tuning() -> void:
@@ -2117,6 +2361,7 @@ func _rebuild_item_picker_contents() -> void:
 		items_vbox = _item_picker_panel.get_meta("list") as VBoxContainer
 	if items_vbox == null:
 		return
+	_hide_item_desc()
 	for child in items_vbox.get_children():
 		items_vbox.remove_child(child)
 		child.free()
@@ -2159,6 +2404,7 @@ func _rebuild_item_picker_contents() -> void:
 		var group: Array = uniques[rarity_idx]
 		if group.is_empty():
 			continue
+		group.sort_custom(func(a, b): return _item_id_sort_key(String(a.id)) < _item_id_sort_key(String(b.id)))
 		var rh := Label.new()
 		rh.text = RARITY_NAMES[rarity_idx]
 		rh.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
@@ -2186,6 +2432,8 @@ func _family_item_at_rank(by_id: Dictionary, letter: String, rank: int) -> Resou
 func _make_item_icon(item: Resource) -> TextureRect:
 	var icon := TextureRect.new()
 	icon.custom_minimum_size = Vector2(ITEM_ICON_DRAW_SIZE, ITEM_ICON_DRAW_SIZE)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -2196,17 +2444,18 @@ func _make_item_icon(item: Resource) -> TextureRect:
 
 func _make_family_row(letter: String, family_name: String, item: Resource, rank: int) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", ITEM_PICKER_ROW_H_SEP)
 	var cb := CheckBox.new()
 	cb.text = ""
-	_style_item_picker_checkbox(cb)
+	cb.set_meta("item_row_checkbox", true)
+	_style_item_row_checkbox(cb)
 	cb.toggled.connect(_on_family_toggled.bind(letter, cb))
 	row.add_child(cb)
 	row.add_child(_make_item_icon(item))
 	var name_lab := Label.new()
 	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lab.text = family_name
-	name_lab.tooltip_text = item.description if item != null else family_name
 	name_lab.mouse_filter = Control.MOUSE_FILTER_PASS
 	var rarity_idx: int = clampi(rank, 0, 3)
 	name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
@@ -2214,35 +2463,66 @@ func _make_family_row(letter: String, family_name: String, item: Resource, rank:
 	row.add_child(name_lab)
 	var rank_btn := Button.new()
 	rank_btn.text = RARITY_NAMES[rarity_idx]
-	rank_btn.custom_minimum_size.x = 88
+	rank_btn.custom_minimum_size.x = ITEM_RANK_BTN_W
+	rank_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	rank_btn.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 	rank_btn.pressed.connect(_on_family_rank_pressed.bind(letter))
 	row.add_child(rank_btn)
-	_item_entries.append({"kind": "family", "letter": letter, "checkbox": cb, "item": item, "icon": row.get_child(1), "name": name_lab, "rank_btn": rank_btn})
+	_bind_item_row_hover(row, _item_desc_text_for_item(item, family_name))
+	_item_entries.append({
+		"kind": "family",
+		"letter": letter,
+		"checkbox": cb,
+		"item": item,
+		"icon": row.get_child(1),
+		"name": name_lab,
+		"rank_btn": rank_btn,
+		"row": row,
+	})
 	return row
 
 
 func _make_unique_row(item: Resource) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", ITEM_PICKER_ROW_H_SEP)
 	var cb := CheckBox.new()
 	var rarity_idx: int = clampi(int(item.get("rarity")), 0, RARITY_GLYPHS.size() - 1)
 	cb.text = ""
-	cb.tooltip_text = "%s | %s" % [RARITY_NAMES[rarity_idx], item.description]
-	_style_item_picker_checkbox(cb)
+	cb.set_meta("item_row_checkbox", true)
+	_style_item_row_checkbox(cb)
 	cb.toggled.connect(_on_item_checkbox_toggled.bind(item, cb))
 	row.add_child(cb)
 	row.add_child(_make_item_icon(item))
 	var name_lab := Label.new()
 	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lab.text = "%s %s" % [RARITY_GLYPHS[rarity_idx], item.display_name]
-	name_lab.tooltip_text = cb.tooltip_text
 	name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
 	name_lab.add_theme_font_size_override("font_size", _resolved_items_body_font())
 	name_lab.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(name_lab)
-	_item_entries.append({"kind": "unique", "checkbox": cb, "item": item})
+	_bind_item_row_hover(row, _item_desc_text_for_item(item))
+	_item_entries.append({"kind": "unique", "checkbox": cb, "item": item, "row": row})
 	return row
+
+
+## Baseline C1..C10 before C-A; digit order not string order (C10 after C9).
+func _item_id_sort_key(item_id: String) -> String:
+	var id := item_id.strip_edges()
+	if id.contains("-"):
+		return "1_%s" % id
+	var i := 0
+	while i < id.length() and _is_ascii_letter(id.unicode_at(i)):
+		i += 1
+	var prefix := id.substr(0, i)
+	var digits := id.substr(i)
+	if digits.is_valid_int():
+		return "0_%s_%04d" % [prefix, digits.to_int()]
+	return "2_%s" % id
+
+
+func _is_ascii_letter(code: int) -> bool:
+	return (code >= 65 and code <= 90) or (code >= 97 and code <= 122)
 
 
 func _discover_available_items() -> Array:
@@ -2259,7 +2539,7 @@ func _discover_available_items() -> Array:
 				found.append(res)
 		file_name = dir.get_next()
 	dir.list_dir_end()
-	found.sort_custom(func(a, b): return String(a.id) < String(b.id))
+	found.sort_custom(func(a, b): return _item_id_sort_key(String(a.id)) < _item_id_sort_key(String(b.id)))
 	return found
 
 
@@ -2325,8 +2605,12 @@ func _on_family_rank_pressed(letter: String) -> void:
 	if icon != null and new_item != null:
 		icon.texture = new_item.get("icon") as Texture2D
 	if name_lab != null and new_item != null:
-		name_lab.tooltip_text = new_item.description
 		name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(next_rank, Color.WHITE))
+	var row := entry.get("row") as Control
+	if row != null and new_item != null:
+		row.set_meta("item_desc", _item_desc_text_for_item(new_item))
+		if _item_desc_hover_row == row:
+			_show_item_desc_for_row(row)
 	if rank_btn != null:
 		rank_btn.text = RARITY_NAMES[next_rank]
 	if _can_use_combat_api() and cb != null and cb.button_pressed and old_item != null and new_item != null:

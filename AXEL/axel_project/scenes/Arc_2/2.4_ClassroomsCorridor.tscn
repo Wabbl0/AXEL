@@ -5,11 +5,11 @@
 [ext_resource type="SpriteFrames" uid="uid://4eiekoqcuo44" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
 [ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
 [ext_resource type="Texture2D" uid="uid://bpiwdk824u4rj" path="res://exports/Drawings/2.4_ClassroomsCorridor.png" id="4_corridor_bg"]
-[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
+[ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
-[ext_resource type="Shape2D" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
+[ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fill_top_left"]
 size = Vector2(4960, 2432)
@@ -21,7 +21,7 @@ size = Vector2(4850, 64)
 size = Vector2(2166, 40)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_right"]
-size = Vector2(40, 4960)
+size = Vector2(244, 4960)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
 size = Vector2(4960, 40)
@@ -99,7 +99,7 @@ shape = SubResource("RectangleShape2D_wall_top")
 position = Vector2(6996, 2480)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=1659635309]
-position = Vector2(-308, -16)
+position = Vector2(-206, -16)
 shape = SubResource("RectangleShape2D_wall_right")
 
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1085812994]
@@ -134,7 +134,7 @@ position = Vector2(5933, 280)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/CafeteriaInteractArea" unique_id=940280409]
-position = Vector2(-77, 199)
+position = Vector2(-77, 168)
 shape = SubResource("RectangleShape2D_cafeteria_interact_h")
 
 [node name="LoungeInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=270961570]
@@ -185,11 +185,11 @@ monitorable = false
 position = Vector2(-4605, 3415.5)
 shape = SubResource("RectangleShape2D_extra_door_3")
 
-[node name="VerticalSizeRampArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders"]
+[node name="VerticalSizeRampArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=337219967]
 position = Vector2(5933, 1900)
 monitorable = false
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/VerticalSizeRampArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/VerticalSizeRampArea" unique_id=845556429]
 shape = SubResource("RectangleShape2D_vertical_size_ramp")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1140767310]
@@ -206,17 +206,19 @@ follow_viewport_enabled = true
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=580889261]
 z_index = 10
 position = Vector2(5933, 520)
-scale = Vector2(0.198347, 0.198347)
+scale = Vector2(0.198, 0.198)
 script = ExtResource("2_player_script")
-speed = 253.4
+speed = 185.3
+pose_nudge_back = Vector2(-114.725, 2.49)
+pose_nudge_side = Vector2(41.76, -15.86)
 sprite_sheet = ExtResource("3_player_sheet")
-animation_fps = 5.0
 collision_polygon_epsilon = 4.0
 collision_alpha_shrink_pixels = 4
 collision_inward_margin = 4.0
 collision_lower_body_ratio = 0.42
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=852536683]
+visible = false
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
 autoplay = "idle"

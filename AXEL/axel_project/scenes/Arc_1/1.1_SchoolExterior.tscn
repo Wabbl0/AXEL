@@ -13,6 +13,9 @@
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="18_exploration_viewport"]
 [ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_top"]
+size = Vector2(1218, 47)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
 size = Vector2(1218, 32)
 
@@ -147,8 +150,8 @@ polygon = PackedVector2Array(790, 669, 808, 685, 815, 728, 655, 729, 666, 704, 6
 position = Vector2(640, 16)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/TopWall" unique_id=1627696374]
-position = Vector2(0, -300)
-shape = SubResource("RectangleShape2D_wall_horizontal")
+position = Vector2(0, -292.5)
+shape = SubResource("RectangleShape2D_wall_top")
 
 [node name="BottomWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1196423384]
 position = Vector2(640, 704)
@@ -221,13 +224,15 @@ follow_viewport_enabled = true
 unique_name_in_owner = true
 z_index = 20
 position = Vector2(227, 405)
-scale = Vector2(0.079339, 0.079339)
+scale = Vector2(0.079, 0.079)
 script = ExtResource("2_elx0u")
-speed = 120.0
+speed = 101.2
+pose_nudge_back = Vector2(-114.725, 2.49)
+pose_nudge_side = Vector2(41.76, -15.86)
 sprite_sheet = ExtResource("3_p5syx")
-animation_fps = 5.0
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=663540772]
+visible = false
 sprite_frames = ExtResource("3_mike_frames")
 animation = &"idle"
 autoplay = "idle"

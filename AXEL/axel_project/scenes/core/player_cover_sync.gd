@@ -9,6 +9,7 @@ class_name PlayerCoverSync
 ## Optional locked_feet_y uses texture-space remap (never absolute Y *= ratio).
 
 const Layout := preload("res://scenes/core/background_layout.gd")
+const PlayerWalkSpeedScript := preload("res://scenes/core/player_walk_speed.gd")
 const AUTHORED_SCALE_META := "axel_authored_scale"
 const AUTHORED_SPEED_META := "axel_authored_speed"
 
@@ -29,7 +30,11 @@ func bind_from_player(player: CharacterBody2D) -> void:
 	if not is_instance_valid(player):
 		return
 	authored_scale = player.scale
-	authored_speed = float(player.get("speed"))
+	# Authored walk speed follows scale (plus below-0.3 extra). Do not use the
+	# Inspector speed as source of truth — bake stays in sync for editor preview.
+	authored_speed = PlayerWalkSpeedScript.from_scale(authored_scale.x)
+	if player.get("speed") != null:
+		player.speed = authored_speed
 	authored_locked_feet_y = float(player.get("locked_feet_y"))
 	player.set_meta(AUTHORED_SCALE_META, authored_scale)
 	player.set_meta(AUTHORED_SPEED_META, authored_speed)

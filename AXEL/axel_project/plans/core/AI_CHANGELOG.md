@@ -5244,3 +5244,288 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared write-ups to live memory scripts, `combat_test.gd` picker, `pose_nudge.tres`, `project.godot` autoloads, and today’s implement chats after 11:34.
 - Notes: Morning changelog already had later implement entries; this pass filled the two missing logs (memory leave, ITEMS picker) and leftover stale scene/structure text.
 
+## 2026-08-25
+
+### 2.1 cafeteria — Mike 50% larger (cover-sync unchanged)
+- Request: After the new player model, Mike in 2.1 was a bit too small; increase size by 50%. Also re-check that scale stays the same vs the room on another computer / resolution.
+- Implementation: Raised authored Player scale in `2.1_Cafeteria.tscn` from `0.198347` to `0.2975205` (same 50% bump as 5.1). Walk speed stayed `189.75`. Did **not** retune for a window or monitor — `PlayerCoverSync` still multiplies authored scale by `live_cover / 1920×1280 baseline`. Stretch stays disabled.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: In the cafeteria only, Mike is 50% taller vs the drawing at 1920×1280. Other rooms unchanged. Any Game tab / OS window still keeps the same Mike-to-room ratio.
+- Verification: `player_cover_sync_check.gd`; 2.1 still binds `bind_design_from_background`; `project.godot` has no canvas stretch.
+- Notes: If Mike only looked small on one monitor, the fix would be the scaler, not this number. This change is the authored 1920×1280 look vs the cafeteria furniture.
+
+### Walk speed from player scale
+- Request: Speed felt too slow vs the larger 2.1 Mike; add a global scale→speed equation so stride feels constant, with extra speed when scale is below 0.3 (more extra the further below).
+- Implementation: Added `PlayerWalkSpeed.from_scale` (`K = 253.4 / 0.198347`; below 0.3 add linear extra so 1.1 gets +50). `PlayerCoverSync.bind_from_player` sets authored speed from scale. Baked Inspector speeds on all walkable Players. 2.4 depth ramp still multiplies live scale+speed after cover-sync (formula not re-run).
+- Files changed:
+  - `AXEL/axel_project/scenes/core/player_walk_speed.gd`
+  - `AXEL/axel_project/scenes/core/player_cover_sync.gd`
+  - `AXEL/axel_project/scenes/core/test/player_walk_speed_check.gd`
+  - `AXEL/axel_project/scenes/core/test/player_cover_sync_check.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md` … `ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Bigger Mike walks faster in proportion; tiny Mike (1.1) gets the largest below-0.3 boost; shared rooms get a small boost; kitchen (scale > 0.3) has none.
+- Verification: `player_walk_speed_check.gd`, `player_cover_sync_check.gd`.
+- Notes: Tune `SMALL_ANCHOR_ADD` / `SMALL_SCALE` in `player_walk_speed.gd` if the below-0.3 feel needs a later pass.
+
+### `[E]` door arrival maps along InteractAreas
+- Request: 2.1→1.4 from the top of the return InteractArea spawned Mike outside 1.4’s walls. Arrival should map along each scene’s InteractArea (top→top), then keep the Front hitbox inside walls. Apply to all `[E]` room doors; keep walk-off Y for 1.2↔1.4.
+- Implementation: Added `InteractArrival` helper + transient `GameManager.interact_arrival_t`. Leave paths save 0..1 along the source box; arrive paths place on the dest box with the existing into-room peek, then deferred `clamp_hitbox_to_walls`. Wired 1.4↔2.1, 2.1↔2.3/3.1/2.4, 2.4↔4.1/5.1, 1.1↔1.2 (`exterior_door` corridor spawn). Kitchen now peeks on its door when entering from cafeteria.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md` … `ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Standing high/low in an `[E]` door lands at the matching spot on the other room’s door box, without sticking Mike into walls. Walk-off 1.2↔1.4 and memory still returns unchanged. Fresh Play still uses the Player node.
+- Verification: `scene_smoke_check.gd` OK (10 scenes). Manual: 2.1 top/bottom of left door → 1.4; reverse; spot-check other `[E]` links.
+- Notes: Prefer clamp over redrawing 1.4’s cafeteria box; shrink that box only if clamp still fails in play.
+
+### 1.4 walk animation FPS matches 1.2
+- Request: 1.2–1.4 walk speed/size were already the same, but 1.4 looped the walk sheet much faster than 1.2. Use 1.2 as the correct loop.
+- Implementation: 1.4 had no `animation_fps`, so `Player.gd` rebuilt the sheet at the old default **10** FPS (1.2 uses **5**). Set 1.4 `animation_fps = 5.0` and wired the same walk sheet as 1.2. Changed `Player.gd` default `animation_fps` from `10` to `5` so a missing override no longer doubles the loop.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 1.4 walk cycle should now match 1.2. Authored scale/speed were already the shared pair.
+- Verification: Compared Player exports; only 1.4 was missing `animation_fps`.
+- Notes: Size/speed formula was not the cause — animation FPS was independent.
+
+### Combat ITEMS list alignment + L2 icon bake
+- Request: ITEMS list rows were stair-stepped; all icons were the same hatch placeholder. Icons should come from LimeZu singles (L2 clock seeded); interiors numbered files are mixed objects — cluster by shape, not consecutive numbers.
+- Implementation: Fixed item-row checkbox columns (no expand) and natural-sort uniques (`C1`…`C10`). Added `item_icon_sources.json` + dual-root baker; baked L2 from bedroom clock 387. Added `cluster_item_tiles.gd` (gitignored `.icon_scan/` sheets). Catalog Playtest HUD notes updated.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/tools/combat/bake_item_icons.gd`
+  - `AXEL/axel_project/tools/combat/item_icon_sources.json`
+  - `AXEL/axel_project/tools/combat/cluster_item_tiles.gd`
+  - `AXEL/axel_project/combat/art/item_icons/L2.png`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `.gitignore`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: ITEMS rows line up; Common uniques sort C1…C10; L2 shows noir-remapped clock. Other ids stay placeholders until more JSON mappings.
+- Verification: `combat_test_scaffold_check.gd`; bake prints `from_source=1`.
+- Notes: Remaining icons via Composer/Auto + labeled cluster sheets. Do not re-run `generate_item_resources.py` (overwrites placeholders).
+
+### Walk speed constant ~33% slower
+- Request: Globally make the walk-speed constant a little slower (~33%). Put the scale/speed table in canon docs.
+- Implementation: Multiplied `PlayerWalkSpeed` `REF_SPEED` (`253.4` → `169.778`) and the below-0.3 extra (`+50` → `+33.5`) by `0.67`. Rebaked all walkable Inspector speeds. Table lives in `SCENE_BUILDING.md` § Player scale profiles; `AI_DOCS.md` points there.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/player_walk_speed.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md` … `ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Every room walks ~33% slower. Size and walk-loop FPS unchanged.
+- Verification: `player_walk_speed_check.gd`, `player_cover_sync_check.gd`.
+- Notes: Shared rooms are now `185.21` (was `276.43`).
+
+### Round authored scale / speed
+- Request: Round scale to three decimals (`0.00X`) and speed to one decimal (`0.X`).
+- Implementation: `PlayerWalkSpeed` now uses `REF_SCALE` `0.198`, `REF_SPEED` `169.8`, `SMALL_ANCHOR_SCALE` `0.079`; `from_scale` snaps to `0.1`. Rebaked every walkable Player. Table in `SCENE_BUILDING.md` updated.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/player_walk_speed.gd`
+  - `AXEL/axel_project/scenes/core/test/player_walk_speed_check.gd`
+  - walkable `Player` nodes in `1.1` / `1.2` / `1.4` / `2.1` / `2.3` / `2.4` / `3.1` / `4.1` / `5.1`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md` … `ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Size/speed feel unchanged; numbers are just shorter.
+- Verification: `player_walk_speed_check.gd`, `player_cover_sync_check.gd`.
+- Notes: Shared rooms are `0.198` / `185.3`.
+
+### `[E]` arrival t taken once; 2.1→1.4 Y mapping
+- Request: 2.1→1.4 still spawned Mike in the same 1.4 spot whether he used the top or bottom of `ReturnInteractArea`.
+- Implementation: Camera cover-fit runs twice; each `take_interact_arrival_t` after the first returned `0.5` (box center). Destination rooms now cache `t` in `_ready`. Helper measures/places the Front hitbox in `EnvironmentColliders` texture space (circle sits below the Player node). Place after `PlayerCoverSync.apply` so the offset matches live scale.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Top of 2.1’s left `[E]` box maps to the top of 1.4’s cafeteria box (clamped onto the floor); bottom maps lower. Other `[E]` doors use the same cache. Walk-off 1.2↔1.4 unchanged.
+- Verification: `interact_arrival_check.gd` (2.1 t top≈0.12 / bot=1.0; 1.4 tex.y ~854 vs ~1376). `scene_smoke_check.gd`.
+- Notes: Prefer clamp over redrawing 1.4’s cafeteria collider.
+
+### 1.2↔1.4 spawn maps along ExitTrigger boxes
+- Request: Walking 1.2→1.4 from the top of 1.2’s leave zone did not place Mike as high in 1.4. Spawn must be relative to each scene’s InteractArea / ExitTrigger, not scene size or floor-line Y.
+- Implementation: Stopped copying `walkoff_floor_offset_y` (1.4 then clamped to floor+8, which pulled Mike down). 1.2 and 1.4 now save/restore `interact_arrival_t` along each `ExitTrigger` (same helper as `[E]` doors). 1.4 uses `basement_spawn_side="corridor_left"` for this peek.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Top of 1.2’s right `ExitTrigger` maps to the top of 1.4’s left `ExitTrigger` (hitbox nudged out of walls only). Reverse path matches. `[E]` doors unchanged.
+- Verification: `interact_arrival_check.gd` (1.4 corridor t=0 vs t=1 Y gap). `scene_smoke_check.gd`.
+- Notes: `walkoff_floor_offset_y` remains on GameManager but is unused.
+
+### Combat item descriptions wrap beside ITEMS
+- Request: Item descriptions in the combat playtest UI were one long line over the grid. Move them next to the ITEMS list, wrap onto multiple lines, and fit them symmetrically to that list.
+- Implementation: Replaced native tooltips with a hover card (`ItemDescOverlay`). Same width as the ITEMS panel when the gutter allows, wraps with word-smart autowrap, sits just left of the list, and stays vertically aligned with the hovered row inside the list bounds so it does not cover the grid.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Hovering an ITEMS row shows a wrapped description plaque next to the list. Combat rules, RNG, and scaffold nodes are unchanged.
+- Verification: `combat_test_scaffold_check.gd`.
+- Notes: Overlay is created at runtime (not saved in the scene).
+
+### 1.2↔1.4 is the approved spawn-mapping example
+- Request: 1.2→1.4 feel is exactly right; use it as the example for other rooms.
+- Implementation: Canon now names `1.2`↔`1.4` `ExitTrigger` as the approved `InteractArrival` example. Other `[E]` / walk-off pairs should match that (top of leave box → top of arrive box; not scene size / floor Y).
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None this pass — docs/helper comment only. Playtest other rooms against 1.2↔1.4.
+- Verification: Docs updated; no runtime change.
+- Notes: If another pair feels wrong, fix that pair to match 1.2↔1.4, do not change 1.2↔1.4.
+
+### Combat item description hover polish
+- Request: Keep wrapped item descriptions, but put the box to the right of the cursor, use an 80% black background, wrap less tightly, and fade in quickly instead of popping on.
+- Implementation: Hover card now follows just right of the mouse, uses a wider wrap width, draws black at 80% opacity, and fades in over 0.08s (text swap while already open stays instant).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Description tooltip sits on the cursor’s right, reads as a see-through black box, and appears with a short fade. Combat rules unchanged.
+- Verification: `combat_test_scaffold_check.gd`.
+- Notes: If the box would go off the right edge of the window, it is clamped on-screen.
+
+### Combat item description stays in ITEMS box
+- Request: Description sat on top of the hovered item. Keep it below the cursor and that item, and do not draw outside the ITEMS panel.
+- Implementation: Tooltip now opens under the cursor and under the hovered row. A clip layer matching the ITEMS panel keeps it inside that rectangle; width is capped to the panel so it cannot spill left or right.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Hover text no longer covers the item name. Near the bottom of the list, extra lines are clipped at the ITEMS edge instead of leaving the box.
+- Verification: `combat_test_scaffold_check.gd`.
+- Notes: ITEMS is a UI panel, not a `RectangleShape2D`; the clip uses that panel’s rectangle.
+
+### Remaining LimeZu item icons baked
+- Request: Pick LimeZu 48×48 icons for every remaining combat item, update `item_icon_sources.json`, then bake. Keep L2’s bedroom clock. Family A must not reuse that clock. `L-A` unused.
+- Implementation: Mapped the rest of the catalog (families A–H plus uniques C1–C10 / U1–U8 / R1–R6 / E1–E4 / L1 / L3). Same path shared across C–E of one family. Baked noir 48×48 PNGs into `combat/art/item_icons/`.
+- Files changed:
+  - `AXEL/axel_project/tools/combat/item_icon_sources.json`
+  - `AXEL/axel_project/combat/art/item_icons/*.png`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: ITEMS rows show distinct LimeZu icons instead of hatch placeholders. Combat rules unchanged.
+- Verification: Bake from JSON; `L-A` still absent.
+- Notes: Cluster sheets stay gitignored under `tools/combat/.icon_scan/`. Do not re-run `generate_item_resources.py`.
+
+### Restore premium symbols + hollow red suits
+- Request: First pass filled suits white and overwrote bottle/hand/skull/cigarette. Restore those four. Redraw square/triangle/star/heart as same-size simple outlines with no fill, matching stroke, from Unicode. Then make those outlines red and add a faint white halo on the premium/wild icons.
+- Implementation: Restored the four 128×128 premium/wild PNGs from git. Rewrote `generate_placeholders.py` to carve hollow red rings from Unicode silhouettes (■ ▲ ★ ♥, stroke 7) for the four suit files only, then paint a 1px faint white halo on cigarette / bottle / hand / skull without redrawing them.
+- Files changed:
+  - `AXEL/axel_project/combat/art/generate_placeholders.py`
+  - `AXEL/axel_project/combat/art/grid_symbols/green_circle.png`
+  - `AXEL/axel_project/combat/art/grid_symbols/yellow_triangle.png`
+  - `AXEL/axel_project/combat/art/grid_symbols/blue_star.png`
+  - `AXEL/axel_project/combat/art/grid_symbols/red_heart.png`
+  - `AXEL/axel_project/combat/art/grid_symbols/cigarette.png`
+  - `AXEL/axel_project/combat/art/grid_symbols/booze.png`
+  - `AXEL/axel_project/combat/art/grid_symbols/bloody_hand.png`
+  - `AXEL/axel_project/combat/art/grid_symbols/satanic_wild.png`
+  - `AXEL/axel_project/combat/README.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/references/AXEL_notes.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Grid suits are hollow red. Premium/wild look as before, with a faint white edge. Combat RNG unchanged.
+- Verification: Generator run; premium file sizes match restored art plus halo.
+- Notes: Re-running the script is safe for premium/wild (halo is idempotent). It still overwrites the four suit PNGs.
+
+### Thicken thin room-edge walls
+- Request: Mike’s drawing walked through kitchen 2.3 `LeftWall` and other thin room-edge walls. Compute the minimum inset from the Front circle + walk sprite (scale per room). Thicken only walls that are too thin. Skip 2.4 (already fixed) and walk-off / Ending-1 exits.
+- Implementation: Added `wall_sprite_clearance_check.gd`. Grew too-thin `LeftWall` / `RightWall` / `TopWall` / `BottomWall` from the PNG edge inward with unique shapes. Kitchen LeftWall was the first fix, then the same pass on 1.1 (Top only), 1.2, 1.4, 2.1, 2.3, 3.1, 4.1, 5.1.
+- Files changed:
+  - `AXEL/axel_project/tools/qa/wall_sprite_clearance_check.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.tscn`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike’s feet still stop at the wall; his drawing no longer sticks past the room edge. Walk-off 1.2↔1.4 and 1.1 left exit unchanged. 2.4 untouched.
+- Verification: `wall_sprite_clearance_check.gd` → `WALL_SPRITE_CLEARANCE OK`.
+- Notes: The circle was never missing — the sprite is larger than the circle. Furniture blockers are not this rule.
+
+### Docs sync — rest of 2026-08-25
+- Request: `update todays docs` after the afternoon implement chats (icons, spawn mapping, item hover, symbols, walls).
+- Implementation: Canon now matches the later passes: remaining LimeZu icons, ITEMS hover card, hollow red suit symbols + premium halo, and room-edge wall clearance (checker + skip list). Scale/speed, `InteractArrival`, and 1.2↔1.4 as the spawn example were already in the morning changelog.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/references/AXEL_notes.md`
+  - `AXEL/axel_project/combat/README.md`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Gameplay unchanged.
+- Verification: Compared write-ups to live `item_icon_sources.json`, `generate_placeholders.py`, `wall_sprite_clearance_check.gd`, `combat_test.gd` hover overlay, and today’s chats after the last morning changelog entries.
+- Notes: Morning changelog already had scale/speed, `[E]` arrival, and ITEMS hover polish; this pass logged the three missing afternoon ships and leftover stale combat/scene text.
+
+
+

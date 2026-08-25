@@ -1,0 +1,91 @@
+{
+	"L2": "interiors/4_Bedroom_Singles_48x48/Bedroom_Singles_48x48_387.png",
+
+	"C-A": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_177.png",
+	"U-A": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_177.png",
+	"R-A": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_177.png",
+	"E-A": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_177.png",
+
+	"C-B": "exteriors/ME_Singles_City_Props_48x48_Parking_Meter_1.png",
+	"U-B": "exteriors/ME_Singles_City_Props_48x48_Parking_Meter_1.png",
+	"R-B": "exteriors/ME_Singles_City_Props_48x48_Parking_Meter_1.png",
+	"E-B": "exteriors/ME_Singles_City_Props_48x48_Parking_Meter_1.png",
+	"L-B": "interiors/4_Bedroom_Singles_48x48/Bedroom_Singles_48x48_433.png",
+
+	"C-C": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_70.png",
+	"U-C": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_70.png",
+	"R-C": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_70.png",
+	"E-C": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_70.png",
+	"L-C": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_54.png",
+
+	"C-D": "exteriors/ME_Singles_School_48x48_Basketball_Ball_1.png",
+	"U-D": "exteriors/ME_Singles_School_48x48_Basketball_Ball_1.png",
+	"R-D": "exteriors/ME_Singles_School_48x48_Basketball_Ball_1.png",
+	"E-D": "exteriors/ME_Singles_School_48x48_Basketball_Ball_1.png",
+	"L-D": "interiors/3_Bathroom_Singles_48x48/Bathroom_Singles_48x48_57.png",
+
+	"C-E": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_24.png",
+	"U-E": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_24.png",
+	"R-E": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_24.png",
+	"E-E": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_24.png",
+	"L-E": "interiors/3_Bathroom_Singles_48x48/Bathroom_Singles_48x48_64.png",
+
+	"C-F": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_32.png",
+	"U-F": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_32.png",
+	"R-F": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_32.png",
+	"E-F": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_32.png",
+	"L-F": "exteriors/ME_Singles_Graveyard_48x48_Small_Gate_Red_Orb.png",
+
+	"C-M": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_33.png",
+	"U-M": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_33.png",
+	"R-M": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_33.png",
+	"E-M": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_33.png",
+	"L-M": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_149.png",
+
+	"C-G": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_220.png",
+	"U-G": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_220.png",
+	"R-G": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_220.png",
+	"E-G": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_220.png",
+	"L-G": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_173.png",
+
+	"C-H": "exteriors/ME_Singles_Subway_and_Train_Station_48x48_Poster_Truth_1.png",
+	"U-H": "exteriors/ME_Singles_Subway_and_Train_Station_48x48_Poster_Truth_1.png",
+	"R-H": "exteriors/ME_Singles_Subway_and_Train_Station_48x48_Poster_Truth_1.png",
+	"E-H": "exteriors/ME_Singles_Subway_and_Train_Station_48x48_Poster_Truth_1.png",
+	"L-H": "interiors/3_Bathroom_Singles_48x48/Bathroom_Singles_48x48_109.png",
+
+	"C1": "exteriors/ME_Singles_Camping_48x48_Campfire_2.png",
+	"C2": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_36.png",
+	"C3": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_31.png",
+	"C4": "interiors/18_Jail_Singles_48x48/Jail_Singles_48x48_50.png",
+	"C5": "exteriors/ME_Singles_Graveyard_48x48_Consumed_Candle_1.png",
+	"C6": "exteriors/ME_Singles_Graveyard_48x48_Consumed_Candle_2.png",
+	"C7": "exteriors/ME_Singles_City_Props_48x48_Open_Can_Trash.png",
+	"C8": "exteriors/23_MIlitary_Base_48x48_Military_Tent_First_Aid_Kit_Red.png",
+	"C9": "exteriors/ME_Singles_Camping_48x48_Bottle_1.png",
+	"C10": "interiors/19_Hospital_SIngles_48x48/Hospital_Singles_48x48_423.png",
+
+	"U1": "interiors/19_Hospital_SIngles_48x48/Hospital_Singles_48x48_426.png",
+	"U2": "exteriors/ME_Singles_Camping_48x48_Lantern_3.png",
+	"U3": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_71.png",
+	"U4": "interiors/4_Bedroom_Singles_48x48/Bedroom_Singles_48x48_467.png",
+	"U5": "exteriors/ME_Singles_Graveyard_48x48_Wall_Candle_1.png",
+	"U6": "exteriors/ME_Singles_City_Props_48x48_Antenna.png",
+	"U7": "interiors/4_Bedroom_Singles_48x48/Bedroom_Singles_48x48_463.png",
+	"U8": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_142.png",
+
+	"R1": "interiors/23_Television_and_Film_Studio_SIngles_48x48/Television_and_FIlm_Studio_Singles_48x48_1.png",
+	"R2": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_158.png",
+	"R3": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_108.png",
+	"R4": "exteriors/ME_Singles_Subway_and_Train_Station_48x48_Elevator_Red_Button.png",
+	"R5": "exteriors/ME_Singles_Camping_48x48_Rope_1.png",
+	"R6": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_103.png",
+
+	"E1": "exteriors/ME_Singles_Subway_and_Train_Station_48x48_Big_White_Crown_Graffiti.png",
+	"E2": "exteriors/ME_Singles_Police_Station_48x48_Badge_1.png",
+	"E3": "interiors/14_Basement_Singles_48x48/Basement_Singles_48x48_167.png",
+	"E4": "interiors/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_25.png",
+
+	"L1": "interiors/11_Halloween_Singles_48x48/Halloween_Singles_48x48_105.png",
+	"L3": "exteriors/ME_Singles_Camping_48x48_Backpack_3.png"
+}

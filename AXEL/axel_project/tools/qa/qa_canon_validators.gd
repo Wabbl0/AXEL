@@ -5,6 +5,7 @@ class_name QaCanonValidators
 
 const BackgroundLayoutScript := preload("res://scenes/core/background_layout.gd")
 const BackgroundCameraScript := preload("res://scenes/core/background_camera_controller.gd")
+const PlayerWalkSpeedScript := preload("res://scenes/core/player_walk_speed.gd")
 
 const COMBAT_TEST_SCENE := "res://combat/combat_test.tscn"
 
@@ -59,8 +60,8 @@ const COMBAT_ROOT_NO_SUFFIX2: Array[String] = [
 const MOVEMENT_SCENE_PROFILES: Dictionary = {
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn": {
 		"label": "school_exterior",
-		"speed_min": 100.0,
-		"speed_max": 210.0,
+		"speed_min": 90.0,
+		"speed_max": 160.0,
 		"scale_min": 0.07,
 		"scale_max": 0.09,
 		"required_paths": [
@@ -73,8 +74,8 @@ const MOVEMENT_SCENE_PROFILES: Dictionary = {
 	},
 	"res://scenes/Arc_1/1.2_Corridor.tscn": {
 		"label": "corridor_large",
-		"speed_min": 240.0,
-		"speed_max": 375.0,
+		"speed_min": 160.0,
+		"speed_max": 250.0,
 		"scale_min": 0.18,
 		"scale_max": 0.22,
 		"required_paths": [
@@ -426,6 +427,20 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 	var speed := float(player.get("speed"))
 	if player.has_meta("axel_authored_speed"):
 		speed = float(player.get_meta("axel_authored_speed"))
+	var scale_xy := player.scale
+	if player.has_meta("axel_authored_scale"):
+		scale_xy = player.get_meta("axel_authored_scale") as Vector2
+	var expected_speed := PlayerWalkSpeedScript.from_scale(scale_xy.x)
+	if absf(speed - expected_speed) > 0.5:
+		findings.append(make_finding(
+			"movement.speed_from_scale",
+			"minor",
+			"CLARITY",
+			scene_path,
+			"Player.speed=%.2f does not match PlayerWalkSpeed.from_scale(%.6f)=%.2f"
+			% [speed, scale_xy.x, expected_speed],
+			"Bake speed from PlayerWalkSpeed / let PlayerCoverSync.bind_from_player set it."
+		))
 	var speed_min := float(profile.get("speed_min", 0.0))
 	var speed_max := float(profile.get("speed_max", 9999.0))
 	if speed < speed_min or speed > speed_max:
@@ -439,9 +454,6 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 			"Tune Player.speed to SCENE_BUILDING profile for this scene."
 		))
 
-	var scale_xy := player.scale
-	if player.has_meta("axel_authored_scale"):
-		scale_xy = player.get_meta("axel_authored_scale") as Vector2
 	var scale_min := float(profile.get("scale_min", 0.0))
 	var scale_max := float(profile.get("scale_max", 99.0))
 	var scale_avg := (scale_xy.x + scale_xy.y) * 0.5
