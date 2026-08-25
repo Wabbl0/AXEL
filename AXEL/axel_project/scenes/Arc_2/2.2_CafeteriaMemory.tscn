@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://r5dnn5co7gsm" path="res://scenes/Arc_2/2.2_CafeteriaMemory.gd" id="1_memory"]
 [ext_resource type="Texture2D" uid="uid://bn7cof0m24lnk" path="res://exports/Drawings/2.2_Cafeteria_Memory.png" id="2_memory_bg"]
-[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
+[ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="4_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="5_bg_lock"]
 [ext_resource type="Script" uid="uid://dcqmn1lf1uf5d" path="res://scenes/Arc_2/2.2_cafeteria_memory_frame.gd" id="6_frame"]

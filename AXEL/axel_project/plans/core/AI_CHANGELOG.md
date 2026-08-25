@@ -5527,5 +5527,14 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared write-ups to live `item_icon_sources.json`, `generate_placeholders.py`, `wall_sprite_clearance_check.gd`, `combat_test.gd` hover overlay, and today’s chats after the last morning changelog entries.
 - Notes: Morning changelog already had scale/speed, `[E]` arrival, and ITEMS hover polish; this pass logged the three missing afternoon ships and leftover stale combat/scene text.
 
+### 2.1 kitchen return — spawn below TopWall
+- Request: Leaving kitchen 2.3 into cafeteria 2.1 spawned Mike outside the top wall. Move the landing down to around `KitchenInteractArea`.
+- Implementation: Kitchen return still maps onto `KitchenInteractArea` via `InteractArrival`. `KITCHEN_PEEK_MARGIN_PX` went from `-88` (pulled up through `TopWall`) back to `12` (just below the interact box, same into-room peek as the other 2.1 doors).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Returning from 2.3 places Mike on the cafeteria floor at the kitchen door, not above `TopWall`. Fresh Play / F6 still uses the Player node.
+- Verification: `interact_arrival_check.gd` (room-to-room mapping unchanged; this is a peek-margin tweak).
+- Notes: The old `-88` was a 100px-up tweak from before thicker walls and the larger 2.1 Mike.
 
 

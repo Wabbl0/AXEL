@@ -11,9 +11,9 @@ const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 ## Just right of ReturnInteractArea so Mike peeks inside the room from the left door.
 const BASEMENT_PEEK_MARGIN_PX := 12.0
-## Just below KitchenInteractArea so Mike peeks next to the kitchen doorway.
-## Shifted up 100px from the doorway edge per design tweak.
-const KITCHEN_PEEK_MARGIN_PX := -88.0
+## Just below KitchenInteractArea so Mike peeks next to the kitchen doorway
+## (inside the room, below TopWall). Negative pulls him up through the wall.
+const KITCHEN_PEEK_MARGIN_PX := 12.0
 ## Just left of BackyardInteractArea so Mike peeks inside from the right door.
 const BACKYARD_PEEK_MARGIN_PX := -12.0
 ## Just above ClassroomsInteractArea so Mike peeks inside from the bottom door.
