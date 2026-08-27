@@ -1,6 +1,6 @@
 extends Node
 ## Global noir + scanline + CRT stack for all non-combat scenes.
-## Combat scenes under res://combat/ are excluded (combat uses its own FX).
+## Combat scenes under res://combat/ are excluded unless COMBAT_ROOM_FX_TEST is on.
 
 const NOIR_SCENE := "res://scenes/fx/NoirPaletteOverlay.tscn"
 const SCANLINE_SCENE := "res://scenes/fx/ScanlineOverlay.tscn"
@@ -12,6 +12,10 @@ const NOIR_8BAND_SHADER := "res://tools/visual_style/shaders/noir_palette_8band_
 ## Flip to true, save, then F5/F6 any non-combat scene to preview 8-band noir.
 ## Or launch with env AXEL_NOIR_8BAND=1 (same effect; no file edit). Keep false for production 3-band.
 const DEBUG_USE_NOIR_8BAND_TEST := true
+
+## Temporary test: attach room noir/scanline/CRT on res://combat/* (not AI_DOCS canon).
+## Flip false to restore combat's own ScanlineOverlay-only look.
+const COMBAT_ROOM_FX_TEST := true
 
 const _OVERLAY_NAME_NOIR := "NoirPaletteOverlay"
 const _OVERLAY_NAME_SCANLINE := "ScanlineOverlay"
@@ -65,7 +69,7 @@ func _on_scene_changed() -> void:
 
 
 func _should_skip_post_fx(scene: Node) -> bool:
-	if is_combat_scene(scene):
+	if is_combat_scene(scene) and not COMBAT_ROOM_FX_TEST:
 		return true
 	if OS.has_environment("AXEL_DISABLE_POST_FX") and OS.get_environment("AXEL_DISABLE_POST_FX") == "1":
 		return true

@@ -30,7 +30,7 @@ theme_override_font_sizes/font_size = 18
 text = "Multiplier: 1×"
 
 [node name="GridFrame" type="ReferenceRect" parent="."]
-visible = true
+visible = false
 offset_left = 4.0
 offset_top = 44.0
 offset_right = 204.0

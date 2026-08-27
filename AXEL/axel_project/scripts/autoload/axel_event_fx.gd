@@ -84,7 +84,8 @@ func _on_scene_changed() -> void:
 
 
 func _should_skip_event_fx(scene: Node) -> bool:
-	if _is_combat_scene(scene):
+	# Same combat gate as AxelPostFxStack.COMBAT_ROOM_FX_TEST (one flip for both).
+	if _is_combat_scene(scene) and not AxelPostFxStack.COMBAT_ROOM_FX_TEST:
 		return true
 	if OS.has_environment("AXEL_DISABLE_POST_FX") and OS.get_environment("AXEL_DISABLE_POST_FX") == "1":
 		return true

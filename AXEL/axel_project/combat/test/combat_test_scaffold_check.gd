@@ -68,13 +68,46 @@ func _main() -> void:
 		quit(1)
 		return
 
+	var placement_violations := ValidatorsScript.check_combat_hud_anchors(root_ui)
+	if not placement_violations.is_empty():
+		push_error(
+			"Scaffold FAIL (%s): HUD canvas placement: %s"
+			% [SCENE_PATH, ", ".join(placement_violations)]
+		)
+		quit(1)
+		return
+
 	for viewport_size in VIEWPORT_BREAKPOINTS:
 		await _apply_viewport_and_wait_layout(root_ui, viewport_size)
-		var anchor_violations := ValidatorsScript.check_combat_hud_anchors(root_ui, viewport_size)
-		if not anchor_violations.is_empty():
+		var fit_violations := ValidatorsScript.check_combat_hud_anchors(root_ui, viewport_size)
+		if not fit_violations.is_empty():
 			push_error(
-				"Scaffold FAIL (%s): HUD anchor drift at %.0fx%.0f: %s"
-				% [SCENE_PATH, viewport_size.x, viewport_size.y, ", ".join(anchor_violations)]
+				"Scaffold FAIL (%s): HudCanvas fit at %.0fx%.0f: %s"
+				% [SCENE_PATH, viewport_size.x, viewport_size.y, ", ".join(fit_violations)]
+			)
+			quit(1)
+			return
+		var canvas := root_ui.find_child("HudCanvas", true, false) as Control
+		if canvas == null:
+			push_error("Scaffold FAIL (%s): HudCanvas missing after resize" % SCENE_PATH)
+			quit(1)
+			return
+		var s := minf(viewport_size.x / 3508.0, viewport_size.y / 2480.0)
+		var expected_pos := Vector2(
+			(viewport_size.x - 3508.0 * s) * 0.5,
+			(viewport_size.y - 2480.0 * s) * 0.5
+		)
+		if canvas.position.distance_to(expected_pos) > 2.0:
+			push_error(
+				"Scaffold FAIL (%s): HudCanvas not centered at %.0fx%.0f (got %s expected %s)"
+				% [SCENE_PATH, viewport_size.x, viewport_size.y, str(canvas.position), str(expected_pos)]
+			)
+			quit(1)
+			return
+		if absf(canvas.scale.x - s) > 0.01 or absf(canvas.scale.y - s) > 0.01:
+			push_error(
+				"Scaffold FAIL (%s): HudCanvas scale drift at %.0fx%.0f (got %s expected %.4f)"
+				% [SCENE_PATH, viewport_size.x, viewport_size.y, str(canvas.scale), s]
 			)
 			quit(1)
 			return
@@ -117,9 +150,17 @@ func _check_numbered_grid_suffixes(combat: Node) -> PackedStringArray:
 
 
 func _apply_viewport_and_wait_layout(root_ui: Control, viewport_size: Vector2) -> void:
-	root_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root_ui.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	root_ui.anchor_right = 0.0
+	root_ui.anchor_bottom = 0.0
 	root_ui.size = viewport_size
 	root_ui.custom_minimum_size = viewport_size
+	root_ui.position = Vector2.ZERO
+	if root_ui.has_method("_fit_hud_canvas"):
+		root_ui.call("_fit_hud_canvas", viewport_size)
 	await process_frame
 	await process_frame
+	await process_frame
+	if root_ui.has_method("_fit_hud_canvas"):
+		root_ui.call("_fit_hud_canvas", viewport_size)
 	await process_frame

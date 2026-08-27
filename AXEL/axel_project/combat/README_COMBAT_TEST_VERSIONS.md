@@ -1,6 +1,6 @@
 # Combat Test UI
 
-The playtest shell uses a **mirrored grid layout** (spin-history placeholder | 5×5 grid + premium bar | items), integer economy readouts, and dev item picker on the right.
+The playtest shell uses a **drawing-backed HUD**: white plate + one node per drawing under `%HudCanvas` (3508×2480 drawing pixels), integer economy readouts, and a dev item picker.
 
 ## Canonical entry
 
@@ -16,14 +16,15 @@ Headless combat checks (`princess_check`, `determinism_check`) use `combat_root.
 
 ## HUD features
 
-- Top-left **meta** icons + **SEED** `SpinBox`; top-right **GOAL** progress
-- Top-center **BANKROLL** (`current/cap`) and **STAKE** pill with `-` / `+` (integer units)
-- Play row: left **HISTORY** placeholder | 5×5 grid + **premium progress bar** (3 sections) | right **ITEMS** dev picker
-- Center readout: round **winnings** (integer) between premium bar and **EXECUTE**
-- Wide bottom **EXECUTE** button (width tracks grid after layout)
-- Match payout numbers flash on winning symbols during resolve
-
-There is no `combat_test_v1` / `combat_test_v2` split — use only the canonical scene above.
+- `%HudCanvas` + `HudArt` show `res://exports/Drawings/axel_combat_plate_white.png` (white 3508×2480 plate).
+- `HudPieces` holds one `TextureRect` per cut-out: grid, history, items, bets, goal, multiplier, exit (`exports/Drawings/axel_combat_*.png`). Drag these in the 2D editor to align.
+- `PremiumSkull` holds the three skull stage drawings (feel-only hover/press + `preview_fill`; not wired to meter/EXECUTE yet).
+- Drag widgets in the 2D editor **inside `HudCanvas`** (1 unit = 1 drawing pixel). Play keeps those positions — no percentage layout rewrite.
+- Live text + the 5×5 grid sit on top; HISTORY / ITEMS / EXECUTE computer chrome is see-through so the drawings paint the frames. `%SpinButton` remains the click target with empty text.
+- Placeable: meta + **SEED**, bankroll/stake, goal, history log, items picker, score readout, premium progress bar, EXECUTE hit area.
+- Match payout numbers flash on winning symbols during resolve.
+- Side bars use a white `BlackBackground` ColorRect (name kept for restore-from-baseline).
+- Room FX on combat is behind `AxelPostFxStack.COMBAT_ROOM_FX_TEST` (test flag; flip false to restore combat-only scanline). Local `ScanlineOverlay` hides when that flag is on.
 
 ## Shared `combat_root`
 

@@ -5537,4 +5537,38 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: `interact_arrival_check.gd` (room-to-room mapping unchanged; this is a peek-margin tweak).
 - Notes: The old `-88` was a 100px-up tweak from before thicker walls and the larger 2.1 Mike.
 
+## 2026-08-27
+
+### Combat HUD piece drawings + room FX test flag
+- Request: Replace the single `axel_ui.png` combat background with a white plate + one node per drawing from `exports/Drawings`, keep live widgets on top, place three skull stages for a feel-only premium meter, and turn on overworld room FX for combat behind a flip-off flag.
+- Implementation: Added `axel_combat_plate_white.png` (3508×2480) and pointed `HudArt` at it. Inserted `HudPieces` (ArtGrid/History/Items/Bets/Goal/Multiplier/Exit) and `PremiumSkull` (Glow + SkullStage1/2/3 + `premium_skull_meter.gd`). Side bars white. `AxelPostFxStack.COMBAT_ROOM_FX_TEST` gates room post-FX + event FX on `res://combat/*`; local `ScanlineOverlay` hides when the flag is on. Hid `GridFrame` so it does not double the drawn grid. `AI_DOCS` combat FX exclude rule unchanged (flag is temporary).
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/axel_combat_plate_white.png`
+  - `AXEL/axel_project/tools/make_white_plate.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scenes/combat_root.tscn`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Look + FX test only. Spin/items/score/RNG unchanged. Skull not wired to meter or EXECUTE. Flip `COMBAT_ROOM_FX_TEST := false` to restore the old combat-only scanline.
+- Verification: `combat_test_scaffold_check.gd`
+- Notes: Piece sizes do not match widget boxes yet — drag-align in the editor. Frame PNG black insides will invert to red under room FX (expected).
+
+### Combat HUD on axel_ui drawing
+- Request: Keep combat fight rules the same, but put the HUD on the combat drawing and make widgets drag-placeable in the editor. See-through computer chrome; show the whole drawing (empty bars OK).
+- Implementation: Added `%HudCanvas` (3508×2480) + `HudArt` under `combat_test.tscn` using `res://exports/Drawings/axel_ui.png`. Reparented HUD widgets under the canvas; converted `PlayRow` / `CenterColumn` / `CenterFooter` to plain Controls so editor offsets stick. Removed percentage `LAYOUT_*` placement and EXECUTE width-to-grid resize. Runtime only scales/centers `HudCanvas`. HISTORY/ITEMS/EXECUTE chrome is see-through. QA checks HudCanvas containment + fit instead of old percentage anchors.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/combat_test_scaffold_check.gd`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Look + editor placement only. Spin/items/score/RNG unchanged. Drag widgets inside `HudCanvas` in the 2D editor; Play keeps them.
+- Verification: `combat_test_scaffold_check.gd`, `determinism_check.gd`, `scene_smoke_check.gd`
+- Notes: Drawing file is `axel_ui.png` (middle/bottom skull variants removed).
+
 
