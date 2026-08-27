@@ -9,16 +9,10 @@ var _pressing := false
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	## Clicks live on Execute's MOVE_TextBox. This polygon is editor tracing only.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _poly != null:
 		_poly.color = Color(1.0, 1.0, 1.0, 0.0)
-
-
-func _has_point(point: Vector2) -> bool:
-	if _poly == null or _poly.polygon.is_empty():
-		return false
-	return Geometry2D.is_point_in_polygon(point, _poly.polygon)
 
 
 func _gui_input(event: InputEvent) -> void:

@@ -4,14 +4,11 @@ const CLASSROOM_SCENE := "res://scenes/Arc_5/5.1_Classroom.tscn"
 const TEX_EMPTY := "res://exports/Drawings/desk_empty.png"
 const TEX_HAND := "res://exports/Drawings/desk_hand.png"
 const TEX_DESK := "res://exports/Drawings/desk.png"
-const DESK_LINES := [
-	"It's THEIR desk.",
-	"You said it was a dare.|beat:1.5|",
-	"I'd spit on you if I could.",
-]
-const T_HAND_MS := 650
-const T_DESK_MS := 1000
-const T_LINES_MS := 1300
+const OPEN_LINE := "This was their desk."
+const DARE_LINE := "You said it was a dare."
+const SPIT_LINE := "I'd spit on you if I could."
+const BEAT_SEC := 1.5
+const HAND_HOLD_SEC := 1.0
 const SHAKE_AMPLITUDE_PX := 10.0
 const DIM_ALPHA := 0.35
 
@@ -27,10 +24,8 @@ var _shake_tween: Tween
 
 
 func _ready() -> void:
-	var empty_tex := load(TEX_EMPTY) as Texture2D
-	if empty_tex != null:
-		_background.texture = empty_tex
-	_dim_rect.color = Color(0, 0, 0, 0)
+	_set_plate(TEX_EMPTY)
+	_dim_rect.color = Color(1, 1, 1, 0)
 	_exit_button.pressed.connect(_on_exit_pressed)
 	_exit_button.visible = false
 	set_process_unhandled_input(true)
@@ -38,30 +33,33 @@ func _ready() -> void:
 
 
 func _run_desk_sequence() -> void:
-	var start_ms := Time.get_ticks_msec()
-	await _wait_until(start_ms, T_HAND_MS)
-	var hand_tex := load(TEX_HAND) as Texture2D
-	if hand_tex != null:
-		_background.texture = hand_tex
+	_set_plate(TEX_EMPTY)
+	if is_instance_valid(_top_dialogue):
+		_top_dialogue.visible = true
+		await _top_dialogue.type_line(OPEN_LINE)
+	await get_tree().create_timer(BEAT_SEC).timeout
+	_set_plate(TEX_HAND)
 	_start_local_shake()
 	_tween_dim(DIM_ALPHA)
-	await _wait_until(start_ms, T_DESK_MS)
+	await get_tree().create_timer(HAND_HOLD_SEC).timeout
 	_stop_local_shake()
-	_tween_dim(0.0)
-	var desk_tex := load(TEX_DESK) as Texture2D
-	if desk_tex != null:
-		_background.texture = desk_tex
-	await _wait_until(start_ms, T_LINES_MS)
+	_set_plate(TEX_DESK)
+	await _tween_dim(0.0, true)
 	if is_instance_valid(_top_dialogue):
-		await _top_dialogue.show_lines(DESK_LINES)
+		await _top_dialogue.hide_line()
+		await _top_dialogue.type_line(DARE_LINE)
+		await _top_dialogue.await_line_advance()
+		await _top_dialogue.type_line(SPIT_LINE)
+		await _top_dialogue.await_line_advance()
+		await _top_dialogue.hide_line()
 	_can_exit = true
 	_exit_button.visible = true
 
 
-func _wait_until(start_ms: int, target_offset_ms: int) -> void:
-	var remain_ms := target_offset_ms - (Time.get_ticks_msec() - start_ms)
-	if remain_ms > 0:
-		await get_tree().create_timer(remain_ms / 1000.0).timeout
+func _set_plate(path: String) -> void:
+	var tex := load(path) as Texture2D
+	if tex != null:
+		_background.texture = tex
 
 
 func _start_local_shake() -> void:
@@ -87,11 +85,13 @@ func _stop_local_shake() -> void:
 		_camera.offset = Vector2.ZERO
 
 
-func _tween_dim(target_alpha: float) -> void:
+func _tween_dim(target_alpha: float, wait_done: bool = false) -> void:
 	if not is_instance_valid(_dim_rect):
 		return
 	var tw := create_tween()
 	tw.tween_property(_dim_rect, "color:a", target_alpha, 0.12)
+	if wait_done:
+		await tw.finished
 
 
 func _unhandled_input(event: InputEvent) -> void:

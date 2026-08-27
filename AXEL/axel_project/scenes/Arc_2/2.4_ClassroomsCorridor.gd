@@ -88,6 +88,10 @@ func _restore_player_position_if_needed() -> void:
 	_seed_depth_from_spawn_side(_pending_spawn_side)
 	if _pending_spawn_side in ["cafeteria_door", "lounge_door", "classroom_door"]:
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
+		# 2.1↔2.4 cafeteria door: always dest-box long-axis center (ignore leave t).
+		# Consume t so it cannot leak to another door.
+		if _pending_spawn_side == "cafeteria_door":
+			_arrival_t = InteractArrival.DEFAULT_T
 		# Only place via after_wake (physics registered). If layout already ran,
 		# kick that path now; else _sync_world_space will.
 		if _cover_layout_ready:
@@ -252,10 +256,7 @@ func _begin_stub_door(zone_id: String) -> void:
 
 
 func _begin_go_to_cafeteria() -> void:
-	if is_instance_valid(_player) and is_instance_valid(_cafeteria_area):
-		GameManager.set_interact_arrival_t(
-			InteractArrival.fraction_along(_player, _cafeteria_area, Vector2.AXIS_X)
-		)
+	# Always land at 2.1 ClassroomsInteractArea center — do not save leave t.
 	GameManager.set_cafeteria_spawn_side("classrooms_bottom")
 	_begin_scene_change(CAFETERIA_SCENE)
 
@@ -339,11 +340,11 @@ func _apply_spawn_peek_if_pending() -> void:
 	# so a post-place scale change cannot move the Front circle off the land point.
 	match side:
 		"cafeteria_door":
-			# BOTTOM edge = into-room side of this door box; start there so the
-			# tall drawing can clear TopWall without a huge outward nudge.
-			InteractArrival.apply_arrival_inside(
-				_player, _cafeteria_area, _arrival_t, Vector2.AXIS_X,
-				InteractArrival.PeekEdge.BOTTOM, 0.0
+			# Live CafeteriaInteractArea center (today ~5856×352). Skip wall
+			# clearance — that was pushing Front down to ~815.
+			_player.global_position = InteractArrival.place_in_area(
+				_player, _cafeteria_area, InteractArrival.DEFAULT_T, Vector2.AXIS_X,
+				InteractArrival.PeekEdge.CENTER_Y, 0.5
 			)
 			_arrival_latched_zone = "cafeteria"
 			_arm_zone_grace("cafeteria")

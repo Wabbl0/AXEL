@@ -21,39 +21,56 @@ const ENTER_LINES := [
 	"If shit going down is you, highly caffinated, ignoring your teachers and usually skipping class to go for a smoke.",
 	"How did you ever get anywhere in life?",
 ]
+const BOARD_LINES := [
+	"On the board there are weird ass symbols and equations.",
+	"You can only make out one question:",
+	"\"[something relevant that is only learned through playing the slots]\"",
+]
 const DOOR_ZONE_GRACE_SEC := 0.15
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
 @onready var _player: CharacterBody2D = $PlayerLayer/Player
+@onready var _memory_indicator: Node2D = get_node_or_null("PlayerLayer/MemoryIndicator")
 
 var _door_interact_area: Area2D
 var _desk_interact_area: Area2D
+var _board_interact_area: Area2D
 var _board_glow: Node2D
 var _board_glow_tween: Tween
 var _active_zone: String = ""
 var _arrival_latched_zone: String = ""
 var _enter_dialogue_pending := false
+var _board_line_running := false
 var _is_transitioning := false
 var _pending_door_peek := false
 var _arrival_t := InteractArrival.DEFAULT_T
 var _cover_layout_ready := false
 var _door_zone_armed := true
+## Texture-pixel position captured from the MemoryIndicator node's editor position.
+var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
 
 func _ready() -> void:
+	if is_instance_valid(_memory_indicator):
+		_memory_indicator_tex = _memory_indicator.position
 	_player_cover_sync.bind_from_player(_player)
 	var _bg := $WalkableWorld/Background as Sprite2D
 	var _cam := $Camera2D
 	_player_cover_sync.bind_design_from_background(
 		_bg, _cam.fit_mode, _cam.background_y
 	)
+	if is_instance_valid(_memory_indicator):
+		_player_cover_sync.bind_extra_node(_memory_indicator)
 	_door_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/DoorInteractArea"
 	) as Area2D
 	_desk_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/DeskInteractArea"
+	) as Area2D
+	_board_interact_area = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/BoardInteractArea"
 	) as Area2D
 	_board_glow = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/BoardGlow"
@@ -107,7 +124,11 @@ func _refresh_active_zone() -> void:
 	if _is_transitioning:
 		return
 	var prev := _active_zone
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+	if (
+		_enter_dialogue_pending
+		or _board_line_running
+		or InteractZoneGate.dialogue_busy(_top_dialogue)
+	):
 		_active_zone = ""
 		if not prev.is_empty():
 			_hide_interact_prompt()
@@ -123,6 +144,8 @@ func _refresh_active_zone() -> void:
 			and not GameManager.classroom_desk_seen
 		):
 			_active_zone = "desk"
+		elif InteractZoneGate.body_in_area(_board_interact_area, _player):
+			_active_zone = "board"
 	if _active_zone != prev:
 		if _active_zone.is_empty():
 			_hide_interact_prompt()
@@ -138,7 +161,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _is_interaction_event(event):
 		return
 	_refresh_active_zone()
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+	if (
+		_enter_dialogue_pending
+		or _board_line_running
+		or InteractZoneGate.dialogue_busy(_top_dialogue)
+	):
 		return
 	if _active_zone.is_empty():
 		return
@@ -148,6 +175,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_begin_return_to_corridor()
 	elif _active_zone == "desk":
 		_begin_go_to_desk()
+	elif _active_zone == "board":
+		_begin_look_at_board()
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
@@ -165,6 +194,8 @@ func _zone_area(zone_id: String) -> Area2D:
 			return _door_interact_area
 		"desk":
 			return _desk_interact_area
+		"board":
+			return _board_interact_area
 		_:
 			return null
 
@@ -182,7 +213,11 @@ func _interact_anchor() -> Vector2:
 func _show_interact_prompt() -> void:
 	if _is_transitioning or _active_zone.is_empty():
 		return
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+	if (
+		_enter_dialogue_pending
+		or _board_line_running
+		or InteractZoneGate.dialogue_busy(_top_dialogue)
+	):
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -227,6 +262,18 @@ func _save_desk_return_pos() -> void:
 	GameManager.set_classroom_desk_return_pos(env.to_local(_player.global_position))
 
 
+func _begin_look_at_board() -> void:
+	if _is_transitioning or _board_line_running:
+		return
+	if not is_instance_valid(_top_dialogue):
+		return
+	_board_line_running = true
+	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
+		_interact_prompt.hide_prompt_immediate()
+	await _top_dialogue.show_lines(BOARD_LINES)
+	_board_line_running = false
+
+
 func _begin_go_to_desk() -> void:
 	if _is_transitioning:
 		return
@@ -261,6 +308,8 @@ func _apply_desk_seen_state() -> void:
 	if not GameManager.classroom_desk_seen:
 		_ensure_desk_area_live()
 		return
+	if is_instance_valid(_memory_indicator):
+		_memory_indicator.visible = false
 	if not is_instance_valid(_desk_interact_area):
 		return
 	_desk_interact_area.monitoring = false
@@ -268,6 +317,17 @@ func _apply_desk_seen_state() -> void:
 	var shape := _desk_interact_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
 	if shape != null:
 		shape.disabled = true
+
+
+## MemoryIndicator's editor position is texture-pixel space (same as colliders
+## and the player spawn); re-derive its world position from that captured
+## offset each time the background layout (re)applies, so dragging the node
+## in the editor is what actually moves it, not a hardcoded/computed anchor.
+func _sync_memory_indicator() -> void:
+	if not is_instance_valid(_memory_indicator) or not _memory_indicator.visible:
+		return
+	var env := $WalkableWorld/EnvironmentColliders
+	_memory_indicator.global_position = env.to_global(_memory_indicator_tex)
 
 
 func _start_board_glow() -> void:
@@ -307,6 +367,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	env.scale = Vector2.ONE * cover_scale
 	PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
+	_sync_memory_indicator()
 	_cover_layout_ready = true
 	call_deferred("_wake_static_colliders")
 	call_deferred("_configure_behind_occlusion_masks")

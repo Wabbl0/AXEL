@@ -36,7 +36,7 @@ size = Vector2(40, 2480)
 size = Vector2(56, 3704)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_cafeteria_interact_h"]
-size = Vector2(640, 322)
+size = Vector2(640, 513)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lounge_interact_h"]
 size = Vector2(560, 770)
@@ -48,13 +48,13 @@ size = Vector2(1058, 522)
 size = Vector2(354, 1164)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_extra_door_1"]
-size = Vector2(468, 677)
+size = Vector2(448, 640)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_extra_door_2"]
 size = Vector2(440, 737)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_extra_door_3"]
-size = Vector2(986, 513)
+size = Vector2(1064, 480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_vertical_size_ramp"]
 size = Vector2(1664, 3328)
@@ -134,7 +134,7 @@ position = Vector2(5933, 280)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/CafeteriaInteractArea" unique_id=940280409]
-position = Vector2(-77, 168)
+position = Vector2(-77, 72.5)
 shape = SubResource("RectangleShape2D_cafeteria_interact_h")
 
 [node name="LoungeInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=270961570]
@@ -142,7 +142,7 @@ position = Vector2(5933, 4580)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LoungeInteractArea" unique_id=1022168182]
-position = Vector2(523, -229)
+position = Vector2(467, -228)
 shape = SubResource("RectangleShape2D_lounge_interact_h")
 
 [node name="ClassroomInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1576588016]
@@ -166,7 +166,6 @@ position = Vector2(1900, 3936)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExtraDoor1InteractArea" unique_id=1888001302]
-position = Vector2(4574, -2962.5)
 shape = SubResource("RectangleShape2D_extra_door_1")
 
 [node name="ExtraDoor2InteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1888001303]
@@ -182,7 +181,6 @@ position = Vector2(6480, 520)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExtraDoor3InteractArea" unique_id=1888001306]
-position = Vector2(-4605, 3415.5)
 shape = SubResource("RectangleShape2D_extra_door_3")
 
 [node name="VerticalSizeRampArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=337219967]
@@ -206,7 +204,7 @@ follow_viewport_enabled = true
 
 [node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=580889261]
 z_index = 10
-position = Vector2(5933, 520)
+position = Vector2(5887, 352)
 scale = Vector2(0.198, 0.198)
 script = ExtResource("2_player_script")
 speed = 185.3

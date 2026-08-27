@@ -6,18 +6,16 @@ extends Control
 signal activated
 
 @export var clickable: bool = false
-@export var use_alpha_hit: bool = false
+@export var use_alpha_hit: bool = false ## Unused. Clicks always use MOVE_TextBox.
 @export var text_inset_px: float = 8.0
 @export var hover_scale: float = 1.04
 @export var press_scale: float = 0.96
 @export var pop_on_change: bool = true
-@export var alpha_hit_threshold: float = 0.08
+@export var alpha_hit_threshold: float = 0.08 ## Unused. Kept so combat_test.tscn still loads.
 @export var art_node_path: NodePath = NodePath("")
 
 var _art: TextureRect
 var _text_box: Control
-var _hit_image: Image
-var _hit_tex_size: Vector2 = Vector2.ZERO
 var _hovering := false
 var _pressing := false
 var _base_scale := Vector2.ONE
@@ -39,8 +37,6 @@ func _ready() -> void:
 		mouse_entered.connect(_on_mouse_entered)
 	if not mouse_exited.is_connected(_on_mouse_exited):
 		mouse_exited.connect(_on_mouse_exited)
-	if use_alpha_hit:
-		_cache_hit_image()
 
 
 func _notification(what: int) -> void:
@@ -108,10 +104,12 @@ func attach(widget: Control, host: Control = null) -> void:
 		widget.reparent(target)
 	widget.visible = true
 	widget.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	widget.offset_left = text_inset_px
-	widget.offset_top = text_inset_px
-	widget.offset_right = -text_inset_px
-	widget.offset_bottom = -text_inset_px
+	## Clickable widgets must fill the TextBox. Inset is only for readout text.
+	var inset := 0.0 if clickable else text_inset_px
+	widget.offset_left = inset
+	widget.offset_top = inset
+	widget.offset_right = -inset
+	widget.offset_bottom = -inset
 	_strip_widget_chrome(widget)
 	if widget is Label:
 		var lab := widget as Label
@@ -151,43 +149,22 @@ func set_clickable(enabled: bool) -> void:
 func _has_point(point: Vector2) -> bool:
 	if not Rect2(Vector2.ZERO, size).has_point(point):
 		return false
-	## Clickable pieces use MOVE_TextBox as the hit rect (not the whole art frame).
-	if clickable and _text_box != null and is_instance_valid(_text_box):
-		var box_rect := Rect2(_text_box.position, _text_box.size)
-		if not box_rect.has_point(point):
-			return false
-	if not use_alpha_hit or _art == null or _art.texture == null:
+	if not clickable:
 		return true
-	if _hit_image == null:
-		_cache_hit_image()
-	if _hit_image == null or _hit_tex_size.x <= 0.0 or _hit_tex_size.y <= 0.0:
-		return true
-	# Art may be nested (e.g. skull stage under PremiumSkull); map into art local space.
-	var art_global := _art.get_global_rect()
-	var self_global_pos := global_position
-	var art_local_rect := Rect2(art_global.position - self_global_pos, art_global.size)
-	if not art_local_rect.has_point(point):
-		return false
-	var local := point - art_local_rect.position
-	var uv := Vector2(
-		local.x / maxf(art_local_rect.size.x, 1.0),
-		local.y / maxf(art_local_rect.size.y, 1.0)
-	)
-	var px := int(clampf(uv.x, 0.0, 1.0) * (_hit_tex_size.x - 1.0))
-	var py := int(clampf(uv.y, 0.0, 1.0) * (_hit_tex_size.y - 1.0))
-	return _hit_image.get_pixel(px, py).a >= alpha_hit_threshold
+	## Click area is the MOVE_TextBox, in this piece's local pixels.
+	## Do not mix get_global_rect() into this test: HudCanvas is scaled to the
+	## window, so that rect is already in screen pixels while `point` is not.
+	## Mixing them made every hit box sit in the top-left and look too small.
+	return _text_box_local_rect().has_point(point)
 
 
-func _cache_hit_image() -> void:
-	_hit_image = null
-	_hit_tex_size = Vector2.ZERO
-	if _art == null or _art.texture == null:
-		return
-	var img := _art.texture.get_image()
-	if img == null:
-		return
-	_hit_image = img
-	_hit_tex_size = Vector2(img.get_width(), img.get_height())
+func _text_box_local_rect() -> Rect2:
+	if _text_box == null or not is_instance_valid(_text_box):
+		_cache_children()
+	if _text_box == null or not is_instance_valid(_text_box):
+		return Rect2(Vector2.ZERO, size)
+	var top_left := _text_box.get_transform() * Vector2.ZERO
+	return Rect2(top_left, _text_box.size)
 
 
 func _gui_input(event: InputEvent) -> void:

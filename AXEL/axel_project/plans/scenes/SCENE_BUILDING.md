@@ -97,7 +97,7 @@ Root (Node2D + scene script)
 
 **Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; combat casino layers via `to_combat` / first-win / Trinity hooks). Loudness: `Music` bus in `default_bus_layout.tres`.
 
-**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked.
+**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25` + shared white outer-glow `Halo` (`memory_outer_glow.gdshader`). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked.
 
 ### Camera2D exports (`BackgroundCamera`)
 
@@ -177,13 +177,38 @@ Scene enter / discovery lines use a GameManager `*_seen` flag. They must not rep
 
 Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialogue finished, or already-seen skip), leave with: red `[X]`, left-click, tap, or Tab/E/Space/Enter. Same keys during lines still skip/advance — they must not leave until the bar is closed. Live: `2.2`, `3.2`, `5.2`.
 
+### Rule: always measure the live dest box this Play
+
+Door arrival is **not** a remembered `Vector2`. After cover-fit on **this** run, `InteractArrival` must read the dest `InteractArea` / `ExitTrigger` (`_area_rect_in_env` via `place_in_area` / `place_on_area`). That follows the shape as it is in the scene now — including editor drags since the last chat.
+
+Applies to **every** room-to-room door, including `1.x` (`1.1`↔`1.2`, `1.2`↔`1.4`, `1.4`↔`2.1`), `2.1`→`2.3`, `2.1`↔`2.4`, `2.1`→`3.1`, and the other `[E]` pairs — unless the pair is a **hard spawn** listed below.
+
+**Forbidden (this is how 2.4 landed at ~Y 815 instead of the live center ~5856×352):**
+
+1. Copying texture coords from chat, changelog, or an earlier `.tscn` grep and treating them as the land point.
+2. Skipping a re-read of the dest `.tscn` / live rect in *this* session (“I already know the box”).
+3. Replacing a live-box land with `BOTTOM`/`TOP` + `resolve_inside_clearance` (or an extra peek-margin) because a TopWall drawing check failed — unless the user asked for that push.
+
+`[E]` stays on the live `CollisionShape2D.global_position` (no extra chip offset unless asked). If the chip looks “off the door,” first check whether Mike was parked off the box.
+
+**Hard spawns (leave these; they are not “re-derive from live center”):**
+
+- Fresh Play / F6: the **Player node** (`PlayerSpawnSync`).
+- Map / hub travel: Player node (no door box).
+- Memory still return: saved standing spot.
+- `2.3`→`2.1` kitchen: Player node X from live `KitchenInteractArea` `t`, texture Y `90` (`KITCHEN_STAND_TEX_Y`). Skip wall clamp.
+
+Helper: `scenes/core/interact_arrival.gd`. Regression: `scenes/core/test/interact_arrival_check.gd`.
+
 ### Rule: room-to-room spawn maps along leave/arrive boxes
 
-**Frozen peek (do not change to “fix” others):** `1.2`→`1.4`, `1.4`→`2.1`, `2.1`→`2.3` keep into-room peek past the short edge (`InteractArrival.place_on_area` + `clamp_hitbox_to_walls`). **Approved peek example:** `1.2_Corridor` ↔ `1.4_BasementDoor` via each scene’s `ExitTrigger`. Top of the leave box → top of the arrive box; bottom → bottom. Do **not** copy world Y, floor-line offsets, or scene size.
+Use the live dest box (rule above). Then pick the **placement mode** for that pair — do not invent a new `Vector2`.
 
-**Non-frozen `[E]` pairs:** save `GameManager.interact_arrival_t` (0 = top/left of the source box, 1 = bottom/right). Measure `t` from the Front hitbox in `EnvironmentColliders` texture space (the circle sits below the Player node). Take `t` **once** on the destination (deferred restore after first layout, like `1.2`). On every `layout_applied`: always `PlayerSpawnSync` + cover-sync; if a door peek is still pending, `call_deferred` place — do **not** place-and-clear inside the first layout, and do **not** re-apply cover/depth after place (scale change moves the Front circle). Map `t` onto the matching dest box with `InteractArrival.apply_arrival_inside`: land the Front circle **inside** the live box (inset by Front radius; short axis inward from the enter edge at `depth_frac`, usually `0.5`), then `resolve_inside_clearance` so the whole walk drawing stays on the floor (may nudge a little off the box when a wall overlaps — e.g. 4.1 door vs TopWall). Arrival must read the live InteractArea rect every Play so editor drags are followed — never a hardcoded spawn `Vector2`.
+**Frozen peek (do not change the peek to “fix” others):** `1.2`→`1.4`, `1.4`→`2.1`, `2.1`→`2.3` — `place_on_area` on the **live** dest box, into-room past the short edge, then `clamp_hitbox_to_walls`. **Approved peek example:** `1.2`↔`1.4` `ExitTrigger`. Top of the leave box → top of the arrive box; bottom → bottom. Do **not** copy world Y, floor-line offsets, or scene size. Peek still measures the live shape every Play.
 
-**Exception:** 2.1 kitchen return stands the **Player node** on `KitchenInteractArea`’s X (from leave `t`) at texture Y `150` (~2040×150) and skips the wall clamp. Helper: `scenes/core/interact_arrival.gd`. Missing `t` (hub/map) falls back to center (`0.5`); map/hub travel still uses the Player node (no door box). Fresh Play / F6 still uses the Player node. Memory stills keep exact standing-spot restore. Live non-frozen `[E]` pairs on inside-box: `1.1`→`1.2`, `2.1`↔`2.4`/`3.1`, `2.4`↔`4.1`/`5.1`. Frozen: `1.2`↔`1.4`, `1.4`→`2.1`, `2.1`→`2.3` (reverses of frozen trips may keep peek if they already feel fine). Regression: `scenes/core/test/interact_arrival_check.gd`.
+**`2.1`↔`2.4` cafeteria/classrooms:** Front on the live dest box **center** (`place_in_area` + `DEFAULT_T` + `CENTER_Y`). Skip `resolve_inside_clearance`. Do not hardcode `5856×352`.
+
+**Other non-frozen `[E]` pairs:** save `GameManager.interact_arrival_t` (0 = top/left of the source box, 1 = bottom/right). Measure `t` from the Front hitbox in `EnvironmentColliders` texture space. Take `t` **once** on the destination (deferred restore after first layout, like `1.2`). On every `layout_applied`: always `PlayerSpawnSync` + cover-sync; if a door peek is still pending, `call_deferred` place — do **not** place-and-clear inside the first layout, and do **not** re-apply cover/depth after place. Map `t` onto the matching dest box with `apply_arrival_inside` (inset by Front radius; `t` on the long axis; `depth_frac` usually `0.5`), then `resolve_inside_clearance` so the walk drawing stays on the floor (may sit a little off the box if a wall overlaps — e.g. 4.1 vs TopWall). Live pairs on this mode: `1.1`→`1.2`, `2.1`↔`3.1`, `2.4`↔`4.1`/`5.1`. Missing `t` (hub/map) falls back to center (`0.5`).
 
 ### Rule: Player node is the spawn (mandatory)
 
@@ -280,7 +305,7 @@ The Front circle is what `move_and_slide` stops. The walk cell (`439×971`) plus
 **Required inset** (from the picture edge to the wall’s inner face) = how far the drawing sticks past the circle in that facing, times live Player scale. The checker computes this; do not copy a one-size-fits-all texture width.
 
 - Grow `LeftWall` / `RightWall` / `TopWall` / `BottomWall` **from the PNG edge inward**. Give each wall its own `RectangleShape2D` (Make Unique) so one edit does not resize the opposite wall.
-- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play) — 2.4 cafeteria arrival uses `apply_arrival_inside` clearance so the walk drawing clears `TopWall` even when `CafeteriaInteractArea` overlaps it. Do not thin walls that already pass.
+- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play). `2.1`↔`2.4` cafeteria arrival skips `resolve_inside_clearance` and may overlap `TopWall` (intended). Do not thin walls that already pass.
 - Furniture / door blockers are not this rule.
 
 Live: 1.1 Top only; 1.2 / 1.4 / 2.1 / 2.3 / 3.1 / 4.1 / 5.1 edge walls that were too thin. Kitchen example: unique Left `200×2480` / Right `158×2480` / Top `3508×346` / Bottom `3508×193`. 3.1 after the 40% scale bump: Left `138×2480` / Right `132×2480` / Bottom `3508×162` (Top already thicker than required). Regression: `tools/qa/wall_sprite_clearance_check.gd` (`WALL_SPRITE_CLEARANCE OK`).
@@ -296,6 +321,11 @@ choice. Only add one when explicitly asked for a specific interact point,
 and scope it as narrowly as possible (ideally per-zone in the scene
 script's anchor function, not the whole-scene `screen_offset`, since one
 `InteractPromptOverlay` node is shared by every interact zone in a scene).
+
+After duplicating an InteractArea, reset the child’s `CollisionShape2D`
+**position** to `(0, 0)` (or a small ink nudge). A leftover thousands-of-pixels
+offset parks `[E]` on the source door. Live mistake: 2.4 ExtraDoor1/3 after
+duplicating ExtraDoor3. ExtraDoor2’s small `(4, -116.5)` nudge is fine.
 
 ### QA smoke (new scenes)
 

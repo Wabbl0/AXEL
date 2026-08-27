@@ -12,6 +12,11 @@ script = ExtResource("1_desk")
 
 [node name="WalkableWorld" type="Node2D" parent="."]
 
+[node name="VoidFill" type="Polygon2D" parent="WalkableWorld"]
+z_index = -101
+color = Color(1, 1, 1, 1)
+polygon = PackedVector2Array(-4000, -4000, 8000, -4000, 8000, 8000, -4000, 8000)
+
 [node name="Background" type="Sprite2D" parent="WalkableWorld"]
 z_index = -100
 texture_filter = 1
@@ -37,7 +42,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0, 0)
+color = Color(1, 1, 1, 0)
 
 [node name="ExitLayer" type="CanvasLayer" parent="."]
 layer = 110

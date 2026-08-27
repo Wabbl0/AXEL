@@ -38,7 +38,7 @@ size = Vector2(1892, 240)
 size = Vector2(339.75, 377.25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_kitchen_interact"]
-size = Vector2(273, 359)
+size = Vector2(273, 569.6875)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_return_interact"]
 size = Vector2(155, 818.5)
@@ -173,7 +173,7 @@ position = Vector2(3000, 880)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/KitchenInteractArea" unique_id=977331617]
-position = Vector2(-961.5, -700.5)
+position = Vector2(-961, -802.15625)
 shape = SubResource("RectangleShape2D_kitchen_interact")
 
 [node name="ReturnInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1353098574]

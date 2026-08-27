@@ -26,7 +26,7 @@
 | Return to locker  | Locker Hub      |
 
 
-**Implemented (Godot):** `5.1_Classroom.tscn` + `.gd` — walkable room with hand-drawn art, kept box walls plus nine drag-to-place furniture polygon blockers, door back to corridor (`interact_arrival_t` along the door), one-shot desk `[E]` → `5.2_ClassroomDesk`. Board uses a faint kitchen-style ink glow (`BoardGlow/Outline` Line2D under `EnvironmentColliders`, `prop_line_halo.gdshader`) — drag the line points around the painted board; not a `MemoryIndicator` blob. Furniture 6–9 have behind filters (`FurnitureBlock6_Behind` … `FurnitureBlock9_Behind`, `feather_px = 2`) so Mike fades when standing behind those desks. Authored Player scale `0.298` / speed `255.9` (50% larger than the shared sheet-retuned `0.198`). Enter lines once via `GameManager.classroom_enter_line_seen`. After desk leave, `classroom_desk_seen` disables the desk zone and restores Mike via `classroom_desk_return_pos`. Interact chip offset is zero. 5.3/5.4 still deferred.
+**Implemented (Godot):** `5.1_Classroom.tscn` + `.gd` — walkable room with hand-drawn art, kept box walls plus nine drag-to-place furniture polygon blockers, door back to corridor (`interact_arrival_t` along the door), one-shot desk `[E]` → `5.2_ClassroomDesk`. Desk glow is `PlayerLayer/MemoryIndicator` at the desk editor point `(2712, 2160)` (same as `DeskInteractArea` shape center; `visual_offset` zero; remapped from its own editor position). Board `[E]` is `BoardInteractArea` (own `RectangleShape2D`, starter box on the chalkboard at `(1790, 420)` matching `BoardGlow` center, taller so Mike can stand in it). Pressing `[E]` plays the 5.3 board lines in-room; the AXEL text puzzle / `5.3_ClassroomBoard` still-scene is still deferred. Board outline glow stays `BoardGlow/Outline` (`prop_line_halo.gdshader`) — not a `MemoryIndicator` blob. Furniture 6–9 have behind filters (`FurnitureBlock6_Behind` … `FurnitureBlock9_Behind`, `feather_px = 2`) so Mike fades when standing behind those desks. Authored Player scale `0.298` / speed `255.9` (50% larger than the shared sheet-retuned `0.198`). Enter lines once via `GameManager.classroom_enter_line_seen`. After desk leave, `classroom_desk_seen` hides the glow, disables the desk zone, and restores Mike via `classroom_desk_return_pos`. Interact chip offset is zero. 5.4 still deferred.
 
 ---
 
@@ -37,21 +37,22 @@
 **Animation sequence (plays once on first visit):**
 
 
-| Timestamp    | Background image              | Story text                      |
-| ------------ | ----------------------------- | -------------------------------- |
-| t = 0 ms     | `desk_empty.jpg`              | *(blank)*                       |
-| t = 650 ms   | `desk_hand.png` + shake + dim | *(blank)*                       |
-| t = 1 000 ms | `desk.png`                    | *(blank)*                       |
-| t = 1 300 ms | `desk.png`                    | Final dialogue revealed (below) |
+| Step | Background image | Story text |
+| ---- | ---------------- | ---------- |
+| Open | `desk_empty.png` on white fill (noir → black) | `This was their desk.` |
+| Beat | same empty plate | 1.5s hold after the line types |
+| Flash | `desk_hand.png` + shake + dim | 1.0s, no new line |
+| Hold | `desk.png` (undim, opening line hides) | then `You said it was a dare.` |
+| Hold | same final plate | then `I'd spit on you if I could.` |
 
 
-**Final dialogue:**
+**Dialogue:**
 
-> It's THEIR desk.
+> This was their desk.
+>
+> [beat 1.5s, then hand plate 1.0s]
 >
 > You said it was a dare.
->
-> [beat]
 >
 > I'd spit on you if I could.
 
@@ -65,7 +66,7 @@
 
 ---
 
-**Implemented (Godot):** `5.2_ClassroomDesk.tscn` + `.gd` — still-scene shell (locked bg, dialogue overlay, red X). After `_can_exit`, leave with `[X]`, left-click/tap, or Tab/E/Space/Enter. Timed plates `desk_empty.png` → `desk_hand.png` (+ local camera offset shake + dim) → `desk.png`, then canon lines with `|beat:1.5|`. Sets `classroom_desk_seen` on leave; does **not** call `add_memory_once`. Art copied from Finnish `pöytä_*` plates.
+**Implemented (Godot):** `5.2_ClassroomDesk.tscn` + `.gd` — still-scene shell (locked bg, white `VoidFill`, dialogue overlay, red X). After `_can_exit`, leave with `[X]`, left-click/tap, or Tab/E/Space/Enter. Opens on `desk_empty.png` + `This was their desk.` + 1.5s beat → `desk_hand.png` 1.0s (local camera offset shake + white dim) → `desk.png` (bar hides so the plate is visible) → `You said it was a dare.` → `I'd spit on you if I could.` Sets `classroom_desk_seen` on leave; does **not** call `add_memory_once`. Art copied from Finnish `pöytä_*` plates; empty PNG fill is white so noir reads as black.
 
 ---
 

@@ -322,7 +322,7 @@ func _handoff_14_to_21_tex_y(stand_near_top: bool) -> float:
 	return tex.y
 
 
-## 2.3 → 2.1: Player node lands on KitchenInteractArea X at texture Y 150 (~2040×150).
+## 2.3 → 2.1: Player node lands on KitchenInteractArea X at texture Y 90 (~2040×90).
 func _test_kitchen_return_at_door() -> bool:
 	# Let any leftover deferred restore from earlier 2.1 loads finish first.
 	await _await_frames(2)
@@ -360,9 +360,9 @@ func _assert_kitchen_return_at_door(t: float) -> bool:
 		scene.queue_free()
 		await process_frame
 		return false
-	if absf(tex.y - 150.0) > 8.0:
+	if absf(tex.y - 90.0) > 8.0:
 		push_error(
-			"InteractArrival FAIL: 2.3→2.1 Y off kitchen stand (t=%s tex=%s want y=150)"
+			"InteractArrival FAIL: 2.3→2.1 Y off kitchen stand (t=%s tex=%s want y=90)"
 			% [t, tex]
 		)
 		scene.queue_free()
@@ -391,34 +391,33 @@ func _assert_kitchen_return_at_door(t: float) -> bool:
 	return true
 
 
-## 2.1 → 2.4: Front stays on/near live CafeteriaInteractArea (Option B may sit
-## just into-room of the box when the tall drawing must clear TopWall); t slides X.
+## 2.1 → 2.4: Front always at live CafeteriaInteractArea center (ignore leave t).
+## Do not require TopWall drawing clearance — user wants the box center even if
+## the tall sprite overlaps the wall (same skip as kitchen return).
 func _test_cafeteria_to_classrooms_inside_box() -> bool:
 	var xs: Array[float] = []
+	var center := Vector2.INF
 	for t in [0.1, 0.5, 0.9]:
 		var result := await _spawn_24_from_cafeteria(t)
 		if result.is_empty():
 			return false
 		xs.append(float(result["front_tex_x"]))
+		if center.x == INF:
+			center = result["box_center"]
 		print(
-			"2.1→2.4 t=%s front_tex=%s in_or_just_in=%s sprite_clear=%s"
-			% [t, result["front_tex"], result["in_or_just_in"], result["sprite_clear"]]
+			"2.1→2.4 t=%s front_tex=%s box_center=%s"
+			% [t, result["front_tex"], center]
 		)
-		if not bool(result["in_or_just_in"]):
+		var front_tex: Vector2 = result["front_tex"]
+		if absf(front_tex.x - center.x) > 40.0 or absf(front_tex.y - center.y) > 40.0:
 			push_error(
-				"InteractArrival FAIL: 2.1→2.4 Front not in/just-into CafeteriaInteractArea (t=%s tex=%s)"
-				% [t, result["front_tex"]]
+				"InteractArrival FAIL: 2.1→2.4 Front not at box center (t=%s tex=%s want %s)"
+				% [t, front_tex, center]
 			)
 			return false
-		if not bool(result["sprite_clear"]):
-			push_error(
-				"InteractArrival FAIL: 2.1→2.4 walk drawing overlaps TopWall (t=%s)"
-				% t
-			)
-			return false
-	if not (xs[0] < xs[1] and xs[1] < xs[2]):
+	if absf(xs[0] - xs[1]) > 8.0 or absf(xs[1] - xs[2]) > 8.0:
 		push_error(
-			"InteractArrival FAIL: 2.1→2.4 X did not follow t (x0=%s x0.5=%s x0.9=%s)"
+			"InteractArrival FAIL: 2.1→2.4 X changed with t (x0=%s x0.5=%s x0.9=%s)"
 			% [xs[0], xs[1], xs[2]]
 		)
 		return false
@@ -441,56 +440,54 @@ func _spawn_24_from_cafeteria(t: float) -> Dictionary:
 	var area := scene.get_node(
 		"WalkableWorld/EnvironmentColliders/CafeteriaInteractArea"
 	) as Area2D
-	var top_wall := scene.get_node(
-		"WalkableWorld/EnvironmentColliders/TopWall"
-	) as StaticBody2D
 	var player := scene.get_node("PlayerLayer/Player") as CharacterBody2D
 	var front := player.get_node("CollisionFront") as CollisionShape2D
 	var front_global := player.to_global(front.position)
 	var front_tex := env.to_local(front_global)
 	var box := InteractArrival._area_rect_in_env(area, env)
-	# X must stay on the box; Y may sit a little into-room past the bottom (Option B)
-	# when the walk drawing needs to clear TopWall.
-	var x_ok := front_tex.x >= box.position.x and front_tex.x <= box.end.x
-	var y_ok := (
-		front_tex.y >= box.position.y
-		and front_tex.y <= box.end.y + 480.0
-	)
-	var in_or_just_in := x_ok and y_ok
-	var sprite_clear := not _sprite_overlaps_static(player, top_wall)
 	var out := {
 		"front_tex": front_tex,
 		"front_tex_x": front_tex.x,
-		"in_or_just_in": in_or_just_in,
-		"sprite_clear": sprite_clear,
+		"box_center": box.get_center(),
 	}
 	scene.queue_free()
 	await process_frame
 	return out
 
 
-## 2.4 → 2.1: Front on/near live ClassroomsInteractArea (Option B may sit
-## just into-room past the top when BottomWall overlaps the box); t slides X.
+## 2.4 → 2.1: Front on live ClassroomsInteractArea (X = center; Y stays in the box).
+## BottomWall may nudge Y a little after place; do not require exact center Y.
 func _test_classrooms_to_cafeteria_inside_box() -> bool:
 	var xs: Array[float] = []
+	var center := Vector2.INF
 	for t in [0.1, 0.5, 0.9]:
 		var result := await _spawn_21_from_classrooms(t)
 		if result.is_empty():
 			return false
 		xs.append(float(result["front_tex_x"]))
+		if center.x == INF:
+			center = result["box_center"]
+		var front_tex: Vector2 = result["front_tex"]
+		var box: Rect2 = result["box"]
 		print(
-			"2.4→2.1 t=%s front_tex=%s in_or_just_in=%s"
-			% [t, result["front_tex"], result["in_or_just_in"]]
+			"2.4→2.1 t=%s front_tex=%s box_center=%s box=%s"
+			% [t, front_tex, center, box]
 		)
-		if not bool(result["in_or_just_in"]):
+		if absf(front_tex.x - center.x) > 40.0:
 			push_error(
-				"InteractArrival FAIL: 2.4→2.1 Front not in/just-into ClassroomsInteractArea (t=%s tex=%s)"
-				% [t, result["front_tex"]]
+				"InteractArrival FAIL: 2.4→2.1 Front not at box center X (t=%s tex=%s want %s)"
+				% [t, front_tex, center]
 			)
 			return false
-	if not (xs[0] < xs[1] and xs[1] < xs[2]):
+		if front_tex.y < box.position.y or front_tex.y > box.end.y:
+			push_error(
+				"InteractArrival FAIL: 2.4→2.1 Front not inside ClassroomsInteractArea (t=%s tex=%s box=%s)"
+				% [t, front_tex, box]
+			)
+			return false
+	if absf(xs[0] - xs[1]) > 8.0 or absf(xs[1] - xs[2]) > 8.0:
 		push_error(
-			"InteractArrival FAIL: 2.4→2.1 X did not follow t (x0=%s x0.5=%s x0.9=%s)"
+			"InteractArrival FAIL: 2.4→2.1 X changed with t (x0=%s x0.5=%s x0.9=%s)"
 			% [xs[0], xs[1], xs[2]]
 		)
 		return false
@@ -518,16 +515,11 @@ func _spawn_21_from_classrooms(t: float) -> Dictionary:
 	var front_global := player.to_global(front.position)
 	var front_tex := env.to_local(front_global)
 	var box := InteractArrival._area_rect_in_env(area, env)
-	var x_ok := front_tex.x >= box.position.x and front_tex.x <= box.end.x
-	# Into-room from this bottom door is -Y (above the box).
-	var y_ok := (
-		front_tex.y <= box.end.y
-		and front_tex.y >= box.position.y - 480.0
-	)
 	var out := {
 		"front_tex": front_tex,
 		"front_tex_x": front_tex.x,
-		"in_or_just_in": x_ok and y_ok,
+		"box_center": box.get_center(),
+		"box": box,
 	}
 	scene.queue_free()
 	await process_frame

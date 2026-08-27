@@ -5985,3 +5985,155 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Overworld Mike is one charcoal-inverted figure from head through limbs. Thin limbs can show brush gaps (not a solid white stick).
 - Verification: Re-bake 12-cell sheet from `kävely_etu` / `kävely_sivu`.
 - Notes: Stop Play and Play again so Godot reimports the sheet. Rollback of the old chin flatten is the previous packer + sheet.
+
+### 2.1 kitchen return — raise stand to ~2040×90
+- Request: Raise the 2.3 → 2.1 spawn from texture Y `150` to Y `90`.
+- Implementation: Kitchen return still maps X along `KitchenInteractArea` from leave `t`, then sets Player node texture Y to `90`. Wall clamp still skipped. Fresh Play / F6 still uses the Player node.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Leaving the kitchen lands Mike 60px higher in the cafeteria door (texture ~2040×90).
+- Verification: `interact_arrival_check.gd` (2.3→2.1 node tex y=90).
+- Notes: Same kitchen-return exception as before (hardcoded Y, not default spawn).
+
+### 2.1↔2.4 cafeteria doors always land at InteractArea center
+- Request: 2.4 spawn from 2.1 (and 2.4→2.1) should always be the dest InteractArea center. Use the same inside-box pattern already on 4.1 / 5.1.
+- Implementation: Those two doors no longer save leave `t`. Arrival uses `apply_arrival_inside` with `DEFAULT_T` (box center on the long axis). `2.1` classrooms uses `depth_frac` `0.5` like `4.1` / `5.1`; `2.4` cafeteria keeps `BOTTOM` depth `0.0` so the walk drawing stays below `TopWall`. Consume leftover `t` so it cannot leak. Lounge/classroom/backyard still slide `t`. Fresh Play / F6 still uses the Player node.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: `[E]` between cafeteria and classrooms always puts Mike in the middle of that door box, no matter where he stood when leaving.
+- Verification: `interact_arrival_check.gd` (2.1↔2.4 X locked to box center).
+- Notes: Other `[E]` pairs still map along the box. Wall clearance may still nudge a little off the box if the drawing overlaps TopWall.
+
+### 2.1→2.4 land on live CafeteriaInteractArea center (~5856×352)
+- Request: 2.4 spawn from 2.1 was still far too low; `[E]` looked right of the door box. Correct center is ~5856×352.
+- Implementation: Previous pass only locked X, then used `BOTTOM` depth `0.0` plus wall clearance, which parked Front at ~Y 815. That ignored the live shape center (`CafeteriaInteractArea` `(5933, 280)` + shape `(-77, 72.5)`). Both directions now `place_in_area` at box center and skip `resolve_inside_clearance`. `[E]` already anchors to the shape center — it looked offset because Mike was standing hundreds of pixels below the box. Fresh Play / F6 still uses the Player node. No hardcoded `5856×352`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Leaving 2.1 for 2.4 (and back) stands Mike on the live door-box center. Drawing may overlap TopWall; that is intended for this pair.
+- Verification: `interact_arrival_check.gd` (2.1↔2.4 Front at box center X and Y).
+- Notes: Other `[E]` doors still slide `t` and may still wall-nudge.
+
+### Scene 5.1 — desk MemoryIndicator glow
+- Request: Create a memory indicator visual on 5.1.
+- Implementation: Instanced `PlayerLayer/MemoryIndicator` on the desk (editor pos `(2712, 2160)`, same as `DeskInteractArea` shape center). Cover-fit remap from the node’s own editor position + `PlayerCoverSync.bind_extra_node`. Hides after `classroom_desk_seen`. Board stays on `BoardGlow/Outline` (not the blob).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Classroom desk shows the looping white/gray memory glow until 5.2 is left. Drag `PlayerLayer/MemoryIndicator` to move it. Board outline glow is unchanged.
+- Verification: Scene tree `PlayerLayer/MemoryIndicator`; script remaps + hides on `classroom_desk_seen`.
+- Notes: Desk still does not count toward 5/5 memories (`add_memory_once` not called).
+
+### Scene 5.1 — BoardInteractArea
+- Request: Add the missing board InteractArea so the player can interact with the classroom chalkboard (it was supposed to already be in the scene).
+- Implementation: Added `WalkableWorld/EnvironmentColliders/BoardInteractArea` with its own `RectangleShape2D` (starter `(1790, 420)` / `1380×760`, chalkboard-centered and tall enough to stand in). `[E]` plays the 5.3 board lines in 5.1. Did not open the 5.3 placeholder Control or the AXEL text puzzle.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Walking up to the board shows `[E]` and plays the board inspect lines. Drag `BoardInteractArea` to match the painted chalkboard. Desk / door / board glow unchanged.
+- Verification: Scene tree `BoardInteractArea` + unique board shape id; script zone `"board"`.
+- Notes: 5.3 still-scene + answer field (`AXEL`) still deferred.
+
+### Live dest box — write the arrival rule so agents re-measure every Play
+- Request: Document that door arrival must always read the live InteractArea this Play (not chat/old `.tscn` numbers), including 2.1→3.1, 2.1→2.3, 2.1→2.4, and all 1.x, unless a pair already has a hard spawn.
+- Implementation: Added a dedicated live-box rule in `SCENE_BUILDING.md` (forbidden: stale coords, skip re-read, BOTTOM+clearance instead of the live box). Listed hard spawns (F6 / hub / memory / kitchen Y `90`). Clarified frozen peek still uses the live dest box. Mirrored the rule in `AI_DOCS.md` (Narrative + How to work + Optional refs) and the `InteractArrival` file header.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No gameplay change this pass — 2.1↔2.4 already lands on live center; other listed doors already call `InteractArrival` on the live shape. Agents must not “fix” that with a remembered Vector2.
+- Verification: Docs only.
+- Notes: Frozen `1.2`→`1.4` / `1.4`→`2.1` / `2.1`→`2.3` peek mode unchanged. Kitchen Y `90` stays the hard spawn.
+
+### 5.2 desk still — slower sequence, white fill
+- Request: Desk animation was too fast; open on empty desk with “this was their desk”, beat, hand plate for one second, then final plate for “I'd spit on you…”; surround should read black after noir (author white).
+- Implementation: Retimed 5.2 off the old 1.3s clock. Empty plate holds through the opening line + 1.5s beat, `desk_hand.png` holds 1.0s (shake + white dim), then `desk.png` with the remaining lines. Flattened desk PNG empty fill to white and added a white `VoidFill` (noir → black). Opening line is now `This was their desk.` (replaces `It's THEIR desk.`).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.2_ClassroomDesk.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.2_ClassroomDesk.tscn`
+  - `AXEL/axel_project/exports/Drawings/desk_empty.png`
+  - `AXEL/axel_project/exports/Drawings/desk_hand.png`
+  - `AXEL/axel_project/exports/Drawings/desk.png`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: First desk visit plays empty → line → pause → one-second hand scare → graffiti + remaining lines. Letterbox/empty around the desk is black in-game.
+- Verification: Sequence constants and white `VoidFill` / dim reviewed in source. PNG corners sampled white. Play 5.1 desk `[E]` to confirm timing.
+- Notes: Kept `You said it was a dare.` on the final plate as remaining locked 5.2 text.
+
+### 5.2 desk still — dare then spit after final plate
+- Request: `You said it was a dare.` should play after the final picture is up, then `I'd spit on you…`
+- Implementation: Final plate is shown and undimmed, the opening line hides, then `You said it was a dare.` waits for advance, then `I'd spit on you if I could.`
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.2_ClassroomDesk.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Graffiti is on screen before the dare line. Spit line only after the dare line is done.
+- Verification: Sequence order reviewed in `5.2_ClassroomDesk.gd`.
+- Notes: Opening empty-desk line is unchanged.
+
+### Combat HUD — mouse clicks match MOVE_TextBox
+- Request: Combat interactable clicks were offset and smaller than the TextBoxes they belong to. Clicks should work anywhere on the matching TextBox.
+- Implementation: Root cause was mixing Godot 4.7 `get_global_rect()` (already multiplied by HudCanvas window-fit scale, about 0.5) with `_has_point`'s unscaled local mouse point, then further shrinking Execute with `SkullClickPolygon`. Click tests now use the TextBox in the piece's own local pixels. Skull polygon no longer steals clicks. Clickable `+`/`−` widgets fill the TextBox (no 8px inset).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/hud_piece.gd`
+  - `AXEL/axel_project/combat/scripts/skull_click_polygon.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/test/hud_click_rect_check.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Settings, Execute, and bet `+`/`−` click on the full TextBox. Hover/hand cursor follows that same box.
+- Verification: `hud_click_rect_check.gd` OK (synthetic scaled parent + live Settings/Execute/`+`/`−` TextBox corners). `combat_test_scaffold_check.gd` OK. `hud_piece_placement_check.gd` OK.
+- Notes: `use_alpha_hit` is unused; kept on the piece so `combat_test.tscn` still loads. `SkullClickPolygon` remains in the tree for editor tracing only.
+
+### Memory indicator — +50% size and white outer glow
+- Request: Globally increase all memory_indicator sizes by 50% and add an extra glow (research Godot Asset Library / online for a glow type that fits this sprite).
+- Implementation: Bumped shared `indicator_scale` default from `1.5` to `2.25` so all four room instances grow without per-scene overrides. Added white outer-glow silhouette halo (`memory_outer_glow.gdshader` — same family as ShaderV2 OuterGlow / Godot demo aura / kitchen `prop_ink_halo`, but white + additive because memory sits above noir). Wired a `Halo` AnimatedSprite2D behind the sharp pixel blob in `MemoryIndicator.tscn`; both share frames and `visual_offset`. UV clamp prevents atlas bleed. Did not install ShaderV2 (VisualShader pack; broken on Godot 4.7). Rejected WorldEnvironment bloom (would glow Mike/rooms/UI).
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/memory_indicator.gd`
+  - `AXEL/axel_project/scenes/fx/MemoryIndicator.tscn`
+  - `AXEL/axel_project/scenes/fx/memory_outer_glow.gdshader`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Cafeteria / Backyard / Teachers Lounge / Classroom memory markers are 50% larger and show a soft white aura around the looping blob. Still remaps from own editor position; still hides after collect.
+- Verification: `shader_builtin_scope_check.gd`; short windowed Godot pass for shader compile; eyeball any of the four rooms.
+- Notes: Halo starting look: spread `10`, intensity `0.42`, white. Tunable on the Halo material in Inspector.
+
+### 2.4 ExtraDoor1 [E] sits on ExtraDoor1
+- Request: ExtraDoor1 InteractArea’s `[E]` was offset from the shared chip rule (scene 2.4).
+- Implementation: ExtraDoor1’s `CollisionShape2D` had a leftover thousands-of-pixel offset from duplicating ExtraDoor3, so the chip followed that far box (on ExtraDoor3’s door). Reset ExtraDoor1 and ExtraDoor3 shapes onto their own Area2D nodes (`position` default `(0, 0)`). ExtraDoor2’s small ink nudge `(4, -116.5)` stays. No overlay `screen_offset`. Documented: after duplicating an InteractArea, reset the child shape position.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: ExtraDoor1’s `[E]` sits in the middle of ExtraDoor1 (south wall, between future and classroom). ExtraDoor3’s chip sits on ExtraDoor3.
+- Verification: Scene text — ExtraDoor1/3 CollisionShape2D have no leftover position; ExtraDoor2 still has the small nudge.
+- Notes: Drag ExtraDoor1 itself to move the box; do not offset the child shape by thousands of pixels.
+
+### Docs catch-up — ARC2 door spawns match live rules
+- Request: Update docs.
+- Implementation: Arc 2 implemented notes were still describing old peeks / t-slide on the cafeteria–classrooms pair. Wrote the live rules: `2.1`↔`2.4` always dest-box center (skip clearance); `2.3`→`2.1` kitchen stand texture Y `90`; other 2.4 doors (lounge/classroom) still map `t`. Fixed the stale SCENE_BUILDING line that said 2.4 cafeteria arrival uses wall clearance.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only (gameplay already matched `SCENE_BUILDING.md` / `AI_DOCS.md`).
+- Verification: Cross-checked against `2.1_Cafeteria.gd`, `2.4_ClassroomsCorridor.gd`, and `InteractArrival` header.
+- Notes: Memory-indicator size/glow and combat HUD click-rect were already logged earlier today.

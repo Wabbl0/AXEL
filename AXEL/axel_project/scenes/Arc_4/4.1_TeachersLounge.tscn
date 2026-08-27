@@ -126,7 +126,7 @@ position = Vector2(1800, 1200)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/MemoryInteractArea" unique_id=1906437503]
-position = Vector2(-1672, -560)
+position = Vector2(-1559, -593)
 shape = SubResource("RectangleShape2D_memory_interact")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1848266056]

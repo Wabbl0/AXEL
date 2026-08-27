@@ -30,7 +30,7 @@ Headless combat checks (`princess_check`, `determinism_check`) use `combat_root.
 - Room FX on combat is behind `AxelPostFxStack.COMBAT_ROOM_FX_TEST` (test flag; flip false to restore combat-only scanline). When the flag is on, combat gets flat `CrtCombatOverlay.tscn` (same CRT shader, zero curve/vignette/rim — edge-fringe fix without the round-TV look). Local `ScanlineOverlay` hides when that flag is on.
 - **Live widgets above FX:** `WidgetLayer` (`CanvasLayer` 115) hosts numbers, item checks, history, `+/−`, and the 5×5 grid so invert/CRT/pulse do not remapped them. Each host follows its `MOVE_TextBox` rect. Hand-drawn `NEW_*` pieces stay under the FX.
 - **Grid:** `NEW_Grid` has a `MOVE_TextBox`; `GridHost` / `%CombatRoot` live under `WidgetLayer` and fill that box (not the old PlayArea host).
-- **Clicks:** Settings / Execute use the piece `MOVE_TextBox` rect (not the whole art frame). Execute also has `SkullClickPolygon` — drag the `Polygon2D` vertices around the skull. One spin per click (shared guard).
+- **Clicks:** Settings / Execute / `+` / `−` use each piece’s `MOVE_TextBox` rect (not the art frame, not opaque pixels, not the skull polygon). `SkullClickPolygon` is editor tracing only. One spin per click (shared guard).
 - **Piece authoring (canon):** combat drawings use **black ink on white fill** (same rule as room backgrounds). Noir turns black → red and white → dark. Original white-on-black exports were inverted in place by `tools/invert_drawing_colors.gd`; pre-invert copies live in `exports/Drawings/backup_pre_invert/` (ignored by Godot). Re-run that tool after exporting a new white-on-black piece.
 
 ## Shared `combat_root`

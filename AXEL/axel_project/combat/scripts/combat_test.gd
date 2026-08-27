@@ -1904,9 +1904,13 @@ func _bind_grid_host_to_piece() -> void:
 func _wire_piece_input_signals() -> void:
 	if _piece_execute != null and not _piece_execute.activated.is_connected(_on_piece_execute_activated):
 		_piece_execute.activated.connect(_on_piece_execute_activated)
-	if _skull_click_polygon != null and _skull_click_polygon.has_signal("pressed"):
-		if not _skull_click_polygon.pressed.is_connected(_on_piece_execute_activated):
-			_skull_click_polygon.pressed.connect(_on_piece_execute_activated)
+	## Skull polygon is display/editor only — Execute MOVE_TextBox owns the click.
+	if _skull_click_polygon != null:
+		if _skull_click_polygon is Control:
+			(_skull_click_polygon as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if _skull_click_polygon.has_signal("pressed"):
+			if _skull_click_polygon.pressed.is_connected(_on_piece_execute_activated):
+				_skull_click_polygon.pressed.disconnect(_on_piece_execute_activated)
 	## Skull art is display-only; disconnect any leftover pressed wiring.
 	if _premium_skull != null and _premium_skull.has_signal("pressed"):
 		if _premium_skull.pressed.is_connected(_on_piece_execute_activated):

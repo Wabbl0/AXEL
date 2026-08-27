@@ -1,19 +1,27 @@
 extends RefCounted
 class_name InteractArrival
 ## Map standing position along the source leave box onto the dest box (t in 0..1).
+## LIVE DEST BOX (mandatory): place_on_area / place_in_area read the dest
+## InteractArea / ExitTrigger after cover-fit this Play. Never land on a Vector2
+## copied from chat, changelog, or an earlier .tscn grep. Do not replace a
+## live-box land with BOTTOM/TOP + resolve_inside_clearance unless the user asked.
+## Applies to 1.x, 2.1→2.3, 2.1↔2.4, 2.1→3.1, and every other door pair.
+## Hard spawns only: F6 Player node; hub/map Player node; memory restore;
+## 2.3→2.1 kitchen Y 90. See SCENE_BUILDING.md.
 ## Frozen trips (1.2→1.4, 1.4→2.1, 2.1→2.3): place_on_area into-room peek past the
-## short edge, then clamp_hitbox_to_walls. Approved peek example: 1.2↔1.4 ExitTrigger.
-## Non-frozen [E] pairs: place_in_area (Front inside the live dest box) +
-## resolve_inside_clearance (whole drawing clear of walls). Do not copy world Y
-## or floor-line offsets.
+## short edge of the LIVE dest box, then clamp_hitbox_to_walls. Approved peek:
+## 1.2↔1.4 ExitTrigger.
+## 2.1↔2.4: place_in_area at dest center; skip resolve_inside_clearance.
+## Other non-frozen [E]: place_in_area + resolve_inside_clearance. Do not copy
+## world Y or floor-line offsets.
 ##
 ## Receive contract (match 1.2_Corridor — do not invent a new system):
 ## 1. Cache t once (take_arrival_t_or_default). Missing t → 0.5.
 ## 2. Every layout_applied: always PlayerSpawnSync + PlayerCoverSync.apply.
 ## 3. If a door peek is pending: call_deferred place — do NOT place inside
 ##    _sync_world_space, and do NOT clear pending before that defer.
-## 4. Frozen: place_on_area + clamp. Non-frozen: apply_arrival_inside last
-##    (cover/depth already applied — do not re-scale after place).
+## 4. Frozen: place_on_area + clamp. 2.1↔2.4: place_in_area center last.
+##    Other non-frozen: apply_arrival_inside last (do not re-scale after place).
 ## 5. Fresh Play / F6 uses the Player node. Memory stills keep exact restore.
 
 enum PeekEdge {

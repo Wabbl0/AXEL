@@ -11,6 +11,7 @@
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="10_leaf_zone"]
 [ext_resource type="Shader" uid="uid://bhgyve46v0fi" path="res://scenes/fx/prop_line_halo.gdshader" id="11_board_glow"]
+[ext_resource type="PackedScene" path="res://scenes/fx/MemoryIndicator.tscn" id="12_memory_indicator"]
 [ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_top"]
@@ -33,6 +34,9 @@ size = Vector2(609, 289)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_desk_interact"]
 size = Vector2(396, 330)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_board_interact"]
+size = Vector2(1797, 904)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_board_glow"]
 shader = ExtResource("11_board_glow")
@@ -200,8 +204,16 @@ position = Vector2(1500, 1550)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DeskInteractArea" unique_id=385359057]
-position = Vector2(1212, 610)
+position = Vector2(1176, 490)
 shape = SubResource("RectangleShape2D_desk_interact")
+
+[node name="BoardInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2105801]
+position = Vector2(1790, 420)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BoardInteractArea" unique_id=2105802]
+position = Vector2(-314, -216)
+shape = SubResource("RectangleShape2D_board_interact")
 
 [node name="BoardGlow" type="Node2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2105701]
 z_index = 1
@@ -263,6 +275,9 @@ polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 position = Vector2(-37.812428, 126.04143)
 shape = ExtResource("hb_front")
 metadata/authored_pos = Vector2(-37.812428, 126.04143)
+
+[node name="MemoryIndicator" parent="PlayerLayer" unique_id=90059802 instance=ExtResource("12_memory_indicator")]
+position = Vector2(2712, 2160)
 
 [node name="TopDialogueOverlay" parent="." unique_id=1525273252 instance=ExtResource("5_top_dialogue")]
 
