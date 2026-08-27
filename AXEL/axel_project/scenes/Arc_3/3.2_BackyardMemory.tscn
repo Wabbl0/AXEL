@@ -1,24 +1,24 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bee3rr2yqaylg"]
 
-[ext_resource type="Script" path="res://scenes/Arc_3/3.2_BackyardMemory.gd" id="1_memory"]
-[ext_resource type="Texture2D" path="res://exports/Drawings/3.1_Backyard_Memory.png" id="2_memory_bg"]
-[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
-[ext_resource type="Script" path="res://scenes/core/background_camera_controller.gd" id="4_camera_script"]
-[ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="5_bg_lock"]
-[ext_resource type="Script" path="res://scenes/Arc_3/3.2_backyard_memory_frame.gd" id="6_frame"]
-[ext_resource type="FontFile" path="res://combat/ui/fonts/VT323-Regular.ttf" id="7_font"]
+[ext_resource type="Script" uid="uid://cete866ogjamf" path="res://scenes/Arc_3/3.2_BackyardMemory.gd" id="1_memory"]
+[ext_resource type="Texture2D" uid="uid://neho38bhm33h" path="res://exports/Drawings/3.1_Backyard_Memory.png" id="2_memory_bg"]
+[ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
+[ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="4_camera_script"]
+[ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="5_bg_lock"]
+[ext_resource type="Script" uid="uid://ba3cvdrv330al" path="res://scenes/Arc_3/3.2_backyard_memory_frame.gd" id="6_frame"]
+[ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="7_font"]
 
-[node name="3_2_BackyardMemory" type="Node2D"]
+[node name="3_2_BackyardMemory" type="Node2D" unique_id=1259621179]
 script = ExtResource("1_memory")
 
-[node name="WalkableWorld" type="Node2D" parent="."]
+[node name="WalkableWorld" type="Node2D" parent="." unique_id=2052425588]
 
-[node name="VoidFill" type="Polygon2D" parent="WalkableWorld"]
+[node name="VoidFill" type="Polygon2D" parent="WalkableWorld" unique_id=1539225471]
 visible = false
 z_index = -101
 polygon = PackedVector2Array(-4000, -4000, 8000, -4000, 8000, 8000, -4000, 8000)
 
-[node name="Background" type="Sprite2D" parent="WalkableWorld"]
+[node name="Background" type="Sprite2D" parent="WalkableWorld" unique_id=2047961216]
 z_index = -100
 texture_filter = 1
 texture = ExtResource("2_memory_bg")
@@ -28,20 +28,20 @@ region_rect = Rect2(0, 584, 3508, 1896)
 script = ExtResource("5_bg_lock")
 metadata/_edit_lock_ = true
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1352431015]
 script = ExtResource("4_camera_script")
 background_path = NodePath("../WalkableWorld/Background")
 fit_mode = 1
 margin_px = 12.0
 max_auto_zoom = 1.0
 
-[node name="MemoryFrame" type="Node" parent="."]
+[node name="MemoryFrame" type="Node" parent="." unique_id=956141274]
 script = ExtResource("6_frame")
 
-[node name="ExitLayer" type="CanvasLayer" parent="."]
+[node name="ExitLayer" type="CanvasLayer" parent="." unique_id=1067299922]
 layer = 110
 
-[node name="ExitButton" type="Button" parent="ExitLayer"]
+[node name="ExitButton" type="Button" parent="ExitLayer" unique_id=2120898115]
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
@@ -60,4 +60,4 @@ theme_override_fonts/font = ExtResource("7_font")
 theme_override_font_sizes/font_size = 36
 text = "X"
 
-[node name="TopDialogueOverlay" parent="." instance=ExtResource("3_top_dialogue")]
+[node name="TopDialogueOverlay" parent="." unique_id=2090581685 instance=ExtResource("3_top_dialogue")]
