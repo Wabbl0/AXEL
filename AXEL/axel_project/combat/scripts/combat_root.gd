@@ -103,7 +103,6 @@ const VIEWPORT_TOP_SAFE := 84.0
 const VIEWPORT_BOTTOM_SAFE := 292.0
 const CELL_SIZE_MIN := 48.0
 const CELL_SIZE_MAX := 80.0
-const PANEL_FILL_CELL_MAX := 128.0
 const ROUND_WINNINGS_GAP := 12.0
 const ROUND_WINNINGS_HEIGHT := 36.0
 const BET_LADDER: Array[float] = [
@@ -246,6 +245,9 @@ func get_bet_ladder() -> Array[float]:
 
 func get_current_bet() -> float:
 	return total_bet
+
+func get_bet_index() -> int:
+	return _current_bet_index
 
 func set_bet_index(index: int) -> void:
 	if BET_LADDER.is_empty():
@@ -1083,13 +1085,17 @@ func fit_to_viewport(viewport_size: Vector2) -> void:
 		multiplier_label.visible = false
 	grid_ui.position = Vector2(0.0, 48.0)
 	grid_ui.size = Vector2(grid_width, grid_height)
-	_apply_slot_min_size(cell_size)
+	_apply_slot_min_size(Vector2(cell_size, cell_size))
 	if round_winnings_label != null:
 		round_winnings_label.visible = false
 	_layout_grid_fx_nodes()
 	_slot_positions_ready = false
 
 ## Center grid inside a host panel (top-left origin). Used when CombatRoot is reparented into a frame.
+##
+## `fill_panel` means the host rect *is* the cell area drawn on the HUD art, so cells take the
+## drawing's aspect (5x5 of ~318x408 on the shipped grid piece) rather than being forced square.
+## Symbol icons keep their own aspect and centre inside each cell.
 func fit_to_panel(
 	panel_size: Vector2,
 	bottom_inset: float = 12.0,
@@ -1100,22 +1106,25 @@ func fit_to_panel(
 	var safe_h: float = max(panel_size.y - bottom_inset, 64.0)
 	var sep_h := float(grid_ui.get_theme_constant("h_separation"))
 	var sep_v := float(grid_ui.get_theme_constant("v_separation"))
-	var cell_size: float
+	var edge: float = 0.0 if fill_panel else GRID_EDGE_MARGIN
+	var cell: Vector2
 	if fill_panel:
-		var inner_w: float = safe_w - GRID_EDGE_MARGIN * 2.0
-		var inner_h: float = safe_h - GRID_EDGE_MARGIN * 2.0
-		var by_w: float = (inner_w - float(GridManager.COLS - 1) * sep_h) / float(GridManager.COLS)
-		var by_h: float = (inner_h - float(GridManager.ROWS - 1) * sep_v) / float(GridManager.ROWS)
-		cell_size = clampf(minf(by_w, by_h), CELL_SIZE_MIN, PANEL_FILL_CELL_MAX)
+		cell = Vector2(
+			(safe_w - float(GridManager.COLS - 1) * sep_h) / float(GridManager.COLS),
+			(safe_h - float(GridManager.ROWS - 1) * sep_v) / float(GridManager.ROWS)
+		)
+		cell.x = maxf(cell.x, CELL_SIZE_MIN)
+		cell.y = maxf(cell.y, CELL_SIZE_MIN)
 	else:
-		var min_dim: float = min(safe_w, safe_h)
-		cell_size = clamp(min_dim * 0.11 * GRID_VISUAL_SCALE, CELL_SIZE_MIN, CELL_SIZE_MAX)
-	var grid_width: float = float(GridManager.COLS) * cell_size + float(GridManager.COLS - 1) * sep_h
-	var grid_height: float = float(GridManager.ROWS) * cell_size + float(GridManager.ROWS - 1) * sep_v
+		var min_dim: float = min(safe_w - edge * 2.0, safe_h - edge * 2.0)
+		var square: float = clamp(min_dim * 0.11 * GRID_VISUAL_SCALE, CELL_SIZE_MIN, CELL_SIZE_MAX)
+		cell = Vector2(square, square)
+	var grid_width: float = float(GridManager.COLS) * cell.x + float(GridManager.COLS - 1) * sep_h
+	var grid_height: float = float(GridManager.ROWS) * cell.y + float(GridManager.ROWS - 1) * sep_v
 	_grid_width_cached = grid_width
 	_grid_height_cached = grid_height
-	var grid_x: float = max((safe_w - grid_width) * 0.5, GRID_EDGE_MARGIN)
-	var grid_y: float = GRID_EDGE_MARGIN
+	var grid_x: float = max((safe_w - grid_width) * 0.5, edge)
+	var grid_y: float = edge
 	if not align_grid_top:
 		grid_y += max((safe_h - grid_height) * 0.5, 0.0)
 	position = Vector2.ZERO
@@ -1123,7 +1132,7 @@ func fit_to_panel(
 		multiplier_label.visible = false
 	grid_ui.position = Vector2(grid_x, grid_y)
 	grid_ui.size = Vector2(grid_width, grid_height)
-	_apply_slot_min_size(cell_size)
+	_apply_slot_min_size(cell)
 	if round_winnings_label != null:
 		round_winnings_label.visible = false
 	_layout_grid_fx_nodes()
@@ -1160,11 +1169,11 @@ func _play_round_winnings_win_glow() -> void:
 func _hide_round_winnings_overlay(_immediate: bool = false) -> void:
 	pass
 
-func _apply_slot_min_size(cell_size: float) -> void:
+func _apply_slot_min_size(cell_size: Vector2) -> void:
 	for child in grid_ui.get_children():
 		var slot := child as Control
 		if slot != null:
-			slot.custom_minimum_size = Vector2(cell_size, cell_size)
+			slot.custom_minimum_size = cell_size
 
 func _cell_size_px() -> float:
 	if grid_ui.get_child_count() == 0:

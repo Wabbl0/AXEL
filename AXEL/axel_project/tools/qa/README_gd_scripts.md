@@ -39,6 +39,37 @@ tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/wall_s
 
 Measures how far Mike’s walk drawing + `ShadowOutline` stick past the Front circle, then checks `LeftWall` / `RightWall` / `TopWall` / `BottomWall` inset vs that amount × live Player scale. Skips 2.4, 1.1 `LeftWall`, and walk-off walls. Exits 0 on `WALL_SPRITE_CLEARANCE OK`.
 
+## Independent CollisionShape2D (no shared Shape2D)
+
+```bat
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/collision_shape_unique_check.gd
+```
+
+Scans `res://scenes/**/*.tscn`. Two `CollisionShape2D` nodes must not share a `SubResource` (or any `.tres` except Mike’s `hitbox_front.tres`). Exits 0 on `COLLISION_SHAPE_UNIQUE OK`.
+
+## Shader built-in scope (helpers must not read SCREEN_UV / etc.)
+
+```bat
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/shader_builtin_scope_check.gd
+```
+
+Scans `.gdshader` / `.gdshaderinc` under `scenes/`, `tools/`, `combat/`, `scripts/`. Custom helper functions must not read fragment/vertex built-ins (`SCREEN_UV`, `SCREEN_PIXEL_SIZE`, `FRAGCOORD`, `UV`, `COLOR`, …) — pass those in from `fragment()` / `vertex()` / `light()` / `start()` / `process()`. Exits 0 on `SHADER_BUILTIN_SCOPE OK`. Does not compile shaders; after CRT edits also run a short windowed `--quit-after` and check the console for `SHADER ERROR`.
+
+## Combat HUD piece placement (drawing-backed HUD regression)
+
+```bat
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/hud_piece_placement_check.gd
+```
+
+Loads `combat/combat_test.tscn` inside a `1920×1280` `SubViewport` and asserts, in plate space:
+
+- `HudArtGuide` and `HudPieces` sit at `0,0` sized `3508×2480` (1:1 with `axel_ui.png`).
+- Each `NEW_*` piece matches its measured rect from the mockup, and renders at its texture's native size (no stretch blur).
+- No `NEW_*` / `MOVE_*` node leaves the plate or collapses to zero size.
+- `%CombatRoot`'s `GridUI` fills at least 98% of `GridHost`.
+
+Exits 0 on `HUD piece placement check OK`. This is the gate against the guide drifting and dragging the whole HUD with it. Companion diagnostics: `hud_layout_probe.gd` (prints rects) and `hud_capture.gd` (renders a PNG — run **without** `--headless`).
+
 ## Corridor collision probe (1.2 regression)
 
 ```bat

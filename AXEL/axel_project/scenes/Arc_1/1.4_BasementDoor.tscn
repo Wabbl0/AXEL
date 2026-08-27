@@ -17,7 +17,10 @@ size = Vector2(2400, 208)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
 size = Vector2(2400, 116)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
+size = Vector2(63.25, 1515)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_right"]
 size = Vector2(63.25, 1515)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor_divider"]
@@ -66,14 +69,14 @@ position = Vector2(-400, 762)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=1894092143]
 position = Vector2(-90, 0)
-shape = SubResource("RectangleShape2D_wall_vertical")
+shape = SubResource("RectangleShape2D_wall_vertical_left")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1737791086]
 position = Vector2(2700, 763)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=748786056]
 position = Vector2(-473.375, -21)
-shape = SubResource("RectangleShape2D_wall_vertical")
+shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="FloorDividerWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1021070437]
 position = Vector2(1200, 397)

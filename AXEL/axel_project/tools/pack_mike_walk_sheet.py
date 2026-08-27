@@ -315,9 +315,8 @@ def _chin_y(pose: Image.Image) -> int:
 
 
 def _finish_pose(pose: Image.Image) -> Image.Image:
-	"""Invert charcoal on the face (painted white becomes black holes). Solid white body from chin down. No extra head plate."""
+	"""Invert charcoal on the whole figure (painted white becomes black holes). No solid-white body flatten. No extra head plate."""
 	w, h = pose.size
-	chin = _chin_y(pose)
 	pix = pose.load()
 	ink = Image.new("RGBA", (w, h), (0, 0, 0, 0))
 	ip = ink.load()
@@ -325,9 +324,6 @@ def _finish_pose(pose: Image.Image) -> Image.Image:
 		for x in range(w):
 			r, g, b, a = pix[x, y]
 			if a <= INK_THRESH:
-				continue
-			if y >= chin:
-				ip[x, y] = BODY_INK_RGBA
 				continue
 			inv = 255 - (int(r) + int(g) + int(b)) // 3
 			if inv < FACE_FRINGE_LUMA and a < FACE_FRINGE_ALPHA:
@@ -371,7 +367,7 @@ def main() -> None:
 	all_poses = etu + sivu  # 0-3 front, 4-6 back, 7-11 side
 	assert len(all_poses) == 12
 
-	print("Invert face, solid body (no head plate)…")
+	print("Invert whole figure (no head plate, no solid-white body)…")
 	processed = [_keep_main_island(_finish_pose(p)) for p in all_poses]
 
 	sheet, cell_w, cell_h = _pack(processed)

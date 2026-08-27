@@ -18,16 +18,19 @@ var _locker_interact_area: Area2D
 var _exterior_interact_area: Area2D
 var _exit_trigger: Area2D
 var _spawn_line_active := false
+var _enter_dialogue_pending := false
 var _is_transitioning := false
 var _locker_zone_active := false
 var _exterior_zone_active := false
 var _exterior_zone_armed := true
+var _arrival_latched_exterior := false
 var _locker_line_running := false
 var _locker_enter_token := 0
 var _pending_basement_peek := false
 var _pending_exterior_peek := false
 var _arrival_t := InteractArrival.DEFAULT_T
 var _exit_trigger_armed := true
+var _cover_layout_ready := false
 var _player_cover_sync := PlayerCoverSync.new()
 
 
@@ -57,31 +60,69 @@ func _ready() -> void:
 	) as Area2D
 	if is_instance_valid(_exit_trigger):
 		_exit_trigger.body_entered.connect(_on_exit_trigger_body_entered)
+	set_process(true)
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
+	# Cache t in _ready so a second cover-fit cannot replace it with 0.5.
+	_latch_corridor_arrival()
 	call_deferred("_restore_player_position_if_needed")
 	_arm_exterior_zone_grace()
+	if not GameManager.corridor_spawn_line_seen:
+		_enter_dialogue_pending = true
 	_show_spawn_line()
 
 
-func _restore_player_position_if_needed() -> void:
-	if not is_instance_valid(_player):
+func _process(_delta: float) -> void:
+	if _arrival_latched_exterior and InteractZoneGate.movement_pressed():
+		_arrival_latched_exterior = false
+	_refresh_interact_zones()
+
+
+func _refresh_interact_zones() -> void:
+	if _is_transitioning:
 		return
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+		if is_instance_valid(_interact_prompt):
+			_interact_prompt.hide_prompt()
+		return
+	_locker_zone_active = _is_player_near_locker()
+	if _arrival_latched_exterior:
+		_exterior_zone_active = true
+	else:
+		_exterior_zone_active = _is_player_near_exterior()
+	if _exterior_zone_active:
+		_try_show_exterior_interact_prompt()
+	elif _locker_zone_active:
+		_try_show_locker_interact_prompt()
+	elif is_instance_valid(_interact_prompt):
+		_interact_prompt.hide_prompt()
+
+
+func _latch_corridor_arrival() -> void:
 	var spawn_side := GameManager.take_corridor_spawn_side()
 	if spawn_side == "basement_right":
 		_pending_basement_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		# Discard any stale saved return pos; peek wins.
 		if GameManager.has_corridor_return_pos():
 			GameManager.take_corridor_return_pos()
-		call_deferred("_apply_basement_peek_if_pending")
 		return
 	if spawn_side == "exterior_door":
 		_pending_exterior_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
 		if GameManager.has_corridor_return_pos():
 			GameManager.take_corridor_return_pos()
-		call_deferred("_apply_exterior_peek_if_pending")
+
+
+func _restore_player_position_if_needed() -> void:
+	if not is_instance_valid(_player):
+		return
+	if _pending_basement_peek:
+		call_deferred("_apply_basement_peek_if_pending")
+		return
+	if _pending_exterior_peek:
+		# Keep pending until cover-fit; _sync_environment_colliders re-queues.
+		if _cover_layout_ready:
+			call_deferred("_apply_exterior_peek_after_wake")
 		return
 	if not GameManager.has_corridor_return_pos():
 		return
@@ -105,19 +146,30 @@ func _apply_basement_peek_if_pending() -> void:
 	_arm_exit_trigger_grace()
 
 
+func _apply_exterior_peek_after_wake() -> void:
+	_wake_static_colliders()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_apply_exterior_peek_if_pending()
+
+
 func _apply_exterior_peek_if_pending() -> void:
 	if not _pending_exterior_peek or not is_instance_valid(_player):
 		return
+	if not _cover_layout_ready:
+		return
 	_pending_exterior_peek = false
-	_player.global_position = InteractArrival.place_on_area(
+	# Non-frozen [E]: Front inside live ExteriorInteractArea; t slides Y.
+	# RIGHT = into-corridor edge so clearance nudges off LeftWall, not out.
+	InteractArrival.apply_arrival_inside(
 		_player,
 		_exterior_interact_area,
 		_arrival_t,
 		Vector2.AXIS_Y,
 		InteractArrival.PeekEdge.RIGHT,
-		12.0
+		0.5
 	)
-	call_deferred("_clamp_arrived_player")
+	_arrival_latched_exterior = true
 	_arm_exterior_zone_grace()
 
 
@@ -141,8 +193,10 @@ func _refresh_locker_zone_state() -> void:
 
 func _show_spawn_line() -> void:
 	if GameManager.corridor_spawn_line_seen:
+		_enter_dialogue_pending = false
 		return
 	_spawn_line_active = true
+	_enter_dialogue_pending = false
 	await _top_dialogue.show_line(
 		"Even after all these years the smell is the same.|beat:1.5| They must've used some really toxic paint.",
 		3.5
@@ -157,6 +211,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _is_interaction_event(event):
 		return
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+		return
+	_refresh_interact_zones()
 	if _is_player_near_exterior() and _exterior_zone_armed:
 		_begin_exterior_transition()
 		return
@@ -175,21 +232,13 @@ func _is_interaction_event(event: InputEvent) -> bool:
 
 
 func _is_player_near_locker() -> bool:
-	if not is_instance_valid(_locker_interact_area) or not is_instance_valid(_player):
-		return false
-	for body in _locker_interact_area.get_overlapping_bodies():
-		if body == _player:
-			return true
-	return false
+	return InteractZoneGate.body_in_area(_locker_interact_area, _player)
 
 
 func _is_player_near_exterior() -> bool:
-	if not is_instance_valid(_exterior_interact_area) or not is_instance_valid(_player):
-		return false
-	for body in _exterior_interact_area.get_overlapping_bodies():
-		if body == _player:
-			return true
-	return false
+	if _arrival_latched_exterior:
+		return true
+	return InteractZoneGate.body_in_area(_exterior_interact_area, _player)
 
 
 func _locker_interact_anchor() -> Vector2:
@@ -289,7 +338,9 @@ func _play_locker_line_async(token: int) -> void:
 func _try_show_locker_interact_prompt() -> void:
 	if _is_transitioning or not _locker_zone_active:
 		return
-	if _exterior_zone_active and _exterior_zone_armed:
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+		return
+	if _exterior_zone_active:
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -299,7 +350,7 @@ func _try_show_locker_interact_prompt() -> void:
 func _hide_locker_interact_prompt() -> void:
 	if _is_transitioning:
 		return
-	if _exterior_zone_active and _exterior_zone_armed:
+	if _exterior_zone_active:
 		_try_show_exterior_interact_prompt()
 		return
 	if not is_instance_valid(_interact_prompt):
@@ -308,7 +359,9 @@ func _hide_locker_interact_prompt() -> void:
 
 
 func _try_show_exterior_interact_prompt() -> void:
-	if _is_transitioning or not _exterior_zone_active or not _exterior_zone_armed:
+	if _is_transitioning or not _exterior_zone_active:
+		return
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -330,8 +383,6 @@ func _arm_exterior_zone_grace() -> void:
 	_exterior_zone_armed = false
 	await get_tree().create_timer(EXIT_TRIGGER_GRACE_SEC).timeout
 	_exterior_zone_armed = true
-	if _exterior_zone_active:
-		_try_show_exterior_interact_prompt()
 
 
 func _begin_locker_transition() -> void:
@@ -411,11 +462,12 @@ func _sync_environment_colliders(cover_scale: float, bg_position: Vector2) -> vo
 	PlayerSpawnSync.apply_tex(env, _player, tex_pos)
 	if is_instance_valid(_player):
 		_player_cover_sync.apply(_player, cover_scale, bg_position)
+	_cover_layout_ready = true
 	call_deferred("_wake_static_colliders")
 	if _pending_basement_peek:
 		call_deferred("_apply_basement_peek_if_pending")
 	elif _pending_exterior_peek:
-		call_deferred("_apply_exterior_peek_if_pending")
+		call_deferred("_apply_exterior_peek_after_wake")
 
 
 func _wake_static_colliders() -> void:

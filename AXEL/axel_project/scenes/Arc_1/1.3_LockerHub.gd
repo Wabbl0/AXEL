@@ -15,6 +15,7 @@ var _first_visit_dialogue_running := false
 func _ready() -> void:
 	_exit_button.pressed.connect(_on_exit_pressed)
 	_map_hotspot.activated.connect(_on_map_hotspot_activated)
+	set_process_input(true)
 	call_deferred("_play_first_visit_dialogue")
 
 
@@ -36,6 +37,25 @@ func _on_map_hotspot_activated() -> void:
 	_go_to_scene(MAP_SCENE)
 
 
+func _input(event: InputEvent) -> void:
+	if not _is_exit_key(event):
+		return
+	get_viewport().set_input_as_handled()
+	_on_exit_pressed()
+
+
+func _is_exit_key(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		if not key_event.pressed or key_event.echo:
+			return false
+		return (
+			key_event.keycode in [KEY_ESCAPE, KEY_BACKSPACE, KEY_DELETE]
+			or key_event.physical_keycode in [KEY_ESCAPE, KEY_BACKSPACE, KEY_DELETE]
+		)
+	return false
+
+
 func _on_exit_pressed() -> void:
 	_go_to_scene(CORRIDOR_SCENE)
 
@@ -44,6 +64,8 @@ func _go_to_scene(scene_path: String) -> void:
 	if _is_transitioning:
 		return
 	_is_transitioning = true
+	if scene_path == CORRIDOR_SCENE and is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
 	var err := get_tree().change_scene_to_file(scene_path)
 	if err != OK:
 		push_error("Failed to change scene to %s (error %d)." % [scene_path, err])

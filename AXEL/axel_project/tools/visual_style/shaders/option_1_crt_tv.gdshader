@@ -57,36 +57,35 @@ void fragment() {
 	uv = curve_uv(uv, curvature);
 
 	vec3 col = vec3(0.0);
-	if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-		float off = mix(chroma, player_chroma, p_chroma);
-		col.r = texture(screen_texture, uv + vec2(off, 0.0)).r;
-		col.g = texture(screen_texture, uv).g;
-		col.b = texture(screen_texture, uv - vec2(off, 0.0)).b;
+	float off = mix(chroma, player_chroma, p_chroma);
+	vec2 uv_safe = clamp(uv, vec2(0.0), vec2(1.0));
+	col.r = texture(screen_texture, clamp(uv + vec2(off, 0.0), vec2(0.0), vec2(1.0))).r;
+	col.g = texture(screen_texture, uv_safe).g;
+	col.b = texture(screen_texture, clamp(uv - vec2(off, 0.0), vec2(0.0), vec2(1.0))).b;
 
-		// Animated scanlines
-		float scan = sin((uv.y + t * 0.04) * 820.0) * 0.5 + 0.5;
-		col *= 1.0 - scan * scanline_strength;
+	// Animated scanlines
+	float scan = sin((uv_safe.y + t * 0.04) * 820.0) * 0.5 + 0.5;
+	col *= 1.0 - scan * scanline_strength;
 
-		// Phosphor shadow mask
-		float mask = sin(uv.x * 920.0) * 0.5 + 0.5;
-		col = mix(col, col * 0.86, mask * mask_strength);
+	// Phosphor shadow mask
+	float mask = sin(uv_safe.x * 920.0) * 0.5 + 0.5;
+	col = mix(col, col * 0.86, mask * mask_strength);
 
-		// Rolling bright line (old TV roll)
-		float roll = fract(uv.y * 0.5 + t * roll_speed * 0.08);
-		float roll_line = smoothstep(0.92, 1.0, roll) * roll_amount;
-		col += vec3(roll_line * 0.12);
+	// Rolling bright line (old TV roll)
+	float roll = fract(uv_safe.y * 0.5 + t * roll_speed * 0.08);
+	float roll_line = smoothstep(0.92, 1.0, roll) * roll_amount;
+	col += vec3(roll_line * 0.12);
 
-		// Interference + white static grain
-		float grain_t = floor(t * 18.0);
-		float grain = hash21(uv * 1400.0 + vec2(grain_t, grain_t * 0.37)) - 0.5;
-		float interf = sin(uv.y * 180.0 + t * 14.0) * 0.5 + 0.5;
-		col += grain * noise_amount;
-		col = mix(col, col * (0.85 + interf * 0.15), interference * 0.35);
+	// Interference + white static grain
+	float grain_t = floor(t * 18.0);
+	float grain = hash21(uv_safe * 1400.0 + vec2(grain_t, grain_t * 0.37)) - 0.5;
+	float interf = sin(uv_safe.y * 180.0 + t * 14.0) * 0.5 + 0.5;
+	col += grain * noise_amount;
+	col = mix(col, col * (0.85 + interf * 0.15), interference * 0.35);
 
-		vec2 d = uv - 0.5;
-		float vig = 1.0 - dot(d, d) * vignette * 4.0;
-		col *= vig;
-	}
+	vec2 d = uv_safe - 0.5;
+	float vig = 1.0 - dot(d, d) * vignette * 4.0;
+	col *= vig;
 
 	col = apply_theme_tint(col, theme_mode, theme_strength);
 	COLOR = vec4(col, 1.0);

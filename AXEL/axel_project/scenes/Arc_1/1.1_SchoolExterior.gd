@@ -63,6 +63,8 @@ var _exit_trigger: Area2D
 var _exit_trigger_armed := true
 var _pending_corridor_door_spawn := false
 var _arrival_t := InteractArrival.DEFAULT_T
+var _arrival_latched_door := false
+var _enter_dialogue_pending := false
 
 ## Background_1_1's hand-tuned position/scale before the camera migration to
 ## background_camera_controller.gd. EnvironmentColliders (walls/trees/rocks/doors)
@@ -132,6 +134,10 @@ func _should_skip_intro() -> bool:
 
 
 func _process(_delta: float) -> void:
+	if _arrival_latched_door and InteractZoneGate.movement_pressed():
+		_arrival_latched_door = false
+	if _intro_state == IntroState.PLAYER_FREE and not _is_transitioning:
+		_refresh_door_interact_prompt()
 	if not _watching_movement or _second_dialogue_fired:
 		return
 	if not is_instance_valid(_player):
@@ -196,6 +202,7 @@ func _run_forced_intro_sequence() -> void:
 	_intro_state = IntroState.PLAYER_FREE
 	_watching_movement = true
 	AxelEventFx.set_cadence_enabled(true)
+	_enter_dialogue_pending = true
 	_refresh_door_interact_prompt()
 	_arm_exit_trigger_grace()
 
@@ -237,12 +244,14 @@ func _intro_offscreen_left_spawn(stones_target: Vector2) -> Vector2:
 
 func _play_first_dialogue_line() -> void:
 	if not _top_dialogue.has_method("type_line"):
+		_enter_dialogue_pending = false
 		return
 
 	var has_token_guard := _top_dialogue.has_method("current_line_token") and \
 		_top_dialogue.has_method("is_line_token_current")
 	var token: int = _top_dialogue.call("current_line_token") if has_token_guard else -1
 
+	_enter_dialogue_pending = false
 	await _top_dialogue.type_line(_FIRST_DIALOGUE_LINE)
 	if has_token_guard and not _top_dialogue.call("is_line_token_current", token):
 		return
@@ -314,6 +323,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _is_interaction_event(event):
 		return
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+		return
 	if not _is_player_near_door():
 		return
 	_begin_door_transition()
@@ -329,12 +340,9 @@ func _is_interaction_event(event: InputEvent) -> bool:
 
 
 func _is_player_near_door() -> bool:
-	if not is_instance_valid(_door_interact_area) or not is_instance_valid(_player):
-		return false
-	for body in _door_interact_area.get_overlapping_bodies():
-		if body == _player:
-			return true
-	return false
+	if _arrival_latched_door:
+		return true
+	return InteractZoneGate.body_in_area(_door_interact_area, _player)
 
 
 func _door_interact_anchor() -> Vector2:
@@ -358,6 +366,7 @@ func _apply_corridor_door_peek_if_pending() -> void:
 		InteractArrival.PeekEdge.CENTER_X,
 		0.0
 	)
+	_arrival_latched_door = true
 	call_deferred("_clamp_arrived_player")
 
 
@@ -383,6 +392,8 @@ func _on_door_interact_body_exited(body: Node) -> void:
 func _try_show_door_interact_prompt() -> void:
 	if _intro_state != IntroState.PLAYER_FREE or _is_transitioning:
 		return
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+		return
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.show_prompt(_door_interact_anchor())
@@ -397,7 +408,9 @@ func _hide_door_interact_prompt() -> void:
 
 
 func _refresh_door_interact_prompt() -> void:
-	if _is_player_near_door():
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+		_hide_door_interact_prompt()
+	elif _is_player_near_door():
 		_try_show_door_interact_prompt()
 	else:
 		_hide_door_interact_prompt()

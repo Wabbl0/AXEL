@@ -1,15 +1,63 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" path="res://scenes/Arc_4/4.2_TeachersMemory.gd" id="1_memory"]
+[ext_resource type="Texture2D" uid="uid://c42tmrwhtplate" path="res://exports/Drawings/4.2_Teachers_Memory.png" id="2_memory_bg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
+[ext_resource type="Script" path="res://scenes/core/background_camera_controller.gd" id="4_camera_script"]
+[ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="5_bg_lock"]
+[ext_resource type="Script" path="res://scenes/Arc_4/4.2_teachers_memory_frame.gd" id="6_frame"]
+[ext_resource type="FontFile" path="res://combat/ui/fonts/VT323-Regular.ttf" id="7_font"]
 
-[node name="ScenePlaceholder" type="Control"]
-layout_mode = 3
-anchors_preset = 15
+[node name="4_2_TeachersMemory" type="Node2D"]
+script = ExtResource("1_memory")
+
+[node name="WalkableWorld" type="Node2D" parent="."]
+
+[node name="VoidFill" type="Polygon2D" parent="WalkableWorld"]
+visible = false
+z_index = -101
+polygon = PackedVector2Array(-4000, -4000, 8000, -4000, 8000, 8000, -4000, 8000)
+
+[node name="Background" type="Sprite2D" parent="WalkableWorld"]
+z_index = -100
+texture_filter = 1
+texture = ExtResource("2_memory_bg")
+centered = false
+region_enabled = true
+region_rect = Rect2(0, 584, 3508, 1896)
+script = ExtResource("5_bg_lock")
+metadata/_edit_lock_ = true
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("4_camera_script")
+background_path = NodePath("../WalkableWorld/Background")
+fit_mode = 1
+margin_px = 12.0
+max_auto_zoom = 1.0
+
+[node name="MemoryFrame" type="Node" parent="."]
+script = ExtResource("6_frame")
+
+[node name="ExitLayer" type="CanvasLayer" parent="."]
+layer = 110
+
+[node name="ExitButton" type="Button" parent="ExitLayer"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_scene_placeholder")
-scene_id = "4.2"
-location_label = "TEACHERS' LOUNGE"
-dialogue = PackedStringArray("\"So, when did you see him last?\" the police officer asked.", "\"That day during lunch. I mean I guess he was in the same classes as me.\"", "\"You guess?\"", "\"He's so - silent. I barely notice him anymore.\"", "[beat]", "Liar. You knew exactly where he was.")
+offset_left = -82.0
+offset_top = -82.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_colors/font_pressed_color = Color(0.75, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.25, 0.25, 1)
+theme_override_fonts/font = ExtResource("7_font")
+theme_override_font_sizes/font_size = 36
+text = "X"
+
+[node name="TopDialogueOverlay" parent="." instance=ExtResource("3_top_dialogue")]

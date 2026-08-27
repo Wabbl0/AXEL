@@ -17,6 +17,7 @@ var _is_transitioning := false
 
 func _ready() -> void:
 	_exit_button.pressed.connect(_on_exit_pressed)
+	set_process_input(true)
 	_build_destination_buttons()
 
 
@@ -46,6 +47,25 @@ func _build_destination_buttons() -> void:
 	basement.add_theme_color_override("font_color", Color(1, 0, 0, 1))
 	basement.add_theme_color_override("font_disabled_color", Color(1, 0, 0, 1))
 	_choices_panel.add_child(basement)
+
+
+func _input(event: InputEvent) -> void:
+	if not _is_exit_key(event):
+		return
+	get_viewport().set_input_as_handled()
+	_on_exit_pressed()
+
+
+func _is_exit_key(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		if not key_event.pressed or key_event.echo:
+			return false
+		return (
+			key_event.keycode in [KEY_ESCAPE, KEY_BACKSPACE, KEY_DELETE]
+			or key_event.physical_keycode in [KEY_ESCAPE, KEY_BACKSPACE, KEY_DELETE]
+		)
+	return false
 
 
 func _on_exit_pressed() -> void:

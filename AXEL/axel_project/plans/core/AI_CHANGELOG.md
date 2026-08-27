@@ -5537,4 +5537,451 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: `interact_arrival_check.gd` (room-to-room mapping unchanged; this is a peek-margin tweak).
 - Notes: The old `-88` was a 100px-up tweak from before thicker walls and the larger 2.1 Mike.
 
+## 2026-08-27
 
+### Combat piece art inverted to canon colors
+- Request: Piece PNGs were painted white-on-black, so under room noir the lines went black and the fill went red. Wanted: red lines, black fill.
+- Implementation: Added `tools/invert_drawing_colors.gd` — backs up originals to `exports/Drawings/backup_pre_invert/` (with `.gdignore`), skips already-bright files, inverts RGB where alpha > 0. Ran once on the ten combat drawings (grid/history/items/bets/goal/multiplier/exit + skulls 1–3). No scene edits. White plate and retired `axel_ui.png` untouched.
+- Files changed:
+  - `AXEL/axel_project/tools/invert_drawing_colors.gd`
+  - `AXEL/axel_project/exports/Drawings/axel_combat_*.png` / `axel_skull_*.png` (in place)
+  - `AXEL/axel_project/exports/Drawings/backup_pre_invert/` (pre-invert copies)
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Look only under FX. Fight math/widgets unchanged. Editor (no FX) now shows black ink on white fill — correct authoring.
+- Verification: `combat_test_scaffold_check.gd`; second invert run skipped all 10.
+- Notes: HUD text still left as-is (dim under noir). Re-run the invert tool if a new white-on-black export lands in `exports/Drawings/`.
+
+### Combat HUD piece drawings + room FX test flag
+- Request: Replace the single `axel_ui.png` combat background with a white plate + one node per drawing from `exports/Drawings`, keep live widgets on top, place three skull stages for a feel-only premium meter, and turn on overworld room FX for combat behind a flip-off flag.
+- Implementation: Added `axel_combat_plate_white.png` (3508×2480) and pointed `HudArt` at it. Inserted `HudPieces` (ArtGrid/History/Items/Bets/Goal/Multiplier/Exit) and `PremiumSkull` (Glow + SkullStage1/2/3 + `premium_skull_meter.gd`). Side bars white. `AxelPostFxStack.COMBAT_ROOM_FX_TEST` gates room post-FX + event FX on `res://combat/*`; local `ScanlineOverlay` hides when the flag is on. Hid `GridFrame` so it does not double the drawn grid. `AI_DOCS` combat FX exclude rule unchanged (flag is temporary).
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/axel_combat_plate_white.png`
+  - `AXEL/axel_project/tools/make_white_plate.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scenes/combat_root.tscn`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Look + FX test only. Spin/items/score/RNG unchanged. Skull not wired to meter or EXECUTE. Flip `COMBAT_ROOM_FX_TEST := false` to restore the old combat-only scanline.
+- Verification: `combat_test_scaffold_check.gd`
+- Notes: Piece sizes do not match widget boxes yet — drag-align in the editor. Frame PNG black insides will invert to red under room FX (expected).
+
+### Combat HUD on axel_ui drawing
+- Request: Keep combat fight rules the same, but put the HUD on the combat drawing and make widgets drag-placeable in the editor. See-through computer chrome; show the whole drawing (empty bars OK).
+- Implementation: Added `%HudCanvas` (3508×2480) + `HudArt` under `combat_test.tscn` using `res://exports/Drawings/axel_ui.png`. Reparented HUD widgets under the canvas; converted `PlayRow` / `CenterColumn` / `CenterFooter` to plain Controls so editor offsets stick. Removed percentage `LAYOUT_*` placement and EXECUTE width-to-grid resize. Runtime only scales/centers `HudCanvas`. HISTORY/ITEMS/EXECUTE chrome is see-through. QA checks HudCanvas containment + fit instead of old percentage anchors.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/combat_test_scaffold_check.gd`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Look + editor placement only. Spin/items/score/RNG unchanged. Drag widgets inside `HudCanvas` in the 2D editor; Play keeps them.
+- Verification: `combat_test_scaffold_check.gd`, `determinism_check.gd`, `scene_smoke_check.gd`
+- Notes: Drawing file is `axel_ui.png` (middle/bottom skull variants removed).
+
+### 2.1 kitchen return — drawing below TopWall
+- Request: 2.3 → 2.1 still spawned Mike outside the top collision border (the Aug 25 peek-margin revert did not hold visually).
+- Implementation: `KitchenInteractArea` sits in the ceiling band, so `BOTTOM+12` lands the feet circle inside the room but Mike’s tall drawing still crosses `TopWall`. After kitchen place, `InteractArrival.nudge_drawing_below_top_wall` pushes him down until sprite/shadow sit below the wall (geometry, not physics). Same nudge on other 2.1 door clamps. Peek margin stays `12`.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Returning from the kitchen places Mike on the cafeteria floor at the kitchen door, with the walk drawing below `TopWall`. Fresh Play / F6 still uses the Player node.
+- Verification: `interact_arrival_check.gd` (new 2.3→2.1 TopWall drawing/hitbox check at t=0 / 0.5 / 1).
+- Notes: Aug 25 only changed `KITCHEN_PEEK_MARGIN_PX` `-88` → `12`. That was already in git; the box is still too high for this Mike size.
+
+### 3.1 backyard — player 40% larger
+- Request: Increase player scale in scene 3.1 by 40%, and update `SCENE_BUILDING.md`.
+- Implementation: Authored Player scale `0.198` → `0.277` (40% larger, three decimals). Baked speed from `PlayerWalkSpeed.from_scale` to `241.0`. Grew 3.1 `LeftWall` / `RightWall` / `BottomWall` from the PNG edge inward so the larger drawing stays on the room (`TopWall` already passed). Scale table in `SCENE_BUILDING.md` updated.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike is 40% larger in the backyard; walk speed scales with him. Other rooms unchanged. Cover-sync still uses the 1920×1280 baseline (not retuned for a window).
+- Verification: `wall_sprite_clearance_check.gd` — 3.1 Left/Right/Top/Bottom all `PASS` at the new scale.
+- Notes: Shared rooms stay `0.198` / `185.3`. 2.1 / 5.1 stay 50% larger.
+
+### 4.1 lounge — Mike +30% size
+- Request: Increase 4.1 player model size by 30% and update `SCENE_BUILDING.md`.
+- Implementation: Raised authored Player scale in `4.1_TeachersLounge.tscn` from `0.198` to `0.257` (`0.198 × 1.3`, three decimals). Walk speed from `PlayerWalkSpeed.from_scale` is `226.9` (still below `0.3`, so the small-scale extra applies). Grew 4.1 edge-wall polygons inward to the new required inset (Left 128, Right 123, Top 269, Bottom 150) so the bigger drawing stays on the PNG. Other rooms unchanged. Cover-sync still multiplies authored scale by `live_cover / 1920×1280 baseline`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike is 30% larger in the teachers’ lounge; walk speed scales with him. Edge walls are a bit thicker. Fresh Play / F6 spawn is still the Player node.
+- Verification: `player_walk_speed_check.gd`, `wall_sprite_clearance_check.gd` (4.1 walls)
+- Notes: Did not retune for a window or monitor. Full wall checker still reports other rooms (missing 1.2/5.1 drawings, pre-existing 2.1/2.3 insets).
+
+### Independent CollisionShape2D (no linked resize)
+- Request: 3.1 `DoorSideRight` and `DoorSideLeft` resized together; add a SCENE_BUILDING rule that every `CollisionShape2D` must work as an individual, and fix it.
+- Implementation: Gave 3.1 left/right door blockers their own `RectangleShape2D` SubResources (they had been sharing `RectangleShape2D_door_side_right`). Same split for 1.4 `LeftWall` / `RightWall` (`wall_vertical` was shared). Strengthened the SCENE_BUILDING independent-collider rule and added a headless scan.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/tools/qa/collision_shape_unique_check.gd`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Editor size/scale on one door or wall no longer changes the other. Play collision sizes stay as they were at the split. Mike `hitbox_front.tres` still shared on purpose.
+- Verification: `collision_shape_unique_check.gd`
+- Notes: After duplicating a collider, Inspector → shape → **Make Unique**.
+
+### Combat editor-only axel_ui placement guide
+- Request: Insert `exports/Drawings/axel_ui.png` into the combat editor as a phase background, but disable it in game so it is only used to place art nodes.
+- Implementation: Added `%HudArtGuide` under `HudCanvas` (behind `HudPieces`, same 3508×2480 size as the white plate). `combat_test.gd` hides it whenever Play / headless runs (`Engine.is_editor_hint()` false). Fight widgets and piece nodes unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 2D editor shows the composite drawing for lining up pieces. F6 / shipped combat still uses the white plate + individual drawings only.
+- Verification: `combat_test_scaffold_check.gd` still flags a pre-existing `%SpinButton` origin outside HudCanvas (layout in progress; not caused by this guide).
+- Notes: Guide is a background under the piece nodes. Hide `HudPieces` in the scene tree if you need to see the full composite first.
+
+### 1.3 locker hub / school map — Esc, Backspace, Delete exit
+- Request: In 1.3, Esc, Backspace (`←`), and Delete should leave the scene the same way as the red `X` (not only the button).
+- Implementation: Hub and school map now listen for those keys in `_input` and call the existing exit path. Hub interrupt-stops first-visit dialogue if you leave mid-line. Red `X` is unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_SchoolMap.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Locker hub: Esc / Backspace / Delete returns to the corridor. School map: same keys return to the locker hub. Travel buttons still go to their rooms.
+- Verification: Manual — F6 `1.3_LockerHub.tscn` / `1.3_SchoolMap.tscn` and press Esc, Backspace, Delete, and click `X`.
+- Notes: Keys are handled in `_input` so they still work if a travel button has focus.
+
+### 2.1 kitchen return — stand at door (~2040×180)
+- Request: After the TopWall drawing nudge, 2.3 → 2.1 placed Mike too low. Spawn should be around texture `2040×180`.
+- Implementation: Kitchen return now stands the Player node on `KitchenInteractArea`’s center (that point is ~2044×181) and maps X from leave `t`. Removed `nudge_drawing_below_top_wall` and the kitchen wall clamp (those were the extra downward push). Fresh Play / F6 still uses the Player node.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Returning from 2.3 puts Mike at the cafeteria kitchen door, not on the floor below it.
+- Verification: `interact_arrival_check.gd` (2.3→2.1 node tex y~180, x follows t).
+- Notes: Not a hardcoded `Vector2` — the number matches the kitchen `[E]` box center. Sprite may overlap `TopWall`; that is the requested stand spot.
+
+### 2.1 kitchen return — raise stand to ~2040×150
+- Request: Raise the 2.3 → 2.1 stand from ~2040×180 to ~2040×150.
+- Implementation: Kitchen return still maps X along `KitchenInteractArea` from leave `t`, then sets Player node texture Y to `150`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Returning from the kitchen puts Mike a bit higher at the doorway.
+- Verification: `interact_arrival_check.gd` (2.3→2.1 node tex y=150).
+- Notes: Fresh Play / F6 still uses the Player node.
+
+### 5.1 Classroom — restore missing drawing (red CRT field)
+- Request: Opening 5.1 showed a solid dark-red CRT field instead of the classroom drawing (same missing-file pattern as 1.2).
+- Implementation: Copied `5.1_Classroom_v2.png` back onto the canonical `5.1_Classroom.png`, reimported, and wrote the new texture uid into the scene. Cleared `Camera2D.static_center = (560, 0)` so the room art-centers like 4.1. Also `git restore`d tracked `1.2_Corridor.png` + `.import` (did not promote `_New`). Left thinned edge walls as the user last saved them.
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/5.1_Classroom.png` (+ `.import` via reimport)
+  - `AXEL/axel_project/exports/Drawings/1.2_Corridor.png` (+ `.import`)
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 5.1 cover-fit and camera limits work again; Play shows the classroom plate, not an empty red field. 1.2 corridor drawing is back. Camera no longer pins to the top-left of the plate.
+- Verification: `wall_sprite_clearance_check.gd` loads 5.1/1.2 backgrounds (no longer “missing nodes”); `scene_smoke_check.gd` OK (includes 1.2). Wall inset FAILs on 5.1 remain from the saved thinner walls — out of scope.
+- Notes: Drawings under `exports/` are gitignored (except force-tracked 1.2). F6 5.1 in the editor to confirm the live view.
+
+### Combat HudArtGuide 50% editor opacity
+- Request: `%HudArtGuide` in `combat_test` should be 50% opacity live in the Godot editor.
+- Implementation: Set `HudArtGuide.self_modulate` alpha to `0.5` in the scene so the 2D viewport shows it immediately. The `@tool` script keeps that 50% while editing and still hides the guide on Play / headless.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: 2D editor shows a see-through composite for lining up pieces. F6 / shipped combat still hide the guide.
+- Verification: `combat_test_scaffold_check.gd`
+- Notes: Guide stays behind `HudPieces`. Opacity is editor-only; Play does not draw it.
+
+### Non-frozen [E] arrivals land inside the dest box
+- Request: 2.1 → 2.4 spawned Mike outside `CafeteriaInteractArea` / through `TopWall`. Want: keep t-slide along the dest `[E]` box, stay inside that live box, keep the whole walk drawing on the floor. Frozen trips unchanged. Map/hub still use the Player node.
+- Implementation: Added `place_in_area` / `apply_arrival_inside` / `resolve_inside_clearance` / `_sprite_blocked` to `InteractArrival` (frozen `place_on_area` + `clamp_hitbox_to_walls` untouched). Swapped non-frozen doors onto inside-box: 2.4 (cafeteria/lounge/classroom), 2.1 (classrooms/backyard), 3.1, 4.1, 5.1. 2.4 no longer re-applies cover/depth after place. Headless lock covers 2.1↔2.4 in-box + TopWall drawing clear + t monotonic. Canon: `AI_DOCS.md` / `SCENE_BUILDING.md` — frozen peek kept for 1.2→1.4 / 1.4→2.1 / 2.1→2.3; non-frozen = inside box. Kitchen return stays Player-node Y `150` / skip clamp (live; earlier ~180 write-up is historical).
+- Files changed:
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Non-frozen door arrivals follow the live `[E]` box (editor drags work on Play). 2.1→2.4 keeps Mike inside the cafeteria door box with the drawing below TopWall. 4.1 may sit just below its box when that box is buried in TopWall (Option B).
+- Verification: `interact_arrival_check.gd` (includes 2.1↔2.4); manual 2.1↔2.4 left/mid/right + one frozen trip.
+- Notes: Press-E doors already use zone grace; no walk-off bounce. Rollback = switch one room back to `apply_arrival` / `place_on_area`.
+
+### Combat HUD: one movable piece per drawing
+- Request: Each combat playtest readout (settings, goal, items, history, bets, execute/skull, multiplier, spin-money, premium-bar) should be its own easy-to-move/scale/animate piece with text inside the shape; wire Settings (Dev Tools only), sliding bet strip, skull-starts-spin, real skull meter, spin-money + color premium bar.
+- Implementation: Added `CombatHudPiece` (`hud_piece.gd`) with clipped `TextBox`, alpha hit, `attach()` / `pop()`. Wrapped drawings in `combat_test.tscn`. Runtime `_bind_widgets_to_pieces()` re-homes protected widgets. Settings panel scene (layer 200); Dev Tools calls `AxelCombatDevTools.open_dev_menu()`. Pass B: sliding `|` bet strip, guarded `_request_spin()` from button/skull/piece, skull fill + `0/3` from meter, `1X` multiplier, `PiecePremiumBar` / `PieceSpinMoney`, legacy `PremiumProgressBar` hidden.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/hud_piece.gd`
+  - `AXEL/axel_project/combat/scripts/combat_settings_panel.gd`
+  - `AXEL/axel_project/combat/scenes/combat_settings_panel.tscn`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd` (`get_bet_index`)
+  - `AXEL/axel_project/scripts/debug/axel_combat_dev_tools.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Designer drags pieces; live text follows. Spin/RNG/determinism unchanged aside from HUD input routing (busy guard).
+- Verification: `combat_test_scaffold_check.gd`, `determinism_check.gd`, `qa_canon_validators` via scaffold.
+- Notes: Text uses inner rectangle + clip (not polygon wrap). Drag each piece’s `TextBox` to fit angled art.
+
+### First [E] after a door always bounces you back
+- Request: After an `[E]` door takes you into a new room, the first `[E]` should send you straight back if you are still on that door (every room-to-room pair). If arriving starts a talk bar, the `[E]` chip stays off until the bar is fully finished.
+- Implementation: Added shared `InteractZoneGate` (`body_in_area`, `dialogue_busy`, `movement_pressed`). Rooms poll live overlap instead of trusting `body_entered` after teleport; arrival latch keeps the land door active until first WASD (covers frozen peeks outside the box). 0.15s grace is press-only (chip may show). Chip + door `[E]` gated on talk busy / enter-dialogue pending. Kitchen/cafeteria/1.4 peeks wait two physics frames before place (like 2.4). Arrival check asserts Front inside `KitchenInteractArea` on 2.3→2.1.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/interact_zone_gate.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Stand on the arrival door and press `[E]` once to go back. No chip / no door leave while enter lines (or CRT) are still running. Frozen peeks unchanged.
+- Verification: Godot binary not on PATH this session — run `interact_arrival_check.gd` + manual door pairs locally.
+- Notes: Rollback = delete `interact_zone_gate.gd` and revert per-room scripts. No `.tscn` / geometry changes.
+
+### Combat HUD: hide leftover computer indicators
+- Request: After the piece HUD, remove the old indicators (black number pills, thin meter bar, CombatRoot multiplier/winnings labels, gear/home/? row, boxed +/-).
+- Implementation: Hid `PremiumProgressBar`, `WinningsCenter`, CombatRoot `MultiplierLabel` / `RoundWinningsLabel`. Bind attaches the labels themselves (not the black pills). +/- stay empty-styled when bet pieces exist. Old bar is no longer laid out when `PiecePremiumBar` is present.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scenes/combat_root.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Look only. Protected unique nodes stay in the tree. Fight math unchanged.
+- Verification: `combat_test_scaffold_check.gd`
+- Notes: Scaffold names were hidden, not deleted.
+
+### Chat workflow: Implement uses the chat-picked model
+- Request: Apply the Plan **Build** model rule in `AI_DOCS.md` — Implement should use the model currently picked in chat, not Auto / Cursor Grok.
+- Implementation: Changed the Chat workflow Implement row to **Model currently picked in chat**, and noted that Plan **Build** should use that same picker (not Inherit if the chat picker flipped to Auto).
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Implement / Build should follow the chat model, not a hardcoded Auto / Grok default.
+- Verification: Read the Chat workflow table after the edit.
+- Notes: Cursor can still flip the chat picker to Auto after a plan; pick the model again on the Build row.
+
+
+### Arc 4: key pickup, teachers memory, grey police voice
+- Request: In 4.1, walk-near key plays 4.3 once; smaller `[E]` picks up key like kitchen flashlight; memory glow + `[E]` opens 4.2 white still with light-grey police lines; after leaving 4.2 play `Liar.` back in the lounge. Key and memory either order. Keep bench ink for now.
+- Implementation: Added `|grey|` marker + light-grey color to `TopDialogueOverlay` (wins over red). GameManager once-ever `teachers_key_line_seen` / `teachers_memory_line_seen` / `teachers_liar_line_seen` plus `teachers_lounge_memory_return_pos`. Rebuilt 4.2 as a 2.2/3.2-style still on a white plate. Wired 4.1 `KeyNearArea` / `KeyInteractArea` / `MemoryInteractArea` / `MemoryIndicator` (`hasKey` + inventory `Teacher Key`; `add_memory_once("teachers_memory")`).
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.2_TeachersMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.2_TeachersMemory.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.2_teachers_memory_frame.gd`
+  - `AXEL/axel_project/exports/Drawings/4.2_Teachers_Memory.png`
+  - `AXEL/axel_project/tools/make_teachers_memory_white_plate.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Lounge key + memory loop works end-to-end; police voice is light grey without a `POLICE:` tag; enter glitch stays shared 0.65s.
+- Verification: Godot binary not on PATH this session — drag Key/Memory zones in editor, then F6 4.1; run `collision_shape_unique_check.gd` + `scene_smoke_check.gd` locally when Godot is available.
+- Notes: Follow-up — `KeyVisual` overlay to hide bench ink after pickup. Zone/glow positions are starting guesses for the player to drag.
+
+### Combat HUD: hide old indicators again
+- Request: Old bar / number pills came back after an editor save. Hide them again. Also stop forcing `%HudArtGuide` on in the 2D editor.
+- Implementation: Set `PremiumProgressBar`, `WinningsCenter`, winnings/multiplier pills, and `MetaIconsRow` to `visible = false` in the scene. Play re-hides them after layout. `%HudArtGuide` starts hidden; the `@tool` script no longer turns the eye back on.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Editor and Play show piece drawings without the leftover computer bar/pills. Toggle the HudArtGuide eye if you want the composite overlay.
+- Verification: Scene flags; Play still re-hides after layout.
+- Notes: Saving the scene in Godot can restore `visible` if those nodes are selected and shown — keep the eye off on the old bar and `WinningsCenter`.
+
+### Combat HUD: NEW_ names for movable pieces
+- Request: Name the nodes the designer should drag with a `NEW_` prefix.
+- Implementation: Renamed piece frames in `combat_test.tscn` (`NEW_Goal`, `NEW_Items`, `NEW_History`, `NEW_Bets` + bet sub-pieces, `NEW_Multiplier`, `NEW_Settings`, `NEW_PremiumBar`, `NEW_SpinMoney`, `NEW_Execute`, `NEW_Grid`). Lookups in `combat_test.gd` follow the new names.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Scene tree only. Drag `NEW_*`, not the old widget names.
+- Verification: Name lookups only; protected unique names (`%SpinButton`, …) unchanged.
+- Notes: Inner `TextBox` is still the text-fit box under each `NEW_` piece.
+
+### Combat HUD: MOVE_ names for interactables
+- Request: Art `NEW_` pieces are placed; name the interactable nodes the designer should still drag with `MOVE_`.
+- Implementation: Renamed text boxes to `MOVE_TextBox`, bet overlays to `MOVE_BetMinus` / `Plus` / `BetStrip` / `Balance`, `MOVE_PremiumBar`, `MOVE_SpinMoney`, `MOVE_MeterCount`. `hud_piece.gd` looks up `MOVE_TextBox`. Art `NEW_` names unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/hud_piece.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Scene tree labels only. Drag `MOVE_*` to line up clicks/text; leave `NEW_*` art where it is.
+- Verification: Lookups follow `MOVE_` names; protected unique names unchanged.
+- Notes: `NEW_Settings` / `NEW_Execute` stay `NEW_` because they are the art frames (clicks are on those pieces).
+
+### Scene 5.1 — furniture 6–9 behind filters
+- Request: FurnitureBlocks 6 to 9 need a behind filter in scene 5.1.
+- Implementation: Added `FurnitureBlock6_Behind` … `FurnitureBlock9_Behind` (`leaf_occlusion_zone.gd`, `feather_px = 2`) under `EnvironmentColliders`, starter polygons copied from those four furniture blockers. `5.1_Classroom.gd` fills four shader slots after cover-fit. Y-gate uses each FurnitureBlock collision front so fade happens only when standing behind, not in front.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Walking behind furniture 6–9 fades Mike through the desks. Drag the green behind polygons in the editor to match the drawing; walk-blockers stay separate.
+- Verification: Scene node names + script slot wiring. Drag polygons in 5.1, then F6 and walk behind those four desks.
+- Notes: Furniture 1–5 have no behind filter yet. Shader max is 6 slots.
+
+### Scene 5.1 — board glow is a kitchen-style outline, not the memory blob
+- Request: The board should not use the MemoryIndicator blob. It should glow like the 2.3 kitchen flashlight. Add a faint glow outlines node to set up around the board by hand.
+- Implementation: Removed `PlayerLayer/MemoryIndicator`. Added `WalkableWorld/EnvironmentColliders/BoardGlow/Outline` (`Line2D`, closed, black ink, `prop_line_halo.gdshader`) so noir remaps it to a faint red pulse like `FlashlightVisual`. Starter rectangle sits on the back wall; drag the line points in the 2D view onto the painted board. Covers with the room (no PlayerLayer scaler).
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/scenes/fx/prop_line_halo.gdshader`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Classroom no longer shows the white memory blob. A faint pulsing outline is there to drag around the board. Board `[E]` / 5.3 still not wired.
+- Verification: Scene tree `BoardGlow/Outline`; Play shows a slow alpha pulse. Drag points in the editor onto the chalkboard.
+- Notes: Line2D does not need a board PNG. Hide this node later when the Name item is collected.
+
+### Combat HUD: live widgets above room FX, aligned to MOVE_TextBox
+- Request: Numbers / lists / +/− / symbol squares and click targets should sit on the MOVE_TextBox boxes. Live computer widgets above invert/CRT/pulse; drawings stay under FX. Spinning squares follow the drawn grid. Skull click = TextBox + editable polygon.
+- Implementation: Added `WidgetLayer` (`CanvasLayer` 115) + `hud_widget_layer.gd` follower hosts. Bind reparents widgets into hosts that copy each `MOVE_TextBox` global rect. `NEW_Grid` got `MOVE_TextBox` + piece script; `GridHost`/`%CombatRoot` live under `WidgetRoot`. Clickable pieces hit only the TextBox rect; skull Control is mouse-ignore; `SkullClickPolygon` + shared spin guard. `COMBAT_ROOM_FX_TEST` stays on (temporary; AI_DOCS still excludes combat from production post-FX).
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/hud_piece.gd`
+  - `AXEL/axel_project/combat/scripts/hud_widget_layer.gd`
+  - `AXEL/axel_project/combat/scripts/skull_click_polygon.gd`
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Widgets stay readable above noir/CRT; grid fills the drawn grid box; Settings/Execute clicks use TextBox (+ skull polygon). Drag `NEW_Grid/MOVE_TextBox` and `SkullClickPolygon/Polygon` vertices to refine.
+- Verification: F6 combat test; resize window; scaffold / determinism / princess headless checks.
+- Notes: Widgets are clean (no grain) by design for now. Production post-FX still excludes `res://combat/*`.
+
+### Round-TV CRT — glued fringe, dark glass rim, flat combat
+- Request: When Mike or room ink sits near the left/right of the window, CRT red/green/blue copies stretch off the drawing; center looks fine. Wanted: same window (no crop/zoom/view move); sides/top/corners feel like a round TV with a dark glass rim; fringe stays glued. Combat gets the edge fix but must stay flat (no TV vignette).
+- Implementation: Reworked `crt_plugin_overlay.gdshader` — one aspect-corrected shared barrel; masks/RGB split at the warped UV; mix uses bent source (no unbent/bent double); edge-reflected chroma taps (no clamp smear); darkening last from raw window position + soft rim fade. New knobs `edge_fade_px` / `corner_darkness` / `corner_radius` (inert at `0`). Overworld `CrtPluginOverlay.tscn` obvious preset (`curvature` `0.16`, `vignette` `0.4`, `edge_fade_px` `26`, `corner_darkness` `0.65`, `corner_radius` `0.55`). New flat `CrtCombatOverlay.tscn` (all geometry/darkening `0`); `AxelPostFxStack` picks it for `res://combat/*`. Pulse overlay zeros curvature/chroma/vignette; `option_1_crt_tv` clamps lookups instead of painting black outside 0..1.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/fx/CrtPluginOverlay.tscn`
+  - `AXEL/axel_project/scenes/fx/CrtCombatOverlay.tscn`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/scenes/fx/InterfacePulseOverlay.tscn`
+  - `AXEL/axel_project/tools/visual_style/shaders/option_1_crt_tv.gdshader`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Overworld/menu read as a round TV with darker corners and a soft dark rim; Mike and room ink keep one silhouette with glued RGB fringe. Combat stays square and flat but loses the stretched side color bars. Pulse still adds scan/roll/noise without a second warp.
+- Verification: Headless scene smoke + combat scaffold. Eyeball 1.1 edges/center/corners, cadence surge, menu, a `margin_px` room, and combat flat + clean edges.
+- Notes: Subtle overworld preset (dial back later via `.tscn` only): `curvature` `0.08`, `vignette` `0.3`, `corner_darkness` `~0.3`, `edge_fade_px` `~16`, `corner_radius` `0.55`. Keep `chroma`/`player_chroma`/`player_crt_reduction`/`player_white_boost` as shipped.
+
+### Fix white CRT screen (shader compile + darkening scale)
+- Request: Scene 1.1 (and every other scene) opened to a full white window with only faint CRT scanlines.
+- Implementation: Root cause — `crt_plugin_overlay.gdshader` read `SCREEN_PIXEL_SIZE` inside `curve_uv()` / `rim_fade()`, which Godot forbids outside `fragment()`, so the shader failed to compile and the full-screen `FilterRect` fell back to its white `color`. Pass `aspect` / `px` into those helpers from `fragment()`. Also normalize darkening to radius 0 at centre / 1 at corners (old aspect-corrected `dot(d,d)*4` crushed sides/corners to black). Retuned overworld to `vignette` `0.45`, `corner_darkness` `0.45`, `corner_radius` `0.7`. Both CRT overlays use transparent `FilterRect` color so a future compile failure blanks the effect instead of painting the window white. Added `tools/qa/shader_builtin_scope_check.gd` (headless static guard); documented that `--headless` never compiles shaders.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scenes/fx/CrtPluginOverlay.tscn`
+  - `AXEL/axel_project/scenes/fx/CrtCombatOverlay.tscn`
+  - `AXEL/axel_project/tools/qa/shader_builtin_scope_check.gd`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Rooms and menu show the picture again with round-TV CRT; combat stays flat. Corners darken softly instead of going pure black.
+- Verification: `SHADER_BUILTIN_SCOPE OK`; windowed `--quit-after` on menu / 1.1 / combat_test with no `SHADER ERROR`; scene smoke OK; combat scaffold OK.
+- Notes: Subtle preset on the corrected scale: `curvature` `0.08`, `edge_fade_px` `16`, `vignette` `0.3`, `corner_darkness` `0.2`, `corner_radius` `0.75`.
+
+## 2026-08-27
+
+### 1.1→1.2 door spawn maps along InteractAreas
+- Request: Pressing `[E]` in 1.1’s door InteractArea always spawned Mike at the same 1.2 spot. Standing higher in 1.1’s box should land higher in 1.2’s `ExteriorInteractArea` (same mapping as other `[E]` rooms).
+- Implementation: 1.2 was placing the exterior arrival with frozen peek (`place_on_area`) and clearing the pending flag before cover-fit finished, so height `t` was lost and spawn stuck on the Player node. Cache `t` in `_ready`, keep pending until layout, then `apply_arrival_inside` on the live `ExteriorInteractArea` (Y follows `t`, into-room edge RIGHT). Frozen 1.2↔1.4 walk-off unchanged. Reverse 1.2→1.1 still peeks.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Top of 1.1’s door `[E]` box maps to the top of 1.2’s left `[E]` box; bottom maps lower. Fresh Play / F6 still uses the Player node.
+- Verification: `interact_arrival_check.gd` (1.1 door t span + 1.1→1.2 Y follows t).
+- Notes: 1.2→1.1 not changed this pass.
+
+### Re-derive combat HUD piece placement from the mockup
+- Request: After the previous “move combat phase items” pass, every HUD element was wrongly placed in the game window; find the easiest correct fix, recreating pieces if that gives the best quality.
+- Implementation: Root cause was a single node — `%HudArtGuide` was offset ~-105px and stretched ~6% wide, and every `NEW_*` piece had been eyeballed against that bad guide, so the whole HUD inherited the same shift and scale error. Instead of re-dragging by hand, template-matched each piece PNG against `exports/Drawings/axel_ui.png` at 1:1 to recover exact plate rects, then rewrote them in `combat_test.tscn`. Guide and `HudPieces` reset to `0,0` / `3508×2480`; every piece put back at its native texture size (stretch was blurring the line work); `MOVE_TextBox` insets, bet `+`/`-`/strip/balance, premium bar and spin money re-measured from the drawn artwork; `NEW_Execute` rejoined to the 692×922 skull frame with all three `SkullStage` children at `0,0` and the click polygon retraced on the `axel_skull_3` silhouette. In `combat_root.gd`, dropped the `PANEL_FILL_CELL_MAX = 128` cap and taught `fit_to_panel` / `_apply_slot_min_size` to use per-axis `Vector2` cell sizes so the 5×5 fills the rectangular cell area actually drawn on `axel_combat_grid.png` (`combat_test.gd`’s fallback path mirrors this). Bet strip now full-rects after reparent and centers via `_animate_bet_strip()` on bind, so it is no longer blank on first frame.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/tools/qa/hud_piece_placement_check.gd`
+  - `AXEL/axel_project/tools/qa/hud_layout_probe.gd`
+  - `AXEL/axel_project/tools/qa/hud_capture.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/tools/qa/README_gd_scripts.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The combat HUD matches `axel_ui.png` 1:1 — goal, items, bets, balance, grid, multiplier, history and skull all sit on their drawings, symbols fill the drawn cells, and the bet strip reads `100 | 200 | 300` from the first frame.
+- Verification: New `hud_piece_placement_check.gd` OK (8 pieces on plate) and confirmed to fail when the guide is nudged -105px; scaffold, determinism, princess and scene smoke checks all exit 0; `hud_capture.gd` render overlaid against `axel_ui.png` line art shows every mockup stroke landing on the rendered art.
+- Notes: Two elements sit outside the drawings by design, not by drift — the `*` dev-tools wrench (debug-only autoload button at screen `8,8`) and `MOVE_MeterCount` (`0/3`), which is authored below the skull and is only covered by ink once the meter reaches stage 3.
+
+### 5.1 classroom enter lines + desk [E]
+- Request: 5.1 still did not play enter dialogue on F6 or when coming from the corridor, and the desk InteractArea did not work.
+- Implementation: The talk bar CanvasLayer was hidden with the editor eye (`visible = false`), so `show_lines` ran but never drew — and while it was “busy,” desk `[E]` stayed off. Force the overlay layer on in `TopDialogueOverlay._ready` / `show_lines` (only the inner bar starts hidden). Unhid 5.1 and 2.1 instances. Desk: keep monitoring on until seen, wake Area2Ds after cover-fit, and `InteractZoneGate` now also tests the Front circle against the live box if physics overlap is empty.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.tscn`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/core/interact_zone_gate.gd`
+  - `AXEL/axel_project/scenes/ui/crt_power_fx.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: First visit to 5.1 (Start Scene or from 2.4) plays the three enter lines. Standing in the desk box shows `[E]` and opens 5.2. Cafeteria enter line also shows if that overlay had been hidden the same way.
+- Verification: Headless 5.1 probe (overlay visible, enter flag set, Front circle overlaps desk box); `interact_arrival_check.gd`.
+- Notes: Enter lines still play only once per playtest (`classroom_enter_line_seen`). Do not hide `TopDialogueOverlay` with the editor eye — hide the bar via the overlay script, not the CanvasLayer.
+
+### Mike walk — invert whole figure (body matches head)
+- Request: Head and torso color/texture did not match (sketchy gray head vs solid white body). Chose option A: invert the whole walk figure so the body uses the same charcoal look as the head.
+- Implementation: Packer no longer flattens chin-down ink to solid white. Every opaque pixel is inverted like the face (painted white → black holes; brush gaps stay). Re-baked `mike_walking-Sheet.png`. CRT knobs unchanged.
+- Files changed:
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/assets/sprites/mike_walking-Sheet.png`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Overworld Mike is one charcoal-inverted figure from head through limbs. Thin limbs can show brush gaps (not a solid white stick).
+- Verification: Re-bake 12-cell sheet from `kävely_etu` / `kävely_sivu`.
+- Notes: Stop Play and Play again so Godot reimports the sheet. Rollback of the old chin flatten is the previous packer + sheet.

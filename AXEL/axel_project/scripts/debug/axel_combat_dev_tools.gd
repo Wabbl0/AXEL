@@ -271,6 +271,19 @@ func _set_economy_text(key: String, title: String, value: int) -> void:
 	lab.text = "%s: %d" % [title, value]
 
 
+func open_dev_menu() -> void:
+	## Public entry for the combat Settings → DEV TOOLS row.
+	if not OS.is_debug_build():
+		return
+	_open_menu()
+
+
+func toggle_dev_menu() -> void:
+	if not OS.is_debug_build():
+		return
+	_toggle_menu()
+
+
 func _toggle_menu() -> void:
 	if _menu_open:
 		_close_menu()

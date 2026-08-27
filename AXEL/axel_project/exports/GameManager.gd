@@ -23,6 +23,8 @@ var cafeteria_table_return_pos: Vector2 = INVALID_RETURN_POS
 var classroom_desk_return_pos: Vector2 = INVALID_RETURN_POS
 ## Transient (not persisted). Texture-pixel standing spot when leaving 3.1 for 3.2.
 var backyard_memory_return_pos: Vector2 = INVALID_RETURN_POS
+## Transient (not persisted). Texture-pixel standing spot when leaving 4.1 for 4.2.
+var teachers_lounge_memory_return_pos: Vector2 = INVALID_RETURN_POS
 ## Transient (not persisted). e.g. "basement_right" when leaving 1.4 for 1.2.
 var corridor_spawn_side: String = ""
 ## Transient (not persisted). e.g. "corridor_door" when leaving 1.2 for 1.1.
@@ -63,6 +65,12 @@ var cafeteria_memory_line_seen: bool = false
 var backyard_memory_line_seen: bool = false
 ## Once-ever backyard cigarette lines (3.1 after leaving 3.2).
 var backyard_cigarette_line_seen: bool = false
+## Once-ever teachers lounge key-near lines (4.3).
+var teachers_key_line_seen: bool = false
+## Once-ever teachers lounge memory lines (4.2).
+var teachers_memory_line_seen: bool = false
+## Once-ever teachers lounge post-memory line (4.1 after leaving 4.2).
+var teachers_liar_line_seen: bool = false
 
 # ============================================================
 # INITIALIZATION
@@ -105,6 +113,9 @@ func _load_persistent_state() -> void:
 	cafeteria_memory_line_seen = false
 	backyard_memory_line_seen = false
 	backyard_cigarette_line_seen = false
+	teachers_key_line_seen = false
+	teachers_memory_line_seen = false
+	teachers_liar_line_seen = false
 	if not _persistence_enabled():
 		print("GameManager: debug build — ignoring saved narrative state.")
 		return
@@ -134,6 +145,9 @@ func _load_persistent_state() -> void:
 	cafeteria_memory_line_seen = bool(data.get("cafeteria_memory_line_seen", false))
 	backyard_memory_line_seen = bool(data.get("backyard_memory_line_seen", false))
 	backyard_cigarette_line_seen = bool(data.get("backyard_cigarette_line_seen", false))
+	teachers_key_line_seen = bool(data.get("teachers_key_line_seen", false))
+	teachers_memory_line_seen = bool(data.get("teachers_memory_line_seen", false))
+	teachers_liar_line_seen = bool(data.get("teachers_liar_line_seen", false))
 
 func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
 	var merged := defaults.duplicate(true)
@@ -164,6 +178,9 @@ func _save_persistent_state() -> void:
 		"cafeteria_memory_line_seen": cafeteria_memory_line_seen,
 		"backyard_memory_line_seen": backyard_memory_line_seen,
 		"backyard_cigarette_line_seen": backyard_cigarette_line_seen,
+		"teachers_key_line_seen": teachers_key_line_seen,
+		"teachers_memory_line_seen": teachers_memory_line_seen,
+		"teachers_liar_line_seen": teachers_liar_line_seen,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -223,6 +240,18 @@ func set_backyard_cigarette_line_seen(value: bool = true) -> void:
 	backyard_cigarette_line_seen = value
 	_save_persistent_state()
 
+func set_teachers_key_line_seen(value: bool = true) -> void:
+	teachers_key_line_seen = value
+	_save_persistent_state()
+
+func set_teachers_memory_line_seen(value: bool = true) -> void:
+	teachers_memory_line_seen = value
+	_save_persistent_state()
+
+func set_teachers_liar_line_seen(value: bool = true) -> void:
+	teachers_liar_line_seen = value
+	_save_persistent_state()
+
 func set_corridor_return_pos(pos: Vector2) -> void:
 	corridor_return_pos = pos
 
@@ -265,6 +294,17 @@ func has_backyard_memory_return_pos() -> bool:
 func take_backyard_memory_return_pos() -> Vector2:
 	var pos := backyard_memory_return_pos
 	backyard_memory_return_pos = INVALID_RETURN_POS
+	return pos
+
+func set_teachers_lounge_memory_return_pos(pos: Vector2) -> void:
+	teachers_lounge_memory_return_pos = pos
+
+func has_teachers_lounge_memory_return_pos() -> bool:
+	return teachers_lounge_memory_return_pos != INVALID_RETURN_POS
+
+func take_teachers_lounge_memory_return_pos() -> Vector2:
+	var pos := teachers_lounge_memory_return_pos
+	teachers_lounge_memory_return_pos = INVALID_RETURN_POS
 	return pos
 
 func set_corridor_spawn_side(side: String) -> void:

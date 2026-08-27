@@ -11,13 +11,8 @@ const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 ## Just right of ReturnInteractArea so Mike peeks inside the room from the left door.
 const BASEMENT_PEEK_MARGIN_PX := 12.0
-## Just below KitchenInteractArea so Mike peeks next to the kitchen doorway
-## (inside the room, below TopWall). Negative pulls him up through the wall.
-const KITCHEN_PEEK_MARGIN_PX := 12.0
-## Just left of BackyardInteractArea so Mike peeks inside from the right door.
-const BACKYARD_PEEK_MARGIN_PX := -12.0
-## Just above ClassroomsInteractArea so Mike peeks inside from the bottom door.
-const CLASSROOMS_PEEK_MARGIN_PX := -12.0
+## Kitchen return: Player node texture Y (door is ~2040×150). X still follows leave t.
+const KITCHEN_STAND_TEX_Y := 150.0
 const RETURN_ZONE_GRACE_SEC := 0.15
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
@@ -31,6 +26,8 @@ var _return_area: Area2D
 var _backyard_area: Area2D
 var _classrooms_area: Area2D
 var _active_zone: String = ""
+var _arrival_latched_zone: String = ""
+var _enter_dialogue_pending := false
 var _is_transitioning := false
 var _pending_basement_peek := false
 var _pending_kitchen_peek := false
@@ -44,6 +41,7 @@ var _classrooms_zone_armed := true
 var _table_zone_armed := true
 ## 0..1 along the source [E] box. Taken once in restore so layout cannot drop it.
 var _arrival_t := InteractArrival.DEFAULT_T
+var _cover_layout_ready := false
 ## Texture-pixel position captured from the MemoryIndicator node's editor position.
 var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
@@ -75,15 +73,13 @@ func _ready() -> void:
 	_classrooms_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/ClassroomsInteractArea"
 	) as Area2D
-	_connect_zone(_table_area, "table")
-	_connect_zone(_kitchen_area, "kitchen")
-	_connect_zone(_return_area, "return")
-	_connect_zone(_backyard_area, "backyard")
-	_connect_zone(_classrooms_area, "classrooms")
 	_apply_collected_table_memory()
+	set_process(true)
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	call_deferred("_restore_player_position_if_needed")
+	if not GameManager.cafeteria_enter_line_seen:
+		_enter_dialogue_pending = true
 	call_deferred("_play_enter_dialogue")
 
 
@@ -94,17 +90,20 @@ func _restore_player_position_if_needed() -> void:
 	if cafeteria_side == "basement_left":
 		_pending_basement_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_basement_peek_if_pending")
+		if _cover_layout_ready:
+			call_deferred("_apply_basement_peek_after_wake")
 		return
 	if cafeteria_side == "backyard_right":
 		_pending_backyard_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_backyard_peek_if_pending")
+		if _cover_layout_ready:
+			call_deferred("_apply_inside_arrival_after_wake")
 		return
 	if cafeteria_side == "classrooms_bottom":
 		_pending_classrooms_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_classrooms_peek_if_pending")
+		if _cover_layout_ready:
+			call_deferred("_apply_inside_arrival_after_wake")
 		return
 	if cafeteria_side == "table":
 		_pending_table_peek = true
@@ -113,37 +112,65 @@ func _restore_player_position_if_needed() -> void:
 	if GameManager.take_kitchen_spawn_side() == "kitchen_door":
 		_pending_kitchen_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_kitchen_peek_if_pending")
+		if _cover_layout_ready:
+			call_deferred("_apply_kitchen_peek_after_wake")
 		return
 	if GameManager.has_cafeteria_table_return_pos():
 		call_deferred("_apply_table_return_if_pending")
 		return
 
 
-func _connect_zone(area: Area2D, zone_id: String) -> void:
-	if not is_instance_valid(area):
-		return
-	area.body_entered.connect(func(body: Node) -> void:
-		_on_zone_body_entered(body, zone_id)
-	)
-	area.body_exited.connect(func(body: Node) -> void:
-		_on_zone_body_exited(body, zone_id)
-	)
-
-
 func _play_enter_dialogue() -> void:
 	if not is_instance_valid(_top_dialogue):
+		_enter_dialogue_pending = false
 		return
 	if GameManager.cafeteria_enter_line_seen:
+		_enter_dialogue_pending = false
 		return
 	GameManager.set_cafeteria_enter_line_seen(true)
+	_enter_dialogue_pending = false
 	await _top_dialogue.show_line(ENTER_LINE, 3.0)
+
+
+func _process(_delta: float) -> void:
+	if not _arrival_latched_zone.is_empty() and InteractZoneGate.movement_pressed():
+		_arrival_latched_zone = ""
+	_refresh_active_zone()
+
+
+func _refresh_active_zone() -> void:
+	if _is_transitioning:
+		return
+	var prev := _active_zone
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+		_active_zone = ""
+		if not prev.is_empty():
+			_hide_interact_prompt()
+		return
+	if not _arrival_latched_zone.is_empty():
+		_active_zone = _arrival_latched_zone
+	else:
+		_active_zone = ""
+		for zone_id in ["table", "kitchen", "return", "backyard", "classrooms"]:
+			if InteractZoneGate.body_in_area(_zone_area(zone_id), _player):
+				_active_zone = zone_id
+				break
+	if _active_zone != prev:
+		if _active_zone.is_empty():
+			_hide_interact_prompt()
+		else:
+			_show_interact_prompt()
+	elif not _active_zone.is_empty():
+		_show_interact_prompt()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_transitioning:
 		return
 	if not _is_interaction_event(event):
+		return
+	_refresh_active_zone()
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
 		return
 	if _active_zone.is_empty():
 		return
@@ -178,21 +205,6 @@ func _is_interaction_event(event: InputEvent) -> bool:
 	if not key_event.pressed or key_event.echo:
 		return false
 	return key_event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
-
-
-func _on_zone_body_entered(body: Node, zone_id: String) -> void:
-	if body != _player or _is_transitioning:
-		return
-	_active_zone = zone_id
-	_show_interact_prompt()
-
-
-func _on_zone_body_exited(body: Node, zone_id: String) -> void:
-	if body != _player:
-		return
-	if _active_zone == zone_id:
-		_active_zone = ""
-		_hide_interact_prompt()
 
 
 func _zone_area(zone_id: String) -> Area2D:
@@ -236,15 +248,7 @@ func _sync_memory_indicator() -> void:
 func _show_interact_prompt() -> void:
 	if _is_transitioning or _active_zone.is_empty():
 		return
-	if _active_zone == "return" and not _return_zone_armed:
-		return
-	if _active_zone == "kitchen" and not _kitchen_zone_armed:
-		return
-	if _active_zone == "backyard" and not _backyard_zone_armed:
-		return
-	if _active_zone == "classrooms" and not _classrooms_zone_armed:
-		return
-	if _active_zone == "table" and not _table_zone_armed:
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -348,20 +352,43 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	_sync_memory_indicator()
+	_cover_layout_ready = true
 	call_deferred("_wake_static_colliders")
 	call_deferred("_configure_table_occlusion_masks")
 	if GameManager.has_cafeteria_table_return_pos():
 		call_deferred("_apply_table_return_if_pending")
 	elif _pending_basement_peek:
-		call_deferred("_apply_basement_peek_if_pending")
+		call_deferred("_apply_basement_peek_after_wake")
 	elif _pending_kitchen_peek:
-		call_deferred("_apply_kitchen_peek_if_pending")
-	elif _pending_backyard_peek:
-		call_deferred("_apply_backyard_peek_if_pending")
-	elif _pending_classrooms_peek:
-		call_deferred("_apply_classrooms_peek_if_pending")
+		call_deferred("_apply_kitchen_peek_after_wake")
+	elif _pending_backyard_peek or _pending_classrooms_peek:
+		call_deferred("_apply_inside_arrival_after_wake")
 	elif _pending_table_peek:
 		call_deferred("_apply_table_peek_if_pending")
+
+
+func _apply_inside_arrival_after_wake() -> void:
+	_wake_static_colliders()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if _pending_backyard_peek:
+		_apply_backyard_peek_if_pending()
+	elif _pending_classrooms_peek:
+		_apply_classrooms_peek_if_pending()
+
+
+func _apply_basement_peek_after_wake() -> void:
+	_wake_static_colliders()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_apply_basement_peek_if_pending()
+
+
+func _apply_kitchen_peek_after_wake() -> void:
+	_wake_static_colliders()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_apply_kitchen_peek_if_pending()
 
 
 func _apply_table_return_if_pending() -> void:
@@ -383,6 +410,7 @@ func _apply_basement_peek_if_pending() -> void:
 		InteractArrival.PeekEdge.RIGHT,
 		BASEMENT_PEEK_MARGIN_PX
 	)
+	_arrival_latched_zone = "return"
 	call_deferred("_clamp_arrived_player")
 	_arm_return_zone_grace()
 
@@ -391,47 +419,63 @@ func _apply_kitchen_peek_if_pending() -> void:
 	if not _pending_kitchen_peek or not is_instance_valid(_player):
 		return
 	_pending_kitchen_peek = false
-	_player.global_position = InteractArrival.place_on_area(
+	# Kitchen door: Player node at texture Y 150, X from leave t (~2040).
+	# Stand the node there (not the feet circle). Skip wall clamp.
+	var feet_landed := InteractArrival.place_on_area(
 		_player,
 		_kitchen_area,
 		_arrival_t,
 		Vector2.AXIS_X,
-		InteractArrival.PeekEdge.BOTTOM,
-		KITCHEN_PEEK_MARGIN_PX
+		InteractArrival.PeekEdge.CENTER_Y,
+		0.0
 	)
-	call_deferred("_clamp_arrived_player")
+	var front := _player.get_node_or_null("CollisionFront") as CollisionShape2D
+	if front != null:
+		var offset := _player.to_global(front.position) - _player.global_position
+		_player.global_position = feet_landed + offset
+	else:
+		_player.global_position = feet_landed
+	var env := $WalkableWorld/EnvironmentColliders as Node2D
+	var tex := env.to_local(_player.global_position)
+	tex.y = KITCHEN_STAND_TEX_Y
+	_player.global_position = env.to_global(tex)
+	_arrival_latched_zone = "kitchen"
 	_arm_kitchen_zone_grace()
 
 
 func _apply_backyard_peek_if_pending() -> void:
 	if not _pending_backyard_peek or not is_instance_valid(_player):
 		return
+	if not _cover_layout_ready:
+		return
 	_pending_backyard_peek = false
-	_player.global_position = InteractArrival.place_on_area(
+	InteractArrival.apply_arrival_inside(
 		_player,
 		_backyard_area,
 		_arrival_t,
 		Vector2.AXIS_Y,
 		InteractArrival.PeekEdge.LEFT,
-		BACKYARD_PEEK_MARGIN_PX
+		0.5
 	)
-	call_deferred("_clamp_arrived_player")
+	_arrival_latched_zone = "backyard"
 	_arm_backyard_zone_grace()
 
 
 func _apply_classrooms_peek_if_pending() -> void:
 	if not _pending_classrooms_peek or not is_instance_valid(_player):
 		return
+	if not _cover_layout_ready:
+		return
 	_pending_classrooms_peek = false
-	_player.global_position = InteractArrival.place_on_area(
+	InteractArrival.apply_arrival_inside(
 		_player,
 		_classrooms_area,
 		_arrival_t,
 		Vector2.AXIS_X,
 		InteractArrival.PeekEdge.TOP,
-		CLASSROOMS_PEEK_MARGIN_PX
+		0.0
 	)
-	call_deferred("_clamp_arrived_player")
+	_arrival_latched_zone = "classrooms"
 	_arm_classrooms_zone_grace()
 
 
@@ -452,40 +496,30 @@ func _arm_return_zone_grace() -> void:
 	_return_zone_armed = false
 	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
 	_return_zone_armed = true
-	if _active_zone == "return":
-		_show_interact_prompt()
 
 
 func _arm_kitchen_zone_grace() -> void:
 	_kitchen_zone_armed = false
 	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
 	_kitchen_zone_armed = true
-	if _active_zone == "kitchen":
-		_show_interact_prompt()
 
 
 func _arm_backyard_zone_grace() -> void:
 	_backyard_zone_armed = false
 	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
 	_backyard_zone_armed = true
-	if _active_zone == "backyard":
-		_show_interact_prompt()
 
 
 func _arm_classrooms_zone_grace() -> void:
 	_classrooms_zone_armed = false
 	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
 	_classrooms_zone_armed = true
-	if _active_zone == "classrooms":
-		_show_interact_prompt()
 
 
 func _arm_table_zone_grace() -> void:
 	_table_zone_armed = false
 	await get_tree().create_timer(RETURN_ZONE_GRACE_SEC).timeout
 	_table_zone_armed = true
-	if _active_zone == "table":
-		_show_interact_prompt()
 
 
 func _table_peek_global() -> Vector2:

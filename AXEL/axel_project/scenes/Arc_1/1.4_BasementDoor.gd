@@ -23,6 +23,7 @@ var _exit_trigger: Area2D
 var _door_zone_active := false
 var _cafeteria_zone_active := false
 var _cafeteria_zone_armed := true
+var _arrival_latched_zone: String = ""
 var _is_transitioning := false
 var _door_line_running := false
 var _pending_cafeteria_peek := false
@@ -50,14 +51,9 @@ func _ready() -> void:
 	_exit_trigger = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/ExitTrigger"
 	) as Area2D
-	if is_instance_valid(_door_interact_area):
-		_door_interact_area.body_entered.connect(_on_door_body_entered)
-		_door_interact_area.body_exited.connect(_on_door_body_exited)
-	if is_instance_valid(_cafeteria_interact_area):
-		_cafeteria_interact_area.body_entered.connect(_on_cafeteria_body_entered)
-		_cafeteria_interact_area.body_exited.connect(_on_cafeteria_body_exited)
 	if is_instance_valid(_exit_trigger):
 		_exit_trigger.body_entered.connect(_on_exit_body_entered)
+	set_process(true)
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	# Match 1.2: take spawn side + t after first layout settles, then re-queue peek.
@@ -71,13 +67,38 @@ func _restore_player_position_if_needed() -> void:
 	if basement_side == "cafeteria_right":
 		_pending_cafeteria_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_cafeteria_peek_if_pending")
+		call_deferred("_apply_cafeteria_peek_after_wake")
 		return
 	if basement_side == "corridor_left":
 		_pending_corridor_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_corridor_peek_if_pending")
+		call_deferred("_apply_corridor_peek_after_wake")
 		return
+
+
+func _process(_delta: float) -> void:
+	if not _arrival_latched_zone.is_empty() and InteractZoneGate.movement_pressed():
+		_arrival_latched_zone = ""
+	_refresh_active_zones()
+
+
+func _refresh_active_zones() -> void:
+	if _is_transitioning:
+		return
+	if _door_dialogue_busy():
+		_door_zone_active = false
+		_cafeteria_zone_active = false
+		_hide_interact_prompt_immediate()
+		return
+	if not _arrival_latched_zone.is_empty():
+		_cafeteria_zone_active = _arrival_latched_zone == "cafeteria"
+		_door_zone_active = _arrival_latched_zone == "door"
+	else:
+		_cafeteria_zone_active = InteractZoneGate.body_in_area(
+			_cafeteria_interact_area, _player
+		)
+		_door_zone_active = InteractZoneGate.body_in_area(_door_interact_area, _player)
+	_show_active_interact_prompt()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -85,14 +106,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _is_interaction_event(event):
 		return
+	_refresh_active_zones()
+	# Busy (line / CRT / bar) → overlay skips/advances; snap chip off; never stack a new line.
+	if _door_dialogue_busy():
+		_hide_interact_prompt_immediate()
+		return
 	if _cafeteria_zone_active and _cafeteria_zone_armed:
 		_begin_cafeteria_transition()
 		return
 	if not _door_zone_active:
-		return
-	# Busy (line / CRT / bar) → overlay skips/advances; snap chip off; never stack a new line.
-	if _door_dialogue_busy():
-		_hide_interact_prompt_immediate()
 		return
 	_play_door_line_async()
 
@@ -100,13 +122,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _door_dialogue_busy() -> bool:
 	if _door_line_running:
 		return true
-	if not is_instance_valid(_top_dialogue):
-		return false
-	if _top_dialogue.has_method("is_sequence_busy") and _top_dialogue.is_sequence_busy():
-		return true
-	if _top_dialogue.has_method("is_bar_visible") and _top_dialogue.is_bar_visible():
-		return true
-	return false
+	return InteractZoneGate.dialogue_busy(_top_dialogue)
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
@@ -116,34 +132,6 @@ func _is_interaction_event(event: InputEvent) -> bool:
 	if not key_event.pressed or key_event.echo:
 		return false
 	return key_event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
-
-
-func _on_door_body_entered(body: Node) -> void:
-	if body != _player:
-		return
-	_door_zone_active = true
-	_show_active_interact_prompt()
-
-
-func _on_door_body_exited(body: Node) -> void:
-	if body != _player:
-		return
-	_door_zone_active = false
-	_show_active_interact_prompt()
-
-
-func _on_cafeteria_body_entered(body: Node) -> void:
-	if body != _player or _is_transitioning:
-		return
-	_cafeteria_zone_active = true
-	_show_active_interact_prompt()
-
-
-func _on_cafeteria_body_exited(body: Node) -> void:
-	if body != _player:
-		return
-	_cafeteria_zone_active = false
-	_show_active_interact_prompt()
 
 
 func _on_exit_body_entered(body: Node) -> void:
@@ -185,10 +173,13 @@ func _show_active_interact_prompt() -> void:
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
-	if _cafeteria_zone_active and _cafeteria_zone_armed:
+	if _door_dialogue_busy():
+		_interact_prompt.hide_prompt()
+		return
+	if _cafeteria_zone_active:
 		_interact_prompt.show_prompt(_cafeteria_interact_anchor())
 		return
-	if _door_zone_active and not _door_dialogue_busy():
+	if _door_zone_active:
 		_interact_prompt.show_prompt(_door_interact_anchor())
 		return
 	_interact_prompt.hide_prompt()
@@ -260,9 +251,23 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
 	if _pending_cafeteria_peek:
-		call_deferred("_apply_cafeteria_peek_if_pending")
+		call_deferred("_apply_cafeteria_peek_after_wake")
 	elif _pending_corridor_peek:
-		call_deferred("_apply_corridor_peek_if_pending")
+		call_deferred("_apply_corridor_peek_after_wake")
+
+
+func _apply_cafeteria_peek_after_wake() -> void:
+	_wake_static_colliders()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_apply_cafeteria_peek_if_pending()
+
+
+func _apply_corridor_peek_after_wake() -> void:
+	_wake_static_colliders()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_apply_corridor_peek_if_pending()
 
 
 func _apply_cafeteria_peek_if_pending() -> void:
@@ -277,6 +282,7 @@ func _apply_cafeteria_peek_if_pending() -> void:
 		InteractArrival.PeekEdge.LEFT,
 		-CAFETERIA_PEEK_MARGIN_PX
 	)
+	_arrival_latched_zone = "cafeteria"
 	call_deferred("_clamp_arrived_player")
 	_arm_cafeteria_zone_grace()
 
@@ -306,8 +312,6 @@ func _arm_cafeteria_zone_grace() -> void:
 	_cafeteria_zone_armed = false
 	await get_tree().create_timer(CAFETERIA_ZONE_GRACE_SEC).timeout
 	_cafeteria_zone_armed = true
-	if _cafeteria_zone_active:
-		_show_active_interact_prompt()
 
 
 func _arm_exit_trigger_grace() -> void:

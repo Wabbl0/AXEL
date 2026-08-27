@@ -1,6 +1,6 @@
 # Combat Test UI
 
-The playtest shell uses a **mirrored grid layout** (spin-history placeholder | 5×5 grid + premium bar | items), integer economy readouts, and dev item picker on the right.
+The playtest shell uses a **drawing-backed HUD**: white plate + one node per drawing under `%HudCanvas` (3508×2480 drawing pixels), integer economy readouts, and a dev item picker.
 
 ## Canonical entry
 
@@ -16,14 +16,22 @@ Headless combat checks (`princess_check`, `determinism_check`) use `combat_root.
 
 ## HUD features
 
-- Top-left **meta** icons + **SEED** `SpinBox`; top-right **GOAL** progress
-- Top-center **BANKROLL** (`current/cap`) and **STAKE** pill with `-` / `+` (integer units)
-- Play row: left **HISTORY** placeholder | 5×5 grid + **premium progress bar** (3 sections) | right **ITEMS** dev picker
-- Center readout: round **winnings** (integer) between premium bar and **EXECUTE**
-- Wide bottom **EXECUTE** button (width tracks grid after layout)
-- Match payout numbers flash on winning symbols during resolve
-
-There is no `combat_test_v1` / `combat_test_v2` split — use only the canonical scene above.
+- `%HudCanvas` + `HudArt` show `res://exports/Drawings/axel_combat_plate_white.png` (white 3508×2480 plate).
+- `%HudArtGuide` is the optional `axel_ui.png` overlay (50% opacity). It starts **hidden**. Toggle the eye in the scene tree to line up pieces. Play always hides it.
+- **Never move or resize `%HudArtGuide` or `HudPieces`.** Both must stay at `0,0` sized `3508×2480`, 1:1 with the plate. Every piece is positioned by eye against the guide, so nudging the guide silently drags the whole HUD off-window. `tools/qa/hud_piece_placement_check.gd` fails if that happens.
+- **Art pieces (`NEW_`):** already placed drawings. Do not drag these unless the art itself is wrong: `NEW_Grid`, `NEW_Goal`, `NEW_Items`, `NEW_History`, `NEW_Bets`, `NEW_Multiplier`, `NEW_Settings`, `NEW_Execute`. Each one sits at its native texture size — a stretched piece blurs the hand-drawn line work, so the placement check also enforces that.
+- **Interactables (`MOVE_`):** drag these to sit on the drawings — text boxes, `+`/`-`, bet strip, balance, premium bar, spin money, skull meter count. Each art piece has a `MOVE_TextBox` child for text/widgets.
+- Clickable: skull Execute, Items checkboxes, `+`/`-`, Settings. Settings window: only **DEV TOOLS** opens the existing wrench (`AxelCombatDevTools`).
+- Bet strip shows `100 | 200 | … | 1000` and slides on `+`/`-`. Multiplier reads `1X` / `2X`. Skull meter shows `0/3`…`3/3` from real meter sections. Premium bar color steps with fill; spin money sits on that rectangle.
+- Protected scaffold unique names (`%SpinButton`, `%BetLabel`, `%BankrollLabel`, …) stay in the tree — re-parented at runtime, not deleted.
+- Old computer HUD chrome is off: black winnings/multiplier pills, thin `PremiumProgressBar`, CombatRoot `Multiplier: 1×` / round-winnings labels, gear/home/? row. Numbers sit on the piece drawings instead.
+- Match payout numbers flash on winning symbols during resolve.
+- Side bars use a white `BlackBackground` ColorRect (name kept for restore-from-baseline).
+- Room FX on combat is behind `AxelPostFxStack.COMBAT_ROOM_FX_TEST` (test flag; flip false to restore combat-only scanline). When the flag is on, combat gets flat `CrtCombatOverlay.tscn` (same CRT shader, zero curve/vignette/rim — edge-fringe fix without the round-TV look). Local `ScanlineOverlay` hides when that flag is on.
+- **Live widgets above FX:** `WidgetLayer` (`CanvasLayer` 115) hosts numbers, item checks, history, `+/−`, and the 5×5 grid so invert/CRT/pulse do not remapped them. Each host follows its `MOVE_TextBox` rect. Hand-drawn `NEW_*` pieces stay under the FX.
+- **Grid:** `NEW_Grid` has a `MOVE_TextBox`; `GridHost` / `%CombatRoot` live under `WidgetLayer` and fill that box (not the old PlayArea host).
+- **Clicks:** Settings / Execute use the piece `MOVE_TextBox` rect (not the whole art frame). Execute also has `SkullClickPolygon` — drag the `Polygon2D` vertices around the skull. One spin per click (shared guard).
+- **Piece authoring (canon):** combat drawings use **black ink on white fill** (same rule as room backgrounds). Noir turns black → red and white → dark. Original white-on-black exports were inverted in place by `tools/invert_drawing_colors.gd`; pre-invert copies live in `exports/Drawings/backup_pre_invert/` (ignored by Godot). Re-run that tool after exporting a new white-on-black piece.
 
 ## Shared `combat_root`
 

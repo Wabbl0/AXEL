@@ -22,6 +22,7 @@ encounter_def = ExtResource("11_encounter")
 script = ExtResource("2_grid_manager")
 
 [node name="MultiplierLabel" type="Label" parent="."]
+visible = false
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 400.0
@@ -30,7 +31,7 @@ theme_override_font_sizes/font_size = 18
 text = "Multiplier: 1×"
 
 [node name="GridFrame" type="ReferenceRect" parent="."]
-visible = true
+visible = false
 offset_left = 4.0
 offset_top = 44.0
 offset_right = 204.0
@@ -87,6 +88,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="RoundWinningsLabel" type="Label" parent="."]
+visible = false
 offset_left = 8.0
 offset_top = 256.0
 offset_right = 400.0

@@ -34,30 +34,37 @@ static func compact_chip_options() -> Options:
 	return opts
 
 
-static func _host_valid(host: Node) -> bool:
-	return host != null and is_instance_valid(host) and host.get_tree() != null
+static func _host_valid(host: Variant) -> bool:
+	# Typed `Node` args error on a previously-freed instance (not a Node anymore).
+	if host == null or not is_instance_valid(host):
+		return false
+	if not (host is Node):
+		return false
+	return (host as Node).get_tree() != null
 
 
-static func _host_key(host: Node) -> int:
-	return host.get_instance_id()
+static func _host_key(host: Variant) -> int:
+	if host == null or not is_instance_valid(host):
+		return 0
+	return (host as Object).get_instance_id()
 
 
-static func _bump_token(host: Node) -> int:
+static func _bump_token(host: Variant) -> int:
 	var key := _host_key(host)
 	var next := int(_crt_tokens.get(key, 0)) + 1
 	_crt_tokens[key] = next
 	return next
 
 
-static func _token_valid(host: Node, session: int) -> bool:
+static func _token_valid(host: Variant, session: int) -> bool:
 	return _host_valid(host) and int(_crt_tokens.get(_host_key(host), 0)) == session
 
 
 ## Awaits one process frame if host is still in a tree. Returns false if host/tree is gone.
-static func _await_process_frame(host: Node) -> bool:
+static func _await_process_frame(host: Variant) -> bool:
 	if not _host_valid(host):
 		return false
-	var tree := host.get_tree()
+	var tree := (host as Node).get_tree()
 	if tree == null:
 		return false
 	await tree.process_frame
@@ -75,8 +82,8 @@ static func _make_tween(host: Node, parallel: bool = false) -> Tween:
 	return tween
 
 
-static func _kill_crt_tweens(host: Node, _targets: Array = []) -> void:
-	if host == null:
+static func _kill_crt_tweens(host: Variant, _targets: Array = []) -> void:
+	if host == null or not is_instance_valid(host):
 		return
 	var key := _host_key(host)
 	var list: Array = _crt_tweens.get(key, [])
@@ -86,7 +93,7 @@ static func _kill_crt_tweens(host: Node, _targets: Array = []) -> void:
 	_crt_tweens[key] = []
 
 
-static func _await_tween(host: Node, session: int, tween: Tween) -> void:
+static func _await_tween(host: Variant, session: int, tween: Tween) -> void:
 	while tween.is_valid() and tween.is_running():
 		if not _token_valid(host, session):
 			tween.kill()

@@ -242,20 +242,16 @@ func _chin_y(pose: Image) -> int:
 func _finish_pose(pose: Image) -> Image:
 	var w := pose.get_width()
 	var h := pose.get_height()
-	var chin := _chin_y(pose)
 	var ink := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	ink.fill(Color(0, 0, 0, 0))
 	for y in h:
 		for x in w:
 			var oc := pose.get_pixel(x, y)
 			if oc.a * 255.0 > float(INK_THRESH):
-				if y >= chin:
-					ink.set_pixel(x, y, BODY_INK)
-				else:
-					var inv := 1.0 - (oc.r + oc.g + oc.b) / 3.0
-					if inv < FACE_FRINGE_LUMA and oc.a < FACE_FRINGE_ALPHA:
-						continue
-					ink.set_pixel(x, y, Color(inv, inv, inv, oc.a))
+				var inv := 1.0 - (oc.r + oc.g + oc.b) / 3.0
+				if inv < FACE_FRINGE_LUMA and oc.a < FACE_FRINGE_ALPHA:
+					continue
+				ink.set_pixel(x, y, Color(inv, inv, inv, oc.a))
 	return ink
 
 

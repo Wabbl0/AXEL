@@ -27,6 +27,7 @@ var _extra_2_area: Area2D
 var _extra_3_area: Area2D
 var _size_ramp_area: Area2D
 var _active_zone: String = ""
+var _arrival_latched_zone: String = ""
 var _is_transitioning := false
 var _stub_line_running := false
 var _pending_spawn_side := ""
@@ -73,13 +74,7 @@ func _ready() -> void:
 	_size_ramp_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/VerticalSizeRampArea"
 	) as Area2D
-	_connect_zone(_cafeteria_area, "cafeteria")
-	_connect_zone(_lounge_area, "lounge")
-	_connect_zone(_classroom_area, "classroom")
-	_connect_zone(_future_area, "future")
-	_connect_zone(_extra_1_area, "extra_1")
-	_connect_zone(_extra_2_area, "extra_2")
-	_connect_zone(_extra_3_area, "extra_3")
+	set_process(true)
 	set_process_unhandled_input(true)
 	set_physics_process(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
@@ -93,7 +88,10 @@ func _restore_player_position_if_needed() -> void:
 	_seed_depth_from_spawn_side(_pending_spawn_side)
 	if _pending_spawn_side in ["cafeteria_door", "lounge_door", "classroom_door"]:
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_spawn_peek_if_pending")
+		# Only place via after_wake (physics registered). If layout already ran,
+		# kick that path now; else _sync_world_space will.
+		if _cover_layout_ready:
+			call_deferred("_apply_spawn_peek_after_wake")
 
 
 func _seed_depth_from_spawn_side(spawn_side: String) -> void:
@@ -105,21 +103,47 @@ func _seed_depth_from_spawn_side(spawn_side: String) -> void:
 			_depth_factor = 1.0
 
 
-func _connect_zone(area: Area2D, zone_id: String) -> void:
-	if not is_instance_valid(area):
+func _process(_delta: float) -> void:
+	if not _arrival_latched_zone.is_empty() and InteractZoneGate.movement_pressed():
+		_arrival_latched_zone = ""
+	_refresh_active_zone()
+
+
+func _refresh_active_zone() -> void:
+	if _is_transitioning:
 		return
-	area.body_entered.connect(func(body: Node) -> void:
-		_on_zone_body_entered(body, zone_id)
-	)
-	area.body_exited.connect(func(body: Node) -> void:
-		_on_zone_body_exited(body, zone_id)
-	)
+	var prev := _active_zone
+	if _stub_dialogue_busy():
+		_active_zone = ""
+		if not prev.is_empty():
+			_hide_interact_prompt()
+		return
+	if not _arrival_latched_zone.is_empty():
+		_active_zone = _arrival_latched_zone
+	else:
+		_active_zone = ""
+		for zone_id in [
+			"cafeteria", "lounge", "classroom", "future", "extra_1", "extra_2", "extra_3"
+		]:
+			if InteractZoneGate.body_in_area(_zone_area(zone_id), _player):
+				_active_zone = zone_id
+				break
+	if _active_zone != prev:
+		if _active_zone.is_empty():
+			_hide_interact_prompt()
+		else:
+			_show_interact_prompt()
+	elif not _active_zone.is_empty():
+		_show_interact_prompt()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_transitioning:
 		return
 	if not _is_interaction_event(event):
+		return
+	_refresh_active_zone()
+	if _stub_dialogue_busy():
 		return
 	if _active_zone.is_empty():
 		return
@@ -149,21 +173,6 @@ func _is_interaction_event(event: InputEvent) -> bool:
 	return key_event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
 
 
-func _on_zone_body_entered(body: Node, zone_id: String) -> void:
-	if body != _player or _is_transitioning:
-		return
-	_active_zone = zone_id
-	_show_interact_prompt()
-
-
-func _on_zone_body_exited(body: Node, zone_id: String) -> void:
-	if body != _player:
-		return
-	if _active_zone == zone_id:
-		_active_zone = ""
-		_hide_interact_prompt()
-
-
 func _zone_area(zone_id: String) -> Area2D:
 	match zone_id:
 		"cafeteria":
@@ -184,20 +193,6 @@ func _zone_area(zone_id: String) -> Area2D:
 			return null
 
 
-func _zone_armed(zone_id: String) -> bool:
-	match zone_id:
-		"cafeteria":
-			return _cafeteria_zone_armed
-		"lounge":
-			return _lounge_zone_armed
-		"classroom":
-			return _classroom_zone_armed
-		"future", "extra_1", "extra_2", "extra_3":
-			return not _stub_line_running
-		_:
-			return true
-
-
 func _interact_anchor() -> Vector2:
 	var area := _zone_area(_active_zone)
 	if not is_instance_valid(area):
@@ -211,7 +206,7 @@ func _interact_anchor() -> Vector2:
 func _show_interact_prompt() -> void:
 	if _is_transitioning or _active_zone.is_empty():
 		return
-	if not _zone_armed(_active_zone):
+	if _stub_dialogue_busy():
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -238,13 +233,7 @@ func _hide_interact_prompt_immediate() -> void:
 func _stub_dialogue_busy() -> bool:
 	if _stub_line_running:
 		return true
-	if not is_instance_valid(_top_dialogue):
-		return false
-	if _top_dialogue.has_method("is_sequence_busy") and _top_dialogue.is_sequence_busy():
-		return true
-	if _top_dialogue.has_method("is_bar_visible") and _top_dialogue.is_bar_visible():
-		return true
-	return false
+	return InteractZoneGate.dialogue_busy(_top_dialogue)
 
 
 func _begin_stub_door(zone_id: String) -> void:
@@ -324,38 +313,54 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	_apply_player_cover_and_depth(player_node)
 	call_deferred("_wake_static_colliders")
 	if _pending_spawn_side in ["cafeteria_door", "lounge_door", "classroom_door"]:
-		call_deferred("_apply_spawn_peek_if_pending")
+		# Wake colliders first, then place on the next idle so physics queries work.
+		call_deferred("_apply_spawn_peek_after_wake")
+
+
+func _apply_spawn_peek_after_wake() -> void:
+	_wake_static_colliders()
+	# Let physics register wall shapes before sprite/hitbox clearance queries.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_apply_spawn_peek_if_pending()
 
 
 func _apply_spawn_peek_if_pending() -> void:
 	if not is_instance_valid(_player):
 		return
+	if not _cover_layout_ready:
+		# Keep pending; _sync_world_space will defer again after cover-fit.
+		return
 	var side := _pending_spawn_side
 	if side not in ["cafeteria_door", "lounge_door", "classroom_door"]:
 		return
 	_pending_spawn_side = ""
+	# Cover/depth already applied in _sync_world_space (seeded depth). Place last
+	# so a post-place scale change cannot move the Front circle off the land point.
 	match side:
 		"cafeteria_door":
-			_apply_arrival_on_area(
-				_player, _cafeteria_area, Vector2.AXIS_X,
-				InteractArrival.PeekEdge.BOTTOM, 12.0
+			# BOTTOM edge = into-room side of this door box; start there so the
+			# tall drawing can clear TopWall without a huge outward nudge.
+			InteractArrival.apply_arrival_inside(
+				_player, _cafeteria_area, _arrival_t, Vector2.AXIS_X,
+				InteractArrival.PeekEdge.BOTTOM, 0.0
 			)
+			_arrival_latched_zone = "cafeteria"
 			_arm_zone_grace("cafeteria")
 		"lounge_door":
-			_apply_arrival_on_area(
-				_player, _lounge_area, Vector2.AXIS_X,
-				InteractArrival.PeekEdge.TOP, -12.0
+			InteractArrival.apply_arrival_inside(
+				_player, _lounge_area, _arrival_t, Vector2.AXIS_X,
+				InteractArrival.PeekEdge.TOP, 0.5
 			)
+			_arrival_latched_zone = "lounge"
 			_arm_zone_grace("lounge")
 		"classroom_door":
-			_apply_arrival_on_area(
-				_player, _classroom_area, Vector2.AXIS_X,
-				InteractArrival.PeekEdge.TOP, -12.0
+			InteractArrival.apply_arrival_inside(
+				_player, _classroom_area, _arrival_t, Vector2.AXIS_X,
+				InteractArrival.PeekEdge.TOP, 0.5
 			)
+			_arrival_latched_zone = "classroom"
 			_arm_zone_grace("classroom")
-	# After door place, size from Y if inside the ramp (cafeteria ~100%).
-	_update_depth_factor_from_player()
-	_apply_player_cover_and_depth(_player)
 
 func _physics_process(_delta: float) -> void:
 	if not _cover_layout_ready or _is_transitioning:
@@ -389,38 +394,6 @@ func _update_depth_factor_from_player() -> void:
 	_depth_factor = lerpf(1.0, vertical_far_scale, t)
 
 
-func _peek_below_area(area: Area2D) -> Vector2:
-	return InteractArrival.place_on_area(
-		_player, area, InteractArrival.DEFAULT_T, Vector2.AXIS_X,
-		InteractArrival.PeekEdge.BOTTOM, 12.0
-	)
-
-
-func _peek_above_area(area: Area2D) -> Vector2:
-	return InteractArrival.place_on_area(
-		_player, area, InteractArrival.DEFAULT_T, Vector2.AXIS_X,
-		InteractArrival.PeekEdge.TOP, -12.0
-	)
-
-
-func _apply_arrival_on_area(
-	player_node: CharacterBody2D,
-	area: Area2D,
-	along_axis: int,
-	peek_edge: InteractArrival.PeekEdge,
-	peek_margin: float
-) -> void:
-	player_node.global_position = InteractArrival.place_on_area(
-		player_node, area, _arrival_t, along_axis, peek_edge, peek_margin
-	)
-	call_deferred("_clamp_arrived_player")
-
-
-func _clamp_arrived_player() -> void:
-	if is_instance_valid(_player):
-		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_X)
-
-
 func _arm_zone_grace(zone_id: String) -> void:
 	match zone_id:
 		"cafeteria":
@@ -437,8 +410,6 @@ func _arm_zone_grace(zone_id: String) -> void:
 			_lounge_zone_armed = true
 		"classroom":
 			_classroom_zone_armed = true
-	if _active_zone == zone_id:
-		_show_interact_prompt()
 
 
 func _wake_static_colliders() -> void:

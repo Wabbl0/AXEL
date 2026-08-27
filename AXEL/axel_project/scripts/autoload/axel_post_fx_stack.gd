@@ -1,10 +1,12 @@
 extends Node
 ## Global noir + scanline + CRT stack for all non-combat scenes.
-## Combat scenes under res://combat/ are excluded (combat uses its own FX).
+## Combat scenes under res://combat/ are excluded unless COMBAT_ROOM_FX_TEST is on.
 
 const NOIR_SCENE := "res://scenes/fx/NoirPaletteOverlay.tscn"
 const SCANLINE_SCENE := "res://scenes/fx/ScanlineOverlay.tscn"
 const CRT_SCENE := "res://scenes/fx/CrtPluginOverlay.tscn"
+## Flat CRT for combat (same shader, zero curve/vignette/rim) — edge-fringe fix without TV glass.
+const CRT_COMBAT_SCENE := "res://scenes/fx/CrtCombatOverlay.tscn"
 const MANAGED_GROUP := "axel_post_fx_managed"
 ## Test-only 8-band palette. Production overlay scene stays on the 3-band shader.
 const NOIR_8BAND_SHADER := "res://tools/visual_style/shaders/noir_palette_8band_test.gdshader"
@@ -13,9 +15,14 @@ const NOIR_8BAND_SHADER := "res://tools/visual_style/shaders/noir_palette_8band_
 ## Or launch with env AXEL_NOIR_8BAND=1 (same effect; no file edit). Keep false for production 3-band.
 const DEBUG_USE_NOIR_8BAND_TEST := true
 
+## Temporary test: attach room noir/scanline/CRT on res://combat/* (not AI_DOCS canon).
+## Flip false to restore combat's own ScanlineOverlay-only look.
+const COMBAT_ROOM_FX_TEST := true
+
 const _OVERLAY_NAME_NOIR := "NoirPaletteOverlay"
 const _OVERLAY_NAME_SCANLINE := "ScanlineOverlay"
 const _OVERLAY_NAME_CRT := "CrtPluginOverlay"
+const _OVERLAY_NAME_CRT_COMBAT := "CrtCombatOverlay"
 
 var _attached_scene: Node = null
 var _noir: CanvasLayer = null
@@ -65,7 +72,7 @@ func _on_scene_changed() -> void:
 
 
 func _should_skip_post_fx(scene: Node) -> bool:
-	if is_combat_scene(scene):
+	if is_combat_scene(scene) and not COMBAT_ROOM_FX_TEST:
 		return true
 	if OS.has_environment("AXEL_DISABLE_POST_FX") and OS.get_environment("AXEL_DISABLE_POST_FX") == "1":
 		return true
@@ -133,7 +140,8 @@ func _attach_to_scene(scene: Node) -> void:
 	_remove_legacy_scene_overlays(scene)
 	_noir = _instantiate_overlay(NOIR_SCENE) as CanvasLayer
 	_scanline = _instantiate_overlay(SCANLINE_SCENE) as CanvasLayer
-	_crt = _instantiate_overlay(CRT_SCENE) as CanvasLayer
+	var crt_path := CRT_COMBAT_SCENE if is_combat_scene(scene) else CRT_SCENE
+	_crt = _instantiate_overlay(crt_path) as CanvasLayer
 	if _noir == null or _scanline == null or _crt == null:
 		push_warning("AxelPostFxStack: failed to instantiate one or more overlay scenes.")
 		_noir = null
@@ -179,7 +187,7 @@ func _apply_noir_8band_shader() -> void:
 
 
 func _remove_legacy_scene_overlays(scene: Node) -> void:
-	for overlay_name in [_OVERLAY_NAME_NOIR, _OVERLAY_NAME_SCANLINE, _OVERLAY_NAME_CRT]:
+	for overlay_name in [_OVERLAY_NAME_NOIR, _OVERLAY_NAME_SCANLINE, _OVERLAY_NAME_CRT, _OVERLAY_NAME_CRT_COMBAT]:
 		var existing := scene.get_node_or_null(overlay_name)
 		if existing != null and not existing.is_in_group(MANAGED_GROUP):
 			existing.queue_free()

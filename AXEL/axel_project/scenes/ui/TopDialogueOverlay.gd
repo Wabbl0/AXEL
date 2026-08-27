@@ -42,8 +42,10 @@ const BASE_BORDER := Color(0.290196, 0, 0, 1)
 const DIM_BORDER := Color(0.290196, 0, 0, 0.35)
 const BAR_MIN_HEIGHT := 136.0
 ## Player / narration. Other speakers (`AXEL: ...`) use bright red.
+## Opt-in `|grey|` (never shown) types light grey — wins over red when both apply.
 const PLAYER_LINE_COLOR := Color(1, 1, 1, 1)
 const OTHER_SPEAKER_COLOR := Color(1, 0, 0, 1)
+const GREY_SPEAKER_COLOR := Color(0.72, 0.72, 0.72, 1)
 
 ## Shared typewriter tape position across rooms (seconds into v4).
 static var _type_loop_pos_sec := 0.0
@@ -95,6 +97,9 @@ var _type_loop_wanted := false
 
 
 func _ready() -> void:
+	# Scene instances sometimes hide this CanvasLayer with the editor eye.
+	# Only the inner bar (_fade_root) should start hidden.
+	visible = true
 	layer = 111
 	_fade_root.visible = false
 	_fade_root.modulate.a = 0.0
@@ -488,7 +493,8 @@ func _scramble_glitch(length: int) -> void:
 			return
 
 
-## Splits `|beat:<seconds>|` and `|other|` markers from display text. Malformed tokens stay literal.
+## Splits `|beat:<seconds>|`, `|other|`, and `|grey|` markers from display text.
+## Malformed tokens stay literal.
 ## Returns { "display": String, "segments": Array of {kind:text|beat, ...} }.
 func _parse_dialogue_segments(raw: String) -> Dictionary:
 	var segments: Array = []
@@ -501,7 +507,7 @@ func _parse_dialogue_segments(raw: String) -> Dictionary:
 			var close := raw.find("|", i + 1)
 			if close > i:
 				var token := raw.substr(i + 1, close - i - 1)
-				if token == "other":
+				if token == "other" or token == "grey":
 					i = close + 1
 					continue
 				if token.begins_with("beat:"):
@@ -549,10 +555,18 @@ func _is_other_speaker_line(text: String) -> bool:
 	return true
 
 
+func _is_grey_speaker_line(text: String) -> bool:
+	return text.contains("|grey|")
+
+
 func _apply_line_color(text: String) -> void:
 	if not is_instance_valid(_label):
 		return
-	var color := OTHER_SPEAKER_COLOR if _is_other_speaker_line(text) else PLAYER_LINE_COLOR
+	var color := PLAYER_LINE_COLOR
+	if _is_grey_speaker_line(text):
+		color = GREY_SPEAKER_COLOR
+	elif _is_other_speaker_line(text):
+		color = OTHER_SPEAKER_COLOR
 	_label.add_theme_color_override("font_color", color)
 
 
@@ -661,6 +675,7 @@ func show_lines(
 	if texts.is_empty():
 		return
 
+	visible = true
 	_line_token += 1
 	var token := _line_token
 	_sequence_active = true

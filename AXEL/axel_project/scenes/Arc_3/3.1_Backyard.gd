@@ -24,9 +24,12 @@ const _LEAF_GATE_SOFTNESS := 12.0
 var _door_interact_area: Area2D
 var _memory_area: Area2D
 var _active_zone: String = ""
+var _arrival_latched_zone: String = ""
+var _enter_dialogue_pending := false
 var _is_transitioning := false
 var _pending_door_peek := false
 var _arrival_t := InteractArrival.DEFAULT_T
+var _cover_layout_ready := false
 var _door_zone_armed := true
 var _memory_zone_armed := true
 ## Texture-pixel position captured from the MemoryIndicator node's editor position.
@@ -51,13 +54,21 @@ func _ready() -> void:
 	_memory_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/MemoryInteractArea"
 	) as Area2D
-	_connect_zone(_door_interact_area, "door")
-	_connect_zone(_memory_area, "memory")
 	_apply_collected_memory()
+	set_process(true)
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	call_deferred("_restore_player_position_if_needed")
+	_enter_dialogue_pending = _will_play_enter_dialogue()
 	call_deferred("_play_enter_dialogue")
+
+
+func _will_play_enter_dialogue() -> bool:
+	if not GameManager.backyard_enter_line_seen:
+		return true
+	if GameManager.has_memory_scene(MEMORY_KEY) and not GameManager.backyard_cigarette_line_seen:
+		return true
+	return false
 
 
 func _restore_player_position_if_needed() -> void:
@@ -66,40 +77,70 @@ func _restore_player_position_if_needed() -> void:
 	if GameManager.take_backyard_spawn_side() == "cafeteria_door":
 		_pending_door_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_door_peek_if_pending")
+		if _cover_layout_ready:
+			call_deferred("_apply_door_peek_after_wake")
 		return
 	if GameManager.has_backyard_memory_return_pos():
 		call_deferred("_apply_memory_return_if_pending")
 		return
 
 
-func _connect_zone(area: Area2D, zone_id: String) -> void:
-	if not is_instance_valid(area):
-		return
-	area.body_entered.connect(func(body: Node) -> void:
-		_on_zone_body_entered(body, zone_id)
-	)
-	area.body_exited.connect(func(body: Node) -> void:
-		_on_zone_body_exited(body, zone_id)
-	)
-
-
 func _play_enter_dialogue() -> void:
 	if not is_instance_valid(_top_dialogue):
+		_enter_dialogue_pending = false
 		return
 	if not GameManager.backyard_enter_line_seen:
 		GameManager.set_backyard_enter_line_seen(true)
+		_enter_dialogue_pending = false
 		await _top_dialogue.show_lines(ENTER_LINES)
 		return
 	if GameManager.has_memory_scene(MEMORY_KEY) and not GameManager.backyard_cigarette_line_seen:
 		GameManager.set_backyard_cigarette_line_seen(true)
+		_enter_dialogue_pending = false
 		await _top_dialogue.show_lines(CIGARETTE_LINES)
+		return
+	_enter_dialogue_pending = false
+
+
+func _process(_delta: float) -> void:
+	if not _arrival_latched_zone.is_empty() and InteractZoneGate.movement_pressed():
+		_arrival_latched_zone = ""
+	_refresh_active_zone()
+
+
+func _refresh_active_zone() -> void:
+	if _is_transitioning:
+		return
+	var prev := _active_zone
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+		_active_zone = ""
+		if not prev.is_empty():
+			_hide_interact_prompt()
+		return
+	if not _arrival_latched_zone.is_empty():
+		_active_zone = _arrival_latched_zone
+	else:
+		_active_zone = ""
+		if InteractZoneGate.body_in_area(_memory_area, _player):
+			_active_zone = "memory"
+		elif InteractZoneGate.body_in_area(_door_interact_area, _player):
+			_active_zone = "door"
+	if _active_zone != prev:
+		if _active_zone.is_empty():
+			_hide_interact_prompt()
+		else:
+			_show_interact_prompt()
+	elif not _active_zone.is_empty():
+		_show_interact_prompt()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_transitioning:
 		return
 	if not _is_interaction_event(event):
+		return
+	_refresh_active_zone()
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
 		return
 	if _active_zone.is_empty():
 		return
@@ -122,21 +163,6 @@ func _is_interaction_event(event: InputEvent) -> bool:
 	if not key_event.pressed or key_event.echo:
 		return false
 	return key_event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
-
-
-func _on_zone_body_entered(body: Node, zone_id: String) -> void:
-	if body != _player or _is_transitioning:
-		return
-	_active_zone = zone_id
-	_show_interact_prompt()
-
-
-func _on_zone_body_exited(body: Node, zone_id: String) -> void:
-	if body != _player:
-		return
-	if _active_zone == zone_id:
-		_active_zone = ""
-		_hide_interact_prompt()
 
 
 func _zone_area(zone_id: String) -> Area2D:
@@ -174,9 +200,7 @@ func _sync_memory_indicator() -> void:
 func _show_interact_prompt() -> void:
 	if _is_transitioning or _active_zone.is_empty():
 		return
-	if _active_zone == "door" and not _door_zone_armed:
-		return
-	if _active_zone == "memory" and not _memory_zone_armed:
+	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -254,12 +278,20 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	_sync_memory_indicator()
+	_cover_layout_ready = true
 	call_deferred("_wake_static_colliders")
 	call_deferred("_configure_behind_occlusion_masks")
 	if GameManager.has_backyard_memory_return_pos():
 		call_deferred("_apply_memory_return_if_pending")
 	elif _pending_door_peek:
-		call_deferred("_apply_door_peek_if_pending")
+		call_deferred("_apply_door_peek_after_wake")
+
+
+func _apply_door_peek_after_wake() -> void:
+	_wake_static_colliders()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_apply_door_peek_if_pending()
 
 
 func _apply_memory_return_if_pending() -> void:
@@ -272,30 +304,25 @@ func _apply_memory_return_if_pending() -> void:
 func _apply_door_peek_if_pending() -> void:
 	if not _pending_door_peek or not is_instance_valid(_player):
 		return
+	if not _cover_layout_ready:
+		return
 	_pending_door_peek = false
-	_player.global_position = InteractArrival.place_on_area(
+	InteractArrival.apply_arrival_inside(
 		_player,
 		_door_interact_area,
 		_arrival_t,
 		Vector2.AXIS_Y,
 		InteractArrival.PeekEdge.RIGHT,
-		12.0
+		0.5
 	)
-	call_deferred("_clamp_arrived_player")
+	_arrival_latched_zone = "door"
 	_arm_door_zone_grace()
-
-
-func _clamp_arrived_player() -> void:
-	if is_instance_valid(_player):
-		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_Y)
 
 
 func _arm_door_zone_grace() -> void:
 	_door_zone_armed = false
 	await get_tree().create_timer(DOOR_ZONE_GRACE_SEC).timeout
 	_door_zone_armed = true
-	if _active_zone == "door":
-		_show_interact_prompt()
 
 
 func _wake_static_colliders() -> void:

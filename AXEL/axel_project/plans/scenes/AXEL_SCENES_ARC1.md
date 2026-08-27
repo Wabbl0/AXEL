@@ -50,7 +50,7 @@
 | Return outside    | School Exterior  |
 
 
-**Implemented (Godot):** `1.2_Corridor.tscn` + `1.2_Corridor.gd` — walkable corridor (`STATIC_LOCKED`/`COVER`); default spawn is the `Player` node on first cover-fit (`PlayerSpawnSync`); locker `[E]` zone → `1.3_LockerHub.tscn`; left-edge `ExteriorInteractArea` `[E]` at spawn → `1.1_SchoolExterior.tscn` (`exterior_spawn_side="corridor_door"`; `interact_arrival_t` along the interact box); return from 1.1 peeks on `ExteriorInteractArea` via `corridor_spawn_side="exterior_door"`. Right-edge `ExitTrigger` → `1.4_BasementDoor.tscn` (`basement_spawn_side="corridor_left"`; arrival height maps along each `ExitTrigger` via `interact_arrival_t` + `InteractArrival` — not floor-line world Y). Once-ever smell + locker lines via `GameManager`. No embedded post-FX.
+**Implemented (Godot):** `1.2_Corridor.tscn` + `1.2_Corridor.gd` — walkable corridor (`STATIC_LOCKED`/`COVER`); default spawn is the `Player` node on first cover-fit (`PlayerSpawnSync`); locker `[E]` zone → `1.3_LockerHub.tscn`; left-edge `ExteriorInteractArea` `[E]` at spawn → `1.1_SchoolExterior.tscn` (`exterior_spawn_side="corridor_door"`; `interact_arrival_t` along the interact box); return from 1.1 lands **inside** `ExteriorInteractArea` (`corridor_spawn_side="exterior_door"`; `apply_arrival_inside`, t on Y — top of 1.1’s door box → top of 1.2’s box). Right-edge `ExitTrigger` → `1.4_BasementDoor.tscn` (`basement_spawn_side="corridor_left"`; arrival height maps along each `ExitTrigger` via `interact_arrival_t` + `InteractArrival` — not floor-line world Y). Once-ever smell + locker lines via `GameManager`. No embedded post-FX.
 
 ---
 
@@ -64,7 +64,7 @@
 > [beat]  
 > Was your memory so bad you needed a map of the school?
 
-**Hub:** no travel menu. Map paper hotspot opens `1.3_SchoolMap.tscn`. Red `X` (CanvasLayer 110, above CRT) returns to corridor.
+**Hub:** no travel menu. Map paper hotspot opens `1.3_SchoolMap.tscn`. Red `X` (CanvasLayer 110, above CRT), Esc, Backspace, or Delete returns to corridor.
 
 **School map (`1.3_SchoolMap`) choices:**
 
@@ -77,7 +77,7 @@
 | Go to the teacher's lounge         | Teachers' Lounge                 |
 | ENTER THE BASEMENT *(red, locked)* | Basement Blocked / Basement Door |
 
-**Implemented (Godot):** `1.3_LockerHub.tscn` + `1.3_LockerHub.gd` — locker background only; `MapHotspot` (`UiPolygonHotspot`, `background_path = ../Background`) on the MAP paper → `change_scene_to_file` to `1.3_SchoolMap.tscn` (clicks ignored during first-visit dialogue); red `X` on CanvasLayer 110 exits to corridor. `1.3_SchoolMap.tscn` + `.gd` — flat black placeholder background; bottom-left travel choices (four destinations + locked red basement); red `X` on CanvasLayer 110 returns to locker hub. Reachable from `1.2_Corridor.tscn` locker interact zone. First-visit lines use `TopDialogueOverlay.show_lines()`; player can skip with click / E / Space / Enter while the bar is up (`CrtPowerFx.cancel()` on skip — no session freeze). **Tune map hit area:** `MapHotspot/PolygonAnchor/CollisionPolygon2D` vertex handles in texture-pixel space.
+**Implemented (Godot):** `1.3_LockerHub.tscn` + `1.3_LockerHub.gd` — locker background only; `MapHotspot` (`UiPolygonHotspot`, `background_path = ../Background`) on the MAP paper → `change_scene_to_file` to `1.3_SchoolMap.tscn` (clicks ignored during first-visit dialogue); red `X` on CanvasLayer 110, Esc, Backspace, or Delete exits to corridor. `1.3_SchoolMap.tscn` + `.gd` — flat black placeholder background; bottom-left travel choices (four destinations + locked red basement); red `X` on CanvasLayer 110, Esc, Backspace, or Delete returns to locker hub. Reachable from `1.2_Corridor.tscn` locker interact zone. First-visit lines use `TopDialogueOverlay.show_lines()`; player can skip with click / E / Space / Enter while the bar is up (`CrtPowerFx.cancel()` on skip — no session freeze). **Tune map hit area:** `MapHotspot/PolygonAnchor/CollisionPolygon2D` vertex handles in texture-pixel space.
 
 
 ---

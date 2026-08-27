@@ -26,7 +26,7 @@
 | Return to locker  | Locker Hub      |
 
 
-**Implemented (Godot):** `5.1_Classroom.tscn` + `.gd` — walkable room with hand-drawn art, kept box walls plus nine drag-to-place furniture polygon blockers, door back to corridor (`interact_arrival_t` along the door), one-shot desk `[E]` → `5.2_ClassroomDesk`, looping `MemoryIndicator` (drag onto board; no board `[E]` yet). Authored Player scale `0.298` / speed `255.9` (50% larger than the shared sheet-retuned `0.198`). Enter lines once via `GameManager.classroom_enter_line_seen`. After desk leave, `classroom_desk_seen` disables the desk zone and restores Mike via `classroom_desk_return_pos`. Interact chip offset is zero. 5.3/5.4 still deferred.
+**Implemented (Godot):** `5.1_Classroom.tscn` + `.gd` — walkable room with hand-drawn art, kept box walls plus nine drag-to-place furniture polygon blockers, door back to corridor (`interact_arrival_t` along the door), one-shot desk `[E]` → `5.2_ClassroomDesk`. Board uses a faint kitchen-style ink glow (`BoardGlow/Outline` Line2D under `EnvironmentColliders`, `prop_line_halo.gdshader`) — drag the line points around the painted board; not a `MemoryIndicator` blob. Furniture 6–9 have behind filters (`FurnitureBlock6_Behind` … `FurnitureBlock9_Behind`, `feather_px = 2`) so Mike fades when standing behind those desks. Authored Player scale `0.298` / speed `255.9` (50% larger than the shared sheet-retuned `0.198`). Enter lines once via `GameManager.classroom_enter_line_seen`. After desk leave, `classroom_desk_seen` disables the desk zone and restores Mike via `classroom_desk_return_pos`. Interact chip offset is zero. 5.3/5.4 still deferred.
 
 ---
 

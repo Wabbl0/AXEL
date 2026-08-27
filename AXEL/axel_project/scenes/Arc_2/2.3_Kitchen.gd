@@ -17,6 +17,8 @@ var _flashlight_interact_area: Area2D
 var _flashlight_visual: Node2D
 var _flashlight_glow_tween: Tween
 var _active_zone: String = ""
+var _arrival_latched_zone: String = ""
+var _enter_dialogue_pending := false
 var _is_transitioning := false
 var _flashlight_line_running := false
 var _pending_cafeteria_peek := false
@@ -41,12 +43,13 @@ func _ready() -> void:
 	_flashlight_visual = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/FlashlightVisual"
 	) as Node2D
-	_connect_zone(_door_interact_area, "door")
-	_connect_zone(_flashlight_interact_area, "flashlight")
 	_apply_flashlight_visibility()
+	set_process(true)
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	call_deferred("_restore_player_position_if_needed")
+	if not GameManager.kitchen_enter_line_seen:
+		_enter_dialogue_pending = true
 	call_deferred("_play_enter_dialogue")
 
 
@@ -56,18 +59,7 @@ func _restore_player_position_if_needed() -> void:
 	if GameManager.take_kitchen_spawn_side() == "cafeteria_door":
 		_pending_cafeteria_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		call_deferred("_apply_cafeteria_peek_if_pending")
-
-
-func _connect_zone(area: Area2D, zone_id: String) -> void:
-	if not is_instance_valid(area):
-		return
-	area.body_entered.connect(func(body: Node) -> void:
-		_on_zone_body_entered(body, zone_id)
-	)
-	area.body_exited.connect(func(body: Node) -> void:
-		_on_zone_body_exited(body, zone_id)
-	)
+		call_deferred("_apply_cafeteria_peek_after_wake")
 
 
 func _apply_flashlight_visibility() -> void:
@@ -109,17 +101,66 @@ func _stop_flashlight_glow() -> void:
 
 func _play_enter_dialogue() -> void:
 	if not is_instance_valid(_top_dialogue):
+		_enter_dialogue_pending = false
 		return
 	if GameManager.kitchen_enter_line_seen:
+		_enter_dialogue_pending = false
 		return
 	GameManager.set_kitchen_enter_line_seen(true)
+	_enter_dialogue_pending = false
 	await _top_dialogue.show_lines(ENTER_LINES)
+
+
+func _process(_delta: float) -> void:
+	if not _arrival_latched_zone.is_empty() and InteractZoneGate.movement_pressed():
+		_arrival_latched_zone = ""
+	_refresh_active_zone()
+
+
+func _refresh_active_zone() -> void:
+	if _is_transitioning:
+		return
+	var prev := _active_zone
+	if (
+		_enter_dialogue_pending
+		or _flashlight_line_running
+		or InteractZoneGate.dialogue_busy(_top_dialogue)
+	):
+		_active_zone = ""
+		if not prev.is_empty():
+			_hide_interact_prompt()
+		return
+	if not _arrival_latched_zone.is_empty():
+		_active_zone = _arrival_latched_zone
+	else:
+		_active_zone = ""
+		if InteractZoneGate.body_in_area(_door_interact_area, _player):
+			_active_zone = "door"
+		elif (
+			InteractZoneGate.body_in_area(_flashlight_interact_area, _player)
+			and not GameManager.get_flag("hasFlashlight")
+		):
+			_active_zone = "flashlight"
+	if _active_zone != prev:
+		if _active_zone.is_empty():
+			_hide_interact_prompt()
+		else:
+			_show_interact_prompt()
+	elif not _active_zone.is_empty():
+		_show_interact_prompt()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_transitioning:
 		return
 	if not _is_interaction_event(event):
+		return
+	_refresh_active_zone()
+	if (
+		_enter_dialogue_pending
+		or _flashlight_line_running
+		or InteractZoneGate.dialogue_busy(_top_dialogue)
+	):
 		return
 	if _active_zone.is_empty():
 		return
@@ -139,23 +180,6 @@ func _is_interaction_event(event: InputEvent) -> bool:
 	if not key_event.pressed or key_event.echo:
 		return false
 	return key_event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
-
-
-func _on_zone_body_entered(body: Node, zone_id: String) -> void:
-	if body != _player or _is_transitioning:
-		return
-	if zone_id == "flashlight" and GameManager.get_flag("hasFlashlight"):
-		return
-	_active_zone = zone_id
-	_show_interact_prompt()
-
-
-func _on_zone_body_exited(body: Node, zone_id: String) -> void:
-	if body != _player:
-		return
-	if _active_zone == zone_id:
-		_active_zone = ""
-		_hide_interact_prompt()
 
 
 func _zone_area(zone_id: String) -> Area2D:
@@ -181,11 +205,13 @@ func _interact_anchor() -> Vector2:
 func _show_interact_prompt() -> void:
 	if _is_transitioning or _active_zone.is_empty():
 		return
-	if _active_zone == "door" and not _door_zone_armed:
-		return
-	if _active_zone == "flashlight" and (
-		_flashlight_line_running or GameManager.get_flag("hasFlashlight")
+	if (
+		_enter_dialogue_pending
+		or _flashlight_line_running
+		or InteractZoneGate.dialogue_busy(_top_dialogue)
 	):
+		return
+	if _active_zone == "flashlight" and GameManager.get_flag("hasFlashlight"):
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -262,7 +288,14 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")
 	if _pending_cafeteria_peek:
-		call_deferred("_apply_cafeteria_peek_if_pending")
+		call_deferred("_apply_cafeteria_peek_after_wake")
+
+
+func _apply_cafeteria_peek_after_wake() -> void:
+	_wake_static_colliders()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_apply_cafeteria_peek_if_pending()
 
 
 func _apply_cafeteria_peek_if_pending() -> void:
@@ -278,6 +311,7 @@ func _apply_cafeteria_peek_if_pending() -> void:
 		InteractArrival.PeekEdge.TOP,
 		-12.0
 	)
+	_arrival_latched_zone = "door"
 	call_deferred("_clamp_arrived_player")
 	_arm_door_zone_grace()
 
@@ -291,8 +325,6 @@ func _arm_door_zone_grace() -> void:
 	_door_zone_armed = false
 	await get_tree().create_timer(DOOR_ZONE_GRACE_SEC).timeout
 	_door_zone_armed = true
-	if _active_zone == "door":
-		_show_interact_prompt()
 
 
 func _wake_static_colliders() -> void:

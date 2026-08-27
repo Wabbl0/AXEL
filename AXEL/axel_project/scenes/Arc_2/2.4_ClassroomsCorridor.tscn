@@ -24,7 +24,7 @@ size = Vector2(2166, 40)
 size = Vector2(244, 4960)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
-size = Vector2(4960, 40)
+size = Vector2(4960, 118)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_bottom"]
 size = Vector2(2166, 40)
@@ -57,7 +57,7 @@ size = Vector2(440, 737)
 size = Vector2(986, 513)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_vertical_size_ramp"]
-size = Vector2(1600, 3000)
+size = Vector2(1664, 3328)
 
 [node name="2_4_ClassroomsCorridor" type="Node2D" unique_id=1637684553]
 script = ExtResource("1_corridor")
@@ -106,7 +106,7 @@ shape = SubResource("RectangleShape2D_wall_right")
 position = Vector2(2425, 3650)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=389195536]
-position = Vector2(55, 0)
+position = Vector2(55, -39)
 shape = SubResource("RectangleShape2D_wall_bottom")
 
 [node name="VerticalBottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1888001103]
@@ -190,6 +190,7 @@ position = Vector2(5933, 1900)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/VerticalSizeRampArea" unique_id=845556429]
+position = Vector2(-77, 84)
 shape = SubResource("RectangleShape2D_vertical_size_ramp")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1140767310]

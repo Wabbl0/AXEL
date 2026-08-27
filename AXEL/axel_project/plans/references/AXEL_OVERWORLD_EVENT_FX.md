@@ -72,7 +72,7 @@ Pause cadence during scripted intros via `set_cadence_enabled(false)`.
 | Overlay | Shader source | Role |
 |---------|---------------|------|
 | `IntroGlitchOverlay` | `tools/visual_style/shaders/option_2_vhs_glitch.gdshader` | Discrete burst |
-| `InterfacePulseOverlay` | `tools/visual_style/shaders/option_1_crt_tv.gdshader` | Always-on interference wave + sustained / pulsed CRT surges. Intro pulse uses tighter `player_chroma` (`0.001` vs default `0.003`) on white Mike pixels only. |
+| `InterfacePulseOverlay` | `tools/visual_style/shaders/option_1_crt_tv.gdshader` | Always-on interference wave + sustained / pulsed CRT surges. Pulse no longer warps, chroma-splits, or vignettes (`curvature`/`chroma`/`vignette`/`player_chroma` all `0` on the overlay) — keeps scanlines, roll, noise, and glitch bursts only so it does not peel a second lens off the baseline CRT. |
 
 ## Canvas layer stack
 

@@ -53,11 +53,11 @@ Live authored Player scale / speed at **1920×1280** (then `PlayerCoverSync` mul
 | 2.1 cafeteria | `0.298` | `255.9` |
 | 2.3 kitchen | `0.331` | `283.9` |
 | 2.4 classrooms corridor | `0.198` | `185.3` |
-| 3.1 backyard | `0.198` | `185.3` |
-| 4.1 teachers’ lounge | `0.198` | `185.3` |
+| 3.1 backyard | `0.277` | `241.0` |
+| 4.1 teachers’ lounge | `0.257` | `226.9` |
 | 5.1 classroom | `0.298` | `255.9` |
 
-Kitchen is above scale `0.3` (no small-scale extra). 2.1 / 5.1 are 50% larger than the shared `0.198`. 1.1 gets the most below-0.3 extra.
+Kitchen is above scale `0.3` (no small-scale extra). 2.1 / 5.1 are 50% larger than the shared `0.198`. 3.1 is 40% larger (`0.277`). 4.1 is 30% larger (`0.257`). 1.1 gets the most below-0.3 extra.
 
 Old profile names (`classroom_large` `0.86`, `library_large` `0.78`) are retired — do not copy those numbers onto the new sheet.
 
@@ -150,8 +150,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 
 Do not slice the raw `kävely_etu` / `kävely_sivu` drawings as a grid. Pack with `tools/pack_mike_walk_sheet.py` (ink-box cuts). Live look:
 
-- Head: inverted source face (painted white in `kävely_*` becomes black holes — no extra fill plate). Eyes/scribble holes stay opaque.
-- Chin down: solid white ink (not see-through).
+- Whole figure: inverted source ink (painted white in `kävely_*` becomes black holes — no extra fill plate). Eyes/scribble holes stay opaque. Head and body share the same charcoal invert — do not flatten chin-down to solid white.
 - Empty around Mike: transparent.
 - Packer drops far-off specks (`FAR_BLOB_DIST`) and extra islands under 120 px (stray waist/head strokes).
 - `white_sprite.gdshader` keeps packed RGB and multiplies `COLOR.rgb` so `ShadowOutline` modulate can be black. Mike is **not** noir-inverted. CRT still runs on him. Play and the editor show `ShadowOutline` with the shared 1.2 fit (a slightly larger black copy behind the white figure) on every pose. Pose nudges must not shift that silhouette — `Player.gd` divides the shadow offset by the outline scale. Do not force `ShadowOutline.visible = false` in the editor tool.
@@ -168,7 +167,7 @@ If Mike looks wrong vs the furniture **at 1920×1280**, change the authored scal
 
 ### Rule: PlayerLayer extras share the cover ratio
 
-Anything on `PlayerLayer` that should match the drawing (memory glow) gets the same cover ratio via `bind_extra_node` + `apply`. Props under `EnvironmentColliders` (e.g. kitchen flashlight) already follow `env.scale` — no second scaler.
+Anything on `PlayerLayer` that should match the drawing (memory glow) gets the same cover ratio via `bind_extra_node` + `apply`. Props under `EnvironmentColliders` (e.g. kitchen flashlight, 5.1 board glow) already follow `env.scale` — no second scaler.
 
 ### Rule: first-visit enter lines play once
 
@@ -180,9 +179,11 @@ Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialog
 
 ### Rule: room-to-room spawn maps along leave/arrive boxes
 
-**Approved example (match this):** `1.2_Corridor` ↔ `1.4_BasementDoor` via each scene’s `ExitTrigger`. Top of the leave box → top of the arrive box; bottom → bottom. Do **not** copy world Y, floor-line offsets, or scene size.
+**Frozen peek (do not change to “fix” others):** `1.2`→`1.4`, `1.4`→`2.1`, `2.1`→`2.3` keep into-room peek past the short edge (`InteractArrival.place_on_area` + `clamp_hitbox_to_walls`). **Approved peek example:** `1.2_Corridor` ↔ `1.4_BasementDoor` via each scene’s `ExitTrigger`. Top of the leave box → top of the arrive box; bottom → bottom. Do **not** copy world Y, floor-line offsets, or scene size.
 
-For `[E]` InteractAreas and other side `ExitTrigger`s, use the same helper: save `GameManager.interact_arrival_t` (0 = top/left of the source box, 1 = bottom/right). Measure `t` from the Front hitbox in `EnvironmentColliders` texture space (the circle sits below the Player node). Take `t` **once** on the destination (deferred restore after first layout, like `1.2`). On every `layout_applied`: always `PlayerSpawnSync` + cover-sync; if a door peek is still pending, `call_deferred` place — do **not** place-and-clear inside the first layout. Map `t` onto the matching dest box, keep the into-room peek on the short axis, land the Front circle on that point, then nudge with `InteractArrival.clamp_hitbox_to_walls`. Helper: `scenes/core/interact_arrival.gd`. Missing `t` (hub/map) falls back to center (`0.5`). Fresh Play / F6 still uses the Player node. Memory stills keep exact standing-spot restore. Live `[E]` pairs: `1.4`↔`2.1`, `2.1`↔`2.3`/`3.1`/`2.4`, `2.4`↔`4.1`/`5.1`, `1.1`↔`1.2`. Live walk-off: `1.2`↔`1.4`. Regression: `scenes/core/test/interact_arrival_check.gd`.
+**Non-frozen `[E]` pairs:** save `GameManager.interact_arrival_t` (0 = top/left of the source box, 1 = bottom/right). Measure `t` from the Front hitbox in `EnvironmentColliders` texture space (the circle sits below the Player node). Take `t` **once** on the destination (deferred restore after first layout, like `1.2`). On every `layout_applied`: always `PlayerSpawnSync` + cover-sync; if a door peek is still pending, `call_deferred` place — do **not** place-and-clear inside the first layout, and do **not** re-apply cover/depth after place (scale change moves the Front circle). Map `t` onto the matching dest box with `InteractArrival.apply_arrival_inside`: land the Front circle **inside** the live box (inset by Front radius; short axis inward from the enter edge at `depth_frac`, usually `0.5`), then `resolve_inside_clearance` so the whole walk drawing stays on the floor (may nudge a little off the box when a wall overlaps — e.g. 4.1 door vs TopWall). Arrival must read the live InteractArea rect every Play so editor drags are followed — never a hardcoded spawn `Vector2`.
+
+**Exception:** 2.1 kitchen return stands the **Player node** on `KitchenInteractArea`’s X (from leave `t`) at texture Y `150` (~2040×150) and skips the wall clamp. Helper: `scenes/core/interact_arrival.gd`. Missing `t` (hub/map) falls back to center (`0.5`); map/hub travel still uses the Player node (no door box). Fresh Play / F6 still uses the Player node. Memory stills keep exact standing-spot restore. Live non-frozen `[E]` pairs on inside-box: `1.1`→`1.2`, `2.1`↔`2.4`/`3.1`, `2.4`↔`4.1`/`5.1`. Frozen: `1.2`↔`1.4`, `1.4`→`2.1`, `2.1`→`2.3` (reverses of frozen trips may keep peek if they already feel fine). Regression: `scenes/core/test/interact_arrival_check.gd`.
 
 ### Rule: Player node is the spawn (mandatory)
 
@@ -254,17 +255,23 @@ position) is **not** an offset. Child `position`, `visual_offset`, and
 `screen_offset` **are** offsets — leave them zero unless the user asks for
 one specific nudge (then scope it to that one zone/node).
 
-### Rule: each CollisionShape2D gets its own Shape2D resource
+### Rule: every CollisionShape2D is independent (mandatory)
 
-Never share one `RectangleShape2D` / `CircleShape2D` / other `Shape2D` SubResource across two `CollisionShape2D` nodes that should resize or scale independently.
+Every `CollisionShape2D` must work as an individual. Editing one must never resize, scale, or move another.
+
+**Why:** Godot stores the box/circle as a **shared** `Shape2D` resource. Duplicating a collider (a door, wall, or `[E]` zone) often leaves both nodes pointing at the same `SubResource`. Then changing size on `DoorSideRight` also changes `DoorSideLeft` — they look “linked.”
+
+**Always:**
+
+- Each `CollisionShape2D` gets its **own** `RectangleShape2D` / `CircleShape2D` / other `Shape2D`. No sharing.
+- After you duplicate a collider in the editor: select the shape in the Inspector → **Make Unique**.
+- In `.tscn` text: one `[sub_resource type="RectangleShape2D" id="..."]` per collider. Never two `shape = SubResource("same_id")` lines.
 
 **Exception:** Mike’s `CollisionFront` is *meant* to share `res://scenes/player/hitbox_front.tres` across every room. Do not Make Unique that.
 
-Godot stores the shape as a shared resource. If two doors point at the same SubResource, editing size/scale on one changes the other.
+Door blockers belong under their own `StaticBody2D` (e.g. `LoungeDoorBlock` → `Lounge_CollisionShape2D`), not as orphan `CollisionShape2D` children of `EnvironmentColliders`.
 
-1. After duplicating a `CollisionShape2D` in the editor: select the shape in the Inspector → **Make Unique**.
-2. In `.tscn` text: every door/interact/wall collider that must be tuned alone needs its own `[sub_resource type="RectangleShape2D" id="..."]` and a matching `shape = SubResource("...")`.
-3. Door blockers belong under their own `StaticBody2D` (e.g. `LoungeDoorBlock` → `Lounge_CollisionShape2D`), not as orphan `CollisionShape2D` children of `EnvironmentColliders`.
+Regression: `tools/qa/collision_shape_unique_check.gd` (`COLLISION_SHAPE_UNIQUE OK`).
 
 ### Rule: room-edge walls must hide Mike’s drawing (not only the feet circle)
 
@@ -273,10 +280,10 @@ The Front circle is what `move_and_slide` stops. The walk cell (`439×971`) plus
 **Required inset** (from the picture edge to the wall’s inner face) = how far the drawing sticks past the circle in that facing, times live Player scale. The checker computes this; do not copy a one-size-fits-all texture width.
 
 - Grow `LeftWall` / `RightWall` / `TopWall` / `BottomWall` **from the PNG edge inward**. Give each wall its own `RectangleShape2D` (Make Unique) so one edit does not resize the opposite wall.
-- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play). Do not thin walls that already pass.
+- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play) — 2.4 cafeteria arrival uses `apply_arrival_inside` clearance so the walk drawing clears `TopWall` even when `CafeteriaInteractArea` overlaps it. Do not thin walls that already pass.
 - Furniture / door blockers are not this rule.
 
-Live: 1.1 Top only; 1.2 / 1.4 / 2.1 / 2.3 / 3.1 / 4.1 / 5.1 edge walls that were too thin. Kitchen example: unique Left `200×2480` / Right `158×2480` / Top `3508×346` / Bottom `3508×193`. Regression: `tools/qa/wall_sprite_clearance_check.gd` (`WALL_SPRITE_CLEARANCE OK`).
+Live: 1.1 Top only; 1.2 / 1.4 / 2.1 / 2.3 / 3.1 / 4.1 / 5.1 edge walls that were too thin. Kitchen example: unique Left `200×2480` / Right `158×2480` / Top `3508×346` / Bottom `3508×193`. 3.1 after the 40% scale bump: Left `138×2480` / Right `132×2480` / Bottom `3508×162` (Top already thicker than required). Regression: `tools/qa/wall_sprite_clearance_check.gd` (`WALL_SPRITE_CLEARANCE OK`).
 
 ### Rule: interact-prompt "[E]" chip has no offset by default
 
@@ -297,7 +304,7 @@ After `_ready`, headless smoke MUST call:
 - `QaCanonValidators.collect_background_camera_findings(root, scene_path)`
 - `QaCanonValidators.collect_background_editor_lock_findings` (background must have `metadata/_edit_lock_`)
 
-New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_design_from_background`) and spawn through `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_walk_speed_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`. Room-edge walls: `tools/qa/wall_sprite_clearance_check.gd`.
+New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_design_from_background`) and spawn through `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_walk_speed_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`. Room-edge walls: `tools/qa/wall_sprite_clearance_check.gd`. Independent colliders: `tools/qa/collision_shape_unique_check.gd`.
 
 ### Playtest variants (optional)
 
@@ -342,7 +349,7 @@ Do not copy to new scenes without a design pass.
 - Zones: `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` / `Stump_Left_Behind` / `Rocks_Left_Behind` / `Rocks_Right_Behind` + `leaf_occlusion_zone.gd`
 - Wired in `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_polygons` → `white_sprite.gdshader`
 - Trees, stump, and rocks use a collision-front Y-gate (same as the tree trunk line): fade only when standing behind the object, not when overlapping from the front. `RightWall_Behind` uses cutoff `1e9` (no Y-gate) so only the polygon matters. Shader: cutoff `> 1e8` means “allow,” not “off.” Extra `CollisionPolygon2D` children under one behind zone all count (max 4 per zone). Each extra polygon uses the nearest rock/stump collision as its own front line.
-- Shader has 6 behind slots. Canon `feather_px = 2.0` on all behind zones (1.1 trees + wall + stump + rocks, 2.1 tables/chairs, 3.1 wall/bush/well)
+- Shader has 6 behind slots. Canon `feather_px = 2.0` on all behind zones (1.1 trees + wall + stump + rocks, 2.1 tables/chairs, 3.1 wall/bush/well, 5.1 furniture 6–9)
 
 ## What is walkable / shipped
 

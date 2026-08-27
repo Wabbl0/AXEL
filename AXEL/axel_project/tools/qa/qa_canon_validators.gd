@@ -266,111 +266,92 @@ static func collect_combat_test_findings(
 	return findings
 
 
-static func expected_economics_hud_x(viewport_w: float) -> Vector2:
-	var x0 := CombatTestScript.LAYOUT_CENTER_HUD_START
-	var x1 := CombatTestScript.LAYOUT_CENTER_HUD_END
-	if viewport_w >= CombatTestScript.RESPONSIVE_NARROW_W:
-		x0 = maxf(
-			CombatTestScript.LAYOUT_CENTER_HUD_START,
-			CombatTestScript.LAYOUT_CENTER_START + 0.02
-		)
-		x1 = minf(
-			CombatTestScript.LAYOUT_CENTER_HUD_END,
-			CombatTestScript.LAYOUT_CENTER_END - 0.02
-		)
-	return Vector2(x0, x1)
+static func expected_economics_hud_x(_viewport_w: float) -> Vector2:
+	## Legacy percentage helper — unused after HudCanvas free placement.
+	return Vector2.ZERO
 
 
-static func check_combat_hud_anchors(root_ui: Node, viewport_size: Vector2) -> PackedStringArray:
+static func check_combat_hud_anchors(root_ui: Node, viewport_size: Vector2 = Vector2.ZERO) -> PackedStringArray:
 	var violations: PackedStringArray = PackedStringArray()
 	if root_ui == null:
 		return PackedStringArray(["combat_test root is null"])
-	var viewport_w := viewport_size.x
-	var viewport_h := viewport_size.y
-	if viewport_w <= 0.0 or viewport_h <= 0.0:
-		return PackedStringArray(["viewport size must be positive"])
 
-	var economics_x := expected_economics_hud_x(viewport_w)
-	var expected_rects: Array = [
-		{
-			"name": "MetaBox",
-			"x0": CombatTestScript.LAYOUT_SIDE_START,
-			"y0": CombatTestScript.LAYOUT_CORNER_Y0,
-			"x1": CombatTestScript.LAYOUT_TOP_BOX_END,
-			"y1": CombatTestScript.LAYOUT_CORNER_Y1,
-		},
-		{
-			"name": "GoalBox",
-			"x0": CombatTestScript.LAYOUT_GOAL_BOX_START,
-			"y0": CombatTestScript.LAYOUT_CORNER_Y0,
-			"x1": CombatTestScript.LAYOUT_GOAL_BOX_END,
-			"y1": CombatTestScript.LAYOUT_CORNER_Y1,
-		},
-		{
-			"name": "EconomicsCenter",
-			"x0": economics_x.x,
-			"y0": CombatTestScript.LAYOUT_CENTER_HUD_Y0,
-			"x1": economics_x.y,
-			"y1": CombatTestScript.LAYOUT_CENTER_HUD_Y1,
-		},
-		{
-			"name": "PlayArea",
-			"x0": CombatTestScript.LAYOUT_SIDE_START,
-			"y0": CombatTestScript.LAYOUT_MAIN_Y0,
-			"x1": CombatTestScript.LAYOUT_SIDE_RIGHT_END,
-			"y1": CombatTestScript.LAYOUT_MAIN_END,
-		},
-	]
+	var canvas := root_ui.find_child("HudCanvas", true, false) as Control
+	if canvas == null:
+		return PackedStringArray(["HudCanvas missing"])
 
-	for spec in expected_rects:
-		var node_name: String = spec["name"]
-		var control := root_ui.find_child(node_name, true, false) as Control
-		if control == null:
-			violations.append("%s missing" % node_name)
+	const HUD_W := 3508.0
+	const HUD_H := 2480.0
+	const EPS := 1.0
+
+	# Authored canvas is drawing-pixel sized; runtime scale/position may differ.
+	var canvas_size := canvas.size
+	if canvas_size.x <= 1.0 or canvas_size.y <= 1.0:
+		canvas_size = Vector2(
+			absf(canvas.offset_right - canvas.offset_left),
+			absf(canvas.offset_bottom - canvas.offset_top)
+		)
+	if absf(canvas_size.x - HUD_W) > EPS or absf(canvas_size.y - HUD_H) > EPS:
+		violations.append(
+			"HudCanvas size=%.1fx%.1f expected %.0fx%.0f"
+			% [canvas_size.x, canvas_size.y, HUD_W, HUD_H]
+		)
+
+	var art := canvas.get_node_or_null("HudArt") as TextureRect
+	if art == null:
+		violations.append("HudArt missing under HudCanvas")
+	elif art.texture == null:
+		violations.append("HudArt has no texture")
+
+	for unique_name in REQUIRED_COMBAT_TEST_UNIQUE:
+		var node := root_ui.find_child(unique_name, true, false) as Node
+		if node == null:
+			violations.append("%s missing" % unique_name)
 			continue
-		_append_anchor_violations(violations, node_name, control, spec, viewport_size)
+		## Live widgets / grid may reparent under WidgetLayer (above room FX).
+		var widget_layer := root_ui.find_child("WidgetLayer", true, false)
+		var under_widget_layer := widget_layer != null and widget_layer.is_ancestor_of(node)
+		if not under_widget_layer and not canvas.is_ancestor_of(node) and node != canvas:
+			violations.append("%s is not under HudCanvas" % unique_name)
+			continue
+		if under_widget_layer:
+			continue
+		if node is Control:
+			var control := node as Control
+			var rect := control.get_rect()
+			# Allow slight overflow for click targets / overlays that fill the canvas.
+			if rect.position.x < -EPS or rect.position.y < -EPS:
+				violations.append(
+					"%s origin outside HudCanvas (%.1f, %.1f)"
+					% [unique_name, rect.position.x, rect.position.y]
+				)
+			if rect.position.x > HUD_W + EPS or rect.position.y > HUD_H + EPS:
+				violations.append(
+					"%s origin beyond HudCanvas (%.1f, %.1f)"
+					% [unique_name, rect.position.x, rect.position.y]
+				)
+
+	if viewport_size.x > 0.0 and viewport_size.y > 0.0:
+		var s := minf(viewport_size.x / HUD_W, viewport_size.y / HUD_H)
+		var scaled := Vector2(HUD_W * s, HUD_H * s)
+		if scaled.x > viewport_size.x + EPS or scaled.y > viewport_size.y + EPS:
+			violations.append(
+				"HudCanvas scaled size %.1fx%.1f exceeds viewport %.0fx%.0f"
+				% [scaled.x, scaled.y, viewport_size.x, viewport_size.y]
+			)
 
 	return violations
 
 
 static func _append_anchor_violations(
-	violations: PackedStringArray,
-	node_name: String,
-	control: Control,
-	spec: Dictionary,
-	viewport_size: Vector2
+	_violations: PackedStringArray,
+	_node_name: String,
+	_control: Control,
+	_spec: Dictionary,
+	_viewport_size: Vector2
 ) -> void:
-	var x0: float = spec["x0"]
-	var y0: float = spec["y0"]
-	var x1: float = spec["x1"]
-	var y1: float = spec["y1"]
-	if absf(control.anchor_left - x0) > ANCHOR_EPS:
-		violations.append(
-			"%s anchor_left=%.4f expected %.4f (viewport %.0fx%.0f)"
-			% [node_name, control.anchor_left, x0, viewport_size.x, viewport_size.y]
-		)
-	if absf(control.anchor_top - y0) > ANCHOR_EPS:
-		violations.append(
-			"%s anchor_top=%.4f expected %.4f (viewport %.0fx%.0f)"
-			% [node_name, control.anchor_top, y0, viewport_size.x, viewport_size.y]
-		)
-	if absf(control.anchor_right - x1) > ANCHOR_EPS:
-		violations.append(
-			"%s anchor_right=%.4f expected %.4f (viewport %.0fx%.0f)"
-			% [node_name, control.anchor_right, x1, viewport_size.x, viewport_size.y]
-		)
-	if absf(control.anchor_bottom - y1) > ANCHOR_EPS:
-		violations.append(
-			"%s anchor_bottom=%.4f expected %.4f (viewport %.0fx%.0f)"
-			% [node_name, control.anchor_bottom, y1, viewport_size.x, viewport_size.y]
-		)
-	for offset_name in ["offset_left", "offset_top", "offset_right", "offset_bottom"]:
-		var offset_val: float = control.get(offset_name)
-		if absf(offset_val) > ANCHOR_EPS:
-			violations.append(
-				"%s %s=%.2f expected 0 (viewport %.0fx%.0f)"
-				% [node_name, offset_name, offset_val, viewport_size.x, viewport_size.y]
-			)
+	## Legacy percentage-anchor helper — no longer used.
+	pass
 
 
 static func collect_combat_hud_layout_findings(
@@ -381,12 +362,12 @@ static func collect_combat_hud_layout_findings(
 	var findings: Array = []
 	for violation in check_combat_hud_anchors(root_ui, viewport_size):
 		findings.append(make_finding(
-			"combat.hud_anchor_drift",
+			"combat.hud_canvas_placement",
 			"major",
 			"REGRESSION",
 			scene_path,
 			violation,
-			"Restore combat HUD anchors via _apply_responsive_layout constants in combat_test.gd."
+			"Keep required unique nodes under HudCanvas (3508x2480), or under WidgetLayer after live-widget bind (layer 115 above room FX)."
 		))
 	return findings
 

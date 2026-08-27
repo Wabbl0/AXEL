@@ -1,5 +1,6 @@
 @tool
-## Combat test UI — mirrored playtest shell (SPINS | grid | ITEMS), percentage layout, integer economy.
+## Combat test UI — drawing-backed HUD (`HudCanvas` + white plate + piece nodes), free editor placement, integer economy.
+## `HudArtGuide` (`axel_ui.png`) is optional in the 2D editor (eye icon). Play always hides it.
 ## Canonical entry: `res://combat/combat_test.tscn` (F6). See `README_COMBAT_TEST_VERSIONS.md`.
 extends Control
 
@@ -22,13 +23,8 @@ const PREMIUM_BAR_HEIGHT := 10.0
 const PREMIUM_BAR_LAYOUT_PAD := 1.0
 const RESPONSIVE_NARROW_W := 900.0
 
-## Vertical rhythm (fractions of viewport height; all root-anchored).
-const LAYOUT_CORNER_Y0 := 0.025
-const LAYOUT_CORNER_Y1 := 0.135
-const LAYOUT_CENTER_HUD_Y0 := 0.03
-const LAYOUT_CENTER_HUD_Y1 := 0.14
-const LAYOUT_MAIN_Y0 := 0.16
-const LAYOUT_MAIN_END := 0.99
+## Drawing canvas size (axel_ui.png). Widgets are authored in these pixels.
+const HUD_ART_SIZE := Vector2(3508.0, 2480.0)
 const CENTER_COLUMN_SEPARATION := 10
 const GRID_HOST_MIN_HEIGHT := 200.0
 const WINNINGS_BAND_MIN_HEIGHT := 40.0
@@ -40,17 +36,6 @@ const BANKROLL_READOUT_FONT_NARROW := 28
 const EXECUTE_BUTTON_MIN_HEIGHT := 72.0
 const BOTTOM_WINDOW_MARGIN := 18.0
 
-## Horizontal symmetry (fractions of viewport width).
-const LAYOUT_SIDE_START := 0.02
-const LAYOUT_SIDE_END := 0.22
-const LAYOUT_CENTER_START := 0.24
-const LAYOUT_CENTER_END := 0.76
-const LAYOUT_SIDE_RIGHT_START := 0.78
-const LAYOUT_SIDE_RIGHT_END := 0.98
-const LAYOUT_TOP_BOX_START := LAYOUT_SIDE_START
-const LAYOUT_TOP_BOX_END := 0.14
-const LAYOUT_CENTER_HUD_START := 0.36
-const LAYOUT_CENTER_HUD_END := 0.64
 const LAYOUT_META_ICONS_SEPARATION := 4
 const META_ICON_GLYPH := "⬡"
 const META_ICON_FONT := 31
@@ -86,8 +71,14 @@ const HISTORY_ROW_SEPARATION := 3
 const HUD_WHITE_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
 const HUD_WHITE_TEXT_SHADOW_COLOR := Color(0.22, 0.22, 0.22, 0.72)
 const HUD_WHITE_TEXT_SHADOW_OFFSET_Y := 1
-const LAYOUT_GOAL_BOX_START := 0.78
-const LAYOUT_GOAL_BOX_END := LAYOUT_SIDE_RIGHT_END
+const SETTINGS_PANEL_SCENE := preload("res://combat/scenes/combat_settings_panel.tscn")
+const BET_STRIP_TWEEN_SEC := 0.15
+const PREMIUM_BAR_COLORS := [
+	Color(0.22, 0.22, 0.22, 1.0),
+	Color(0.55, 0.12, 0.12, 1.0),
+	Color(0.78, 0.08, 0.08, 1.0),
+	Color(0.95, 0.08, 0.08, 1.0),
+]
 
 var RARITY_COLORS: Dictionary = {
 	0: Color(0.65, 0.65, 0.65),
@@ -98,7 +89,7 @@ var RARITY_COLORS: Dictionary = {
 }
 
 @export_group("Editor Preview")
-## When enabled, the 2D editor runs the same layout shell as runtime (no spin gameplay).
+## Deprecated: editor now shows authored HudCanvas placement without percentage layout.
 @export var editor_preview_enabled: bool = false:
 	set(value):
 		if editor_preview_enabled == value:
@@ -136,10 +127,11 @@ var goal_box: PanelContainer
 var stake_selector: Control
 
 var _queued_seed: int = 0
+var _hud_canvas: Control
 var _play_area: Control
-var _play_row: HBoxContainer
-var _center_column: VBoxContainer
-var _center_footer: VBoxContainer
+var _play_row: Control
+var _center_column: Control
+var _center_footer: Control
 var _bottom_window_margin: Control
 var _winnings_center: CenterContainer
 var _grid_host: Control
@@ -188,11 +180,35 @@ const EDITOR_FALLBACK_MAX_ITEM_SLOTS := 7
 ## Mirrors combat_root.fit_to_panel fill-panel math for editor placeholder fallback.
 const FALLBACK_GRID_COLS := 5
 const FALLBACK_GRID_ROWS := 5
-const FALLBACK_GRID_EDGE_MARGIN := 8.0
 const FALLBACK_CELL_SIZE_MIN := 48.0
-const FALLBACK_CELL_SIZE_MAX := 128.0
 
 var _fallback_grid_width: float = 0.0
+var _spin_busy: bool = false
+var _piece_goal: CombatHudPiece
+var _piece_items: CombatHudPiece
+var _piece_history: CombatHudPiece
+var _piece_multiplier: CombatHudPiece
+var _piece_settings: CombatHudPiece
+var _piece_execute: CombatHudPiece
+var _piece_bet_minus: CombatHudPiece
+var _piece_bet_plus: CombatHudPiece
+var _piece_bet_strip: CombatHudPiece
+var _piece_balance: CombatHudPiece
+var _piece_premium_bar: CombatHudPiece
+var _piece_spin_money: CombatHudPiece
+var _premium_bar_fill: ColorRect
+var _premium_skull: Node
+var _meter_count_label: Label
+var _settings_panel: CanvasLayer
+var _bet_strip_row: HBoxContainer
+var _bet_strip_labels: Array[Label] = []
+var _bet_strip_tween: Tween
+var _widgets_bound_to_pieces: bool = false
+var _last_spin_money_text: String = ""
+var _widget_layer: Node
+var _piece_grid: CombatHudPiece
+var _skull_click_polygon: Node
+var _spin_request_frame: int = -1
 
 func _can_use_combat_api() -> bool:
 	if combat == null or not is_instance_valid(combat):
@@ -362,14 +378,10 @@ func _suppress_combat_root_legacy_labels() -> void:
 			legacy.visible = false
 
 func _get_center_column_interior_width(default_w: float) -> float:
+	if _grid_host != null and _grid_host.size.x >= 64.0:
+		return _grid_host.size.x
 	if _center_column != null and _center_column.size.x >= 64.0:
 		return _center_column.size.x
-	if size.x > 0.0:
-		var play_w := size.x * (LAYOUT_SIDE_RIGHT_END - LAYOUT_SIDE_START)
-		var side_w := size.x * (LAYOUT_SIDE_END - LAYOUT_SIDE_START)
-		if size.x < RESPONSIVE_NARROW_W:
-			side_w = size.x * 0.18
-		return maxf(play_w - 2.0 * side_w - 2.0 * GRID_COLUMN_GAP, 260.0)
 	return maxf(default_w, 260.0)
 
 func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: float) -> float:
@@ -384,20 +396,20 @@ func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: 
 	var safe_h := maxf(host_h - bottom_reserve, 64.0)
 	var sep_h := float(grid_ui.get_theme_constant("h_separation"))
 	var sep_v := float(grid_ui.get_theme_constant("v_separation"))
-	var inner_w := safe_w - FALLBACK_GRID_EDGE_MARGIN * 2.0
-	var inner_h := safe_h - FALLBACK_GRID_EDGE_MARGIN * 2.0
-	var by_w := (inner_w - float(FALLBACK_GRID_COLS - 1) * sep_h) / float(FALLBACK_GRID_COLS)
-	var by_h := (inner_h - float(FALLBACK_GRID_ROWS - 1) * sep_v) / float(FALLBACK_GRID_ROWS)
-	var cell_size := clampf(minf(by_w, by_h), FALLBACK_CELL_SIZE_MIN, FALLBACK_CELL_SIZE_MAX)
-	var grid_width := float(FALLBACK_GRID_COLS) * cell_size + float(FALLBACK_GRID_COLS - 1) * sep_h
-	var grid_height := float(FALLBACK_GRID_ROWS) * cell_size + float(FALLBACK_GRID_ROWS - 1) * sep_v
-	var grid_x := maxf((safe_w - grid_width) * 0.5, FALLBACK_GRID_EDGE_MARGIN)
-	var grid_y := FALLBACK_GRID_EDGE_MARGIN
+	## Mirrors combat_root.fit_to_panel: fill the host exactly with the drawing's cell aspect.
+	var cell := Vector2(
+		maxf((safe_w - float(FALLBACK_GRID_COLS - 1) * sep_h) / float(FALLBACK_GRID_COLS), FALLBACK_CELL_SIZE_MIN),
+		maxf((safe_h - float(FALLBACK_GRID_ROWS - 1) * sep_v) / float(FALLBACK_GRID_ROWS), FALLBACK_CELL_SIZE_MIN)
+	)
+	var grid_width := float(FALLBACK_GRID_COLS) * cell.x + float(FALLBACK_GRID_COLS - 1) * sep_h
+	var grid_height := float(FALLBACK_GRID_ROWS) * cell.y + float(FALLBACK_GRID_ROWS - 1) * sep_v
+	var grid_x := maxf((safe_w - grid_width) * 0.5, 0.0)
+	var grid_y := 0.0
 	grid_ui.position = Vector2(grid_x, grid_y)
 	grid_ui.size = Vector2(grid_width, grid_height)
 	for child in grid_ui.get_children():
 		if child is Control:
-			(child as Control).custom_minimum_size = Vector2(cell_size, cell_size)
+			(child as Control).custom_minimum_size = cell
 	var grid_frame := combat.get_node_or_null("GridFrame") as Control
 	if grid_frame != null:
 		grid_frame.position = Vector2(grid_x - 4.0, grid_y - 4.0)
@@ -413,6 +425,7 @@ func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: 
 	return grid_width
 
 func _ready() -> void:
+	_hide_hud_art_guide_in_game()
 	if Engine.is_editor_hint():
 		if editor_preview_enabled:
 			call_deferred("_run_editor_preview_when_ready")
@@ -506,6 +519,9 @@ func _restore_scaffold_from_baseline() -> bool:
 func _cache_scene_refs() -> bool:
 	if not is_inside_tree():
 		return false
+	_hud_canvas = _resolve_scaffold_node("HudCanvas") as Control
+	if _hud_canvas == null:
+		_hud_canvas = get_node_or_null("HudCanvas") as Control
 	if seed_spin == null or not is_instance_valid(seed_spin):
 		seed_spin = _resolve_scaffold_node("SeedSpinBox") as SpinBox
 	if spin_btn == null or not is_instance_valid(spin_btn):
@@ -629,9 +645,11 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 	elif editor_mode:
 		_queued_seed = editor_preview_seed
 	_hide_legacy_meter_nodes()
+	_gate_local_scanline_for_room_fx_test()
 	_organize_top_hud()
 	_configure_hud_layers()
 	_ensure_play_shell()
+	_hide_legacy_meter_nodes()
 	_configure_stake_display()
 	_style_stake_buttons()
 	_configure_spin_button_layer()
@@ -641,6 +659,13 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 	_apply_side_panel_typography()
 	if not resized.is_connected(_on_size_changed):
 		resized.connect(_on_size_changed)
+
+func _gate_local_scanline_for_room_fx_test() -> void:
+	## Hide combat's own scanline when room FX are attached (avoids double scanlines).
+	var scanline := get_node_or_null("ScanlineOverlay") as CanvasItem
+	if scanline == null:
+		return
+	scanline.visible = not AxelPostFxStack.COMBAT_ROOM_FX_TEST
 
 func _wire_winnings_popup_target() -> void:
 	if not _can_use_combat_api() or mult_label == null:
@@ -677,6 +702,7 @@ func _connect_runtime_signals() -> void:
 		choose_storm_button.pressed.connect(_on_choose_storm_pressed)
 	if not seed_spin.value_changed.is_connected(_on_seed_spin_value_changed):
 		seed_spin.value_changed.connect(_on_seed_spin_value_changed)
+	_wire_piece_input_signals()
 
 func _apply_editor_combat_preview() -> void:
 	if combat == null:
@@ -731,7 +757,8 @@ func _finish_editor_preview_layout() -> void:
 	if not _is_editor_preview():
 		return
 	await get_tree().process_frame
-	_apply_responsive_layout()
+	_bind_widgets_to_pieces()
+	_apply_hud_chrome()
 	await get_tree().process_frame
 	_layout_combat()
 	_ensure_editor_grid_shell_visible()
@@ -783,30 +810,48 @@ func _ensure_editor_grid_shell_visible() -> void:
 	var power_layer := combat.get_node_or_null("PowerIntroLayer") as CanvasItem
 	if power_layer != null:
 		power_layer.visible = false
-	for node in [mult_label, bankroll_label, bet_label, goal_label, seed_spin, _cascade_mult_label, _cascade_mult_pill]:
+	for node in [mult_label, bankroll_label, goal_label, seed_spin, _cascade_mult_label]:
 		if node is CanvasItem:
 			(node as CanvasItem).visible = true
+	if bet_label != null:
+		bet_label.visible = false
+	if _cascade_mult_pill != null:
+		_cascade_mult_pill.visible = false
 
 func _organize_top_hud() -> void:
 	if top_bar != null:
 		top_bar.visible = false
 		top_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	_reparent_hud_to_root(meta_box)
-	_reparent_hud_to_root(goal_box)
+	_ensure_hud_canvas_parent(meta_box)
+	_ensure_hud_canvas_parent(goal_box)
 	_strip_corner_panel_boxes()
 	_configure_top_corner_hud()
 	_configure_white_hud_readouts()
 	_integrate_economics_into_center_hud()
 
-func _reparent_hud_to_root(node: Control) -> void:
+func _hud_canvas_node() -> Control:
+	if _hud_canvas != null and is_instance_valid(_hud_canvas):
+		return _hud_canvas
+	_hud_canvas = _resolve_scaffold_node("HudCanvas") as Control
+	if _hud_canvas == null:
+		_hud_canvas = get_node_or_null("HudCanvas") as Control
+	return _hud_canvas
+
+func _ensure_hud_canvas_parent(node: Control) -> void:
 	if node == null:
 		return
-	if node.get_parent() == self:
+	var canvas := _hud_canvas_node()
+	if canvas == null:
+		return
+	if node.get_parent() == canvas:
 		_reassert_node_ownership(node)
 		return
-	_reparent_for_layout(node, self)
-	move_child(node, 2)
+	_reparent_for_layout(node, canvas)
+
+func _reparent_hud_to_root(node: Control) -> void:
+	## Legacy helper — keep widgets under HudCanvas when present.
+	_ensure_hud_canvas_parent(node)
 
 func _hide_legacy_meter_nodes() -> void:
 	var meter_stack := get_node_or_null("RightMeterStack")
@@ -817,32 +862,73 @@ func _hide_legacy_meter_nodes() -> void:
 		meter_circle = get_node_or_null("%PremiumMeterCircle")
 	if meter_circle != null:
 		meter_circle.visible = false
+	if _premium_progress != null:
+		_premium_progress.visible = false
+	else:
+		var bar := find_child("PremiumProgressBar", true, false) as CanvasItem
+		if bar != null:
+			bar.visible = false
+	if _winnings_center != null:
+		_winnings_center.visible = false
+	else:
+		var winnings := find_child("WinningsCenter", true, false) as CanvasItem
+		if winnings != null:
+			winnings.visible = false
+	if budget_label != null:
+		budget_label.visible = false
+	for pill_name in ["WinningsReadoutPill", "CascadeMultiplierPill"]:
+		var pill := find_child(pill_name, true, false) as CanvasItem
+		if pill != null:
+			pill.visible = false
+	if meta_box != null:
+		var icons := meta_box.get_node_or_null("MetaContent/MetaIconsRow") as CanvasItem
+		if icons != null:
+			icons.visible = false
+	_suppress_combat_root_legacy_labels()
+
+func _hide_hud_art_guide_in_game() -> void:
+	## Play / headless never draw the composite guide. Editor keeps the scene-tree eye (do not force it back on).
+	var guide := _resolve_scaffold_node("HudArtGuide") as CanvasItem
+	if guide == null:
+		guide = get_node_or_null("HudCanvas/HudArtGuide") as CanvasItem
+	if guide == null:
+		return
+	if Engine.is_editor_hint():
+		return
+	guide.visible = false
 
 func _ensure_play_shell() -> void:
+	if _hud_canvas_node() != null and _restore_play_shell_from_scene():
+		_finalize_play_shell_layout()
+		return
 	if _restore_play_shell_from_scene():
 		_finalize_play_shell_layout()
 		return
 	_build_play_shell()
 
 func _restore_play_shell_from_scene() -> bool:
-	var area := get_node_or_null("PlayArea") as Control
+	var area := find_child("PlayArea", true, false) as Control
 	if area == null:
 		return false
 	_play_area = area
-	_play_row = area.get_node_or_null("PlayRow") as HBoxContainer
+	_play_row = area.get_node_or_null("PlayRow") as Control
 	if _play_row == null:
 		return false
 	_spin_history_panel = _play_row.get_node_or_null("HistoryPanel") as PanelContainer
 	_bind_history_spin_list_from_panel(_spin_history_panel)
-	_center_column = _play_row.get_node_or_null("CenterColumn") as VBoxContainer
+	_center_column = _play_row.get_node_or_null("CenterColumn") as Control
 	if _center_column == null:
 		return false
 	_grid_host = _center_column.get_node_or_null("GridHost") as Control
+	if _grid_host == null:
+		_grid_host = find_child("GridHost", true, false) as Control
 	_winnings_center = _center_column.get_node_or_null("WinningsCenter") as CenterContainer
-	_center_footer = _center_column.get_node_or_null("CenterFooter") as VBoxContainer
+	_center_footer = _center_column.get_node_or_null("CenterFooter") as Control
 	_bottom_window_margin = _center_column.get_node_or_null("BottomWindowMargin") as Control
 	if _grid_host != null:
 		_premium_progress = _grid_host.get_node_or_null("PremiumProgressBar") as ProgressBar
+		if _premium_progress == null:
+			_premium_progress = find_child("PremiumProgressBar", true, false) as ProgressBar
 	var winnings_row: HBoxContainer = null
 	if _winnings_center != null:
 		winnings_row = _winnings_center.get_node_or_null("WinningsRow") as HBoxContainer
@@ -862,53 +948,53 @@ func _finalize_play_shell_layout() -> void:
 		combat.reparent(_grid_host)
 	combat.visible = true
 	_suppress_combat_root_legacy_labels()
-	if spin_btn != null and _center_footer != null and spin_btn.get_parent() != _center_footer:
+	if spin_btn != null:
 		spin_btn.visible = true
-		_reset_container_child_layout(spin_btn)
-		spin_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		spin_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		spin_btn.custom_minimum_size = Vector2(0.0, EXECUTE_BUTTON_MIN_HEIGHT)
-		_reparent_for_layout(spin_btn, _center_footer)
 	if mult_label != null and mult_label.visible:
 		mult_label.visible = true
 	_wire_winnings_popup_target()
 
 func _build_play_shell() -> void:
+	var canvas := _hud_canvas_node()
 	_play_area = Control.new()
 	_play_area.name = "PlayArea"
 	_play_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_add_preview_child(_play_area)
-	move_child(_play_area, 1)
+	if canvas != null:
+		canvas.add_child(_play_area)
+	else:
+		_add_preview_child(_play_area)
+		move_child(_play_area, 1)
 
-	_play_row = HBoxContainer.new()
+	_play_row = Control.new()
 	_play_row.name = "PlayRow"
 	_play_row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_play_row.add_theme_constant_override("separation", int(GRID_COLUMN_GAP))
-	_play_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_play_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_play_area.add_child(_play_row)
 	_reassert_node_ownership(_play_row)
 
 	_spin_history_panel = _build_history_placeholder()
-	_spin_history_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_spin_history_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_play_row.add_child(_spin_history_panel)
 	_reassert_node_ownership(_spin_history_panel)
 
-	_center_column = VBoxContainer.new()
+	_center_column = Control.new()
 	_center_column.name = "CenterColumn"
-	_center_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_center_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_center_column.add_theme_constant_override("separation", CENTER_COLUMN_SEPARATION)
+	_center_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_play_row.add_child(_center_column)
 	_reassert_node_ownership(_center_column)
 
 	_grid_host = Control.new()
 	_grid_host.name = "GridHost"
-	_grid_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_grid_host.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_grid_host.custom_minimum_size = Vector2(260, GRID_HOST_MIN_HEIGHT)
 	_grid_host.clip_contents = true
-	_center_column.add_child(_grid_host)
+	var widget_root: Control = null
+	if _widget_layer != null and _widget_layer.has_method("get_widget_root"):
+		widget_root = _widget_layer.get_widget_root() as Control
+	if widget_root == null:
+		widget_root = find_child("WidgetRoot", true, false) as Control
+	if widget_root != null:
+		widget_root.add_child(_grid_host)
+	else:
+		_center_column.add_child(_grid_host)
 	_reassert_node_ownership(_grid_host)
 	if combat.get_parent() != _grid_host:
 		combat.reparent(_grid_host)
@@ -932,11 +1018,11 @@ func _build_play_shell() -> void:
 	_premium_progress.add_theme_stylebox_override("fill", pb_fill)
 	_grid_host.add_child(_premium_progress)
 	_reassert_node_ownership(_premium_progress)
+	_premium_progress.visible = false
 
 	_winnings_center = CenterContainer.new()
 	_winnings_center.name = "WinningsCenter"
-	_winnings_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_winnings_center.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_winnings_center.visible = false
 	_winnings_center.custom_minimum_size = Vector2(0.0, WINNINGS_BAND_MIN_HEIGHT)
 	_center_column.add_child(_winnings_center)
 	_reassert_node_ownership(_winnings_center)
@@ -982,29 +1068,20 @@ func _build_play_shell() -> void:
 	winnings_row.add_child(_cascade_mult_pill)
 	_reassert_node_ownership(_cascade_mult_pill)
 
-	_center_footer = VBoxContainer.new()
+	_center_footer = Control.new()
 	_center_footer.name = "CenterFooter"
-	_center_footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_center_footer.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_center_footer.alignment = BoxContainer.ALIGNMENT_CENTER
-	_center_footer.add_theme_constant_override("separation", CENTER_FOOTER_SEPARATION)
+	_center_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_center_column.add_child(_center_footer)
 	_reassert_node_ownership(_center_footer)
 
 	if spin_btn != null:
 		spin_btn.visible = true
-		_reset_container_child_layout(spin_btn)
-		spin_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		spin_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		spin_btn.custom_minimum_size = Vector2(0.0, EXECUTE_BUTTON_MIN_HEIGHT)
+		spin_btn.text = ""
 		_reparent_for_layout(spin_btn, _center_footer)
 
 	_bottom_window_margin = Control.new()
 	_bottom_window_margin.name = "BottomWindowMargin"
 	_bottom_window_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bottom_window_margin.custom_minimum_size = Vector2(0.0, BOTTOM_WINDOW_MARGIN)
-	_bottom_window_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_bottom_window_margin.size_flags_vertical = Control.SIZE_SHRINK_END
 	_center_column.add_child(_bottom_window_margin)
 	_reassert_node_ownership(_bottom_window_margin)
 	_reassert_scaffold_ownership()
@@ -1019,20 +1096,21 @@ func _integrate_economics_into_center_hud() -> void:
 		return
 	if bankroll_label == null and stake_selector == null:
 		return
+	var canvas := _hud_canvas_node()
 	if _economics_center == null:
-		var existing_ec := get_node_or_null("EconomicsCenter") as CenterContainer
+		var existing_ec := find_child("EconomicsCenter", true, false) as CenterContainer
 		if existing_ec != null:
 			_economics_center = existing_ec
 		else:
 			_economics_center = CenterContainer.new()
 			_economics_center.name = "EconomicsCenter"
 			_economics_center.mouse_filter = Control.MOUSE_FILTER_PASS
-			_add_preview_child(_economics_center)
-			move_child(_economics_center, 2)
-	else:
-		if _economics_center.get_parent() != self:
-			_reparent_for_layout(_economics_center, self)
-			move_child(_economics_center, 2)
+			if canvas != null:
+				canvas.add_child(_economics_center)
+			else:
+				_add_preview_child(_economics_center)
+	elif canvas != null and _economics_center.get_parent() != canvas:
+		_reparent_for_layout(_economics_center, canvas)
 
 	if _economics_stack == null and _economics_center != null:
 		_economics_stack = _economics_center.get_node_or_null("EconomicsStack") as VBoxContainer
@@ -1050,17 +1128,17 @@ func _integrate_economics_into_center_hud() -> void:
 	if bankroll_label != null:
 		bankroll_label.visible = true
 		bankroll_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_reset_container_child_layout(bankroll_label)
 		bankroll_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		bankroll_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_reparent_for_layout(bankroll_label, _economics_stack)
+		if bankroll_label.get_parent() != _economics_stack:
+			_reparent_for_layout(bankroll_label, _economics_stack)
 
 	if stake_selector != null:
-		_reset_container_child_layout(stake_selector)
 		stake_selector.visible = true
 		stake_selector.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		stake_selector.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_reparent_for_layout(stake_selector, _economics_stack)
+		if stake_selector.get_parent() != _economics_stack:
+			_reparent_for_layout(stake_selector, _economics_stack)
 
 func _reset_container_child_layout(control_node: Control) -> void:
 	if control_node == null:
@@ -1176,34 +1254,17 @@ func _corner_box_style() -> StyleBoxFlat:
 	style.content_margin_bottom = 8
 	return style
 
-func _side_panel_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.0, 0.0, 0.88)
-	style.border_color = Color(0.45, 0.03, 0.03, 0.75)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 8
-	style.content_margin_top = 8
-	style.content_margin_right = 8
-	style.content_margin_bottom = 8
-	return style
+func _side_panel_style() -> StyleBox:
+	return StyleBoxEmpty.new()
 
-func _side_panel_title_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.03, 0.0, 0.0, 0.98)
-	style.border_color = Color(0.35, 0.02, 0.02, 0.85)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	style.content_margin_left = 11
-	style.content_margin_top = 8
-	style.content_margin_right = 11
-	style.content_margin_bottom = 8
-	return style
+func _side_panel_title_style() -> StyleBox:
+	return StyleBoxEmpty.new()
 
 func _style_side_panel_header(header: Label) -> void:
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_theme_font_size_override("font_size", SIDE_PANEL_HEADER_FONT)
 	header.add_theme_color_override("font_color", Color(0.88, 0.4, 0.4, 1.0))
+	header.visible = false
 
 func _bind_history_spin_list_from_panel(panel: PanelContainer) -> void:
 	if panel == null:
@@ -1235,6 +1296,10 @@ func _apply_side_panel_typography() -> void:
 		var header_strip := header.get_parent() as PanelContainer if header != null else null
 		if header_strip != null:
 			header_strip.add_theme_stylebox_override("panel", _side_panel_title_style())
+			header_strip.visible = false
+		for section in panel.find_children("SectionHeader", "Label", true, false):
+			if section is CanvasItem:
+				(section as CanvasItem).visible = false
 	_apply_item_picker_body_typography()
 
 func _apply_item_picker_body_typography() -> void:
@@ -1373,6 +1438,19 @@ func _stake_button_style() -> StyleBoxFlat:
 	return flat
 
 func _style_stake_buttons() -> void:
+	_cache_hud_pieces()
+	## Piece drawings own +/- look; do not paint the old computer boxes on top.
+	if _piece_bet_minus != null or _piece_bet_plus != null:
+		var empty := StyleBoxEmpty.new()
+		for btn in [bet_minus_btn, bet_plus_btn]:
+			if btn == null:
+				continue
+			btn.add_theme_stylebox_override("normal", empty)
+			btn.add_theme_stylebox_override("hover", empty)
+			btn.add_theme_stylebox_override("pressed", empty)
+			btn.add_theme_stylebox_override("focus", empty)
+			btn.add_theme_stylebox_override("disabled", empty)
+		return
 	for btn in [bet_minus_btn, bet_plus_btn]:
 		if btn == null:
 			continue
@@ -1384,16 +1462,32 @@ func _style_stake_buttons() -> void:
 		btn.add_theme_stylebox_override("disabled", flat.duplicate())
 
 func _on_spin_pressed() -> void:
+	await _request_spin()
+
+
+func _request_spin() -> void:
 	if Engine.is_editor_hint():
 		return
+	var frame := Engine.get_process_frames()
+	if _spin_request_frame == frame:
+		return
+	if _spin_busy:
+		return
+	if combat == null or not _can_use_combat_api():
+		return
+	_spin_request_frame = frame
+	_spin_busy = true
 	if combat.is_encounter_complete():
 		combat.begin_next_playtest_encounter(_queued_seed)
 	if _can_apply_queued_seed_on_execute():
 		combat.setup_new_grid(_queued_seed)
-	spin_btn.disabled = true
+	if spin_btn != null:
+		spin_btn.disabled = true
 	_refresh_spin_button_state()
 	await combat.spin()
-	spin_btn.disabled = false
+	if spin_btn != null:
+		spin_btn.disabled = false
+	_spin_busy = false
 	_refresh_readouts()
 	_refresh_spin_button_state()
 
@@ -1420,9 +1514,13 @@ func _refresh_readouts() -> void:
 	var cap_units := int(_safe_get_bankroll_cap())
 	var bankroll_units := int(_safe_get_bankroll())
 	if bankroll_label != null:
-		bankroll_label.text = "%d/%d" % [bankroll_units, cap_units]
+		bankroll_label.text = "BALANCE: %d/%d" % [bankroll_units, cap_units]
 	if goal_label != null:
-		goal_label.text = "GOAL\n%s" % _goal_progress_only(_safe_get_goal_label())
+		goal_label.text = "GOAL:\n%s" % _goal_progress_only(_safe_get_goal_label())
+	_refresh_bet_strip()
+	_sync_skull_meter(_safe_get_meter_sections_filled())
+	_sync_premium_bar_color(_safe_get_meter_sections_filled())
+	_maybe_pop_spin_money()
 	_refresh_playtest_readouts()
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
@@ -1436,14 +1534,17 @@ func _refresh_editor_placeholder_readouts() -> void:
 	if mult_label != null:
 		mult_label.text = "0"
 	if _cascade_mult_label != null:
-		_cascade_mult_label.text = "1×"
+		_cascade_mult_label.text = "1X"
 	_last_displayed_cascade_mult = 1
 	if _premium_progress != null:
 		_premium_progress.value = 0.0
 	if bankroll_label != null:
-		bankroll_label.text = "%d/%d" % [EDITOR_FALLBACK_BANKROLL, EDITOR_FALLBACK_BANKROLL_CAP]
+		bankroll_label.text = "BALANCE: %d/%d" % [EDITOR_FALLBACK_BANKROLL, EDITOR_FALLBACK_BANKROLL_CAP]
 	if goal_label != null:
-		goal_label.text = "GOAL\n0 / 0"
+		goal_label.text = "GOAL:\n0 / 0"
+	_refresh_bet_strip()
+	_sync_skull_meter(0)
+	_sync_premium_bar_color(0)
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
 
@@ -1457,12 +1558,12 @@ func _refresh_cascade_multiplier_readout() -> void:
 	_last_displayed_cascade_mult = mult
 
 func _format_cascade_multiplier_text(mult: int) -> String:
-	var text := "%d×" % mult
-	if _safe_is_multiplier_cap_active():
-		text += " / %d" % _safe_get_multiplier_cap_value()
-	return text
+	return "%dX" % mult
 
 func _pulse_cascade_multiplier() -> void:
+	if _piece_multiplier != null:
+		_piece_multiplier.pop()
+		return
 	if _cascade_mult_pill == null:
 		return
 	_cascade_mult_pill.scale = Vector2.ONE
@@ -1547,17 +1648,19 @@ func _run_winnings_counter_async() -> void:
 		_start_winnings_counter_if_needed()
 
 func _on_meter_full_transition_started() -> void:
-	if _premium_progress == null:
-		return
-	var peak := create_tween()
-	peak.tween_property(_premium_progress, "modulate", Color(1.4, 1.1, 1.1, 1.0), 0.12)
-	peak.tween_property(_premium_progress, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.2)
+	if _piece_premium_bar != null:
+		_piece_premium_bar.pop()
+	elif _premium_progress != null:
+		var peak := create_tween()
+		peak.tween_property(_premium_progress, "modulate", Color(1.4, 1.1, 1.1, 1.0), 0.12)
+		peak.tween_property(_premium_progress, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.2)
 
 func _on_premium_meter_changed(_previous_sections: int, next_sections: int) -> void:
-	if _premium_progress == null:
-		return
-	var tween := create_tween()
-	tween.tween_property(_premium_progress, "value", float(next_sections), 0.2)
+	if _premium_progress != null and _piece_premium_bar == null:
+		var tween := create_tween()
+		tween.tween_property(_premium_progress, "value", float(next_sections), 0.2)
+	_sync_skull_meter(next_sections)
+	_sync_premium_bar_color(next_sections, true)
 
 func _on_seed_spin_value_changed(value: float) -> void:
 	if not _can_queue_seed_change():
@@ -1569,10 +1672,12 @@ func _on_seed_spin_value_changed(value: float) -> void:
 func _on_bet_minus_pressed() -> void:
 	combat.step_bet(-1)
 	_refresh_readouts()
+	_animate_bet_strip()
 
 func _on_bet_plus_pressed() -> void:
 	combat.step_bet(1)
 	_refresh_readouts()
+	_animate_bet_strip()
 
 func _set_default_bet() -> void:
 	if not _can_use_combat_api():
@@ -1656,47 +1761,389 @@ func _configure_spin_button_layer() -> void:
 	spin_btn.z_index = 30
 	spin_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 
+
+func _find_hud_piece(piece_name: String) -> CombatHudPiece:
+	var node := find_child(piece_name, true, false)
+	if node == null and piece_name.begins_with("MOVE_"):
+		node = find_child("NEW_" + piece_name.trim_prefix("MOVE_"), true, false)
+	if node == null and not piece_name.begins_with("NEW_") and not piece_name.begins_with("MOVE_"):
+		node = find_child("NEW_" + piece_name.trim_prefix("Piece"), true, false)
+		if node == null:
+			node = find_child("MOVE_" + piece_name.trim_prefix("Piece"), true, false)
+	return node as CombatHudPiece
+
+
+func _cache_hud_pieces() -> void:
+	_piece_goal = _find_hud_piece("NEW_Goal")
+	_piece_items = _find_hud_piece("NEW_Items")
+	_piece_history = _find_hud_piece("NEW_History")
+	_piece_multiplier = _find_hud_piece("NEW_Multiplier")
+	_piece_settings = _find_hud_piece("NEW_Settings")
+	_piece_execute = _find_hud_piece("NEW_Execute")
+	_piece_grid = _find_hud_piece("NEW_Grid")
+	_piece_bet_minus = _find_hud_piece("MOVE_BetMinus")
+	_piece_bet_plus = _find_hud_piece("MOVE_BetPlus")
+	_piece_bet_strip = _find_hud_piece("MOVE_BetStrip")
+	_piece_balance = _find_hud_piece("MOVE_Balance")
+	_piece_premium_bar = _find_hud_piece("MOVE_PremiumBar")
+	_piece_spin_money = _find_hud_piece("MOVE_SpinMoney")
+	if _piece_premium_bar != null:
+		_premium_bar_fill = _piece_premium_bar.get_node_or_null("PremiumBarFill") as ColorRect
+	_premium_skull = find_child("PremiumSkull", true, false)
+	_skull_click_polygon = find_child("SkullClickPolygon", true, false)
+	if _piece_execute != null:
+		_meter_count_label = _piece_execute.find_child("MOVE_MeterCount", true, false) as Label
+		if _meter_count_label == null:
+			_meter_count_label = _piece_execute.find_child("MeterCount", true, false) as Label
+	_widget_layer = get_node_or_null("WidgetLayer")
+	if _widget_layer == null:
+		_widget_layer = find_child("WidgetLayer", true, false)
+
+
+func _host_for_piece(piece: CombatHudPiece, id: String) -> Control:
+	if piece == null or _widget_layer == null or not _widget_layer.has_method("register"):
+		return null
+	var box := piece.get_text_box()
+	if box == null:
+		return null
+	return _widget_layer.register(box, id) as Control
+
+
+func _bind_widgets_to_pieces() -> void:
+	if Engine.is_editor_hint() and not editor_preview_enabled and not _is_editor_preview():
+		## Still bind in editor so TextBox previews look correct when opening the scene.
+		pass
+	_cache_hud_pieces()
+	_cache_scene_refs()
+	if _piece_goal != null and goal_label != null:
+		if goal_box != null:
+			goal_box.visible = false
+		_piece_goal.attach(goal_label, _host_for_piece(_piece_goal, "goal"))
+		goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		goal_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	if _piece_items != null and _item_picker_panel != null:
+		_piece_items.attach(_item_picker_panel, _host_for_piece(_piece_items, "items"))
+	if _piece_history != null and _spin_history_panel != null:
+		_piece_history.attach(_spin_history_panel, _host_for_piece(_piece_history, "history"))
+	if _piece_multiplier != null and _cascade_mult_label != null:
+		_piece_multiplier.attach(_cascade_mult_label, _host_for_piece(_piece_multiplier, "multiplier"))
+	if _cascade_mult_pill != null:
+		_cascade_mult_pill.visible = false
+	if _piece_balance != null and bankroll_label != null:
+		_piece_balance.attach(bankroll_label, _host_for_piece(_piece_balance, "balance"))
+		bankroll_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bankroll_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	if _piece_bet_strip != null and bet_label != null:
+		## Keep %BetLabel for scaffold; hide it and show the sliding strip instead.
+		_piece_bet_strip.attach(bet_label, _host_for_piece(_piece_bet_strip, "bet_strip"))
+		bet_label.visible = false
+		_ensure_bet_strip_row()
+	if _piece_bet_minus != null and bet_minus_btn != null:
+		_piece_bet_minus.attach(bet_minus_btn, _host_for_piece(_piece_bet_minus, "bet_minus"))
+		bet_minus_btn.text = ""
+	if _piece_bet_plus != null and bet_plus_btn != null:
+		_piece_bet_plus.attach(bet_plus_btn, _host_for_piece(_piece_bet_plus, "bet_plus"))
+		bet_plus_btn.text = ""
+	if _piece_spin_money != null and mult_label != null:
+		_piece_spin_money.attach(mult_label, _host_for_piece(_piece_spin_money, "spin_money"))
+	if _winnings_center != null:
+		_winnings_center.visible = false
+	var winnings_pill := find_child("WinningsReadoutPill", true, false) as CanvasItem
+	if winnings_pill != null:
+		winnings_pill.visible = false
+	if _piece_execute != null and _meter_count_label != null:
+		## Lift meter number above FX; keep bottom-strip layout (do not full-rect attach).
+		var meter_host := _host_for_piece(_piece_execute, "execute_meter")
+		if meter_host != null and _meter_count_label.get_parent() != meter_host:
+			_meter_count_label.reparent(meter_host)
+		_meter_count_label.visible = true
+		_meter_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _piece_execute != null and spin_btn != null:
+		## Authored under NEW_Execute; keep transparent and mouse-ignore (piece/polygon click).
+		if spin_btn.get_parent() != _piece_execute:
+			spin_btn.reparent(_piece_execute)
+		spin_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		spin_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		spin_btn.z_index = 5
+		var empty := StyleBoxEmpty.new()
+		spin_btn.add_theme_stylebox_override("normal", empty)
+		spin_btn.add_theme_stylebox_override("pressed", empty)
+		spin_btn.add_theme_stylebox_override("hover", empty)
+		spin_btn.add_theme_stylebox_override("disabled", empty)
+		spin_btn.text = ""
+	_bind_grid_host_to_piece()
+	if _economics_center != null:
+		_economics_center.visible = false
+	if meta_box != null:
+		meta_box.visible = false
+	if goal_box != null:
+		goal_box.visible = false
+	if _premium_progress != null:
+		_premium_progress.visible = false
+	_ensure_settings_panel()
+	_wire_piece_input_signals()
+	## Slide, not just recolour, so the strip opens with the current bet centred.
+	_animate_bet_strip()
+	_sync_skull_meter(_safe_get_meter_sections_filled())
+	_sync_premium_bar_color(_safe_get_meter_sections_filled())
+	_widgets_bound_to_pieces = true
+
+
+func _bind_grid_host_to_piece() -> void:
+	if _piece_grid == null or _grid_host == null:
+		return
+	var box := _piece_grid.get_text_box()
+	if box == null:
+		return
+	if _widget_layer != null and _widget_layer.has_method("register"):
+		_widget_layer.register(box, "grid", _grid_host)
+	_grid_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_grid_host.clip_contents = true
+
+
+func _wire_piece_input_signals() -> void:
+	if _piece_execute != null and not _piece_execute.activated.is_connected(_on_piece_execute_activated):
+		_piece_execute.activated.connect(_on_piece_execute_activated)
+	if _skull_click_polygon != null and _skull_click_polygon.has_signal("pressed"):
+		if not _skull_click_polygon.pressed.is_connected(_on_piece_execute_activated):
+			_skull_click_polygon.pressed.connect(_on_piece_execute_activated)
+	## Skull art is display-only; disconnect any leftover pressed wiring.
+	if _premium_skull != null and _premium_skull.has_signal("pressed"):
+		if _premium_skull.pressed.is_connected(_on_piece_execute_activated):
+			_premium_skull.pressed.disconnect(_on_piece_execute_activated)
+		if _premium_skull is Control:
+			(_premium_skull as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _piece_settings != null and not _piece_settings.activated.is_connected(_on_settings_activated):
+		_piece_settings.activated.connect(_on_settings_activated)
+
+
+func _on_piece_execute_activated() -> void:
+	await _request_spin()
+
+
+func _ensure_settings_panel() -> void:
+	if Engine.is_editor_hint():
+		return
+	if _settings_panel != null and is_instance_valid(_settings_panel):
+		return
+	_settings_panel = SETTINGS_PANEL_SCENE.instantiate() as CanvasLayer
+	add_child(_settings_panel)
+
+
+func _on_settings_activated() -> void:
+	_ensure_settings_panel()
+	if _settings_panel != null and _settings_panel.has_method("toggle_panel"):
+		_settings_panel.toggle_panel()
+
+
+func _ensure_bet_strip_row() -> void:
+	if _piece_bet_strip == null:
+		return
+	var box := _piece_bet_strip.get_text_box()
+	var container: Control = null
+	if bet_label != null and is_instance_valid(bet_label):
+		container = bet_label.get_parent() as Control
+	if container == null:
+		container = box
+	if container == null:
+		return
+	if _bet_strip_row != null and is_instance_valid(_bet_strip_row):
+		if _bet_strip_row.get_parent() != container:
+			## reparent() keeps the global transform, which leaves the row far outside the
+			## new host; re-pin it the same way CombatHudPiece.attach() does.
+			_bet_strip_row.reparent(container)
+			_bet_strip_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		return
+	_bet_strip_row = HBoxContainer.new()
+	_bet_strip_row.name = "BetStripRow"
+	_bet_strip_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_bet_strip_row.add_theme_constant_override("separation", 8)
+	_bet_strip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bet_strip_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	container.add_child(_bet_strip_row)
+	_bet_strip_labels.clear()
+	var ladder: Array = []
+	if _can_use_combat_api():
+		ladder = combat.get_bet_ladder()
+	else:
+		ladder = [100.0, 200.0, 300.0, 400.0, 500.0, 1000.0]
+	for i in range(ladder.size()):
+		if i > 0:
+			var sep := Label.new()
+			sep.text = "|"
+			sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			sep.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55, 1.0))
+			sep.add_theme_font_size_override("font_size", 28)
+			sep.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			_bet_strip_row.add_child(sep)
+		var lab := Label.new()
+		lab.text = "%d" % int(ladder[i])
+		lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lab.add_theme_font_size_override("font_size", 32)
+		_apply_white_hud_text_style(lab)
+		_bet_strip_row.add_child(lab)
+		_bet_strip_labels.append(lab)
+
+
+func _refresh_bet_strip() -> void:
+	if _bet_strip_row == null or _bet_strip_labels.is_empty():
+		_ensure_bet_strip_row()
+	if _bet_strip_labels.is_empty():
+		return
+	var selected := 0
+	if _can_use_combat_api() and combat.has_method("get_bet_index"):
+		selected = int(combat.get_bet_index())
+	elif bet_label != null:
+		var current := bet_label.text.strip_edges()
+		for i in range(_bet_strip_labels.size()):
+			if _bet_strip_labels[i].text == current:
+				selected = i
+				break
+	for i in range(_bet_strip_labels.size()):
+		var lab := _bet_strip_labels[i]
+		if i == selected:
+			lab.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+			lab.modulate = Color(1, 1, 1, 1)
+		else:
+			lab.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 1.0))
+			lab.modulate = Color(1, 1, 1, 0.55)
+
+
+func _animate_bet_strip() -> void:
+	_refresh_bet_strip()
+	if _bet_strip_row == null or _bet_strip_labels.is_empty() or _piece_bet_strip == null:
+		return
+	var selected := 0
+	if _can_use_combat_api() and combat.has_method("get_bet_index"):
+		selected = int(combat.get_bet_index())
+	selected = clampi(selected, 0, _bet_strip_labels.size() - 1)
+	var lab := _bet_strip_labels[selected]
+	var container := _bet_strip_row.get_parent() as Control
+	if container == null:
+		container = _piece_bet_strip.get_text_box()
+	if container == null:
+		return
+	await get_tree().process_frame
+	var center_x := container.size.x * 0.5
+	var label_center := lab.position.x + lab.size.x * 0.5 + _bet_strip_row.position.x
+	var target_x := _bet_strip_row.position.x + (center_x - label_center)
+	if _bet_strip_tween != null and _bet_strip_tween.is_valid():
+		_bet_strip_tween.kill()
+	_bet_strip_tween = create_tween()
+	_bet_strip_tween.tween_property(_bet_strip_row, "position:x", target_x, BET_STRIP_TWEEN_SEC).set_ease(Tween.EASE_OUT)
+
+
+func _sync_skull_meter(sections: int) -> void:
+	var filled := clampi(sections, 0, 3)
+	if _premium_skull != null and _premium_skull.has_method("set_fill"):
+		_premium_skull.set_fill(float(filled) / 3.0)
+	if _meter_count_label != null:
+		_meter_count_label.text = "%d/3" % filled
+
+
+func _sync_premium_bar_color(sections: int, animate: bool = false) -> void:
+	if _premium_bar_fill == null:
+		return
+	var idx := clampi(sections, 0, PREMIUM_BAR_COLORS.size() - 1)
+	var target: Color = PREMIUM_BAR_COLORS[idx]
+	if animate:
+		var tween := create_tween()
+		tween.tween_property(_premium_bar_fill, "color", target, 0.2)
+	else:
+		_premium_bar_fill.color = target
+
+
+func _maybe_pop_spin_money() -> void:
+	if mult_label == null or _piece_spin_money == null:
+		return
+	var text := mult_label.text
+	if text != _last_spin_money_text and not _last_spin_money_text.is_empty():
+		_piece_spin_money.pop()
+	_last_spin_money_text = text
+
+
 func _finish_initial_layout() -> void:
 	await get_tree().process_frame
-	_apply_responsive_layout()
+	_fit_hud_canvas()
+	_bind_widgets_to_pieces()
+	_hide_legacy_meter_nodes()
+	_apply_hud_chrome()
 	await get_tree().process_frame
 	_layout_combat()
+	_hide_legacy_meter_nodes()
 
 func _on_size_changed() -> void:
-	if Engine.is_editor_hint() and not editor_preview_enabled:
+	if Engine.is_editor_hint():
 		return
-	_apply_responsive_layout()
+	_fit_hud_canvas(size)
+	_apply_hud_chrome()
 	call_deferred("_layout_combat")
 
-func _layout_combat() -> void:
-	if _grid_host == null or _center_column == null:
+func _fit_hud_canvas(viewport_override: Vector2 = Vector2.ZERO) -> void:
+	if Engine.is_editor_hint():
 		return
-	var host_w := maxf(_grid_host.size.x, _center_column.size.x)
-	if host_w < 64.0:
-		host_w = maxf(_center_column.get_combined_minimum_size().x, 260.0)
-	var footer_stack_h := _get_center_column_footer_stack_height()
-	var center_col_h := maxf(_center_column.size.y, GRID_HOST_MIN_HEIGHT)
-	var max_host_h := maxf(center_col_h - footer_stack_h, GRID_HOST_MIN_HEIGHT)
-	var bottom_reserve := PREMIUM_BAR_HEIGHT + PREMIUM_BAR_LAYOUT_PAD
+	var canvas := _hud_canvas_node()
+	if canvas == null:
+		return
+	var vp := viewport_override
+	if vp.x <= 1.0 or vp.y <= 1.0:
+		vp = size
+	if vp.x <= 1.0 or vp.y <= 1.0:
+		vp = get_viewport_rect().size
+	if vp.x <= 1.0 or vp.y <= 1.0:
+		return
+	var s := minf(vp.x / HUD_ART_SIZE.x, vp.y / HUD_ART_SIZE.y)
+	canvas.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
+	canvas.anchor_left = 0.0
+	canvas.anchor_top = 0.0
+	canvas.anchor_right = 0.0
+	canvas.anchor_bottom = 0.0
+	canvas.size = HUD_ART_SIZE
+	canvas.scale = Vector2(s, s)
+	canvas.position = Vector2(
+		(vp.x - HUD_ART_SIZE.x * s) * 0.5,
+		(vp.y - HUD_ART_SIZE.y * s) * 0.5
+	)
+
+func _apply_hud_chrome() -> void:
+	_apply_economics_typography()
+	_apply_side_panel_typography()
+	_refresh_history_row_typography()
+
+func _layout_combat() -> void:
+	if _widget_layer != null and _widget_layer.has_method("sync_now"):
+		_widget_layer.sync_now()
+	if _grid_host == null:
+		return
+	var host_w := maxf(_grid_host.size.x, 64.0)
+	var host_h := maxf(_grid_host.size.y, GRID_HOST_MIN_HEIGHT)
+	if host_w < 64.0 and _center_column != null:
+		host_w = maxf(_center_column.size.x, 260.0)
+	## The drawing-backed HUD owns its own premium bar (MOVE_PremiumBar), so the grid box
+	## is purely cells and nothing has to be reserved inside it.
+	var bottom_reserve := 0.0
+	if _piece_premium_bar == null:
+		bottom_reserve = PREMIUM_BAR_HEIGHT + PREMIUM_BAR_LAYOUT_PAD
 	_suppress_combat_root_legacy_labels()
 	var grid_w := 0.0
 	if _can_layout_combat_grid():
-		combat.fit_to_panel(Vector2(host_w, max_host_h), bottom_reserve, true, true)
+		combat.fit_to_panel(Vector2(host_w, host_h), bottom_reserve, true, true)
 		grid_w = _safe_get_grid_ui_width()
 		_fallback_grid_width = grid_w
-		_layout_premium_bar()
-		_shrink_grid_host_to_content(host_w)
+		if _piece_premium_bar == null:
+			_layout_premium_bar()
 	elif combat != null:
-		grid_w = _layout_combat_grid_fallback(host_w, max_host_h, bottom_reserve)
+		grid_w = _layout_combat_grid_fallback(host_w, host_h, bottom_reserve)
 		_fallback_grid_width = grid_w
-		_layout_premium_bar_fallback_aligned(grid_w, max_host_h)
-		_shrink_grid_host_to_content(host_w)
+		if _piece_premium_bar == null:
+			_layout_premium_bar_fallback_aligned(grid_w, host_h)
 	else:
 		grid_w = _get_center_column_interior_width(host_w)
 		_fallback_grid_width = grid_w
-		_layout_premium_bar_fallback(grid_w, max_host_h)
-		_shrink_grid_host_to_content(host_w)
-	_layout_execute_button_to_grid_width(grid_w)
+		if _piece_premium_bar == null:
+			_layout_premium_bar_fallback(grid_w, host_h)
 	_layout_item_desc_overlay()
 	if _is_editor_preview():
 		_ensure_editor_grid_shell_visible()
@@ -1734,72 +2181,30 @@ func _layout_premium_bar_fallback_aligned(grid_w: float, host_h: float) -> void:
 	_layout_premium_bar_fallback(grid_w, host_h)
 
 func _layout_execute_button_width() -> void:
-	_layout_execute_button_to_grid_width(_safe_get_grid_ui_width())
+	## EXECUTE size is authored in the editor; do not overwrite.
+	pass
 
-func _layout_execute_button_to_grid_width(grid_w: float) -> void:
-	if spin_btn == null:
-		return
-	if grid_w < 8.0:
-		grid_w = _get_center_column_interior_width(260.0)
-	var btn_h := maxf(spin_btn.custom_minimum_size.y, EXECUTE_BUTTON_MIN_HEIGHT)
-	spin_btn.custom_minimum_size = Vector2(grid_w, btn_h)
-	spin_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+func _layout_execute_button_to_grid_width(_grid_w: float) -> void:
+	## EXECUTE size is authored in the editor; do not overwrite.
+	pass
 
 func _apply_responsive_layout() -> void:
-	if _play_area == null:
-		return
-	_place_control_rect(meta_box, LAYOUT_SIDE_START, LAYOUT_CORNER_Y0, LAYOUT_TOP_BOX_END, LAYOUT_CORNER_Y1)
-	_place_control_rect(goal_box, LAYOUT_GOAL_BOX_START, LAYOUT_CORNER_Y0, LAYOUT_GOAL_BOX_END, LAYOUT_CORNER_Y1)
-	var economics_x0 := LAYOUT_CENTER_HUD_START
-	var economics_x1 := LAYOUT_CENTER_HUD_END
-	if size.x >= RESPONSIVE_NARROW_W:
-		economics_x0 = maxf(LAYOUT_CENTER_HUD_START, LAYOUT_CENTER_START + 0.02)
-		economics_x1 = minf(LAYOUT_CENTER_HUD_END, LAYOUT_CENTER_END - 0.02)
-	_place_control_rect(_economics_center, economics_x0, LAYOUT_CENTER_HUD_Y0, economics_x1, LAYOUT_CENTER_HUD_Y1)
-	_apply_economics_typography()
-
-	var main_y0 := LAYOUT_MAIN_Y0
-	var main_y1 := LAYOUT_MAIN_END
-	_place_control_rect(_play_area, LAYOUT_SIDE_START, main_y0, LAYOUT_SIDE_RIGHT_END, main_y1)
-
-	var side_w := size.x * (LAYOUT_SIDE_END - LAYOUT_SIDE_START)
-	if size.x < RESPONSIVE_NARROW_W:
-		side_w = size.x * 0.18
-	var main_h := size.y * (main_y1 - main_y0)
-	var side_panel_h := maxf(main_h - BOTTOM_WINDOW_MARGIN, 120.0)
-	if _spin_history_panel != null:
-		_spin_history_panel.custom_minimum_size = Vector2(side_w, side_panel_h)
-		_spin_history_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	if _item_picker_panel != null:
-		_item_picker_panel.custom_minimum_size = Vector2(side_w, side_panel_h)
-		_item_picker_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	if _grid_host != null:
-		_grid_host.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_apply_side_panel_typography()
-	_refresh_history_row_typography()
+	## Percentage layout retired — HudCanvas free placement + _fit_hud_canvas.
+	_apply_hud_chrome()
 
 func _get_center_column_footer_stack_height() -> float:
 	var stack_h := 0.0
 	if _bottom_window_margin != null:
-		stack_h += maxf(_bottom_window_margin.custom_minimum_size.y, BOTTOM_WINDOW_MARGIN)
+		stack_h += maxf(_bottom_window_margin.size.y, 0.0)
 	if _center_footer != null:
-		stack_h += _center_footer.get_combined_minimum_size().y
+		stack_h += maxf(_center_footer.size.y, 0.0)
 	if _winnings_center != null:
-		stack_h += maxf(_winnings_center.custom_minimum_size.y, WINNINGS_BAND_MIN_HEIGHT)
-	stack_h += float(CENTER_COLUMN_SEPARATION) * 2.0
+		stack_h += maxf(_winnings_center.size.y, 0.0)
 	return stack_h
 
-func _shrink_grid_host_to_content(host_w: float) -> void:
-	if _grid_host == null:
-		return
-	var used_h := GRID_HOST_MIN_HEIGHT
-	if combat != null:
-		var grid_ui := combat.get_node_or_null("GridUI") as Control
-		if grid_ui != null:
-			var grid_bottom := combat.position.y + grid_ui.position.y + grid_ui.size.y
-			used_h = grid_bottom + PREMIUM_BAR_HEIGHT + PREMIUM_BAR_LAYOUT_PAD
-	_grid_host.custom_minimum_size = Vector2(host_w, maxf(used_h, GRID_HOST_MIN_HEIGHT))
-	_grid_host.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+func _shrink_grid_host_to_content(_host_w: float) -> void:
+	## GridHost size is authored in the editor; do not overwrite.
+	pass
 
 func _side_panel_inner_width(panel: PanelContainer) -> float:
 	if panel == null:
@@ -1885,28 +2290,15 @@ func _apply_economics_typography() -> void:
 		bet_plus_btn.custom_minimum_size = Vector2(btn_size, btn_size)
 		_style_stake_buttons()
 
-func _place_control_rect(control_node: Control, x0: float, y0: float, x1: float, y1: float) -> void:
-	if control_node == null:
-		return
-	control_node.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
-	control_node.anchor_left = x0
-	control_node.anchor_top = y0
-	control_node.anchor_right = x1
-	control_node.anchor_bottom = y1
-	control_node.offset_left = 0.0
-	control_node.offset_top = 0.0
-	control_node.offset_right = 0.0
-	control_node.offset_bottom = 0.0
-	control_node.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	control_node.grow_vertical = Control.GROW_DIRECTION_BOTH
+func _place_control_rect(_control_node: Control, _x0: float, _y0: float, _x1: float, _y1: float) -> void:
+	## Percentage placement retired — keep authored HudCanvas offsets.
+	pass
 
 func _refresh_spin_button_state() -> void:
 	if spin_btn == null:
 		return
-	if spin_btn.disabled:
-		spin_btn.text = "SPIN LOCKED"
-	else:
-		spin_btn.text = "EXECUTE"
+	## Drawing paints EXECUTE; keep live button text empty so chrome stays see-through.
+	spin_btn.text = ""
 
 func _refresh_encounter_win_overlay() -> void:
 	if encounter_win_overlay == null:
@@ -1988,7 +2380,11 @@ func _build_item_picker() -> void:
 		_bind_item_picker_live_nodes()
 		_rebuild_item_picker_contents()
 		return
-	var existing_panel := get_node_or_null("PlayArea/PlayRow/ItemPickerPanel") as PanelContainer
+	var existing_panel := find_child("ItemPickerPanel", true, false) as PanelContainer
+	if existing_panel == null:
+		existing_panel = get_node_or_null("HudCanvas/PlayArea/PlayRow/ItemPickerPanel") as PanelContainer
+	if existing_panel == null:
+		existing_panel = get_node_or_null("PlayArea/PlayRow/ItemPickerPanel") as PanelContainer
 	if existing_panel != null:
 		_item_picker_panel = existing_panel
 		_bind_item_picker_live_nodes()
@@ -2039,8 +2435,11 @@ func _first_descendant_of_class(node: Node, class_nm: String) -> Node:
 
 
 func _item_desc_style() -> StyleBoxFlat:
-	var style := _side_panel_style()
+	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.0, 0.0, 0.0, ITEM_DESC_BG_ALPHA)
+	style.border_color = Color(0.45, 0.03, 0.03, 0.75)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(4)
 	style.content_margin_left = 14
 	style.content_margin_right = 14
 	style.content_margin_top = 12
@@ -2146,7 +2545,8 @@ func _finish_item_row_unhover() -> void:
 	if _item_desc_hover_row.get_global_rect().has_point(mouse):
 		return
 	if _item_picker_panel != null and _item_desc_panel != null:
-		var kept := _item_desc_panel.get_global_rect().intersection(_item_picker_panel.get_global_rect())
+		var items_hit := _piece_items.get_global_rect() if _piece_items != null else _item_picker_panel.get_global_rect()
+		var kept := _item_desc_panel.get_global_rect().intersection(items_hit)
 		if kept.has_area() and kept.has_point(mouse):
 			return
 	_hide_item_desc()
@@ -2208,7 +2608,11 @@ func _layout_item_desc_overlay() -> void:
 		return
 	if _item_picker_panel == null or not is_instance_valid(_item_desc_hover_row):
 		return
-	var items_rect := _item_picker_panel.get_global_rect()
+	var items_rect: Rect2
+	if _piece_items != null:
+		items_rect = _piece_items.get_global_rect()
+	else:
+		items_rect = _item_picker_panel.get_global_rect()
 	var row_rect := _item_desc_hover_row.get_global_rect()
 	var list_rect := items_rect
 	var scroll := _item_picker_panel.get_meta("scroll") as Control
