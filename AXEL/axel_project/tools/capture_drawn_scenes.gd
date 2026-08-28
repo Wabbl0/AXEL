@@ -8,13 +8,17 @@ extends SceneTree
 ## Optional env:
 ##   AXEL_CAPTURE_OUTPUT=/abs/or/user://dir
 ##
-## Exit 0 when every PNG is written; 1 on failure.
+## Exit 0 when requested PNGs are written (missing drawings are skipped, not failed).
+## Exit 1 if a scene with a drawing fails to capture.
 
 const WINDOW := Vector2i(1920, 1280)
 const LAYOUT_FRAMES := 16
-const WALK_FRAMES := 28
-const SETTLE_FRAMES := 4
+const WALK_FRAMES := 24
+const SETTLE_FRAMES := 2
 const CAMERA_MODE_FOLLOW := 1
+const WALK_ANIM := &"walk_right"
+const WALK_FREEZE_FRAME := 2
+const INJECTED_PLAYER_SCALE := Vector2(0.198, 0.198)
 
 const _WALKABLE_SCENES: PackedStringArray = [
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
@@ -58,17 +62,31 @@ func _resolve_output_dir() -> String:
 
 func _main() -> void:
 	var failures: PackedStringArray = PackedStringArray()
+	var skipped: PackedStringArray = PackedStringArray()
+	var wrote := 0
 	for path in _WALKABLE_SCENES:
-		if not await _capture_scene(path, true):
+		var result := await _capture_scene(path, true)
+		if result == "fail":
 			failures.append(path)
+		elif result == "skip":
+			skipped.append(path)
+		else:
+			wrote += 1
 	for path in _STATIC_SCENES:
-		if not await _capture_scene(path, false):
+		var result := await _capture_scene(path, false)
+		if result == "fail":
 			failures.append(path)
+		elif result == "skip":
+			skipped.append(path)
+		else:
+			wrote += 1
 
+	if not skipped.is_empty():
+		print("Skipped (missing drawing): %s" % ", ".join(skipped))
 	if failures.is_empty():
 		print(
 			"Drawn-scene capture OK: %d PNGs -> %s"
-			% [_WALKABLE_SCENES.size() + _STATIC_SCENES.size(), ProjectSettings.globalize_path(_output_dir)]
+			% [wrote, ProjectSettings.globalize_path(_output_dir)]
 		)
 		quit(0)
 	else:
@@ -76,32 +94,42 @@ func _main() -> void:
 		quit(1)
 
 
-func _capture_scene(scene_path: String, walk_player: bool) -> bool:
+func _capture_scene(scene_path: String, walk_player: bool) -> String:
 	print("--- Capturing %s ---" % scene_path)
 	if not ResourceLoader.exists(scene_path):
 		push_error("Missing scene: %s" % scene_path)
-		return false
+		return "fail"
 	if change_scene_to_file(scene_path) != OK:
 		push_error("change_scene_to_file failed: %s" % scene_path)
-		return false
+		return "fail"
 
 	for _i in LAYOUT_FRAMES:
 		await process_frame
 
 	if current_scene == null:
 		push_error("current_scene null after load: %s" % scene_path)
-		return false
+		return "fail"
 
 	_hide_capture_ui(current_scene)
+	if not _has_drawn_background(current_scene):
+		push_warning("Skipping %s (background drawing missing from this checkout)." % scene_path)
+		return "skip"
+
 	var pin := Vector2.INF
 	if walk_player:
 		pin = _place_player_walking_at_center(current_scene)
+	else:
+		_inject_walking_sprite_if_needed(current_scene)
 
 	for _i in WALK_FRAMES:
 		_hide_capture_ui(current_scene)
 		if walk_player and pin.is_finite():
 			_pin_player(current_scene, pin)
 		await physics_frame
+
+	if walk_player:
+		_freeze_player_mid_stride(current_scene)
+	_freeze_injected_sprite(current_scene)
 
 	for _i in SETTLE_FRAMES:
 		_hide_capture_ui(current_scene)
@@ -116,9 +144,9 @@ func _capture_scene(scene_path: String, walk_player: bool) -> bool:
 	var out_path := "%s/%s" % [_output_dir, png_name]
 	if not _save_viewport_png(out_path):
 		push_error("PNG save failed: %s" % out_path)
-		return false
+		return "fail"
 	print("Wrote %s" % ProjectSettings.globalize_path(out_path))
-	return true
+	return "ok"
 
 
 func _png_name_for(scene_path: String) -> String:
@@ -157,6 +185,16 @@ func _find_background(scene: Node) -> Sprite2D:
 	return scene.get_node_or_null("Background") as Sprite2D
 
 
+func _has_drawn_background(scene: Node) -> bool:
+	var sprite := _find_background(scene)
+	if sprite != null:
+		return sprite.texture != null
+	var rect := scene.get_node_or_null("Background") as TextureRect
+	if rect != null:
+		return rect.texture != null
+	return false
+
+
 func _art_center(bg: Sprite2D) -> Vector2:
 	var tex_size := bg.texture.get_size() if bg.texture != null else Vector2.ZERO
 	if bg.region_enabled:
@@ -189,8 +227,11 @@ func _place_player_walking_at_center(scene: Node) -> Vector2:
 	player.collision_layer = 0
 	player.collision_mask = 0
 	player.set_input_enabled(false)
+	var fallback := player.get_node_or_null("FallbackBody") as CanvasItem
+	if fallback != null:
+		fallback.visible = false
 	var walk_speed: float = maxf(float(player.speed), 80.0)
-	player.set_scripted_velocity(Vector2(0.0, walk_speed))
+	player.set_scripted_velocity(Vector2(walk_speed, 0.0))
 	player.global_position = center
 	var cam := scene.get_node_or_null("Camera2D") as Camera2D
 	if cam != null:
@@ -209,6 +250,58 @@ func _pin_player(scene: Node, center: Vector2) -> void:
 	if player == null:
 		return
 	player.global_position = center
+
+
+func _freeze_player_mid_stride(scene: Node) -> void:
+	var player := _find_player(scene)
+	if player == null:
+		return
+	var sprite := player.get_node_or_null("AnimatedSprite") as AnimatedSprite2D
+	var shadow := player.get_node_or_null("ShadowOutline") as AnimatedSprite2D
+	_freeze_walk_sprite(sprite)
+	_freeze_walk_sprite(shadow)
+	player.set_scripted_velocity(Vector2.ZERO)
+	player.set_physics_process(false)
+
+
+func _freeze_walk_sprite(sprite: AnimatedSprite2D) -> void:
+	if sprite == null or sprite.sprite_frames == null:
+		return
+	sprite.visible = true
+	if sprite.sprite_frames.has_animation(WALK_ANIM):
+		sprite.play(WALK_ANIM)
+		var last := maxi(sprite.sprite_frames.get_frame_count(WALK_ANIM) - 1, 0)
+		sprite.frame = mini(WALK_FREEZE_FRAME, last)
+	sprite.pause()
+
+
+func _inject_walking_sprite_if_needed(scene: Node) -> void:
+	if _find_player(scene) != null:
+		return
+	var frames := load("res://assets/sprites/mike_sprite_frames.tres") as SpriteFrames
+	if frames == null:
+		return
+	var layer := CanvasLayer.new()
+	layer.name = "CapturePlayerLayer"
+	layer.layer = 100
+	scene.add_child(layer)
+	var sprite := AnimatedSprite2D.new()
+	sprite.name = "CaptureWalkSprite"
+	sprite.sprite_frames = frames
+	sprite.scale = INJECTED_PLAYER_SCALE
+	sprite.z_index = 20
+	sprite.centered = true
+	var vp_size := Vector2(WINDOW)
+	if scene.get_viewport() != null:
+		vp_size = scene.get_viewport().get_visible_rect().size
+	sprite.position = vp_size * 0.5
+	layer.add_child(sprite)
+	_freeze_walk_sprite(sprite)
+
+
+func _freeze_injected_sprite(scene: Node) -> void:
+	var sprite := scene.get_node_or_null("CapturePlayerLayer/CaptureWalkSprite") as AnimatedSprite2D
+	_freeze_walk_sprite(sprite)
 
 
 func _save_viewport_png(user_path: String) -> bool:
