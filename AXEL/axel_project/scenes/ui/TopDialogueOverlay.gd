@@ -657,12 +657,18 @@ func _cancel_crt_power() -> void:
 
 
 ## Type, wait for player advance, CRT off. `hold_duration` is kept for call-site compat (unused).
+func _skip_dialogue_requested() -> bool:
+	return OS.has_environment("AXEL_SKIP_DIALOGUE") and OS.get_environment("AXEL_SKIP_DIALOGUE") == "1"
+
+
 func show_line(
 	text: String,
 	_hold_duration: float = 2.5,
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
+	if _skip_dialogue_requested():
+		return
 	await show_lines([text], chars_per_sec, allow_skip)
 
 
@@ -672,7 +678,7 @@ func show_lines(
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
-	if texts.is_empty():
+	if _skip_dialogue_requested() or texts.is_empty():
 		return
 
 	visible = true
@@ -718,6 +724,8 @@ func show_line_nonblocking(
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
+	if _skip_dialogue_requested():
+		return
 	_run_line_async(text, hold_duration, chars_per_sec, allow_skip)
 
 
@@ -736,6 +744,8 @@ func type_line(
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
+	if _skip_dialogue_requested():
+		return
 	_advance_requested = false
 	_skip_requested = false
 	_skip_input_enabled = allow_skip
