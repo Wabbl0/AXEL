@@ -15,12 +15,13 @@ extends SceneTree
 ##   AXEL_CAPTURE_OUTPUT=/abs/or/user://dir
 
 const WINDOW := Vector2i(1920, 1280)
-const LAYOUT_FRAMES := 20
-const MAX_WALK_FRAMES := 240
-const ARRIVE_DISTANCE_PX := 110.0
-const STUCK_FRAMES := 14
+const LAYOUT_FRAMES := 36
+const MAX_WALK_FRAMES := 720
+const ARRIVE_DISTANCE_PX := 90.0
+const STUCK_FRAMES := 10
 const STUCK_EPSILON_PX := 0.6
-const WALK_POSE_FRAMES := 22
+const SLIDE_FRAMES := 22
+const WALK_POSE_FRAMES := 28
 const CAMERA_MODE_FOLLOW := 1
 
 const _WALKABLE_SCENES: PackedStringArray = [
@@ -154,9 +155,16 @@ func _simulate_walk_toward_middle(scene: Node, driver: InputEventDriver) -> void
 		player.set_input_enabled(true)
 
 	var target := _walk_target(scene, player)
-	var last_pos := player.global_position
+	var start := player.global_position
+	print(
+		"Walk start %s spawn=(%.0f, %.0f) target=(%.0f, %.0f)"
+		% [scene.scene_file_path, start.x, start.y, target.x, target.y]
+	)
+	var last_pos := start
 	var stuck_for := 0
 	var held: Array[int] = []
+	var slide_queue: Array[Array] = []
+	var sliding := 0
 
 	for _i in MAX_WALK_FRAMES:
 		_hide_capture_ui(scene)
@@ -165,7 +173,15 @@ func _simulate_walk_toward_middle(scene: Node, driver: InputEventDriver) -> void
 		var delta: Vector2 = target - player.global_position
 		if delta.length() <= ARRIVE_DISTANCE_PX:
 			break
-		var next_keys := _keys_for_delta(delta)
+		var next_keys: Array[int] = []
+		if sliding > 0:
+			for keycode in slide_queue[0]:
+				next_keys.append(int(keycode))
+			sliding -= 1
+			if sliding <= 0:
+				slide_queue.pop_front()
+		else:
+			next_keys = _keys_for_delta(delta)
 		if next_keys.is_empty():
 			break
 		_apply_keys(driver, held, next_keys)
@@ -177,12 +193,14 @@ func _simulate_walk_toward_middle(scene: Node, driver: InputEventDriver) -> void
 		else:
 			stuck_for = 0
 			last_pos = player.global_position
-		if stuck_for >= STUCK_FRAMES:
-			var alt := _alternate_keys(delta, held)
-			if alt == held:
+			if sliding <= 0:
+				slide_queue.clear()
+		if stuck_for >= STUCK_FRAMES and sliding <= 0:
+			if slide_queue.is_empty():
+				slide_queue = _slide_options(delta, held)
+			if slide_queue.is_empty():
 				break
-			_apply_keys(driver, held, alt)
-			held = alt
+			sliding = SLIDE_FRAMES
 			stuck_for = 0
 
 	if held.is_empty():
@@ -192,6 +210,16 @@ func _simulate_walk_toward_middle(scene: Node, driver: InputEventDriver) -> void
 	for _i in WALK_POSE_FRAMES:
 		_hide_capture_ui(scene)
 		await physics_frame
+
+	if is_instance_valid(player):
+		var anim := ""
+		var sprite := player.get_node_or_null("AnimatedSprite") as AnimatedSprite2D
+		if sprite != null:
+			anim = String(sprite.animation)
+		print(
+			"Walk end pos=(%.0f, %.0f) anim=%s keys=%s"
+			% [player.global_position.x, player.global_position.y, anim, str(held)]
+		)
 
 
 func _apply_keys(driver: InputEventDriver, previous: Array[int], next_keys: Array[int]) -> void:
@@ -212,17 +240,37 @@ func _keys_for_delta(delta: Vector2) -> Array[int]:
 	return keys
 
 
-func _alternate_keys(delta: Vector2, current: Array[int]) -> Array[int]:
-	var alt: Array[int] = []
-	if current.has(KEY_A) or current.has(KEY_D):
-		if absf(delta.y) >= 8.0:
-			alt.append(KEY_S if delta.y > 0.0 else KEY_W)
-	if current.has(KEY_W) or current.has(KEY_S):
-		if absf(delta.x) >= 8.0:
-			alt.append(KEY_D if delta.x > 0.0 else KEY_A)
-	if alt.is_empty():
-		return current
-	return alt
+func _slide_options(delta: Vector2, current: Array[int]) -> Array[Array]:
+	var horiz := KEY_D if delta.x >= 0.0 else KEY_A
+	var vert := KEY_S if delta.y >= 0.0 else KEY_W
+	var other_vert := KEY_W if vert == KEY_S else KEY_S
+	var other_horiz := KEY_A if horiz == KEY_D else KEY_D
+	var raw: Array[Array] = [
+		[vert],
+		[other_vert],
+		[horiz, vert],
+		[horiz, other_vert],
+		[other_horiz],
+		_keys_for_delta(delta),
+	]
+	var options: Array[Array] = []
+	var seen := {}
+	for candidate in raw:
+		if candidate.is_empty():
+			continue
+		var key := _keys_signature(candidate)
+		if key == _keys_signature(current) or seen.has(key):
+			continue
+		seen[key] = true
+		options.append(candidate)
+	return options
+
+
+func _keys_signature(keys: Array) -> String:
+	var parts: PackedStringArray = []
+	for keycode in keys:
+		parts.append(str(int(keycode)))
+	return ",".join(parts)
 
 
 func _walk_target(scene: Node, player: CharacterBody2D) -> Vector2:
@@ -264,11 +312,24 @@ func _art_center(bg: Sprite2D) -> Vector2:
 
 
 func _hide_capture_ui(scene: Node) -> void:
-	_hide_node(scene.get_node_or_null("TopDialogueOverlay"))
-	_hide_node(scene.get_node_or_null("InteractPromptOverlay"))
+	_hide_named_ui(scene)
 	var fade := scene.get_node_or_null("TopDialogueOverlay/ViewportRoot/RootMargin")
 	if fade is CanvasItem:
 		(fade as CanvasItem).visible = false
+
+
+func _hide_named_ui(node: Node) -> void:
+	if node == null:
+		return
+	var n := node.name
+	if n == "TopDialogueOverlay" or n == "InteractPromptOverlay" or n == "ExitLayer" or n == "MemoryIndicator":
+		if node.has_method("hide_prompt"):
+			node.call("hide_prompt")
+		if node.has_method("set_process"):
+			node.set_process(false)
+		_hide_node(node)
+	for child in node.get_children():
+		_hide_named_ui(child)
 
 
 func _hide_node(node: Node) -> void:
