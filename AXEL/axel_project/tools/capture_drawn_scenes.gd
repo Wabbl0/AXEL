@@ -379,6 +379,27 @@ func _hide_capture_ui(scene: Node) -> void:
 	var fade := scene.get_node_or_null("TopDialogueOverlay/ViewportRoot/RootMargin")
 	if fade is CanvasItem:
 		(fade as CanvasItem).visible = false
+	_hide_noir_for_html_standin(scene)
+
+
+func _hide_noir_for_html_standin(scene: Node) -> void:
+	# HTML phone plates are already red-on-black. Running them through noir
+	# (built for white-fill + black ink) crushes the drawing into a void.
+	var fname := scene.scene_file_path.get_file()
+	if fname not in [
+		"2.3_Kitchen.tscn",
+		"3.1_Backyard.tscn",
+		"4.1_TeachersLounge.tscn",
+		"2.2_CafeteriaMemory.tscn",
+		"3.2_BackyardMemory.tscn",
+		"4.2_TeachersMemory.tscn",
+	]:
+		return
+	for overlay_name in ["NoirPaletteOverlay", "NoirPaletteOverlayFx"]:
+		_hide_node(scene.get_node_or_null(overlay_name))
+	for child in scene.get_children():
+		if child.name.begins_with("Noir"):
+			_hide_node(child)
 
 
 func _hide_named_ui(node: Node) -> void:
