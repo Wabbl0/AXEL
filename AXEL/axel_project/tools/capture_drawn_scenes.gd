@@ -22,6 +22,7 @@ const STUCK_FRAMES := 10
 const STUCK_EPSILON_PX := 0.6
 const SLIDE_FRAMES := 22
 const WALK_POSE_FRAMES := 28
+const STILL_SETTLE_SEC := 3.2
 const CAMERA_MODE_FOLLOW := 1
 
 const _WALKABLE_SCENES: PackedStringArray = [
@@ -127,6 +128,7 @@ func _capture_scene(scene_path: String, walk_player: bool) -> bool:
 	if walk_player:
 		await _simulate_walk_toward_middle(current_scene, driver)
 	else:
+		await create_timer(STILL_SETTLE_SEC).timeout
 		for _i in 8:
 			_hide_capture_ui(current_scene)
 			await process_frame
