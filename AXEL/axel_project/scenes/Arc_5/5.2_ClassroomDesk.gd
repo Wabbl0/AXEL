@@ -33,6 +33,10 @@ func _ready() -> void:
 
 
 func _run_desk_sequence() -> void:
+	if OS.get_environment("AXEL_SKIP_DESK_SEQUENCE") == "1":
+		_set_plate(TEX_EMPTY)
+		_exit_button.visible = false
+		return
 	_set_plate(TEX_EMPTY)
 	if is_instance_valid(_top_dialogue):
 		_top_dialogue.visible = true

@@ -22,7 +22,6 @@ const STUCK_FRAMES := 10
 const STUCK_EPSILON_PX := 0.6
 const SLIDE_FRAMES := 22
 const WALK_POSE_FRAMES := 28
-const STILL_SETTLE_SEC := 3.2
 const CAMERA_MODE_FOLLOW := 1
 
 const _WALKABLE_SCENES: PackedStringArray = [
@@ -52,6 +51,7 @@ func _init() -> void:
 	OS.set_environment("AXEL_SKIP_INTRO", "1")
 	OS.set_environment("AXEL_SKIP_DIALOGUE", "1")
 	OS.set_environment("AXEL_DISABLE_EVENT_FX", "1")
+	OS.set_environment("AXEL_SKIP_DESK_SEQUENCE", "1")
 	_output_dir = _resolve_output_dir()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_output_dir))
 	DisplayServer.window_set_size(WINDOW)
@@ -127,24 +127,69 @@ func _capture_scene(scene_path: String, walk_player: bool) -> bool:
 
 	if walk_player:
 		await _simulate_walk_toward_middle(current_scene, driver)
-	else:
-		await create_timer(STILL_SETTLE_SEC).timeout
-		for _i in 8:
-			_hide_capture_ui(current_scene)
-			await process_frame
+		_hide_capture_ui(current_scene)
+		await RenderingServer.frame_post_draw
+		_hide_capture_ui(current_scene)
+		var png_name := scene_path.get_file().get_basename() + ".png"
+		var out_path := "%s/%s" % [_output_dir, png_name]
+		if not _save_viewport_png(out_path):
+			push_error("PNG save failed: %s" % out_path)
+			driver.release_all()
+			return false
+		print("Wrote %s" % ProjectSettings.globalize_path(out_path))
+		driver.release_all()
+		return true
 
+	if scene_path.ends_with("5.2_ClassroomDesk.tscn"):
+		var ok_desk := await _capture_desk_stages(current_scene)
+		driver.release_all()
+		return ok_desk
+
+	await create_timer(0.45).timeout
+	for _i in 8:
+		_hide_capture_ui(current_scene)
+		await process_frame
 	_hide_capture_ui(current_scene)
 	await RenderingServer.frame_post_draw
 	_hide_capture_ui(current_scene)
-
-	var png_name := scene_path.get_file().get_basename() + ".png"
-	var out_path := "%s/%s" % [_output_dir, png_name]
-	var ok := _save_viewport_png(out_path)
+	var still_name := scene_path.get_file().get_basename() + ".png"
+	var still_path := "%s/%s" % [_output_dir, still_name]
+	var ok := _save_viewport_png(still_path)
 	driver.release_all()
 	if not ok:
-		push_error("PNG save failed: %s" % out_path)
+		push_error("PNG save failed: %s" % still_path)
 		return false
-	print("Wrote %s" % ProjectSettings.globalize_path(out_path))
+	print("Wrote %s" % ProjectSettings.globalize_path(still_path))
+	return true
+
+
+func _capture_desk_stages(scene: Node) -> bool:
+	const STAGES: Array[Array] = [
+		["res://exports/Drawings/desk_empty.png", "5.2_ClassroomDesk_empty.png"],
+		["res://exports/Drawings/desk_hand.png", "5.2_ClassroomDesk_hand.png"],
+		["res://exports/Drawings/desk.png", "5.2_ClassroomDesk_message.png"],
+	]
+	if not scene.has_method("_set_plate"):
+		push_error("Desk scene missing _set_plate")
+		return false
+	var dim := scene.get_node_or_null("DimLayer/DimRect") as ColorRect
+	if dim != null:
+		dim.color = Color(1, 1, 1, 0)
+	if scene.has_method("_stop_local_shake"):
+		scene.call("_stop_local_shake")
+	for stage in STAGES:
+		scene.call("_set_plate", stage[0])
+		for _i in 10:
+			_hide_capture_ui(scene)
+			await process_frame
+		_hide_capture_ui(scene)
+		await RenderingServer.frame_post_draw
+		_hide_capture_ui(scene)
+		var out_path := "%s/%s" % [_output_dir, stage[1]]
+		if not _save_viewport_png(out_path):
+			push_error("PNG save failed: %s" % out_path)
+			return false
+		print("Wrote %s" % ProjectSettings.globalize_path(out_path))
 	return true
 
 
