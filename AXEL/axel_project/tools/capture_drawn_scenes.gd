@@ -123,8 +123,10 @@ func _capture_scene(scene_path: String, walk_player: bool) -> bool:
 		return false
 
 	_hide_capture_ui(current_scene)
-	if walk_player:
-		_art_center_static_camera(current_scene)
+	_prepare_html_standin(current_scene)
+	for _j in 12:
+		await process_frame
+	_hide_capture_ui(current_scene)
 	var driver := InputEventDriver.new(self, false)
 
 	if walk_player:
@@ -181,7 +183,8 @@ func _capture_desk_stages(scene: Node) -> bool:
 		scene.call("_stop_local_shake")
 	for stage in STAGES:
 		scene.call("_set_plate", stage[0])
-		for _i in 10:
+		_relayout_camera(scene)
+		for _i in 14:
 			_hide_capture_ui(scene)
 			await process_frame
 		_hide_capture_ui(scene)
@@ -336,18 +339,63 @@ func _walk_target(scene: Node, player: CharacterBody2D) -> Vector2:
 	return cam.global_position
 
 
-func _art_center_static_camera(scene: Node) -> void:
-	# Portrait HTML stand-ins are letterboxed on the 3508×2480 canvas. The
-	# authored left-biased static_center would stare at empty pad.
+func _prepare_html_standin(scene: Node) -> void:
+	# Gitignored production plates are missing in this checkout. Scenes that
+	# still use HTML phone drawings (already red-on-black) must not run the
+	# white-ink noir/CRT stack, and memory stills must not 1.85-crop a portrait.
+	if not _is_html_standin(scene):
+		return
+	_hide_post_fx(scene)
+	_hide_node(scene.get_node_or_null("WalkableWorld/EnvironmentColliders/FlashlightVisual"))
+	var void_fill := scene.get_node_or_null("WalkableWorld/VoidFill")
+	if void_fill is Polygon2D:
+		(void_fill as Polygon2D).color = Color(0, 0, 0, 1)
+	elif void_fill is CanvasItem:
+		(void_fill as CanvasItem).visible = false
+	var frame := scene.get_node_or_null("MemoryFrame")
+	if frame != null:
+		frame.set_script(null)
+	var bg := _find_background(scene)
+	if bg != null:
+		bg.region_enabled = false
+		bg.scale = Vector2.ONE
+	_relayout_camera(scene)
+
+
+func _is_html_standin(scene: Node) -> bool:
 	var fname := scene.scene_file_path.get_file()
-	if fname not in ["2.3_Kitchen.tscn", "3.1_Backyard.tscn", "4.1_TeachersLounge.tscn"]:
-		return
+	return fname in [
+		"2.3_Kitchen.tscn",
+		"2.4_ClassroomsCorridor.tscn",
+		"3.1_Backyard.tscn",
+		"4.1_TeachersLounge.tscn",
+		"5.1_Classroom.tscn",
+		"2.2_CafeteriaMemory.tscn",
+		"3.2_BackyardMemory.tscn",
+		"4.2_TeachersMemory.tscn",
+		"5.2_ClassroomDesk.tscn",
+	]
+
+
+func _relayout_camera(scene: Node) -> void:
 	var cam := scene.get_node_or_null("Camera2D")
-	if cam == null:
-		return
-	cam.set("static_center", Vector2.INF)
-	if cam.has_method("_run_pipeline"):
+	if cam != null and cam.has_method("_run_pipeline"):
 		cam.call("_run_pipeline")
+
+
+func _hide_post_fx(scene: Node) -> void:
+	for overlay_name in [
+		"NoirPaletteOverlay",
+		"NoirPaletteOverlayFx",
+		"ScanlineOverlay",
+		"CrtPluginOverlay",
+		"CrtCombatOverlay",
+	]:
+		_hide_node(scene.get_node_or_null(overlay_name))
+	for child in scene.get_children():
+		var n := String(child.name)
+		if n.begins_with("Noir") or n.begins_with("Crt") or n.begins_with("Scanline"):
+			_hide_node(child)
 
 
 func _find_player(scene: Node) -> CharacterBody2D:
@@ -383,23 +431,8 @@ func _hide_capture_ui(scene: Node) -> void:
 
 
 func _hide_noir_for_html_standin(scene: Node) -> void:
-	# HTML phone plates are already red-on-black. Running them through noir
-	# (built for white-fill + black ink) crushes the drawing into a void.
-	var fname := scene.scene_file_path.get_file()
-	if fname not in [
-		"2.3_Kitchen.tscn",
-		"3.1_Backyard.tscn",
-		"4.1_TeachersLounge.tscn",
-		"2.2_CafeteriaMemory.tscn",
-		"3.2_BackyardMemory.tscn",
-		"4.2_TeachersMemory.tscn",
-	]:
-		return
-	for overlay_name in ["NoirPaletteOverlay", "NoirPaletteOverlayFx"]:
-		_hide_node(scene.get_node_or_null(overlay_name))
-	for child in scene.get_children():
-		if child.name.begins_with("Noir"):
-			_hide_node(child)
+	if _is_html_standin(scene):
+		_hide_post_fx(scene)
 
 
 func _hide_named_ui(node: Node) -> void:
