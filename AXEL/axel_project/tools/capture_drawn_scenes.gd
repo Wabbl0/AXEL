@@ -123,6 +123,8 @@ func _capture_scene(scene_path: String, walk_player: bool) -> bool:
 		return false
 
 	_hide_capture_ui(current_scene)
+	if walk_player:
+		_art_center_static_camera(current_scene)
 	var driver := InputEventDriver.new(self, false)
 
 	if walk_player:
@@ -332,6 +334,20 @@ func _walk_target(scene: Node, player: CharacterBody2D) -> Vector2:
 			return art
 		return player.global_position
 	return cam.global_position
+
+
+func _art_center_static_camera(scene: Node) -> void:
+	# Portrait HTML stand-ins are letterboxed on the 3508×2480 canvas. The
+	# authored left-biased static_center would stare at empty pad.
+	var fname := scene.scene_file_path.get_file()
+	if fname not in ["2.3_Kitchen.tscn", "3.1_Backyard.tscn", "4.1_TeachersLounge.tscn"]:
+		return
+	var cam := scene.get_node_or_null("Camera2D")
+	if cam == null:
+		return
+	cam.set("static_center", Vector2.INF)
+	if cam.has_method("_run_pipeline"):
+		cam.call("_run_pipeline")
 
 
 func _find_player(scene: Node) -> CharacterBody2D:
