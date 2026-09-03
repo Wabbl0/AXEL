@@ -6164,3 +6164,25 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Locker line can be skipped/advanced with E without getting stuck; hub [E] works after the line. Combat: no * wrench; bigger VT323 HUD; no  /3; icons without white edge; enter glitch shakes symbols with frames. 2.2 unchanged in code.
 - Verification: combat_test_scaffold_check.gd, determinism_check.gd, princess_check.gd, hud_piece_placement_check.gd, hud_click_rect_check.gd, strip_premium_halo.gd OK.
 - Notes: 2.2 tips for redraw stay white fill + thicker black ink. Wild icon keeps halo. COMBAT_TEXT_SCALE retunes size in one place.
+
+### Fullscreen framing, dialogue size, and spawn fixes
+
+- Request: Fix four fullscreen-only exploration issues: 1.1 intro spawn/walk target drifting in a separate window, dialogue text reading too small in fullscreen, static rooms cropping too much of the drawing, and 2.4 corridor returns from the lounge/classroom coming back at the wrong size.
+- Implementation: `TopDialogueOverlay` now scales its dialogue font/outline from viewport height and grows the bar height to fit larger text without re-enabling project stretch. Static locked `cover` rooms gained a shared `edge_reveal` budget in the background layout/camera helpers so wide monitors can show more art with a thin white clear-color strip that the CRT stack darkens. `2.4_ClassroomsCorridor.gd` now keeps the seeded depth multiplier alive until door arrival placement completes, so lounge/classroom returns land at 150%. `1.1_SchoolExterior.gd` now captures the intro target in texture space, re-resolves it during the sequence, and scales the fixed intro distances by live cover ratio so fullscreen resizes cannot stale the walk target. Added headless checks for the new framing math and the 2.4 depth-seed regression, and updated scene canon/docs to match.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/core/background_layout.gd`
+  - `AXEL/axel_project/scenes/core/background_camera_controller.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/core/test/background_fit_check.gd`
+  - `AXEL/axel_project/scenes/core/test/corridor_depth_seed_check.gd`
+  - `AXEL/axel_project/tools/qa/run_default_playtest.ps1`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/scenes/core/exploration_viewport.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Fullscreen dialogue keeps the same screen-height ratio as the authored baseline while staying sharp; static rooms show more drawing on wide monitors with a thin darkened edge strip; 2.4 lounge/classroom returns restore Mike at 150%; and the 1.1 intro stays locked to the Player node's live remapped spawn even if the viewport settles after startup.
+- Verification: `background_fit_check.gd`, `player_cover_sync_check.gd`, `player_walk_speed_check.gd`, `player_spawn_sync_check.gd`, `interact_arrival_check.gd`, `corridor_depth_seed_check.gd`, plus the standard `princess_check.gd`, `determinism_check.gd`, `scene_smoke_check.gd`, `combat_test_scaffold_check.gd`, and `tools/qa/run_default_playtest.ps1`.
+- Notes: Stretch stays disabled per canon; the new edge strip depends on the exploration clear color staying pure white and still needs a real windowed pass because `--headless` does not render the CRT shader.

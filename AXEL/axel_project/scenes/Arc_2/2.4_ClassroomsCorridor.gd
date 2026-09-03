@@ -41,6 +41,7 @@ var _depth_factor: float = 1.0
 var _last_cover_scale: float = 0.0
 var _last_bg_position: Vector2 = Vector2.ZERO
 var _cover_layout_ready := false
+var _spawn_placement_pending := false
 
 
 func _ready() -> void:
@@ -87,6 +88,7 @@ func _restore_player_position_if_needed() -> void:
 	_pending_spawn_side = GameManager.take_classrooms_corridor_spawn_side()
 	_seed_depth_from_spawn_side(_pending_spawn_side)
 	if _pending_spawn_side in ["cafeteria_door", "lounge_door", "classroom_door"]:
+		_spawn_placement_pending = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
 		# 2.1↔2.4 cafeteria door: always dest-box long-axis center (ignore leave t).
 		# Consume t so it cannot leak to another door.
@@ -105,6 +107,13 @@ func _seed_depth_from_spawn_side(spawn_side: String) -> void:
 		_:
 			# Fresh Play, cafeteria_door, or empty → 100%.
 			_depth_factor = 1.0
+
+
+func _reassert_seeded_depth_if_pending() -> void:
+	if not _spawn_placement_pending:
+		return
+	_seed_depth_from_spawn_side(_pending_spawn_side)
+	_apply_player_cover_and_depth(_player)
 
 
 func _process(_delta: float) -> void:
@@ -323,6 +332,7 @@ func _apply_spawn_peek_after_wake() -> void:
 	# Let physics register wall shapes before sprite/hitbox clearance queries.
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+	_reassert_seeded_depth_if_pending()
 	_apply_spawn_peek_if_pending()
 
 
@@ -335,7 +345,6 @@ func _apply_spawn_peek_if_pending() -> void:
 	var side := _pending_spawn_side
 	if side not in ["cafeteria_door", "lounge_door", "classroom_door"]:
 		return
-	_pending_spawn_side = ""
 	# Cover/depth already applied in _sync_world_space (seeded depth). Place last
 	# so a post-place scale change cannot move the Front circle off the land point.
 	match side:
@@ -362,11 +371,16 @@ func _apply_spawn_peek_if_pending() -> void:
 			)
 			_arrival_latched_zone = "classroom"
 			_arm_zone_grace("classroom")
+	_seed_depth_from_spawn_side(side)
+	_apply_player_cover_and_depth(_player)
+	_pending_spawn_side = ""
+	_spawn_placement_pending = false
 
 func _physics_process(_delta: float) -> void:
 	if not _cover_layout_ready or _is_transitioning:
 		return
-	_update_depth_factor_from_player()
+	if not _spawn_placement_pending:
+		_update_depth_factor_from_player()
 	_apply_player_cover_and_depth(_player)
 
 

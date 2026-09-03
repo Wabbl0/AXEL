@@ -10,6 +10,7 @@ enum FitMode {
 
 const DEFAULT_BACKGROUND_Y := 0.0
 const EDIT_LOCK_META := "_edit_lock_"
+const MAX_EDGE_REVEAL := 0.05
 ## Project design size (3:2). Used when the viewport is missing or empty so
 ## cover-fit never invents a third baseline (e.g. stale 1280x720).
 const DESIGN_VIEWPORT := Vector2(1920.0, 1280.0)
@@ -37,6 +38,7 @@ static func apply(
 	viewport_size: Vector2,
 	fit_mode: FitMode = FitMode.COVER,
 	background_y: float = DEFAULT_BACKGROUND_Y,
+	edge_reveal: float = 0.0,
 ) -> Dictionary:
 	var empty: Dictionary = {}
 	var tex := sprite.texture
@@ -46,12 +48,17 @@ static func apply(
 	if tex_size.x <= 0.0 or tex_size.y <= 0.0:
 		return empty
 
+	var contain_scale := minf(viewport_size.x / tex_size.x, viewport_size.y / tex_size.y)
+	var cover_scale := maxf(viewport_size.x / tex_size.x, viewport_size.y / tex_size.y)
 	var scale_factor: float
 	match fit_mode:
 		FitMode.CONTAIN:
-			scale_factor = minf(viewport_size.x / tex_size.x, viewport_size.y / tex_size.y)
+			scale_factor = contain_scale
 		_:
-			scale_factor = maxf(viewport_size.x / tex_size.x, viewport_size.y / tex_size.y)
+			scale_factor = cover_scale
+			if edge_reveal > 0.0:
+				var reveal := clampf(edge_reveal, 0.0, 0.5)
+				scale_factor = maxf(contain_scale, cover_scale * (1.0 - 2.0 * reveal))
 
 	var fit_scale := Vector2.ONE * scale_factor
 	var position := Vector2(

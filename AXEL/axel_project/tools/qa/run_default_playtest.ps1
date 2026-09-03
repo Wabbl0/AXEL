@@ -1,10 +1,10 @@
 # Run default QA playtest gates; prints QA_PLAYTEST_RESULT lines.
 $ErrorActionPreference = "Continue"
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$repo = Split-Path $root -Parent
+$repo = Split-Path (Split-Path $root -Parent) -Parent
 Set-Location $repo
 
-$godot = "tools\cmd\godot.cmd"
+$godot = Join-Path $repo "tools\cmd\godot.cmd"
 $proj = "--headless --path AXEL/axel_project -s"
 
 $commands = @(
@@ -12,6 +12,12 @@ $commands = @(
     @{ key = "determinism"; script = "res://combat/test/determinism_check.gd" },
     @{ key = "rtp_audit"; script = "res://combat/test/rtp_audit.gd"; metrics_only = $true },
     @{ key = "scene_smoke"; script = "res://tools/scene_smoke_check.gd" },
+    @{ key = "background_fit"; script = "res://scenes/core/test/background_fit_check.gd" },
+    @{ key = "player_cover_sync"; script = "res://scenes/core/test/player_cover_sync_check.gd" },
+    @{ key = "player_walk_speed"; script = "res://scenes/core/test/player_walk_speed_check.gd" },
+    @{ key = "player_spawn_sync"; script = "res://scenes/core/test/player_spawn_sync_check.gd" },
+    @{ key = "interact_arrival"; script = "res://scenes/core/test/interact_arrival_check.gd" },
+    @{ key = "corridor_depth_seed"; script = "res://scenes/core/test/corridor_depth_seed_check.gd" },
     @{ key = "combat_test_scaffold"; script = "res://combat/test/combat_test_scaffold_check.gd" },
     @{ key = "canon_consistency_audit"; script = "res://tools/qa/canon_consistency_audit.gd"; metrics_only = $true },
     @{ key = "bot_arc1_exterior"; script = "res://tools/bots/playthrough_arc1_exterior.gd" },

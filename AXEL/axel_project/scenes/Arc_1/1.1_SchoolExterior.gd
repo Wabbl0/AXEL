@@ -122,6 +122,11 @@ func _ready() -> void:
 	call_deferred("_begin_forced_intro_after_layout")
 
 
+func _exit_tree() -> void:
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
+
+
 func _begin_forced_intro_after_layout() -> void:
 	_sync_environment_colliders_from_current_background()
 	_run_forced_intro_sequence()
@@ -142,7 +147,7 @@ func _process(_delta: float) -> void:
 		return
 	if not is_instance_valid(_player):
 		return
-	if _player.global_position.distance_to(_unlock_position) < _SECOND_DIALOGUE_DISTANCE:
+	if _player.global_position.distance_to(_unlock_position) < _scaled_intro_distance(_SECOND_DIALOGUE_DISTANCE):
 		return
 	_second_dialogue_fired = true
 	_watching_movement = false
@@ -166,28 +171,34 @@ func _run_forced_intro_sequence() -> void:
 	AxelEventFx.start_interface_distortion()
 
 	# Walk to the Player node's remapped spawn — never a hardcoded stand target.
-	var spawn_target := _player.global_position if is_instance_valid(_player) else Vector2.ZERO
+	var spawn_target_tex := _capture_intro_target_tex()
 	var cam := $Camera2D as BackgroundCamera
 	# Camera starts above the road, then tilts down onto the stand point with
 	# follow off. Enabling follow while Mike is still off-screen left used to
 	# race the camera toward him (sudden fast tilt/pan). Mike walks in after.
 	var saved_smoothing := false
 	if cam != null:
+		var spawn_target := _resolve_intro_target_from_tex(spawn_target_tex)
 		saved_smoothing = cam.position_smoothing_enabled
 		cam.position_smoothing_enabled = false
 		cam.set_follow_enabled(false)
 		cam.place_center_clamped(
-			Vector2(spawn_target.x, spawn_target.y - INTRO_CAMERA_START_LIFT_PX)
+			Vector2(
+				spawn_target.x,
+				spawn_target.y - _scaled_intro_distance(INTRO_CAMERA_START_LIFT_PX)
+			)
 		)
 	if is_instance_valid(_player):
-		_player.global_position = _intro_offscreen_left_spawn(spawn_target)
+		_player.global_position = _intro_offscreen_left_spawn(
+			_resolve_intro_target_from_tex(spawn_target_tex)
+		)
 
 	await get_tree().create_timer(INTRO_START_WAIT_SEC).timeout
 	if cam != null:
-		await _intro_camera_tilt_to(cam, spawn_target)
-	await _scripted_walk_horizontal_to(spawn_target)
+		await _intro_camera_tilt_to(cam, spawn_target_tex)
+	await _scripted_walk_horizontal_to(spawn_target_tex)
 	if cam != null:
-		cam.place_center_clamped(spawn_target)
+		cam.place_center_clamped(_resolve_intro_target_from_tex(spawn_target_tex))
 		cam.position_smoothing_enabled = saved_smoothing
 		cam.set_follow_enabled(true)
 
@@ -209,24 +220,50 @@ func _run_forced_intro_sequence() -> void:
 	_play_first_dialogue_line()
 
 
-func _intro_camera_tilt_to(cam: BackgroundCamera, end_center: Vector2) -> void:
+func _capture_intro_target_tex() -> Vector2:
+	var env := get_node_or_null("EnvironmentColliders") as Node2D
+	if env == null or not is_instance_valid(_player):
+		return Vector2.ZERO
+	return env.to_local(_player.global_position)
+
+
+func _resolve_intro_target_from_tex(target_tex: Vector2) -> Vector2:
+	var env := get_node_or_null("EnvironmentColliders") as Node2D
+	if env == null:
+		return target_tex
+	return env.to_global(target_tex)
+
+
+func _current_intro_cover_ratio() -> float:
+	var background := get_node_or_null("Background_1_1") as Sprite2D
+	if background == null or _OLD_BG_SCALE.x == 0.0:
+		return 1.0
+	return background.scale.x / _OLD_BG_SCALE.x
+
+
+func _scaled_intro_distance(distance_px: float) -> float:
+	return distance_px * _current_intro_cover_ratio()
+
+
+func _intro_camera_tilt_to(cam: BackgroundCamera, target_tex: Vector2) -> void:
 	if cam == null:
 		return
 	var start := cam.global_position
 	var duration := INTRO_CAMERA_TILT_DURATION_SEC
 	if duration <= 0.0:
-		cam.place_center_clamped(end_center)
+		cam.place_center_clamped(_resolve_intro_target_from_tex(target_tex))
 		return
 	var elapsed := 0.0
 	while elapsed < duration and is_instance_valid(cam):
 		elapsed += get_process_delta_time()
 		var t := clampf(elapsed / duration, 0.0, 1.0)
+		var end_center := _resolve_intro_target_from_tex(target_tex)
 		# Smoothstep: ease in/out so the tilt never spikes in speed.
 		var s := t * t * (3.0 - 2.0 * t)
 		cam.place_center_clamped(start.lerp(end_center, s))
 		await get_tree().process_frame
 	if is_instance_valid(cam):
-		cam.place_center_clamped(end_center)
+		cam.place_center_clamped(_resolve_intro_target_from_tex(target_tex))
 
 
 func _intro_offscreen_left_spawn(stones_target: Vector2) -> Vector2:
@@ -238,7 +275,7 @@ func _intro_offscreen_left_spawn(stones_target: Vector2) -> Vector2:
 		vp = Vector2(1920.0, 1280.0)
 	var half := vp / (2.0 * cam.zoom)
 	# Left of the current (lifted) camera view; Y locked to the rocks stand height.
-	var spawn_x := cam.global_position.x - half.x - INTRO_OFFSCREEN_PAD_PX
+	var spawn_x := cam.global_position.x - half.x - _scaled_intro_distance(INTRO_OFFSCREEN_PAD_PX)
 	return Vector2(spawn_x, stones_target.y)
 
 
@@ -279,21 +316,22 @@ func _enable_player_control() -> void:
 		_player.set_input_enabled(true)
 
 
-func _scripted_walk_horizontal_to(target: Vector2) -> void:
+func _scripted_walk_horizontal_to(target_tex: Vector2) -> void:
 	if not is_instance_valid(_player):
 		return
 
 	var base_speed := float(_player.get("speed")) if _player.get("speed") != null else 120.0
 	var move_speed := base_speed * _SCRIPTED_WALK_SPEED_SCALE
 	var frames := 0
-	# Keep a fixed road Y so collisions cannot turn this into a diagonal path.
-	var road_y := target.y
 
 	while is_instance_valid(_player):
 		frames += 1
+		var target := _resolve_intro_target_from_tex(target_tex)
+		# Keep a fixed road Y so collisions cannot turn this into a diagonal path.
+		var road_y := target.y
 		_player.global_position.y = road_y
 		var dx := target.x - _player.global_position.x
-		if absf(dx) <= _STONES_ARRIVE_DISTANCE or frames >= _SCRIPTED_WALK_MAX_FRAMES:
+		if absf(dx) <= _scaled_intro_distance(_STONES_ARRIVE_DISTANCE) or frames >= _SCRIPTED_WALK_MAX_FRAMES:
 			break
 		var direction := Vector2(signf(dx), 0.0)
 		if _player.has_method("set_scripted_velocity"):
@@ -301,6 +339,8 @@ func _scripted_walk_horizontal_to(target: Vector2) -> void:
 		await get_tree().physics_frame
 
 	if is_instance_valid(_player):
+		var target := _resolve_intro_target_from_tex(target_tex)
+		var road_y := target.y
 		_player.global_position.y = road_y
 		if _player.has_method("clear_scripted_velocity"):
 			_player.clear_scripted_velocity()

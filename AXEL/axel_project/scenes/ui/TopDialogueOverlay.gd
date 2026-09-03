@@ -41,6 +41,10 @@ const CHAR_SCRAMBLE_MAX_SEC := 0.05
 const BASE_BORDER := Color(0.290196, 0, 0, 1)
 const DIM_BORDER := Color(0.290196, 0, 0, 0.35)
 const BAR_MIN_HEIGHT := 136.0
+const DESIGN_VIEWPORT_H := 1280.0
+const BASE_FONT_SIZE := 32
+const BASE_OUTLINE_SIZE := 4
+const TEXT_BOOST := 1.5
 ## Player / narration. Other speakers (`AXEL: ...`) use bright red.
 ## Opt-in `|grey|` (never shown) types light grey — wins over red when both apply.
 const PLAYER_LINE_COLOR := Color(1, 1, 1, 1)
@@ -144,13 +148,14 @@ func _begin_layout() -> void:
 func _lock_bottom_layout() -> void:
 	if not is_instance_valid(_fade_root) or not is_instance_valid(_panel):
 		return
-	var bar_h := maxf(_panel.get_combined_minimum_size().y, BAR_MIN_HEIGHT)
 	var viewport_size := get_viewport().get_visible_rect().size
+	_apply_dialogue_scale(viewport_size)
 	var viewport_w := viewport_size.x
 	var full_bar_w := maxf(0.0, viewport_w - (SIDE_INSET_PX * 2.0))
 	var fraction := clampf(bar_width_fraction, 0.2, BAR_WIDTH_FRACTION_FULL)
 	var target_w := full_bar_w * fraction
 	var side_inset := maxf(SIDE_INSET_PX, (viewport_w - target_w) * 0.5)
+	var bar_h := _measure_bar_height()
 	var gap_px := bottom_gap_px
 	if bottom_gap_viewport_fraction > 0.0:
 		gap_px = viewport_size.y * bottom_gap_viewport_fraction
@@ -162,6 +167,41 @@ func _lock_bottom_layout() -> void:
 	_fade_root.offset_bottom = _rest_offset_bottom
 	_fade_root.offset_top = _rest_offset_top
 	_reset_crt_visual()
+
+
+func _dialogue_window_scale(viewport_size: Vector2) -> float:
+	if viewport_size.y <= 0.0:
+		return TEXT_BOOST
+	return clampf(viewport_size.y / DESIGN_VIEWPORT_H, 0.5, 2.5) * TEXT_BOOST
+
+
+func _apply_dialogue_scale(viewport_size: Vector2) -> void:
+	if not is_instance_valid(_label):
+		return
+	var scale_factor := _dialogue_window_scale(viewport_size)
+	_label.add_theme_font_size_override(
+		"font_size",
+		int(round(float(BASE_FONT_SIZE) * scale_factor))
+	)
+	_label.add_theme_constant_override(
+		"outline_size",
+		int(round(float(BASE_OUTLINE_SIZE) * scale_factor))
+	)
+
+
+func _measure_bar_height() -> float:
+	if not is_instance_valid(_label) or not is_instance_valid(_panel):
+		return BAR_MIN_HEIGHT
+	var shown_text := _label.text
+	var measure_text := _active_line_text
+	if measure_text.is_empty():
+		measure_text = shown_text
+	if measure_text != shown_text:
+		_label.text = measure_text
+	var bar_h := maxf(_panel.get_combined_minimum_size().y, BAR_MIN_HEIGHT)
+	if measure_text != shown_text:
+		_label.text = shown_text
+	return bar_h
 
 
 func _reset_crt_visual() -> void:
@@ -441,7 +481,7 @@ func _fade_in() -> void:
 	_play_open_sound()
 	if fx_crt_power:
 		await _crt_power_on()
-		if not is_instance_valid(self):
+		if not is_instance_valid(self) or not is_inside_tree():
 			return
 		return
 	_fade_root.modulate.a = 0.0
@@ -763,6 +803,8 @@ func _run_typewriter(
 	allow_skip: bool,
 	token: int = -1,
 ) -> void:
+	if not is_inside_tree():
+		return
 	var parsed := _parse_dialogue_segments(full_text)
 	var display_text: String = str(parsed["display"])
 	var segments: Array = parsed["segments"]

@@ -40,7 +40,7 @@ static func _host_valid(host: Variant) -> bool:
 		return false
 	if not (host is Node):
 		return false
-	return (host as Node).get_tree() != null
+	return (host as Node).is_inside_tree()
 
 
 static func _host_key(host: Variant) -> int:

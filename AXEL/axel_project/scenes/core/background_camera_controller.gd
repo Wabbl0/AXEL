@@ -24,6 +24,9 @@ const DEFAULT_MAX_AUTO_ZOOM := 4.0
 @export var fit_mode: Layout.FitMode = Layout.FitMode.COVER
 @export var camera_mode: CameraMode = CameraMode.STATIC_LOCKED
 @export var margin_px: float = DEFAULT_MARGIN_PX
+## For static COVER rooms, allow a thin reveal strip around the art before the CRT vignette.
+## Negative = use the shared default only for STATIC_LOCKED + COVER.
+@export var edge_reveal: float = -1.0
 @export var target_path: NodePath
 @export var background_y: float = Layout.DEFAULT_BACKGROUND_Y
 @export var follow_smoothing: float = DEFAULT_FOLLOW_SMOOTHING
@@ -77,11 +80,12 @@ func place_center_clamped(world_center: Vector2) -> void:
 func _run_pipeline() -> void:
 	_viewport_size = Layout.get_viewport_size(self)
 	var world_rect := _world_rect
+	var effective_edge_reveal := _resolved_edge_reveal()
 	if not background_path.is_empty():
 		var background := get_node_or_null(background_path) as Sprite2D
 		if background != null:
 			var layout: Dictionary = Layout.apply(
-				background, _viewport_size, fit_mode, background_y
+				background, _viewport_size, fit_mode, background_y, effective_edge_reveal
 			)
 			if not layout.is_empty():
 				Layout.apply_to_sprite(background, layout)
@@ -96,9 +100,25 @@ func _run_pipeline() -> void:
 	_world_rect = world_rect
 	_inset_rect = _rect_with_margin(world_rect, margin_px)
 	apply_limits(
-		self, world_rect, camera_mode, _target, margin_px, _viewport_size, static_center, max_auto_zoom
+		self,
+		world_rect,
+		camera_mode,
+		_target,
+		margin_px,
+		_viewport_size,
+		static_center,
+		max_auto_zoom,
+		effective_edge_reveal
 	)
 	_inset_rect = _rect_with_margin(world_rect, margin_px)
+
+
+func _resolved_edge_reveal() -> float:
+	if fit_mode != Layout.FitMode.COVER or camera_mode != CameraMode.STATIC_LOCKED:
+		return 0.0
+	if edge_reveal < 0.0:
+		return Layout.MAX_EDGE_REVEAL
+	return clampf(edge_reveal, 0.0, 0.5)
 
 
 static func apply_limits(
@@ -110,13 +130,17 @@ static func apply_limits(
 	viewport_size: Vector2,
 	lock_center: Vector2 = Vector2.INF,
 	max_zoom: float = DEFAULT_MAX_AUTO_ZOOM,
+	edge_reveal_amount: float = 0.0,
 ) -> void:
 	if world_rect.size.x <= 0.0 or world_rect.size.y <= 0.0:
 		return
 
 	var inset := _rect_with_margin(world_rect, margin_inset_px)
 	camera.limit_smoothed = false
-	camera.zoom = compute_auto_zoom(viewport_size, inset, camera.zoom, max_zoom)
+	if edge_reveal_amount > 0.0:
+		camera.zoom = Vector2.ONE
+	else:
+		camera.zoom = compute_auto_zoom(viewport_size, inset, camera.zoom, max_zoom)
 
 	match mode:
 		CameraMode.STATIC_LOCKED:

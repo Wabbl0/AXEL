@@ -93,7 +93,7 @@ Root (Node2D + scene script)
 
 **Layer order (UI):** dialogue above `[E]` prompt; both above CRT / baseline post-FX. Hub/map chrome (red `X`, travel choices) that must stay readable: CanvasLayer ~110 (above CRT 108, below dialogue 111) — do not rely on root Control `z_index`. See `AI_DOCS.md` § Style and FX.
 
-**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Typing ticks use the `Typewriter` bus; open/close uses `TypewriterOpen` (Panner for the bar click only). Per-clip mix is `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players.
+**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Stretch stays disabled; the overlay itself recomputes dialogue font size and outline from viewport height so the text-to-window ratio stays constant in a separate fullscreen window. Baseline scene value is `32`, but the live dialogue baseline is `48` at `1920×1280` (1.5x boost, rounded to an integer so VT323 stays crisp). Keep padding/margins authored; let the bar height grow to fit the full line instead of clipping bigger text. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Typing ticks use the `Typewriter` bus; open/close uses `TypewriterOpen` (Panner for the bar click only). Per-clip mix is `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players.
 
 **Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; combat casino layers via `to_combat` / first-win / Trinity hooks). Loudness: `Music` bus in `default_bus_layout.tres`.
 
@@ -106,7 +106,8 @@ Root (Node2D + scene script)
 | `background_path` | — | `NodePath` to `WalkableWorld/Background` |
 | `fit_mode` | `cover` | `BackgroundLayout.FitMode` (`cover` or `contain`) |
 | `camera_mode` | `static_locked` | Enable `movable_follow` only when pan is needed |
-| `margin_px` | `0` | Inset art rect for CRT trim (often `12`) |
+| `margin_px` | `0` | Inset art rect for CRT trim (often `12`; static edge-reveal rooms skip this auto-zoom path) |
+| `edge_reveal` | `-1` | Negative = use shared reveal budget on `static_locked` + `cover`; `0` = plain cover; positive = per-scene reveal override |
 | `target_path` | — | Follow target |
 | `background_y` | `0` | Vertical offset |
 | `follow_smoothing` | `5` | Movable follow lerp |
@@ -344,7 +345,9 @@ Inherited child `.tscn` that instances the canonical scene and overrides only pl
 
 - Base `1920×1280` (3:2) in `project.godot`. Stretch stays **disabled** (no letterbox / Keep-aspect canvas stretch — that shrank dialogue fonts).
 - Game tab / OS window may be any size or aspect; `BackgroundCamera` cover-fits the PNG and recomputes on `size_changed`.
+- Static-locked `cover` rooms may reveal a thin clear-color strip instead of cropping as hard on wide monitors. Shared default comes from `BackgroundLayout.MAX_EDGE_REVEAL`; movable-follow rooms (1.1 / 2.4) stay on plain cover.
 - Mike, walls (`EnvironmentColliders`), and art share one cover scale via `PlayerCoverSync` from the 1920×1280 baseline (1.1/1.2: `_OLD_BG_SCALE`; 1.4: same `0.546` as 1.2).
+- Exploration clear color in `project.godot` stays pure white so any exposed strip turns dark under the shipped noir/CRT stack instead of grey or red.
 - `exploration_viewport.gd` is **inert** (kept so 1.1/1.2 still load).
 
 ## Canonical filename invariant

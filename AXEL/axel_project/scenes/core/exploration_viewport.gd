@@ -1,9 +1,9 @@
 extends Node
 ## Legacy per-scene window sizer — now inert.
 ##
-## Window size and aspect are handled project-wide (Keep aspect, 1920x1280 = 3:2)
-## in project.godot. This node no longer forces the OS window per scene, so the
-## window is free to be any resolution while gameplay stays 3:2 (auto-letterboxed).
+## Window size and aspect are handled project-wide in project.godot.
+## Stretch is disabled, so this node no longer forces the OS window per scene and
+## the game uses the real viewport pixels of the Game tab / OS window.
 ##
 ## Exports and the node are kept only so existing 1.1 / 1.2 scenes still load
 ## without edits. They have no runtime effect.
