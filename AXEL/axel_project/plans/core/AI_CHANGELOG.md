@@ -6137,3 +6137,30 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Docs only (gameplay already matched `SCENE_BUILDING.md` / `AI_DOCS.md`).
 - Verification: Cross-checked against `2.1_Cafeteria.gd`, `2.4_ClassroomsCorridor.gd`, and `InteractArrival` header.
 - Notes: Memory-indicator size/glow and combat HUD click-rect were already logged earlier today.
+
+## 2026-09-03
+
+### 1.2 locker line E-spam stuck + combat UI polish
+- Request: 1.2 "This was your locker." stuck when spamming E; combat DevTools only from Settings; VT323 ~2x text (balance/bets unchanged); delete premium  /3; grow item list; strip white halo on cigarette/hand/alcohol; shake should move grid symbols and HUD text with the frames. 2.2 visibility = drawing tips only (no code).
+- Implementation: 1.2 never orphans the dialogue bar on abort (interrupt_line); _locker_line_running gates hub trips like 1.4; 	ype_line sets _sequence_active so CRT fade alpha~0 gaps count as busy. Removed DevTools wrench (Settings ? DEV TOOLS only). Put 	erminal_theme.tres on WidgetRoot + Settings panel (CanvasLayer broke theme inheritance). COMBAT_TEXT_SCALE 2.0 for combat readouts; goal split from bankroll font; win popup 40. Deleted MOVE_MeterCount. Stripped halo on three premium icons; generator keeps halo on wild only. WidgetLayer 115?106 so symbols/text sit under glitch/CRT/pulse. Fixed Settings TextBox/ArtExit bad offsets that failed placement check.
+- Files changed:
+  - AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd
+  - AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd
+  - AXEL/axel_project/scripts/debug/axel_combat_dev_tools.gd
+  - AXEL/axel_project/combat/scripts/hud_widget_layer.gd
+  - AXEL/axel_project/combat/scripts/combat_settings_panel.gd
+  - AXEL/axel_project/combat/scripts/combat_test.gd
+  - AXEL/axel_project/combat/scripts/symbol_slot.gd
+  - AXEL/axel_project/combat/combat_test.tscn
+  - AXEL/axel_project/combat/art/grid_symbols/cigarette.png
+  - AXEL/axel_project/combat/art/grid_symbols/booze.png
+  - AXEL/axel_project/combat/art/grid_symbols/bloody_hand.png
+  - AXEL/axel_project/combat/art/generate_placeholders.py
+  - AXEL/axel_project/tools/combat/strip_premium_halo.gd
+  - AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md
+  - AXEL/axel_project/plans/references/README_STRUCTURE.md
+  - AXEL/axel_project/plans/combat/AXEL_combat_implementation.md
+  - AXEL/axel_project/plans/core/AI_CHANGELOG.md
+- Behavior impact: Locker line can be skipped/advanced with E without getting stuck; hub [E] works after the line. Combat: no * wrench; bigger VT323 HUD; no  /3; icons without white edge; enter glitch shakes symbols with frames. 2.2 unchanged in code.
+- Verification: combat_test_scaffold_check.gd, determinism_check.gd, princess_check.gd, hud_piece_placement_check.gd, hud_click_rect_check.gd, strip_premium_halo.gd OK.
+- Notes: 2.2 tips for redraw stay white fill + thicker black ink. Wild icon keeps halo. COMBAT_TEXT_SCALE retunes size in one place.

@@ -15,7 +15,7 @@
 size = Vector2(2400, 208)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
-size = Vector2(2400, 116)
+size = Vector2(2400, 84.86438)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
 size = Vector2(63.25, 1515)
@@ -62,6 +62,7 @@ shape = SubResource("RectangleShape2D_wall_top")
 position = Vector2(1200, 1442)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=1291792257]
+position = Vector2(0, 55.860474)
 shape = SubResource("RectangleShape2D_wall_bottom")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1253632539]

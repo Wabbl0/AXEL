@@ -6,7 +6,7 @@ const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
 const WIN_POPUP_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 
 ## Winnings popup — distinct phases: appear small -> scale up -> glow -> lob -> fade.
-const WIN_POPUP_FONT_SIZE := 20
+const WIN_POPUP_FONT_SIZE := 40
 const WIN_POPUP_SCALE_START := 0.72
 const WIN_POPUP_SCALE_PEAK := 1.45
 const WIN_POPUP_SCALE_LOB_END := 0.92

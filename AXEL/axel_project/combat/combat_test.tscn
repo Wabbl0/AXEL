@@ -301,6 +301,7 @@ unique_name_in_owner = true
 editor_description = "Placement guide (axel_ui.png). Off by default. Toggle the eye in the scene tree to line up pieces. Play always hides it.
 
 MUST stay at exactly 0,0 - 3508x2480: axel_ui.png is the same size as the white plate, so the guide is 1:1 with plate pixels. Moving or resizing it silently drags every piece placed against it."
+visible = false
 self_modulate = Color(1, 1, 1, 0.5)
 layout_mode = 0
 offset_right = 3508.0
@@ -598,7 +599,8 @@ clickable = true
 use_alpha_hit = true
 
 [node name="ArtExit" type="TextureRect" parent="HudCanvas/HudPieces/NEW_Settings" unique_id=900000017]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
@@ -614,10 +616,6 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 32.0
-offset_top = 34.0
-offset_right = -33.0
-offset_bottom = -35.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -634,6 +632,7 @@ mouse_filter = 2
 script = ExtResource("19_hud_piece")
 
 [node name="PremiumBarFill" type="ColorRect" parent="HudCanvas/HudPieces/MOVE_PremiumBar" unique_id=900000050]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -746,25 +745,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-
-[node name="MOVE_MeterCount" type="Label" parent="HudCanvas/NEW_Execute/MOVE_TextBox" unique_id=900000056]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -54.0
-offset_top = -72.0
-offset_right = 54.0
-offset_bottom = -12.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 36
-text = "0/3"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="SkullClickPolygon" type="Control" parent="HudCanvas/NEW_Execute" unique_id=900000071]
 layout_mode = 1
@@ -1346,7 +1326,7 @@ mouse_filter = 2
 color = Color(1, 1, 1, 0.18)
 
 [node name="WidgetLayer" type="CanvasLayer" parent="." unique_id=900000080]
-layer = 115
+layer = 106
 script = ExtResource("20_widget_layer")
 
 [node name="WidgetRoot" type="Control" parent="WidgetLayer" unique_id=900000081]
@@ -1357,6 +1337,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme = ExtResource("3_theme")
 
 [node name="GridHost" type="Control" parent="WidgetLayer/WidgetRoot" unique_id=1714625934]
 clip_contents = true

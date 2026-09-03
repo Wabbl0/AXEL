@@ -21,7 +21,7 @@ Prefer the **live project tree** when this file and disk disagree — update thi
   - `fx/` — noir/scanline/CRT overlays, memory indicator, glitch/pulse
 - `scripts/`
   - `autoload/` — `AxelPostFxStack`, `AxelEventFx`, `AxelMusic`
-  - `debug/` — `AxelCombatDevTools` (editor/debug-only combat wrench menu)
+  - `debug/` — `AxelCombatDevTools` (editor/debug-only combat menu; open from Settings → DEV TOOLS)
   - `Player.gd` (and related gameplay scripts as they land under `gameplay/` / `ui/` / `debug/`)
 - `combat/` — self-contained combat subsystem (`scripts/`, `scenes/`, `art/`, `data/`, `test/`, …)
 - `tools/` — QA, bots, capture, visual-style helpers

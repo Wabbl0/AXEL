@@ -18,16 +18,16 @@
 size = Vector2(3508, 72)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
-size = Vector2(3508, 68)
+size = Vector2(3508, 84)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
-size = Vector2(84, 2480)
+size = Vector2(96, 2480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_right"]
-size = Vector2(76, 2480)
+size = Vector2(90, 2480)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_block"]
-size = Vector2(3484, 49)
+size = Vector2(3484, 77)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
 size = Vector2(609, 289)
@@ -69,28 +69,28 @@ shape = SubResource("RectangleShape2D_wall_top")
 position = Vector2(1754, 2393)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=1642301856]
-position = Vector2(0, 53)
+position = Vector2(8, 79)
 shape = SubResource("RectangleShape2D_wall_bottom")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=341451573]
 position = Vector2(74, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=939984681]
-position = Vector2(-32, 0)
+position = Vector2(-71, 0)
 shape = SubResource("RectangleShape2D_wall_vertical_left")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=617357436]
 position = Vector2(3437, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=911177184]
-position = Vector2(33, 0)
+position = Vector2(64, -4)
 shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="DoorWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=109877904]
 position = Vector2(40, 950)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorWall" unique_id=130491347]
-position = Vector2(1722, -585.5)
+position = Vector2(1722, -599.5)
 shape = SubResource("RectangleShape2D_door_block")
 
 [node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=673914663]

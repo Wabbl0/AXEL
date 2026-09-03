@@ -736,6 +736,8 @@ func type_line(
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
+	## Mark busy for the whole fade+type so callers' dialogue_busy gates cover CRT alpha~0 gaps.
+	_sequence_active = true
 	_advance_requested = false
 	_skip_requested = false
 	_skip_input_enabled = allow_skip

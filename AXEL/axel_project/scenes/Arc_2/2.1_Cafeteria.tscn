@@ -14,16 +14,16 @@
 [ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_top"]
-size = Vector2(3600, 52)
+size = Vector2(3600, 66)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_horizontal"]
-size = Vector2(3507, 117)
+size = Vector2(3507, 97.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
-size = Vector2(171, 2600)
+size = Vector2(95, 2600)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_right"]
-size = Vector2(142, 2600)
+size = Vector2(94, 2600)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_table_block_left"]
 size = Vector2(650, 996.5)
@@ -68,28 +68,28 @@ metadata/_edit_lock_ = true
 position = Vector2(1754, 156)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall" unique_id=2072052361]
-position = Vector2(0, -130)
+position = Vector2(0, -151)
 shape = SubResource("RectangleShape2D_wall_top")
 
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=57254603]
 position = Vector2(1754, 2460)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=2070770646]
-position = Vector2(5.5, -187)
+position = Vector2(5.5, -177.25)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=253716609]
 position = Vector2(74, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=1877763474]
-position = Vector2(-60.5, 0)
+position = Vector2(-70.5, 0)
 shape = SubResource("RectangleShape2D_wall_vertical_left")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1346221485]
 position = Vector2(3437, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=736691415]
-position = Vector2(0, -3)
+position = Vector2(25, -3)
 shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="TableBlockLeft" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=146987122]

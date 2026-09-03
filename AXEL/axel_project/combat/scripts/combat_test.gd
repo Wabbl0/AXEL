@@ -38,26 +38,28 @@ const BOTTOM_WINDOW_MARGIN := 18.0
 
 const LAYOUT_META_ICONS_SEPARATION := 4
 const META_ICON_GLYPH := "⬡"
-const META_ICON_FONT := 31
-const SIDE_PANEL_HEADER_FONT := 32
-const SIDE_PANEL_BODY_FONT := 18
-const SIDE_PANEL_BODY_FONT_MIN := 14
+## Single knob for combat readout size (~2×). Balance / bet strip ignore this.
+const COMBAT_TEXT_SCALE := 2.0
+const META_ICON_FONT := int(round(31.0 * COMBAT_TEXT_SCALE))
+const SIDE_PANEL_HEADER_FONT := int(round(32.0 * COMBAT_TEXT_SCALE))
+const SIDE_PANEL_BODY_FONT := int(round(18.0 * COMBAT_TEXT_SCALE))
+const SIDE_PANEL_BODY_FONT_MIN := int(round(14.0 * COMBAT_TEXT_SCALE))
 const HISTORY_BODY_FONT_SCALE := 1.5
 const ITEMS_BODY_FONT_SCALE := 1.25
-const SIDE_PANEL_HINT_FONT := 14
+const SIDE_PANEL_HINT_FONT := int(round(14.0 * COMBAT_TEXT_SCALE))
 const ITEM_PICKER_ROW_H_SEP := 4
-const ITEM_PICKER_CHECKBOX_ICON_MAX := 18
-const ITEM_PICKER_CHECKBOX_COL_W := 22
-const ITEM_ICON_DRAW_SIZE := 24
-const ITEM_RANK_BTN_W := 88
+const ITEM_PICKER_CHECKBOX_ICON_MAX := int(round(18.0 * COMBAT_TEXT_SCALE))
+const ITEM_PICKER_CHECKBOX_COL_W := int(round(22.0 * COMBAT_TEXT_SCALE))
+const ITEM_ICON_DRAW_SIZE := int(round(24.0 * COMBAT_TEXT_SCALE))
+const ITEM_RANK_BTN_W := int(round(88.0 * COMBAT_TEXT_SCALE))
 const ITEM_DESC_Z := 40
 const ITEM_DESC_PREFERRED_WIDTH := 420.0
 const ITEM_DESC_CURSOR_GAP := 8.0
 const ITEM_DESC_PANEL_INSET := 8.0
 const ITEM_DESC_FADE_IN := 0.08
 const ITEM_DESC_BG_ALPHA := 0.8
-const WINNINGS_READOUT_FONT := 31
-const CASCADE_MULT_READOUT_FONT := 24
+const WINNINGS_READOUT_FONT := int(round(31.0 * COMBAT_TEXT_SCALE))
+const CASCADE_MULT_READOUT_FONT := int(round(24.0 * COMBAT_TEXT_SCALE))
 const WINNINGS_READOUT_OUTLINE := 0
 const CASCADE_MULT_READOUT_OUTLINE := 0
 const READOUT_ACCENT_COLOR := Color(0.98, 0.35, 0.35, 1.0)
@@ -66,13 +68,15 @@ const STAKE_BUTTON_SIZE_NARROW := 28.0
 const WINNINGS_COUNTER_MAX_DURATION := 0.25
 const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
-const HISTORY_MINI_ICON_SIZE := 18
+const HISTORY_MINI_ICON_SIZE := int(round(18.0 * COMBAT_TEXT_SCALE))
 const HISTORY_ROW_SEPARATION := 3
 const HUD_WHITE_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
 const HUD_WHITE_TEXT_SHADOW_COLOR := Color(0.22, 0.22, 0.22, 0.72)
 const HUD_WHITE_TEXT_SHADOW_OFFSET_Y := 1
 const SETTINGS_PANEL_SCENE := preload("res://combat/scenes/combat_settings_panel.tscn")
 const BET_STRIP_TWEEN_SEC := 0.15
+const GOAL_READOUT_FONT := int(round(36.0 * COMBAT_TEXT_SCALE))
+const GOAL_READOUT_FONT_NARROW := int(round(28.0 * COMBAT_TEXT_SCALE))
 const PREMIUM_BAR_COLORS := [
 	Color(0.22, 0.22, 0.22, 1.0),
 	Color(0.55, 0.12, 0.12, 1.0),
@@ -198,7 +202,6 @@ var _piece_premium_bar: CombatHudPiece
 var _piece_spin_money: CombatHudPiece
 var _premium_bar_fill: ColorRect
 var _premium_skull: Node
-var _meter_count_label: Label
 var _settings_panel: CanvasLayer
 var _bet_strip_row: HBoxContainer
 var _bet_strip_labels: Array[Label] = []
@@ -1791,10 +1794,6 @@ func _cache_hud_pieces() -> void:
 		_premium_bar_fill = _piece_premium_bar.get_node_or_null("PremiumBarFill") as ColorRect
 	_premium_skull = find_child("PremiumSkull", true, false)
 	_skull_click_polygon = find_child("SkullClickPolygon", true, false)
-	if _piece_execute != null:
-		_meter_count_label = _piece_execute.find_child("MOVE_MeterCount", true, false) as Label
-		if _meter_count_label == null:
-			_meter_count_label = _piece_execute.find_child("MeterCount", true, false) as Label
 	_widget_layer = get_node_or_null("WidgetLayer")
 	if _widget_layer == null:
 		_widget_layer = find_child("WidgetLayer", true, false)
@@ -1851,13 +1850,6 @@ func _bind_widgets_to_pieces() -> void:
 	var winnings_pill := find_child("WinningsReadoutPill", true, false) as CanvasItem
 	if winnings_pill != null:
 		winnings_pill.visible = false
-	if _piece_execute != null and _meter_count_label != null:
-		## Lift meter number above FX; keep bottom-strip layout (do not full-rect attach).
-		var meter_host := _host_for_piece(_piece_execute, "execute_meter")
-		if meter_host != null and _meter_count_label.get_parent() != meter_host:
-			_meter_count_label.reparent(meter_host)
-		_meter_count_label.visible = true
-		_meter_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _piece_execute != null and spin_btn != null:
 		## Authored under NEW_Execute; keep transparent and mouse-ignore (piece/polygon click).
 		if spin_btn.get_parent() != _piece_execute:
@@ -2043,8 +2035,6 @@ func _sync_skull_meter(sections: int) -> void:
 	var filled := clampi(sections, 0, 3)
 	if _premium_skull != null and _premium_skull.has_method("set_fill"):
 		_premium_skull.set_fill(float(filled) / 3.0)
-	if _meter_count_label != null:
-		_meter_count_label.text = "%d/3" % filled
 
 
 func _sync_premium_bar_color(sections: int, animate: bool = false) -> void:
@@ -2280,12 +2270,14 @@ func _refresh_history_row_typography() -> void:
 
 func _apply_economics_typography() -> void:
 	var bankroll_font := BANKROLL_READOUT_FONT
+	var goal_font := GOAL_READOUT_FONT
 	if size.x < RESPONSIVE_NARROW_W:
 		bankroll_font = BANKROLL_READOUT_FONT_NARROW
+		goal_font = GOAL_READOUT_FONT_NARROW
 	if bankroll_label != null:
 		bankroll_label.add_theme_font_size_override("font_size", bankroll_font)
 	if goal_label != null:
-		goal_label.add_theme_font_size_override("font_size", bankroll_font)
+		goal_label.add_theme_font_size_override("font_size", goal_font)
 	if bet_label != null:
 		bet_label.add_theme_font_size_override("font_size", bankroll_font)
 	if bet_minus_btn != null and bet_plus_btn != null:

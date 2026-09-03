@@ -19,6 +19,12 @@ const LIAR_LINES := [
 	"Liar. You knew exactly where he was.",
 ]
 const DOOR_ZONE_GRACE_SEC := 0.15
+const _LEAF_FADE_ALPHA := 0.2
+const _LEAF_GATE_SOFTNESS := 12.0
+const _BEHIND_ZONE_NAMES: PackedStringArray = [
+	"TableBlock_Behind",
+	"ChairBlock_Behind",
+]
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
@@ -393,6 +399,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	_sync_memory_indicator()
 	_cover_layout_ready = true
 	call_deferred("_wake_static_colliders")
+	call_deferred("_configure_behind_occlusion_masks")
 	if GameManager.has_teachers_lounge_memory_return_pos():
 		call_deferred("_apply_memory_return_if_pending")
 	elif _pending_door_peek:
@@ -439,5 +446,52 @@ func _arm_door_zone_grace() -> void:
 
 func _wake_static_colliders() -> void:
 	for child in $WalkableWorld/EnvironmentColliders.get_children():
-		if child is StaticBody2D:
+		if child is StaticBody2D or child is Area2D:
 			child.position = child.position
+
+
+func _configure_behind_occlusion_masks() -> void:
+	if not is_instance_valid(_player):
+		return
+	if not _player.has_method("configure_leaf_occlusion_polygons"):
+		return
+	var polys: Array[PackedVector2Array] = []
+	var feathers: Array[float] = []
+	var cutoffs: Array[float] = []
+	for zone_name in _BEHIND_ZONE_NAMES:
+		var zone := get_node_or_null(
+			"WalkableWorld/EnvironmentColliders/%s" % zone_name
+		) as Area2D
+		var poly := PackedVector2Array()
+		var feather := 0.0
+		if is_instance_valid(zone) and zone.has_method("get_shader_polygon"):
+			poly = zone.call("get_shader_polygon")
+			feather = float(zone.get("feather_px"))
+		polys.append(poly)
+		feathers.append(feather)
+		cutoffs.append(_occlusion_y_cutoff(zone))
+	_player.call(
+		"configure_leaf_occlusion_polygons",
+		polys[0],
+		polys[1],
+		feathers[0],
+		feathers[1],
+		_LEAF_FADE_ALPHA,
+		cutoffs[0],
+		cutoffs[1],
+		_LEAF_GATE_SOFTNESS,
+	)
+
+
+func _occlusion_y_cutoff(behind: Area2D) -> float:
+	if not is_instance_valid(behind):
+		return 1e9
+	var polygon_node := behind.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
+	if polygon_node == null or polygon_node.polygon.is_empty():
+		return 1e9
+	var max_y := -INF
+	for local_point in polygon_node.polygon:
+		max_y = maxf(max_y, polygon_node.to_global(local_point).y)
+	if max_y == -INF:
+		return 1e9
+	return max_y

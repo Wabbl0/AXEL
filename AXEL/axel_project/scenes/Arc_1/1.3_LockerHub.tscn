@@ -2,11 +2,11 @@
 
 [ext_resource type="Script" uid="uid://dynt7uaxwltd2" path="res://scenes/Arc_1/1.3_LockerHub.gd" id="1_hub_script"]
 [ext_resource type="Texture2D" uid="uid://dhb1hfv26e0vx" path="res://exports/Drawings/1.3_Locker.png" id="2_hub_bg"]
-[ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
+[ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
 [ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="4_font"]
 [ext_resource type="Script" uid="uid://dlv3mwtkwxemi" path="res://scenes/ui/ui_polygon_hotspot.gd" id="5_map_hotspot"]
 
-[node name="LockerHub" type="Control"]
+[node name="LockerHub" type="Control" unique_id=1765057209]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -15,7 +15,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_hub_script")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=34745801]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -27,7 +27,7 @@ texture = ExtResource("2_hub_bg")
 expand_mode = 1
 stretch_mode = 6
 
-[node name="MapHotspot" type="Control" parent="."]
+[node name="MapHotspot" type="Control" parent="." unique_id=1504629887]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -37,19 +37,19 @@ grow_vertical = 2
 script = ExtResource("5_map_hotspot")
 background_path = NodePath("../Background")
 
-[node name="PolygonAnchor" type="Node2D" parent="MapHotspot"]
-position = Vector2(0, -83.20636)
-scale = Vector2(0.32839224, 0.32839224)
+[node name="PolygonAnchor" type="Node2D" parent="MapHotspot" unique_id=2090486329]
+position = Vector2(0, -38.677307)
+scale = Vector2(0.5473204, 0.5473204)
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="MapHotspot/PolygonAnchor"]
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="MapHotspot/PolygonAnchor" unique_id=1082108661]
 position = Vector2(-1540.4374, -1081.7896)
 scale = Vector2(3.048497, 3.048497)
 polygon = PackedVector2Array(911.5232, 647.7623, 1013.4282, 635.8104, 1073.5232, 628.7623, 1078.5232, 805.7623, 916.5232, 787.7623)
 
-[node name="ExitLayer" type="CanvasLayer" parent="."]
+[node name="ExitLayer" type="CanvasLayer" parent="." unique_id=1380439048]
 layer = 110
 
-[node name="ExitButton" type="Button" parent="ExitLayer"]
+[node name="ExitButton" type="Button" parent="ExitLayer" unique_id=1408493638]
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
@@ -68,4 +68,4 @@ theme_override_fonts/font = ExtResource("4_font")
 theme_override_font_sizes/font_size = 36
 text = "X"
 
-[node name="TopDialogueOverlay" parent="." instance=ExtResource("3_top_dialogue")]
+[node name="TopDialogueOverlay" parent="." unique_id=665918630 instance=ExtResource("3_top_dialogue")]

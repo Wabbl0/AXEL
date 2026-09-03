@@ -150,14 +150,14 @@ polygon = PackedVector2Array(790, 669, 808, 685, 815, 728, 655, 729, 666, 704, 6
 position = Vector2(640, 16)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/TopWall" unique_id=1627696374]
-position = Vector2(0, -292.5)
+position = Vector2(0, -310.5)
 shape = SubResource("RectangleShape2D_wall_top")
 
 [node name="BottomWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1196423384]
 position = Vector2(640, 704)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="EnvironmentColliders/BottomWall" unique_id=324826100]
-position = Vector2(-31, 119)
+position = Vector2(-31, 131)
 shape = SubResource("RectangleShape2D_wall_horizontal")
 
 [node name="LeftWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=1418059198]
@@ -196,7 +196,7 @@ rotation = 1.5707964
 shape = SubResource("RectangleShape2D_o6kf3")
 
 [node name="CollisionShape2D3" type="CollisionShape2D" parent="EnvironmentColliders/RightWall" unique_id=175384946]
-position = Vector2(-43.125, -456.3125)
+position = Vector2(-50.125, -456.3125)
 rotation = 1.5707964
 shape = SubResource("RectangleShape2D_b508v")
 

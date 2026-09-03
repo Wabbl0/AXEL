@@ -6,8 +6,10 @@ Uses filled Unicode forms (■ ▲ ★ ♥) as silhouettes, then keeps only pixe
 within a fixed distance of the edge so every symbol shares the same line
 weight and has no fill.
 
-Also adds a 1px faint white halo around the hand-authored premium/wild icons
-(cigarette, booze, bloody_hand, satanic_wild) without redrawing their art.
+Also adds a 1px faint white halo around the hand-authored wild icon
+(satanic_wild) without redrawing its art. Premium icons (cigarette, booze,
+bloody_hand) no longer get a halo — run tools/combat/strip_premium_halo.gd
+if regenerating those files by hand.
 """
 from __future__ import annotations
 
@@ -33,10 +35,8 @@ CONTENT_MAX = 80
 STROKE = 7
 THRESHOLD = 128
 
+## Wild only — cigarette / booze / bloody_hand keep no halo.
 PREMIUM_FILES = (
-    "cigarette.png",
-    "booze.png",
-    "bloody_hand.png",
     "satanic_wild.png",
 )
 
@@ -218,7 +218,7 @@ def main() -> None:
         _apply_faint_white_outline(path)
         print(f"Haloed {filename}")
 
-    print("Wrote suit symbols + faint premium outlines:", out_dir)
+    print("Wrote suit symbols + faint wild outline:", out_dir)
 
 
 if __name__ == "__main__":

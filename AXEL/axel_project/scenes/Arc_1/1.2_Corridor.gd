@@ -81,7 +81,7 @@ func _process(_delta: float) -> void:
 func _refresh_interact_zones() -> void:
 	if _is_transitioning:
 		return
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+	if _enter_dialogue_pending or _locker_dialogue_busy():
 		if is_instance_valid(_interact_prompt):
 			_interact_prompt.hide_prompt()
 		return
@@ -96,6 +96,12 @@ func _refresh_interact_zones() -> void:
 		_try_show_locker_interact_prompt()
 	elif is_instance_valid(_interact_prompt):
 		_interact_prompt.hide_prompt()
+
+
+func _locker_dialogue_busy() -> bool:
+	if _locker_line_running:
+		return true
+	return InteractZoneGate.dialogue_busy(_top_dialogue)
 
 
 func _latch_corridor_arrival() -> void:
@@ -211,7 +217,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _is_interaction_event(event):
 		return
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+	# Busy (line / CRT / bar) → overlay skips/advances; never start hub trip mid-line.
+	if _enter_dialogue_pending or _locker_dialogue_busy():
 		return
 	_refresh_interact_zones()
 	if _is_player_near_exterior() and _exterior_zone_armed:
@@ -321,11 +328,15 @@ func _play_locker_line_async(token: int) -> void:
 		if _top_dialogue.has_method("type_line"):
 			await _top_dialogue.type_line(LOCKER_LINE)
 			if token != _locker_enter_token or not _locker_zone_active:
+				_close_locker_line_bar()
 				_locker_line_running = false
 				return
 			await _top_dialogue.await_line_advance()
-			if token == _locker_enter_token and _locker_zone_active:
-				await _top_dialogue.hide_line()
+			if token != _locker_enter_token or not _locker_zone_active:
+				_close_locker_line_bar()
+				_locker_line_running = false
+				return
+			await _top_dialogue.hide_line()
 	else:
 		if _spawn_line_active and _top_dialogue.has_method("cancel_pending_line"):
 			_top_dialogue.cancel_pending_line()
@@ -335,10 +346,18 @@ func _play_locker_line_async(token: int) -> void:
 	_locker_line_running = false
 
 
+## Never leave the bar orphaned when the locker line aborts mid-way.
+func _close_locker_line_bar() -> void:
+	if not is_instance_valid(_top_dialogue):
+		return
+	if _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
+
+
 func _try_show_locker_interact_prompt() -> void:
 	if _is_transitioning or not _locker_zone_active:
 		return
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+	if _enter_dialogue_pending or _locker_dialogue_busy():
 		return
 	if _exterior_zone_active:
 		return
@@ -361,7 +380,7 @@ func _hide_locker_interact_prompt() -> void:
 func _try_show_exterior_interact_prompt() -> void:
 	if _is_transitioning or not _exterior_zone_active:
 		return
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
+	if _enter_dialogue_pending or _locker_dialogue_busy():
 		return
 	if not is_instance_valid(_interact_prompt):
 		return

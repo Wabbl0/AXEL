@@ -1,10 +1,10 @@
 extends CanvasLayer
-## Debug-only combat overlay: top-left wrench → AXEL-styled File-menu dropdown.
+## Debug-only combat overlay: Settings → DEV TOOLS opens this AXEL-styled dropdown.
 ## Visible only when OS.is_debug_build() and the current scene is under res://combat/.
+## No standalone wrench button — Settings is the only entry point.
 
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const LAYER := 2100
-const WRENCH_SIZE := 28.0
 const MENU_MIN_WIDTH := 260.0
 const BANKROLL_STEP := 100
 const GOAL_STEP := 1000
@@ -14,7 +14,6 @@ const ACCENT := Color(0.98, 0.35, 0.35, 1.0)
 const TEXT_COLOR := Color(0.92, 0.88, 0.88, 1.0)
 
 var _root: Control
-var _wrench: Button
 var _menu: PanelContainer
 var _menu_open: bool = false
 var _combat: Node = null
@@ -148,27 +147,10 @@ func _build_ui() -> void:
 	_outside_blocker.gui_input.connect(_on_outside_gui_input)
 	_root.add_child(_outside_blocker)
 
-	_wrench = Button.new()
-	_wrench.name = "WrenchButton"
-	_wrench.text = "*"
-	_wrench.tooltip_text = "Dev Tools"
-	_wrench.focus_mode = Control.FOCUS_NONE
-	_wrench.custom_minimum_size = Vector2(WRENCH_SIZE, WRENCH_SIZE)
-	_wrench.position = Vector2(8, 8)
-	_wrench.add_theme_font_override("font", VT323_FONT)
-	_wrench.add_theme_font_size_override("font_size", 22)
-	_wrench.add_theme_color_override("font_color", ACCENT)
-	_wrench.add_theme_stylebox_override("normal", _panel_style())
-	_wrench.add_theme_stylebox_override("hover", _panel_style())
-	_wrench.add_theme_stylebox_override("pressed", _panel_style())
-	_wrench.mouse_filter = Control.MOUSE_FILTER_STOP
-	_wrench.pressed.connect(_toggle_menu)
-	_root.add_child(_wrench)
-
 	_menu = PanelContainer.new()
 	_menu.name = "DevMenu"
 	_menu.visible = false
-	_menu.position = Vector2(8, 8 + WRENCH_SIZE + 4)
+	_menu.position = Vector2(8, 8)
 	_menu.custom_minimum_size = Vector2(MENU_MIN_WIDTH, 0)
 	_menu.add_theme_stylebox_override("panel", _panel_style())
 	_menu.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -297,7 +279,6 @@ func _open_menu() -> void:
 	_menu.visible = true
 	_outside_blocker.visible = true
 	_outside_blocker.move_to_front()
-	_wrench.move_to_front()
 	_menu.move_to_front()
 	_refresh_toggle_labels()
 	_refresh_economy_labels()

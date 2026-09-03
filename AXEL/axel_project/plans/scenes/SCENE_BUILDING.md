@@ -378,8 +378,8 @@ Do not copy to new scenes without a design pass.
 
 - Zones: `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` / `Stump_Left_Behind` / `Rocks_Left_Behind` / `Rocks_Right_Behind` + `leaf_occlusion_zone.gd`
 - Wired in `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_polygons` → `white_sprite.gdshader`
-- Trees, stump, and rocks use a collision-front Y-gate (same as the tree trunk line): fade only when standing behind the object, not when overlapping from the front. `RightWall_Behind` uses cutoff `1e9` (no Y-gate) so only the polygon matters. Shader: cutoff `> 1e8` means “allow,” not “off.” Extra `CollisionPolygon2D` children under one behind zone all count (max 4 per zone). Each extra polygon uses the nearest rock/stump collision as its own front line.
-- Shader has 6 behind slots. Canon `feather_px = 2.0` on all behind zones (1.1 trees + wall + stump + rocks, 2.1 tables/chairs, 3.1 wall/bush/well, 5.1 furniture 6–9)
+- Trees, stump, and rocks use a collision-front Y-gate (same as the tree trunk line): fade only when standing behind the object, not when overlapping from the front. `RightWall_Behind` uses cutoff `1e9` (no Y-gate) so only the polygon matters. Shader: cutoff `> 1e8` means “allow,” not “off.” Extra `CollisionPolygon2D` children under one behind zone all count (max 4 per zone). Each extra polygon uses the nearest rock/stump collision as its own front line. Furniture behind zones (2.1 / 4.1) cover the **back** of the object — not a copy of the full walk-blocker — so standing in front does not fade.
+- Shader has 6 behind slots. Canon `feather_px = 2.0` on all behind zones (1.1 trees + wall + stump + rocks, 2.1 tables/chairs, 3.1 wall/bush/well, 4.1 table/chair, 5.1 furniture 6–9)
 
 ## What is walkable / shipped
 

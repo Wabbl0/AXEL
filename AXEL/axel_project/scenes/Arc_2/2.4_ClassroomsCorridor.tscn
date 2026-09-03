@@ -15,19 +15,16 @@
 size = Vector2(4960, 2432)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fill_bottom_left"]
-size = Vector2(4850, 64)
+size = Vector2(7008, 128)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_top"]
-size = Vector2(2166, 40)
+size = Vector2(2166, 84)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_right"]
 size = Vector2(244, 4960)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
-size = Vector2(4960, 118)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_bottom"]
-size = Vector2(2166, 40)
+size = Vector2(4960, 150)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_left_short"]
 size = Vector2(40, 2480)
@@ -39,25 +36,25 @@ size = Vector2(56, 3704)
 size = Vector2(640, 513)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lounge_interact_h"]
-size = Vector2(560, 770)
+size = Vector2(280, 770)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_classroom_interact"]
-size = Vector2(1058, 522)
+size = Vector2(1058, 325)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_future_interact"]
 size = Vector2(354, 1164)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_extra_door_1"]
-size = Vector2(448, 640)
+size = Vector2(960, 320)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_extra_door_2"]
-size = Vector2(440, 737)
+size = Vector2(280, 736)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_extra_door_3"]
-size = Vector2(1064, 480)
+size = Vector2(288, 640)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_vertical_size_ramp"]
-size = Vector2(1664, 3328)
+size = Vector2(1664, 3360)
 
 [node name="2_4_ClassroomsCorridor" type="Node2D" unique_id=1637684553]
 script = ExtResource("1_corridor")
@@ -85,14 +82,14 @@ shape = SubResource("RectangleShape2D_fill_top_left")
 position = Vector2(2425, 4305)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomLeftFill" unique_id=1888001102]
-position = Vector2(0, 623)
+position = Vector2(1079, 655)
 shape = SubResource("RectangleShape2D_fill_bottom_left")
 
 [node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=45739631]
 position = Vector2(5933, 20)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopWall" unique_id=1767204562]
-position = Vector2(-13, 268)
+position = Vector2(-13, 223)
 shape = SubResource("RectangleShape2D_wall_top")
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=26170178]
@@ -106,14 +103,8 @@ shape = SubResource("RectangleShape2D_wall_right")
 position = Vector2(2425, 3650)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=389195536]
-position = Vector2(55, -39)
+position = Vector2(55, -55)
 shape = SubResource("RectangleShape2D_wall_bottom")
-
-[node name="VerticalBottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1888001103]
-position = Vector2(5933, 4940)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/VerticalBottomWall" unique_id=1888001104]
-shape = SubResource("RectangleShape2D_wall_vertical_bottom")
 
 [node name="LeftWallShort" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=601898032]
 position = Vector2(20, 3065)
@@ -142,7 +133,7 @@ position = Vector2(5933, 4580)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LoungeInteractArea" unique_id=1022168182]
-position = Vector2(467, -228)
+position = Vector2(607, -228)
 shape = SubResource("RectangleShape2D_lounge_interact_h")
 
 [node name="ClassroomInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1576588016]
@@ -150,7 +141,7 @@ position = Vector2(1775, 3400)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ClassroomInteractArea" unique_id=269930612]
-position = Vector2(2289, 536)
+position = Vector2(2289, 437.5)
 shape = SubResource("RectangleShape2D_classroom_interact")
 
 [node name="FutureDoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1888001003]
@@ -166,6 +157,7 @@ position = Vector2(1900, 3936)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExtraDoor1InteractArea" unique_id=1888001302]
+position = Vector2(-12, -96)
 shape = SubResource("RectangleShape2D_extra_door_1")
 
 [node name="ExtraDoor2InteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1888001303]
@@ -173,7 +165,7 @@ position = Vector2(6456, 2500)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExtraDoor2InteractArea" unique_id=1888001304]
-position = Vector2(4, -116.5)
+position = Vector2(84, -116)
 shape = SubResource("RectangleShape2D_extra_door_2")
 
 [node name="ExtraDoor3InteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1888001305]
@@ -181,6 +173,7 @@ position = Vector2(6480, 520)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExtraDoor3InteractArea" unique_id=1888001306]
+position = Vector2(64, 472)
 shape = SubResource("RectangleShape2D_extra_door_3")
 
 [node name="VerticalSizeRampArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=337219967]
@@ -188,7 +181,7 @@ position = Vector2(5933, 1900)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/VerticalSizeRampArea" unique_id=845556429]
-position = Vector2(-77, 84)
+position = Vector2(-77, 68)
 shape = SubResource("RectangleShape2D_vertical_size_ramp")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1140767310]

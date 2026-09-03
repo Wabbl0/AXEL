@@ -9,6 +9,7 @@ const ROW_NAMES := ["HOME", "HELP", "SETTINGS", "DEV TOOLS"]
 const ACCENT := Color(0.98, 0.35, 0.35, 1.0)
 const DIM := Color(0.55, 0.55, 0.55, 1.0)
 const TEXT := Color(0.92, 0.88, 0.88, 1.0)
+const TERMINAL_THEME := preload("res://combat/ui/terminal_theme.tres")
 
 var _panel: PanelContainer
 var _outside: Control
@@ -65,6 +66,7 @@ func _build() -> void:
 
 	_panel = PanelContainer.new()
 	_panel.name = "SettingsPanel"
+	_panel.theme = TERMINAL_THEME
 	_panel.custom_minimum_size = Vector2(280, 0)
 	_panel.add_theme_stylebox_override("panel", _panel_style())
 	add_child(_panel)
@@ -77,7 +79,7 @@ func _build() -> void:
 	title.text = "SETTINGS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_color_override("font_color", ACCENT)
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", 56)
 	vbox.add_child(title)
 
 	for row_name in ROW_NAMES:
@@ -123,7 +125,7 @@ func _style_row_button(btn: Button, enabled_look: bool) -> void:
 	btn.add_theme_stylebox_override("hover", hover)
 	btn.add_theme_stylebox_override("disabled", empty)
 	btn.add_theme_stylebox_override("focus", empty)
-	btn.add_theme_font_size_override("font_size", 22)
+	btn.add_theme_font_size_override("font_size", 44)
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 
