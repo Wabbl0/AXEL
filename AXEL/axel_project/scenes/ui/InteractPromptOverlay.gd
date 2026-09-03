@@ -12,6 +12,11 @@ const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 @export var key_label := "[E]"
 @export var screen_offset := Vector2.ZERO
 
+## Authored (1920x1280) chip text metrics; rescaled from the live viewport so
+## the chip stays readable at 4K (stretch stays disabled per D21).
+const _CHIP_FONT_BASE := 26
+const _CHIP_OUTLINE_BASE := 2
+
 @onready var _root: Control = $ViewportRoot/ChipRoot
 @onready var _panel: PanelContainer = $ViewportRoot/ChipRoot/BarPanel
 @onready var _beam: ColorRect = $ViewportRoot/ChipRoot/BarPanel/PowerBeam
@@ -28,6 +33,8 @@ var _crt_opts = CrtPowerFx.compact_chip_options()
 func _ready() -> void:
 	layer = 110
 	_label.text = key_label
+	_apply_chip_scale()
+	get_viewport().size_changed.connect(_apply_chip_scale)
 	_root.visible = false
 	_root.modulate.a = 0.0
 	_beam.visible = false
@@ -35,6 +42,14 @@ func _ready() -> void:
 	set_process(false)
 	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
 	tree_exiting.connect(_on_tree_exiting)
+
+
+func _apply_chip_scale() -> void:
+	var f := UiViewportScale.factor(self)
+	_label.add_theme_font_size_override("font_size", roundi(_CHIP_FONT_BASE * f))
+	_label.add_theme_constant_override("outline_size", roundi(_CHIP_OUTLINE_BASE * f))
+	if _is_active:
+		_update_screen_position()
 
 
 func _on_tree_exiting() -> void:

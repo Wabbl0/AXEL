@@ -14,6 +14,8 @@ var _first_visit_dialogue_running := false
 
 func _ready() -> void:
 	_exit_button.pressed.connect(_on_exit_pressed)
+	_apply_chrome_scale()
+	get_viewport().size_changed.connect(_apply_chrome_scale)
 	_map_hotspot.activated.connect(_on_map_hotspot_activated)
 	set_process_input(true)
 	call_deferred("_play_first_visit_dialogue")
@@ -45,15 +47,12 @@ func _input(event: InputEvent) -> void:
 
 
 func _is_exit_key(event: InputEvent) -> bool:
-	if event is InputEventKey:
-		var key_event := event as InputEventKey
-		if not key_event.pressed or key_event.echo:
-			return false
-		return (
-			key_event.keycode in [KEY_ESCAPE, KEY_BACKSPACE, KEY_DELETE]
-			or key_event.physical_keycode in [KEY_ESCAPE, KEY_BACKSPACE, KEY_DELETE]
-		)
-	return false
+	# Named InputMap action (Esc/Backspace/Delete + gamepad B). Excludes echo presses.
+	return event.is_action_pressed("back")
+
+
+func _apply_chrome_scale() -> void:
+	UiViewportScale.apply_exit_button(_exit_button, UiViewportScale.factor(self))
 
 
 func _on_exit_pressed() -> void:

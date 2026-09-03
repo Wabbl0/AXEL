@@ -157,12 +157,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	if not (event is InputEventKey):
-		return false
-	var key_event := event as InputEventKey
-	if not key_event.pressed or key_event.echo:
-		return false
-	return key_event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+	return event.is_action_pressed("interact")
 
 
 func _zone_area(zone_id: String) -> Area2D:

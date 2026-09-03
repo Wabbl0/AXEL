@@ -349,6 +349,7 @@ Inherited child `.tscn` that instances the canonical scene and overrides only pl
 - Mike, walls (`EnvironmentColliders`), and art share one cover scale via `PlayerCoverSync` from the 1920×1280 baseline (1.1/1.2: `_OLD_BG_SCALE`; 1.4: same `0.546` as 1.2).
 - Exploration clear color in `project.godot` stays pure white so any exposed strip turns dark under the shipped noir/CRT stack instead of grey or red.
 - `exploration_viewport.gd` is **inert** (kept so 1.1/1.2 still load).
+- **Fixed-pixel UI chrome must self-scale.** Corner `X` buttons (hub / map / memory stills), the 1.3 map travel buttons, the `[E]` chip, and the pause scrim rescale from the live window height via `UiViewportScale.factor` (`scenes/core/ui_viewport_scale.gd`; authored baseline 1920×1280, clamp 0.5–2.5, times the player `ui_scale` setting). New chrome applies it in `_ready` **and** on `get_viewport().size_changed` (bound method, not a lambda, so the connection dies with the scene). `TopDialogueOverlay` keeps its own font scaling; the `ui_scale` setting composes into both. Without this, chrome authored in pixels turns unreadably small at 3840×2160 (stretch stays disabled per canon).
 
 ## Canonical filename invariant
 

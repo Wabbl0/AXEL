@@ -13,7 +13,10 @@ const BotScenarioRunnerScript := preload("res://tools/bots/scenario_runner.gd")
 const _SCENE_EXTERIOR := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const _SCENE_CORRIDOR := "res://scenes/Arc_1/1.2_Corridor.tscn"
 
-const _WALK_FRAMES_RIGHT := 340
+## At 1920x1280 the first door overlap lands around frame 370 (spawn x~318,
+## speed ~165 px/s, door centroid x~1378). Walk past it with margin — the
+## right wall pins Mike inside the door area, so overshoot is safe.
+const _WALK_FRAMES_RIGHT := 420
 const _SETTLE_FRAMES_AFTER_WALK := 6
 const _INTERACT_TAP_FRAMES := 3
 const _TRANSITION_TIMEOUT_FRAMES := 240
@@ -28,6 +31,11 @@ func _init() -> void:
 
 
 func _main() -> void:
+	# Headless dummy display can report a tiny viewport (64x64 on Windows).
+	# Force the design size like every other headless check so cover-fit,
+	# walk distances, and the fixed-frame walk all run at authored scale.
+	root.size = Vector2i(1920, 1280)
+	await process_frame
 	var ok := await _run_playthrough()
 	if ok:
 		print("Arc1 exterior playthrough OK.")

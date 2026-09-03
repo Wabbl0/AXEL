@@ -9,6 +9,14 @@ const DESTINATIONS: Array[Dictionary] = [
 	{"label": "Go to the teacher's lounge", "path": "res://scenes/Arc_4/4.1_TeachersLounge.tscn"},
 ]
 
+const _UI_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
+## Authored (1920x1280) chrome sizes; _apply_chrome_scale multiplies by the
+## live UiViewportScale factor so 4K does not shrink the travel list.
+const _BUTTON_MIN_SIZE := Vector2(320.0, 42.0)
+const _BUTTON_FONT_BASE := 22
+const _PANEL_OFFSETS_BASE := Vector4(24.0, -320.0, 360.0, -24.0)
+const _PANEL_SEPARATION_BASE := 10.0
+
 @onready var _choices_panel: VBoxContainer = $UiLayer/ChoicesPanel
 @onready var _exit_button: Button = $UiLayer/ExitButton
 
@@ -19,6 +27,8 @@ func _ready() -> void:
 	_exit_button.pressed.connect(_on_exit_pressed)
 	set_process_input(true)
 	_build_destination_buttons()
+	_apply_chrome_scale()
+	get_viewport().size_changed.connect(_apply_chrome_scale)
 
 
 func _build_destination_buttons() -> void:
@@ -27,8 +37,9 @@ func _build_destination_buttons() -> void:
 	for destination in DESTINATIONS:
 		var button := Button.new()
 		button.text = destination["label"]
-		button.custom_minimum_size = Vector2(320.0, 42.0)
+		button.custom_minimum_size = _BUTTON_MIN_SIZE
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_font_override("font", _UI_FONT)
 		var scene_path: String = destination["path"]
 		if ResourceLoader.exists(scene_path):
 			button.pressed.connect(func() -> void:
@@ -41,12 +52,29 @@ func _build_destination_buttons() -> void:
 
 	var basement := Button.new()
 	basement.text = "ENTER THE BASEMENT"
-	basement.custom_minimum_size = Vector2(320.0, 42.0)
+	basement.custom_minimum_size = _BUTTON_MIN_SIZE
 	basement.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	basement.add_theme_font_override("font", _UI_FONT)
 	basement.disabled = true
 	basement.add_theme_color_override("font_color", Color(1, 0, 0, 1))
 	basement.add_theme_color_override("font_disabled_color", Color(1, 0, 0, 1))
 	_choices_panel.add_child(basement)
+
+
+func _apply_chrome_scale() -> void:
+	var f := UiViewportScale.factor(self)
+	UiViewportScale.apply_exit_button(_exit_button, f)
+	_choices_panel.offset_left = _PANEL_OFFSETS_BASE.x * f
+	_choices_panel.offset_top = _PANEL_OFFSETS_BASE.y * f
+	_choices_panel.offset_right = _PANEL_OFFSETS_BASE.z * f
+	_choices_panel.offset_bottom = _PANEL_OFFSETS_BASE.w * f
+	_choices_panel.add_theme_constant_override("separation", roundi(_PANEL_SEPARATION_BASE * f))
+	for child in _choices_panel.get_children():
+		var button := child as Button
+		if button == null:
+			continue
+		button.custom_minimum_size = _BUTTON_MIN_SIZE * f
+		button.add_theme_font_size_override("font_size", roundi(_BUTTON_FONT_BASE * f))
 
 
 func _input(event: InputEvent) -> void:
@@ -57,15 +85,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _is_exit_key(event: InputEvent) -> bool:
-	if event is InputEventKey:
-		var key_event := event as InputEventKey
-		if not key_event.pressed or key_event.echo:
-			return false
-		return (
-			key_event.keycode in [KEY_ESCAPE, KEY_BACKSPACE, KEY_DELETE]
-			or key_event.physical_keycode in [KEY_ESCAPE, KEY_BACKSPACE, KEY_DELETE]
-		)
-	return false
+	# Named InputMap action (Esc/Backspace/Delete + gamepad B). Excludes echo presses.
+	return event.is_action_pressed("back")
 
 
 func _on_exit_pressed() -> void:

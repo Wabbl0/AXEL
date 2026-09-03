@@ -20,6 +20,8 @@ var _can_exit := false
 
 func _ready() -> void:
 	_exit_button.pressed.connect(_on_exit_pressed)
+	_apply_chrome_scale()
+	get_viewport().size_changed.connect(_apply_chrome_scale)
 	set_process_unhandled_input(true)
 	call_deferred("_play_memory_dialogue")
 
@@ -44,6 +46,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	_begin_return_to_cafeteria()
 
 
+func _apply_chrome_scale() -> void:
+	UiViewportScale.apply_exit_button(_exit_button, UiViewportScale.factor(self))
+
+
 func _on_exit_pressed() -> void:
 	if not _can_exit:
 		return
@@ -51,11 +57,9 @@ func _on_exit_pressed() -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	if event is InputEventKey:
-		var key_event := event as InputEventKey
-		if not key_event.pressed or key_event.echo:
-			return false
-		return key_event.keycode in [KEY_TAB, KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	# Named InputMap action (Tab/E/Space/Enter + gamepad A). Excludes echo presses.
+	if event.is_action_pressed("dialogue_advance"):
+		return true
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT

@@ -54,12 +54,8 @@ static func dialogue_busy(overlay: Node) -> bool:
 
 static func movement_pressed() -> bool:
 	return (
-		Input.is_action_pressed("ui_left")
-		or Input.is_action_pressed("ui_right")
-		or Input.is_action_pressed("ui_up")
-		or Input.is_action_pressed("ui_down")
-		or Input.is_key_pressed(KEY_A)
-		or Input.is_key_pressed(KEY_D)
-		or Input.is_key_pressed(KEY_W)
-		or Input.is_key_pressed(KEY_S)
+		Input.is_action_pressed("move_left")
+		or Input.is_action_pressed("move_right")
+		or Input.is_action_pressed("move_up")
+		or Input.is_action_pressed("move_down")
 	)

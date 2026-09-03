@@ -162,7 +162,7 @@ func _dev_tools() -> Node:
 func _unhandled_input(event: InputEvent) -> void:
 	if not _open:
 		return
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE:
-			close_panel()
-			get_viewport().set_input_as_handled()
+	# Named InputMap action (Esc/Backspace/Delete + gamepad B). Excludes echo presses.
+	if event.is_action_pressed("back"):
+		close_panel()
+		get_viewport().set_input_as_handled()

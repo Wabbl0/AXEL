@@ -170,9 +170,12 @@ func _lock_bottom_layout() -> void:
 
 
 func _dialogue_window_scale(viewport_size: Vector2) -> float:
+	# ui_scale (D4 setting) composes multiplicatively with the viewport-height
+	# scale so the player slider and fullscreen scaling never fight each other.
+	var user_scale := UiViewportScale.settings_ui_scale(self)
 	if viewport_size.y <= 0.0:
-		return TEXT_BOOST
-	return clampf(viewport_size.y / DESIGN_VIEWPORT_H, 0.5, 2.5) * TEXT_BOOST
+		return TEXT_BOOST * user_scale
+	return clampf(viewport_size.y / DESIGN_VIEWPORT_H, 0.5, 2.5) * TEXT_BOOST * user_scale
 
 
 func _apply_dialogue_scale(viewport_size: Vector2) -> void:
@@ -229,11 +232,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _is_advance_event(event: InputEvent) -> bool:
-	if event is InputEventKey:
-		var key_event := event as InputEventKey
-		if not key_event.pressed or key_event.echo:
-			return false
-		return key_event.keycode in [KEY_TAB, KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	# Named InputMap action (Tab/E/Space/Enter + gamepad A). Excludes echo presses.
+	if event.is_action_pressed("dialogue_advance"):
+		return true
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT

@@ -13,3 +13,6 @@
 
 # Local LimeZu icon clustering output (contact sheets + JSON)
 /AXEL/axel_project/tools/combat/.icon_scan/
+
+# QA capture output (regenerable PNGs from tools/qa/capture_scene.ps1)
+/out/

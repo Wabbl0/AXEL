@@ -27,6 +27,13 @@ Run from the repo root:
 - Combat scaffold: `godot --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd`
 - Scene smoke (loads 6 scenes): `godot --headless --path AXEL/axel_project -s res://tools/scene_smoke_check.gd`
 - RTP audit (metrics only, always exits 0): `godot --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd`
+- Audio bus layout: `godot --headless --path AXEL/axel_project -s res://tools/qa/audio_bus_layout_check.gd`
+- Settings persistence: `godot --headless --path AXEL/axel_project -s res://tools/qa/settings_persistence_check.gd`
+- Pause contract: `godot --headless --path AXEL/axel_project -s res://tools/qa/pause_contract_check.gd`
+
+Headless SceneTree checks must force `root.size = Vector2i(1920, 1280)` before
+loading scenes — the dummy display can report a 64×64 viewport (seen on Windows),
+which breaks cover-fit math and fixed-frame walks.
 
 These mirror the CI gate in `.github/workflows/combat-tests.yml` (on branch
 `cursor/github-actions-combat-ci-3288`). Harmless `RID/ObjectDB ... leaked at exit`
@@ -47,10 +54,11 @@ There is no physical GPU. To run/render the game, use a virtual display and Mesa
 software drivers. A VNC desktop is also available on `DISPLAY=:1`.
 
 - Interactive run: `DISPLAY=:1 godot --path AXEL/axel_project`
-  (audio falls back to a dummy driver — the ALSA "cannot find card" errors are expected).
-- **Scene -> PNG capture:** `tools/capture_scene.sh <res://scene.tscn> <output.png> [frames] [WIDTHxHEIGHT]`
-  wraps Xvfb + software rendering and delegates to `res://tools/capture_scene.gd`.
-  Example: `tools/capture_scene.sh res://scenes/Main_Menu/0.1_MainMenu.tscn out/menu.png 40 1280x720`.
+ (audio falls back to a dummy driver — the ALSA "cannot find card" errors are expected).
+- **Scene -> PNG capture (Windows):** `powershell -File AXEL/axel_project/tools/qa/capture_scene.ps1 -Scene <res://scene.tscn> -Out <out.png> [-Frames N] [-Size WxH] [-Mode windowed|borderless|fullscreen]`
+ drives `res://tools/qa/capture_scene.gd` with the console exe, windowed (never `--headless`).
+ `tools/qa/capture_matrix.ps1` sweeps all real scenes at the five target sizes;
+ `tools/qa/scan_captures.ps1` flags blank frames. On Linux use Xvfb with the same `.gd` script.
 
 ### Notes
 

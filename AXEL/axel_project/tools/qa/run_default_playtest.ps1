@@ -19,6 +19,9 @@ $commands = @(
     @{ key = "interact_arrival"; script = "res://scenes/core/test/interact_arrival_check.gd" },
     @{ key = "corridor_depth_seed"; script = "res://scenes/core/test/corridor_depth_seed_check.gd" },
     @{ key = "combat_test_scaffold"; script = "res://combat/test/combat_test_scaffold_check.gd" },
+    @{ key = "audio_bus_layout"; script = "res://tools/qa/audio_bus_layout_check.gd" },
+    @{ key = "settings_persistence"; script = "res://tools/qa/settings_persistence_check.gd" },
+    @{ key = "pause_contract"; script = "res://tools/qa/pause_contract_check.gd" },
     @{ key = "canon_consistency_audit"; script = "res://tools/qa/canon_consistency_audit.gd"; metrics_only = $true },
     @{ key = "bot_arc1_exterior"; script = "res://tools/bots/playthrough_arc1_exterior.gd" },
     @{ key = "bot_dialogue_loop"; script = "res://tools/bots/playthrough_dialogue_loop.gd" }

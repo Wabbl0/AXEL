@@ -6186,3 +6186,36 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Fullscreen dialogue keeps the same screen-height ratio as the authored baseline while staying sharp; static rooms show more drawing on wide monitors with a thin darkened edge strip; 2.4 lounge/classroom returns restore Mike at 150%; and the 1.1 intro stays locked to the Player node's live remapped spawn even if the viewport settles after startup.
 - Verification: `background_fit_check.gd`, `player_cover_sync_check.gd`, `player_walk_speed_check.gd`, `player_spawn_sync_check.gd`, `interact_arrival_check.gd`, `corridor_depth_seed_check.gd`, plus the standard `princess_check.gd`, `determinism_check.gd`, `scene_smoke_check.gd`, `combat_test_scaffold_check.gd`, and `tools/qa/run_default_playtest.ps1`.
 - Notes: Stretch stays disabled per canon; the new edge strip depends on the exploration clear color staying pure white and still needs a real windowed pass because `--headless` does not render the CRT shader.
+
+### Master Build Plan Phase 0 — foundations (capture tool, InputMap, settings, audio buses, pause, resolution sweep)
+
+- Request: Build AXEL from `plans/core/AXEL_MASTER_BUILD_PLAN.md` starting at Phase 0 — capture tool first, verify every acceptance criterion, gate on `tools/qa/run_default_playtest.ps1`.
+- Implementation:
+  - **Gate repair:** `tools/bots/playthrough_arc1_exterior.gd` was failing on Windows because the headless dummy display reports a 64×64 viewport; it now forces `root.size = 1920×1280` like every other check and walks 420 frames (first door overlap lands ~frame 370 at design scale; the wall pins Mike inside the door area so overshoot is safe).
+  - **0.1 capture tool:** `tools/qa/capture_scene.gd` + `capture_scene.ps1` (generic scene→PNG: any size, windowed/borderless/fullscreen, console exe, clean `--headless` rejection), plus `capture_matrix.ps1` (18 scenes × 5 sizes) and `scan_captures.ps1` (blank-frame scan).
+  - **0.2 InputMap:** named actions written into `project.godot` (`move_*`, `interact`, `dialogue_advance`, `back`, `pause`; physical keycodes, `device:-1`, gamepad stick/d-pad/A/B/Start). Migrated `scripts/Player.gd` (`Input.get_vector`), `interact_zone_gate.gd`, 9 room interact handlers, 4 memory stills + `TopDialogueOverlay` advance, hub/map exits, and the combat settings panel close. Memory stills now accept gamepad A (the old key-type gate blocked joypad events). Debug tools (`axel_combat_dev_tools.gd`, `playtest_collision_debug.gd`, `TopDialogueOverlayFxPreview.gd`) intentionally stay raw; `GameController.gd` is orphaned legacy and untouched.
+  - **0.4 settings:** new autoload `AxelSettings` (`user://axel_settings.cfg`, loads in `_enter_tree`, debounced saves, change signal, rebind storage under `[controls]`, applies window mode / vsync / FPS cap / bus volumes at boot).
+  - **0.5 audio buses:** `default_bus_layout.tres` now Master ← Music + Effects; Effects ← Typewriter, TypewriterOpen, CombatSfx, UiSfx (names unchanged, so scene bus references hold; typewriter net gain unchanged through the 0 dB Effects hop).
+  - **0.6 pause:** new autoload `AxelPause` — sole writer of `get_tree().paused`, `pause` action via `_unhandled_input` (scene handlers consume Esc first), refuses while dialogue busy or on the main menu, promotes `AxelMusic` to `PROCESS_MODE_ALWAYS`, placeholder `PAUSED` scrim on CanvasLayer 120 until the Phase 1.5 menu.
+  - **0.3 resolution sweep:** 90-capture matrix (18 scenes × 1366×768 / 1920×1080 / 1920×1200 / 2560×1440 / 3840×2160) reviewed plus borderless and native-fullscreen (2240×1400) spot checks. Fixed the gaps it exposed: new `scenes/core/ui_viewport_scale.gd` (`UiViewportScale.factor` = live height ÷ 1280, clamp 0.5–2.5, × `ui_scale` setting) now scales the hub/map/memory `X` buttons, the 1.3 map travel buttons (also switched to VT323 per typography canon), the `[E]` chip, and the pause label; `ui_scale` composes into `TopDialogueOverlay._dialogue_window_scale`.
+- Files changed:
+  - `AXEL/axel_project/project.godot` (input map + AxelSettings/AxelPause autoloads)
+  - `AXEL/axel_project/default_bus_layout.tres`
+  - `AXEL/axel_project/scripts/autoload/axel_settings.gd` (new)
+  - `AXEL/axel_project/scripts/autoload/axel_pause.gd` (new)
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/scenes/core/interact_zone_gate.gd`
+  - `AXEL/axel_project/scenes/core/ui_viewport_scale.gd` (new)
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`, `1.2_Corridor.gd`, `1.3_LockerHub.gd`, `1.3_SchoolMap.gd`, `1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`, `2.2_CafeteriaMemory.gd`, `2.3_Kitchen.gd`, `2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`, `3.2_BackyardMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`, `4.2_TeachersMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`, `5.2_ClassroomDesk.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`, `InteractPromptOverlay.gd`
+  - `AXEL/axel_project/combat/scripts/combat_settings_panel.gd`
+  - `AXEL/axel_project/tools/bots/playthrough_arc1_exterior.gd`
+  - `AXEL/axel_project/tools/qa/capture_scene.gd` (new), `capture_scene.ps1` (new), `capture_matrix.ps1` (new), `scan_captures.ps1` (new), `audio_bus_layout_check.gd` (new), `settings_persistence_check.gd` (new), `pause_contract_check.gd` (new), `run_default_playtest.ps1`
+  - `AGENTS.md`, `plans/core/AI_DOCS.md`, `plans/scenes/SCENE_BUILDING.md`, `.gitignore` (`/out/`)
+- Behavior impact: identical keyboard feel; controllers now move Mike, interact, advance dialogue, back out, and pause; Esc pauses everywhere outside the menu (placeholder scrim until Phase 1.5); settings persist across restarts separately from saves; Master/Music/Effects volumes have live plumbing; fixed-pixel chrome stays readable at 4K.
+- Verification: full gate 18/19 pass (`bot_dialogue_loop` is the documented headless-expected failure) including the three new checks; 90-capture matrix with zero failures/blank frames; before/after captures reviewed for the map, hub, chip, pause scrim, dialogue at extremes.
+- Notes: Rebinding UI intentionally lands with the Phase 1.3 Options screen (storage/apply layer already live). New `class_name` scripts need a warm `--import` before headless/console runs pick them up (stale `global_script_class_cache` otherwise).
