@@ -3,6 +3,7 @@ extends Node2D
 const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const DOOR_LINE := "Not yet."
+const BASEMENT_SCENE := "res://scenes/Arc_6/6.1_BasementDoor.tscn"
 ## Just left of CafeteriaInteractArea so only a sliver peeks on the right.
 const CAFETERIA_PEEK_MARGIN_PX := 12.0
 ## Just right of ExitTrigger so only a sliver peeks on the left.
@@ -116,7 +117,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _door_zone_active:
 		return
-	_play_door_line_async()
+	_begin_basement_entry()
 
 
 func _door_dialogue_busy() -> bool:
@@ -134,6 +135,19 @@ func _on_exit_body_entered(body: Node) -> void:
 	if body != _player or _is_transitioning or not _exit_trigger_armed:
 		return
 	call_deferred("_begin_corridor_return")
+
+
+func _begin_basement_entry() -> void:
+	if _is_transitioning:
+		return
+	_is_transitioning = true
+	_hide_interact_prompt_immediate()
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
+	if get_tree().change_scene_to_file(BASEMENT_SCENE) != OK:
+		_is_transitioning = false
+		if is_instance_valid(AxelPostFxStack):
+			AxelPostFxStack.apply_to_scene(get_tree().current_scene)
 
 
 func _play_door_line_async() -> void:

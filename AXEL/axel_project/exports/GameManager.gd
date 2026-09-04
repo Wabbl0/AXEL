@@ -12,6 +12,8 @@ var game_state: Dictionary = {}
 
 const SAVE_PATH := "user://axel_game_state.json"
 const INVALID_RETURN_POS := Vector2(1.0e20, 1.0e20)
+## Transient. Pause-menu Map returns here instead of the locker hub.
+var pause_map_return_path: String = ""
 
 var corridor_locker_line_seen: bool = false
 var corridor_spawn_line_seen: bool = false
@@ -96,8 +98,9 @@ func _default_game_state() -> Dictionary:
 	}
 
 func _persistence_enabled() -> bool:
-	# Debug/editor playtests start fresh so once-ever dialogue can be re-tested.
-	return not OS.is_debug_build()
+	# Slots write only after New Game / Load / Continue. Editor F5 stays fresh.
+	var saves := get_node_or_null("/root/AxelSaves")
+	return saves != null and bool(saves.call("is_active"))
 
 func _load_persistent_state() -> void:
 	game_state = _default_game_state()
@@ -116,23 +119,73 @@ func _load_persistent_state() -> void:
 	teachers_key_line_seen = false
 	teachers_memory_line_seen = false
 	teachers_liar_line_seen = false
-	if not _persistence_enabled():
-		print("GameManager: debug build — ignoring saved narrative state.")
-		return
-	if not FileAccess.file_exists(SAVE_PATH):
-		return
-	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if file == null:
-		push_warning("GameManager: could not read save file at %s" % SAVE_PATH)
-		return
-	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	file.close()
-	if parsed == null or not parsed is Dictionary:
-		push_warning("GameManager: save file is not valid JSON.")
-		return
-	var data: Dictionary = parsed
-	if data.has("game_state") and data["game_state"] is Dictionary:
-		game_state = _merge_game_state(_default_game_state(), data["game_state"])
+	# Slot files are owned by AxelSaves. This only installs defaults.
+
+func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
+	var merged := defaults.duplicate(true)
+	for key in saved.keys():
+		if key == "flags" and saved["flags"] is Dictionary and defaults.has("flags"):
+			var flags: Dictionary = (defaults["flags"] as Dictionary).duplicate(true)
+			for flag_key in (saved["flags"] as Dictionary).keys():
+				flags[flag_key] = saved["flags"][flag_key]
+			merged["flags"] = flags
+		elif defaults.has(key):
+			merged[key] = saved[key]
+	return merged
+
+func reset_state() -> void:
+	_load_persistent_state()
+	corridor_return_pos = INVALID_RETURN_POS
+	cafeteria_table_return_pos = INVALID_RETURN_POS
+	classroom_desk_return_pos = INVALID_RETURN_POS
+	backyard_memory_return_pos = INVALID_RETURN_POS
+	teachers_lounge_memory_return_pos = INVALID_RETURN_POS
+	corridor_spawn_side = ""
+	exterior_spawn_side = ""
+	basement_spawn_side = ""
+	cafeteria_spawn_side = ""
+	kitchen_spawn_side = ""
+	backyard_spawn_side = ""
+	classrooms_corridor_spawn_side = ""
+	teachers_lounge_spawn_side = ""
+	classroom_spawn_side = ""
+	walkoff_floor_offset_y = NAN
+	interact_arrival_t = NAN
+	pause_map_return_path = ""
+	var run := get_node_or_null("/root/AxelRun")
+	if run != null and run.has_method("reset_run"):
+		run.call("reset_run")
+	state_changed.emit()
+
+
+func export_save_body() -> Dictionary:
+	var body := {
+		"game_state": game_state.duplicate(true),
+		"corridor_locker_line_seen": corridor_locker_line_seen,
+		"corridor_spawn_line_seen": corridor_spawn_line_seen,
+		"basement_door_line_seen": basement_door_line_seen,
+		"cafeteria_enter_line_seen": cafeteria_enter_line_seen,
+		"kitchen_enter_line_seen": kitchen_enter_line_seen,
+		"backyard_enter_line_seen": backyard_enter_line_seen,
+		"teachers_lounge_enter_line_seen": teachers_lounge_enter_line_seen,
+		"classroom_enter_line_seen": classroom_enter_line_seen,
+		"classroom_desk_seen": classroom_desk_seen,
+		"cafeteria_memory_line_seen": cafeteria_memory_line_seen,
+		"backyard_memory_line_seen": backyard_memory_line_seen,
+		"backyard_cigarette_line_seen": backyard_cigarette_line_seen,
+		"teachers_key_line_seen": teachers_key_line_seen,
+		"teachers_memory_line_seen": teachers_memory_line_seen,
+		"teachers_liar_line_seen": teachers_liar_line_seen,
+		"pause_map_return_path": pause_map_return_path,
+	}
+	var run := get_node_or_null("/root/AxelRun")
+	if run != null and run.has_method("to_dict"):
+		body["run_state"] = run.call("to_dict")
+	return body
+
+
+func import_save_body(data: Dictionary) -> void:
+	game_state = _merge_game_state(_default_game_state(), data.get("game_state", {}))
 	corridor_locker_line_seen = bool(data.get("corridor_locker_line_seen", false))
 	corridor_spawn_line_seen = bool(data.get("corridor_spawn_line_seen", false))
 	basement_door_line_seen = bool(data.get("basement_door_line_seen", false))
@@ -148,21 +201,19 @@ func _load_persistent_state() -> void:
 	teachers_key_line_seen = bool(data.get("teachers_key_line_seen", false))
 	teachers_memory_line_seen = bool(data.get("teachers_memory_line_seen", false))
 	teachers_liar_line_seen = bool(data.get("teachers_liar_line_seen", false))
+	pause_map_return_path = String(data.get("pause_map_return_path", ""))
+	var run := get_node_or_null("/root/AxelRun")
+	if run != null and run.has_method("from_dict"):
+		run.call("from_dict", data.get("run_state", {}))
+	state_changed.emit()
 
-func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
-	var merged := defaults.duplicate(true)
-	for key in saved.keys():
-		if key == "flags" and saved["flags"] is Dictionary and defaults.has("flags"):
-			var flags: Dictionary = (defaults["flags"] as Dictionary).duplicate(true)
-			for flag_key in (saved["flags"] as Dictionary).keys():
-				flags[flag_key] = saved["flags"][flag_key]
-			merged["flags"] = flags
-		elif defaults.has(key):
-			merged[key] = saved[key]
-	return merged
 
 func _save_persistent_state() -> void:
 	if not _persistence_enabled():
+		return
+	var saves := get_node_or_null("/root/AxelSaves")
+	if saves != null and saves.has_method("save_active"):
+		saves.call("save_active")
 		return
 	var data := {
 		"game_state": game_state,

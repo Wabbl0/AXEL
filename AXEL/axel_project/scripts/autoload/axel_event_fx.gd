@@ -139,6 +139,9 @@ func _arm_cadence_targets() -> void:
 
 
 func _fire_cadence_pulse() -> void:
+	if _reduce_flashing() or _glitch_scale() <= 0.05:
+		_reset_cadence_state()
+		return
 	if _pulse_in_progress or _cooldown_remaining > 0.0:
 		return
 	_pulse_in_progress = true
@@ -176,19 +179,23 @@ func register_walk_step() -> void:
 
 
 func play_glitch_burst(duration_sec: float = DEFAULT_GLITCH_DURATION) -> void:
+	if _reduce_flashing():
+		return
 	if _glitch == null or not is_instance_valid(_glitch):
 		return
 	if not _glitch.has_method("play_burst"):
 		return
-	await _glitch.play_burst(duration_sec)
+	await _glitch.play_burst(duration_sec * _glitch_scale())
 
 
 func play_interface_pulse(duration_sec: float = DEFAULT_PULSE_DURATION) -> void:
+	if _reduce_flashing():
+		return
 	if _pulse == null or not is_instance_valid(_pulse):
 		return
 	if not _pulse.has_method("play_pulse"):
 		return
-	await _pulse.play_pulse(duration_sec)
+	await _pulse.play_pulse(duration_sec * _glitch_scale())
 
 
 func start_interface_distortion() -> void:
@@ -235,6 +242,20 @@ func _set_ambient(enabled: bool) -> void:
 	else:
 		if _pulse.has_method("stop_ambient"):
 			_pulse.stop_ambient()
+
+
+func _reduce_flashing() -> bool:
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings == null:
+		return false
+	return bool(settings.call("get_value", "access", "reduce_flashing", false))
+
+
+func _glitch_scale() -> float:
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings == null:
+		return 1.0
+	return clampf(float(settings.call("get_value", "access", "glitch_intensity", 1.0)), 0.0, 1.0)
 
 
 func _instantiate_overlay(packed_path: String) -> Node:

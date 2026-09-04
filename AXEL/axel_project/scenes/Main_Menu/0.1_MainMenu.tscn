@@ -11,15 +11,6 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main_menu_script")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.06, 0.07, 0.1, 1)
-
 [node name="CenterBox" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 8
@@ -27,35 +18,45 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -150.0
-offset_right = 180.0
-offset_bottom = 150.0
-theme_override_constants/separation = 16
+offset_left = -280.0
+offset_top = -280.0
+offset_right = 280.0
+offset_bottom = 280.0
+theme_override_constants/separation = 12
 alignment = 1
 
 [node name="TitleLabel" type="Label" parent="CenterBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 96
 text = "AXEL"
 horizontal_alignment = 1
 
-[node name="SubtitleLabel" type="Label" parent="CenterBox"]
-layout_mode = 2
-text = "Escape before the timer runs out."
-horizontal_alignment = 1
-
-[node name="StartButton" type="Button" parent="CenterBox" unique_id=934476100]
-unique_name_in_owner = true
-layout_mode = 2
-text = "New Game"
-
-[node name="ContinueButton" type="Button" parent="CenterBox" unique_id=1738351017]
+[node name="ContinueButton" type="Button" parent="CenterBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Continue"
 
-[node name="QuitButton" type="Button" parent="CenterBox" unique_id=1661175016]
+[node name="NewGameButton" type="Button" parent="CenterBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "New Game"
+
+[node name="LoadGameButton" type="Button" parent="CenterBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Load Game"
+
+[node name="OptionsButton" type="Button" parent="CenterBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Options"
+
+[node name="CreditsButton" type="Button" parent="CenterBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Credits"
+
+[node name="QuitButton" type="Button" parent="CenterBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Quit"

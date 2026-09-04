@@ -18,6 +18,10 @@ signal line_win_resolved(event: Dictionary)
 ## Fired when a line-win popup first overlaps the total winnings readout border.
 ## Payload: { "payout_cents": int }
 signal winnings_popup_border_touched(event: Dictionary)
+## Play-run bridge (Phase 2). Tests may ignore this.
+signal encounter_finished(success: bool)
+## Empty SFX hooks (D15). Cue names only — no audio files.
+signal sfx_requested(cue: StringName)
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -36,6 +40,8 @@ signal winnings_popup_border_touched(event: Dictionary)
 @export var spawn_drop_duration_sec: float = 0.24
 @export var count_flash_duration_sec: float = 0.2
 @export var fx_stagger_sec: float = 0.01
+## Left-to-right column land delay (D14). Full 5-col grid ≈ 1.32 s plus drop time.
+@export var cascade_column_step_sec: float = 0.33
 @export_group("Transition FX")
 ## Master toggle for premium-meter-full and free-spin entry animations.
 @export var enable_transition_fx: bool = true
@@ -88,6 +94,7 @@ const EncounterScript := preload("res://combat/scripts/encounter.gd")
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const ItemInventoryScript := preload("res://combat/scripts/item_inventory.gd")
 const ItemEffectDispatcherScript := preload("res://combat/scripts/item_effect_dispatcher.gd")
+const CombatFeelScript := preload("res://combat/scripts/combat_feel.gd")
 
 ## Safety cap so pathological grids / RNG cannot infinite-loop cascade resolution.
 const MAX_CASCADE_ITERATIONS := 512
@@ -141,6 +148,8 @@ var _round_winnings_cents: int = 0
 var _bankroll_cents: int = STARTING_BANKROLL_CENTS
 var _encounter_goal_winnings_cents: int = 0
 var _encounter_goal_base_target_cents: int = CHIP_BAR_FULL_CENTS * CHIP_BAR_GOAL_MULTIPLE
+## Extra goal percent from lore items. Passed in by AxelRun — combat never reads story flags.
+var _lore_goal_bonus: float = 0.0
 var _playtest_spin_budget: int = 8
 var _playtest_limit_spins: bool = false
 var _item_fx := ItemEffectDispatcherScript.new()
@@ -157,6 +166,7 @@ var _power_intro_fallback_label: Label
 var _suppress_grid_populated_fx: bool = false
 var _cached_multiplier_emit_value: int = -1
 var _winnings_popup_target: Control = null
+var _feel: Node
 var inventory := ItemInventoryScript.new()
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
@@ -201,6 +211,10 @@ func _ready() -> void:
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
 	_refresh_grid_border_for_state()
+	_feel = CombatFeelScript.new()
+	_feel.name = "CombatFeel"
+	add_child(_feel)
+	_feel.setup(self, grid_ui)
 
 func _load_symbols_from_export() -> void:
 	_weights.clear()
@@ -297,8 +311,17 @@ func get_goal_base_target_cents() -> int:
 	return _encounter_goal_base_target_cents
 
 func get_effective_goal_target_cents() -> int:
-	var pct := _item_fx.goal_percent(inventory.items)
+	var pct := _item_fx.goal_percent(inventory.items) + _lore_goal_bonus
 	return int(round(float(_encounter_goal_base_target_cents) * (1.0 + pct)))
+
+
+func set_lore_goal_bonus(pct: float) -> void:
+	_lore_goal_bonus = maxf(pct, 0.0)
+	emit_signal("readouts_progressed")
+
+
+func get_lore_goal_bonus() -> float:
+	return _lore_goal_bonus
 
 func set_spins_used(n: int) -> void:
 	_spins_used = clampi(n, 0, 99)
@@ -327,8 +350,13 @@ func set_goal_progress_cents(n: int) -> void:
 	_on_loadout_or_goal_changed()
 
 func set_bankroll_cents(n: int) -> void:
+	# Debug inspector / playtest chrome. Play-run restore uses restore_run_bankroll.
 	if not OS.is_debug_build():
 		return
+	restore_run_bankroll(n)
+
+
+func restore_run_bankroll(n: int) -> void:
 	_bankroll_cents = n
 	_clamp_bankroll()
 	emit_signal("readouts_progressed")
@@ -551,6 +579,7 @@ func spin() -> void:
 		_state = State.FREE_SPINS_CHOOSE
 		_awaiting_free_spin_choice = true
 		_pending_free_spins = false
+		_notify_free_spins_entry()
 		emit_signal("readouts_progressed")
 	if free_spins.active and not _awaiting_free_spin_choice:
 		free_spins.consume_spin()
@@ -630,6 +659,7 @@ func spin_sync() -> void:
 		_state = State.FREE_SPINS_CHOOSE
 		_awaiting_free_spin_choice = true
 		_pending_free_spins = false
+		_notify_free_spins_entry()
 		emit_signal("readouts_progressed")
 	if free_spins.active and not _awaiting_free_spin_choice:
 		free_spins.consume_spin()
@@ -684,6 +714,8 @@ func choose_free_spins_princess(princess_id: StringName) -> void:
 	emit_signal("readouts_progressed")
 
 func end_encounter(success: bool) -> void:
+	if _encounter_complete:
+		return
 	_encounter_complete = true
 	_encounter_won = success
 	_state = State.ENDED
@@ -691,6 +723,13 @@ func end_encounter(success: bool) -> void:
 		_show_encounter_won_banner()
 	else:
 		_hide_encounter_won_banner()
+	encounter_finished.emit(success)
+	sfx_requested.emit(&"win" if success else &"loss")
+	if _feel != null:
+		if success:
+			_feel.play_banner("IT TAKES YOU")
+		else:
+			_feel.play_banner("GONE")
 
 func equip_item(item: Resource) -> bool:
 	var ok: bool = inventory.equip(item)
@@ -1207,15 +1246,23 @@ func _play_initial_grid_drop_fx() -> void:
 			var to_pos := _slot_target_position(coord)
 			var lift_cells := 0.5 + rng.randf() * 0.5
 			var from_pos := to_pos - Vector2(0.0, _cell_size_px() * lift_cells)
-			var delay := (float(r) + float(c) * 0.25) * fx_stagger_sec
+			var delay := float(c) * cascade_column_step_sec
 			max_delay = max(max_delay, delay)
 			if slot.has_method("play_drop"):
 				slot.call("play_drop", from_pos, to_pos, drop_duration_sec, delay)
 	await get_tree().create_timer(max_delay + drop_duration_sec).timeout
+	sfx_requested.emit(&"land")
 	_refresh_cells_visual()
+
+func _notify_free_spins_entry() -> void:
+	sfx_requested.emit(&"free_spins")
+	if _feel != null:
+		_feel.play_banner("FREE SPINS", 0.9, 0.78)
+
 
 func _play_count_flash_for_lines(lines: Array) -> void:
 	_emit_matched_symbols_from_lines(lines)
+	_feel_on_line_wins(lines)
 	if not enable_symbol_fx:
 		_show_win_popups_for_lines(lines)
 		emit_signal("readouts_progressed")
@@ -1370,6 +1417,7 @@ func _start_spin_with_new_grid() -> void:
 	_spins_used += 1
 	_lifetime_spins_used += 1
 	emit_signal("spin_started", _current_seed)
+	sfx_requested.emit(&"spin")
 	emit_signal("readouts_progressed")
 
 func _begin_spin_round() -> void:
@@ -1435,8 +1483,10 @@ func _play_pending_gravity_refill_fx() -> void:
 		var distance_rows: int = abs(to.y - from.y)
 		var duration := drop_duration_sec + float(distance_rows) * 0.03
 		max_total = max(max_total, duration)
+		var fall_delay := float(to.x) * cascade_column_step_sec
+		max_total = max(max_total, fall_delay + duration)
 		if to_slot.has_method("play_drop"):
-			to_slot.call("play_drop", from_pos, to_pos, duration, 0.0)
+			to_slot.call("play_drop", from_pos, to_pos, duration, fall_delay)
 	var spawn_index := 0
 	for spawn in _pending_spawns:
 		var coord: Vector2i = spawn.get("coord", Vector2i(-1, -1))
@@ -1449,7 +1499,7 @@ func _play_pending_gravity_refill_fx() -> void:
 		var to_pos := _slot_target_position(coord)
 		var rows_from_top := coord.y + 1
 		var from_pos := to_pos - Vector2(0.0, float(rows_from_top) * _cell_size_px())
-		var delay := fx_stagger_sec * spawn_index
+		var delay := float(coord.x) * cascade_column_step_sec
 		var duration := spawn_drop_duration_sec + float(rows_from_top) * 0.02
 		max_total = max(max_total, delay + duration)
 		if slot.has_method("play_drop"):
@@ -1457,6 +1507,7 @@ func _play_pending_gravity_refill_fx() -> void:
 		spawn_index += 1
 	if max_total > 0.0:
 		await get_tree().create_timer(max_total).timeout
+	sfx_requested.emit(&"land")
 	_refresh_cells_visual()
 
 func _refresh_cells_visual() -> void:
@@ -1692,6 +1743,10 @@ func _pick_power_for_current_spin() -> StringName:
 func _play_meter_full_transition_async() -> void:
 	emit_signal("meter_full_transition_started")
 	emit_signal("readouts_progressed")
+	sfx_requested.emit(&"trinity")
+	if _feel != null:
+		_feel.play_banner("TRINITY", 0.9, 0.82)
+		_feel.highlight_princess(princesses.current_id())
 	if _dev_skip_visuals or not enable_transition_fx:
 		await _pause_visual(pause_after_power_sec * 0.6)
 		return
@@ -1950,12 +2005,48 @@ func _emit_matched_symbols_from_lines(lines: Array) -> void:
 	if not entries.is_empty():
 		emit_signal("matched_symbols_resolved", entries)
 
+func _feel_on_line_wins(lines: Array) -> void:
+	if lines.is_empty():
+		return
+	sfx_requested.emit(&"line_win")
+	if _feel == null:
+		return
+	var settings := get_node_or_null("/root/AxelSettings")
+	_feel.shake(multiplier.value, settings)
+	if multiplier.value >= 3:
+		_feel.glitch_flash(settings)
+	if multiplier.value >= 4 and _feel.has_method("crt_wobble"):
+		_feel.crt_wobble(multiplier.value, settings)
+	var point_sets: Array = []
+	for line in lines:
+		var cells: Array = line.get("cells", [])
+		var pts := PackedVector2Array()
+		for p in cells:
+			var coord := p as Vector2i
+			var pos := _slot_target_position(coord)
+			var slot := _get_slot(coord) as Control
+			if slot != null:
+				pos += slot.size * 0.5
+			pts.append(pos)
+		if pts.size() >= 2:
+			point_sets.append(pts)
+	_feel.show_win_lines(point_sets)
+	_feel.set_goal_progress(
+		clampf(float(_encounter_goal_winnings_cents) / float(maxi(get_effective_goal_target_cents(), 1)), 0.0, 1.0)
+	)
+	_feel.highlight_princess(princesses.current_id())
+
+
 func _finalize_encounter_if_needed() -> void:
 	if is_chip_bar_goal_complete():
 		end_encounter(true)
 		return
 	if not free_spins.active and not _can_afford_spin():
 		end_encounter(false)
+		return
+	if _playtest_limit_spins and not free_spins.active and not _in_trinity_round:
+		if _playtest_spin_budget > 0 and _spins_used >= _playtest_spin_budget:
+			end_encounter(false)
 
 
 func _init_playtest_budget_from_encounter() -> void:

@@ -7,6 +7,9 @@ param(
     [string[]]$Sizes = @("1366x768", "1920x1080", "1920x1200", "2560x1440", "3840x2160"),
     [string[]]$Scenes = @(
         "res://scenes/Main_Menu/0.1_MainMenu.tscn",
+        "res://scenes/Main_Menu/Saves.tscn",
+        "res://scenes/Main_Menu/Options.tscn",
+        "res://scenes/Main_Menu/Credits.tscn",
         "res://scenes/Arc_1/1.1_SchoolExterior.tscn",
         "res://scenes/Arc_1/1.2_Corridor.tscn",
         "res://scenes/Arc_1/1.3_LockerHub.tscn",

@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" path="res://scenes/core/greybox_choice.gd" id="1_scene_placeholder"]
 
 [node name="ScenePlaceholder" type="Control"]
 layout_mode = 3
@@ -10,6 +10,4 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_scene_placeholder")
-scene_id = "5.4"
-location_label = "CLASSROOM"
-dialogue = PackedStringArray()
+room_id = "5.4"

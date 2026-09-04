@@ -37,6 +37,7 @@ const DEFAULTS := {
 	},
 	"video": {
 		"window_mode": "windowed",
+		"window_size": "1920x1280",
 		"vsync": true,
 		"fps_cap": 0,
 		"crt_enabled": true,
@@ -100,6 +101,20 @@ func ui_scale() -> float:
 	return clampf(float(get_value("video", "ui_scale")), 0.5, 2.0)
 
 
+func graphics_quality() -> String:
+	return String(get_value("video", "graphics_quality", "high")).to_lower()
+
+
+func diorama_size() -> Vector2i:
+	match graphics_quality():
+		"low":
+			return Vector2i(960, 640)
+		"medium":
+			return Vector2i(1280, 854)
+		_:
+			return Vector2i(1920, 1280)
+
+
 ## --- Input rebinding storage ---
 
 
@@ -128,6 +143,7 @@ func clear_action_binding(action: String) -> void:
 
 func _apply_all() -> void:
 	_apply_window_mode()
+	_apply_window_size()
 	_apply_vsync()
 	_apply_fps_cap()
 	_apply_bus_volumes()
@@ -138,12 +154,16 @@ func _apply_one(section: String, key: String) -> void:
 	match [section, key]:
 		["video", "window_mode"]:
 			_apply_window_mode()
+		["video", "window_size"]:
+			_apply_window_size()
 		["video", "vsync"]:
 			_apply_vsync()
 		["video", "fps_cap"]:
 			_apply_fps_cap()
 		["audio", "master_volume"], ["audio", "music_volume"], ["audio", "effects_volume"]:
 			_apply_bus_volumes()
+		["video", "graphics_quality"], ["video", "crt_enabled"]:
+			pass
 		_:
 			pass  # Read-side consumers (dialogue speed, CRT, shake…) poll or listen.
 
@@ -163,6 +183,34 @@ func _apply_window_mode() -> void:
 		_:
 			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			_apply_window_size()
+
+
+func _apply_window_size() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	if String(get_value("video", "window_mode")) != "windowed":
+		return
+	if not _config.has_section_key("video", "window_size"):
+		return
+	var parsed := parse_size_string(String(get_value("video", "window_size")))
+	if parsed == Vector2i.ZERO:
+		return
+	DisplayServer.window_set_size(parsed)
+	var tree := get_tree()
+	if tree != null:
+		tree.root.size = parsed
+
+
+static func parse_size_string(raw: String) -> Vector2i:
+	var parts := raw.to_lower().split("x")
+	if parts.size() != 2:
+		return Vector2i.ZERO
+	var w := parts[0].to_int()
+	var h := parts[1].to_int()
+	if w < 64 or h < 64:
+		return Vector2i.ZERO
+	return Vector2i(w, h)
 
 
 func _apply_vsync() -> void:

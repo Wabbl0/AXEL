@@ -135,6 +135,8 @@ func _begin_forced_intro_after_layout() -> void:
 func _should_skip_intro() -> bool:
 	if skip_intro:
 		return true
+	if AxelSaves.consume_skip_intro():
+		return true
 	return OS.has_environment("AXEL_SKIP_INTRO") and OS.get_environment("AXEL_SKIP_INTRO") == "1"
 
 

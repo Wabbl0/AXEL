@@ -46,6 +46,14 @@ func _ready() -> void:
 			stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			stage.pivot_offset = stage.size * 0.5
 	set_fill(preview_fill)
+	set_process(true)
+
+
+func _process(_delta: float) -> void:
+	if _pressing:
+		return
+	var t := float(Time.get_ticks_msec()) * 0.001
+	rotation = sin(t * 0.65) * 0.035
 
 
 func set_fill(f: float) -> void:

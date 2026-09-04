@@ -22,6 +22,12 @@ $commands = @(
     @{ key = "audio_bus_layout"; script = "res://tools/qa/audio_bus_layout_check.gd" },
     @{ key = "settings_persistence"; script = "res://tools/qa/settings_persistence_check.gd" },
     @{ key = "pause_contract"; script = "res://tools/qa/pause_contract_check.gd" },
+    @{ key = "save_slots"; script = "res://tools/qa/save_slots_check.gd" },
+    @{ key = "run_state"; script = "res://tools/qa/run_state_check.gd" },
+    @{ key = "item_icons"; script = "res://tools/qa/item_icons_check.gd" },
+    @{ key = "greybox_flow"; script = "res://tools/qa/greybox_flow_check.gd" },
+    @{ key = "corrupt_save"; script = "res://tools/qa/corrupt_save_check.gd" },
+    @{ key = "graphics_preset"; script = "res://tools/qa/graphics_preset_check.gd" },
     @{ key = "canon_consistency_audit"; script = "res://tools/qa/canon_consistency_audit.gd"; metrics_only = $true },
     @{ key = "bot_arc1_exterior"; script = "res://tools/bots/playthrough_arc1_exterior.gd" },
     @{ key = "bot_dialogue_loop"; script = "res://tools/bots/playthrough_dialogue_loop.gd" }

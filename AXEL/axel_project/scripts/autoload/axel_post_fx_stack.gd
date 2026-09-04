@@ -37,6 +37,9 @@ func _ready() -> void:
 		return
 	if not tree.scene_changed.is_connected(_on_scene_changed):
 		tree.scene_changed.connect(_on_scene_changed)
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings != null and settings.has_signal("setting_changed"):
+		settings.setting_changed.connect(_on_setting_changed)
 	call_deferred("_on_scene_changed")
 
 
@@ -72,7 +75,7 @@ func _on_scene_changed() -> void:
 
 
 func _should_skip_post_fx(scene: Node) -> bool:
-	if is_combat_scene(scene) and not COMBAT_ROOM_FX_TEST:
+	if is_combat_scene(scene) and not _combat_room_fx_test():
 		return true
 	if OS.has_environment("AXEL_DISABLE_POST_FX") and OS.get_environment("AXEL_DISABLE_POST_FX") == "1":
 		return true
@@ -91,12 +94,24 @@ static func is_combat_scene(scene: Node) -> bool:
 func _overlays_attached_to(scene: Node) -> bool:
 	if not is_instance_valid(scene):
 		return false
-	for layer in [_noir, _scanline, _crt]:
+	for layer in [_noir, _scanline]:
 		if layer == null or not is_instance_valid(layer):
 			return false
 		if layer.get_parent() != scene:
 			return false
+	var crt_on := true
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings != null:
+		crt_on = bool(settings.call("get_value", "video", "crt_enabled", true))
+	if crt_on:
+		if _crt == null or not is_instance_valid(_crt) or _crt.get_parent() != scene:
+			return false
 	return true
+
+
+func _on_setting_changed(section: String, key: String) -> void:
+	if section == "video" and key in ["crt_enabled", "graphics_quality"]:
+		_on_scene_changed()
 
 
 ## Re-attach when scene_changed aborted or overlays were detached without a successful attach.
@@ -140,9 +155,14 @@ func _attach_to_scene(scene: Node) -> void:
 	_remove_legacy_scene_overlays(scene)
 	_noir = _instantiate_overlay(NOIR_SCENE) as CanvasLayer
 	_scanline = _instantiate_overlay(SCANLINE_SCENE) as CanvasLayer
-	var crt_path := CRT_COMBAT_SCENE if is_combat_scene(scene) else CRT_SCENE
-	_crt = _instantiate_overlay(crt_path) as CanvasLayer
-	if _noir == null or _scanline == null or _crt == null:
+	var crt_on := true
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings != null:
+		crt_on = bool(settings.call("get_value", "video", "crt_enabled", true))
+	if crt_on:
+		var crt_path := CRT_COMBAT_SCENE if is_combat_scene(scene) else CRT_SCENE
+		_crt = _instantiate_overlay(crt_path) as CanvasLayer
+	if _noir == null or _scanline == null or (crt_on and _crt == null):
 		push_warning("AxelPostFxStack: failed to instantiate one or more overlay scenes.")
 		_noir = null
 		_scanline = null
@@ -160,11 +180,20 @@ func _attach_to_scene(scene: Node) -> void:
 	_attached_scene = scene
 	if _use_noir_8band_test():
 		_apply_noir_8band_shader()
+	_apply_graphics_quality()
+
+
+func _combat_room_fx_test() -> bool:
+	if OS.get_environment("COMBAT_ROOM_FX_TEST").strip_edges() == "1":
+		return true
+	return OS.is_debug_build() and COMBAT_ROOM_FX_TEST
 
 
 func _use_noir_8band_test() -> bool:
 	if OS.has_environment("AXEL_NOIR_8BAND") and OS.get_environment("AXEL_NOIR_8BAND").strip_edges() == "1":
 		return true
+	if not OS.is_debug_build():
+		return false
 	return DEBUG_USE_NOIR_8BAND_TEST
 
 
@@ -217,3 +246,54 @@ func get_noir_filter_rect() -> ColorRect:
 	if _noir != null and is_instance_valid(_noir):
 		return _noir.get_node_or_null("FilterRect") as ColorRect
 	return null
+
+
+func _apply_graphics_quality() -> void:
+	var settings := get_node_or_null("/root/AxelSettings")
+	var quality := "high"
+	if settings != null:
+		quality = String(settings.call("get_value", "video", "graphics_quality", "high")).to_lower()
+	var scan := _scanline.get_node_or_null("ScanlineRect") as ColorRect if _scanline != null else null
+	if scan != null and scan.material is ShaderMaterial:
+		var mat := scan.material as ShaderMaterial
+		match quality:
+			"low":
+				mat.set_shader_parameter("blend_opacity", 0.08)
+				mat.set_shader_parameter("noise_intensity", 0.008)
+				mat.set_shader_parameter("flicker_strength", 0.0)
+				mat.set_shader_parameter("scan_density", 160.0)
+			"medium":
+				mat.set_shader_parameter("blend_opacity", 0.16)
+				mat.set_shader_parameter("noise_intensity", 0.02)
+				mat.set_shader_parameter("flicker_strength", 0.004)
+				mat.set_shader_parameter("scan_density", 240.0)
+			_:
+				mat.set_shader_parameter("blend_opacity", 0.22)
+				mat.set_shader_parameter("noise_intensity", 0.04)
+				mat.set_shader_parameter("flicker_strength", 0.008)
+				mat.set_shader_parameter("scan_density", 300.0)
+	var crt_rect: ColorRect = null
+	if _crt != null:
+		crt_rect = _crt.get_node_or_null("FilterRect") as ColorRect
+	if crt_rect != null and crt_rect.material is ShaderMaterial:
+		var crt_mat := crt_rect.material as ShaderMaterial
+		var combat := is_combat_scene(_attached_scene)
+		match quality:
+			"low":
+				crt_mat.set_shader_parameter("curvature", 0.0 if combat else 0.04)
+				crt_mat.set_shader_parameter("chroma", 0.0)
+				crt_mat.set_shader_parameter("scanline_strength", 0.04)
+				crt_mat.set_shader_parameter("mask_strength", 0.12)
+				crt_mat.set_shader_parameter("vignette", 0.0 if combat else 0.2)
+			"medium":
+				crt_mat.set_shader_parameter("curvature", 0.0 if combat else 0.1)
+				crt_mat.set_shader_parameter("chroma", 0.0006)
+				crt_mat.set_shader_parameter("scanline_strength", 0.08)
+				crt_mat.set_shader_parameter("mask_strength", 0.22)
+				crt_mat.set_shader_parameter("vignette", 0.0 if combat else 0.32)
+			_:
+				crt_mat.set_shader_parameter("curvature", 0.0 if combat else 0.16)
+				crt_mat.set_shader_parameter("chroma", 0.001)
+				crt_mat.set_shader_parameter("scanline_strength", 0.12)
+				crt_mat.set_shader_parameter("mask_strength", 0.35)
+				crt_mat.set_shader_parameter("vignette", 0.0 if combat else 0.45)

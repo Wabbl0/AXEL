@@ -288,8 +288,9 @@ func _wait_for_advance(token: int, deadline_ms: int) -> void:
 	if _line_phase != LinePhase.READY:
 		return
 	_advance_requested = false
+	var use_deadline := _auto_advance_enabled()
 	while _line_alive(token) and not _advance_requested:
-		if Time.get_ticks_msec() >= deadline_ms:
+		if use_deadline and Time.get_ticks_msec() >= deadline_ms:
 			break
 		if not await _await_process_frame():
 			break
@@ -698,13 +699,29 @@ func _cancel_crt_power() -> void:
 
 
 ## Type, wait for player advance, CRT off. `hold_duration` is kept for call-site compat (unused).
+func _settings_cps(chars_per_sec: float) -> float:
+	if not is_equal_approx(chars_per_sec, DEFAULT_CHARS_PER_SEC):
+		return chars_per_sec
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings == null:
+		return chars_per_sec
+	return clampf(float(settings.call("get_value", "gameplay", "text_speed_cps", DEFAULT_CHARS_PER_SEC)), 8.0, 120.0)
+
+
+func _auto_advance_enabled() -> bool:
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings == null:
+		return true
+	return bool(settings.call("get_value", "gameplay", "auto_advance", true))
+
+
 func show_line(
 	text: String,
 	_hold_duration: float = 2.5,
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
-	await show_lines([text], chars_per_sec, allow_skip)
+	await show_lines([text], _settings_cps(chars_per_sec), allow_skip)
 
 
 ## Multi-line sequence: advance on press scrambles to the next line; last line CRT powers off.
@@ -713,6 +730,7 @@ func show_lines(
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
+	chars_per_sec = _settings_cps(chars_per_sec)
 	if texts.is_empty():
 		return
 

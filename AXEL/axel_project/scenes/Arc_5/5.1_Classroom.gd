@@ -2,6 +2,7 @@ extends Node2D
 
 const CORRIDOR_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
 const DESK_SCENE := "res://scenes/Arc_5/5.2_ClassroomDesk.tscn"
+const BOARD_SCENE := "res://scenes/Arc_5/5.3_ClassroomBoard.tscn"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 const _BEHIND_ZONE_NAMES: PackedStringArray = [
@@ -268,6 +269,15 @@ func _begin_look_at_board() -> void:
 		_interact_prompt.hide_prompt_immediate()
 	await _top_dialogue.show_lines(BOARD_LINES)
 	_board_line_running = false
+	if GameManager.get_flag("hasName"):
+		return
+	_is_transitioning = true
+	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
+		_interact_prompt.hide_prompt_immediate()
+	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
+		_top_dialogue.interrupt_line()
+	if get_tree().change_scene_to_file(BOARD_SCENE) != OK:
+		_is_transitioning = false
 
 
 func _begin_go_to_desk() -> void:

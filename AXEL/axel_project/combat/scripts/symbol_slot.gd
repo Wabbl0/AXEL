@@ -56,8 +56,10 @@ func play_drop(from_local: Vector2, to_local: Vector2, duration: float, delay: f
 	_drop_tween = create_tween()
 	if delay > 0.0:
 		_drop_tween.tween_interval(delay)
-	_drop_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_drop_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_drop_tween.tween_property(_icon, "position", Vector2.ZERO, max(duration, 0.01))
+	_drop_tween.tween_property(_icon, "scale", Vector2(1.18, 0.78), 0.05)
+	_drop_tween.tween_property(_icon, "scale", Vector2.ONE, 0.08)
 
 
 func play_count_flash(duration: float, peak_alpha: float = 0.55, delay: float = 0.0) -> void:
@@ -89,6 +91,7 @@ func cancel_active_fx() -> void:
 		_flash_overlay.visible = false
 	_reset_win_popup_visuals()
 	_icon.position = Vector2.ZERO
+	_icon.scale = Vector2.ONE
 
 
 func play_win_popup(

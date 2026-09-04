@@ -1,15 +1,13 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scenes/core/ScenePlaceholder.gd" id="1_scene_placeholder"]
+[ext_resource type="Script" path="res://scenes/Endings/ending_still.gd" id="1_ending"]
 
-[node name="ScenePlaceholder" type="Control"]
+[node name="Epilogue" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_scene_placeholder")
-scene_id = "7.6"
-location_label = "EPILOGUE"
-dialogue = PackedStringArray()
+script = ExtResource("1_ending")
+ending_id = "7.6"

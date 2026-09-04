@@ -12,6 +12,9 @@ const COMBAT_TEST_SCENE := ValidatorsScript.COMBAT_TEST_SCENE
 
 var _smoke_scenes: PackedStringArray = PackedStringArray([
 	"res://scenes/Main_Menu/0.1_MainMenu.tscn",
+	"res://scenes/Main_Menu/Saves.tscn",
+	"res://scenes/Main_Menu/Options.tscn",
+	"res://scenes/Main_Menu/Credits.tscn",
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
 	"res://scenes/Arc_1/1.2_Corridor.tscn",
 	"res://scenes/Arc_1/1.3_LockerHub.tscn",
@@ -21,6 +24,14 @@ var _smoke_scenes: PackedStringArray = PackedStringArray([
 	"res://scenes/Arc_3/3.2_BackyardMemory.tscn",
 	"res://combat/scenes/combat_root.tscn",
 	COMBAT_TEST_SCENE,
+	"res://combat/combat_run.tscn",
+	"res://scenes/Arc_6/6.1_BasementDoor.tscn",
+	"res://scenes/Arc_6/6.4_BasementMain.tscn",
+	"res://scenes/Arc_6/6.8_BasementCorpse.tscn",
+	"res://scenes/Endings/7.2_Ending2.tscn",
+	"res://scenes/Endings/7.5_EndingTrue.tscn",
+	"res://scenes/Arc_5/5.3_ClassroomBoard.tscn",
+	"res://scenes/Arc_5/5.4_ClassroomBoardSuccess.tscn",
 ])
 
 

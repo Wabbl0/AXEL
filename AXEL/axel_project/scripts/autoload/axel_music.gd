@@ -3,14 +3,14 @@ extends Node
 ## Matching stems start together and stay sample-locked; only their volumes change.
 
 const MENU_SCENE_PATH := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
-const MENU_STEM: AudioStreamWAV = preload("res://assets/audio/music/B_Goes_Down_p2.wav")
-const OVERWORLD_STEM: AudioStreamWAV = preload("res://assets/audio/music/B_Goes_Down_p1.wav")
+const MENU_STEM: AudioStream = preload("res://assets/audio/music/B_Goes_Down_p2.ogg")
+const OVERWORLD_STEM: AudioStream = preload("res://assets/audio/music/B_Goes_Down_p1.ogg")
 
-const CASINO_DRUMS_P1: AudioStreamWAV = preload("res://assets/audio/music/casino_Drums_p1.wav")
-const CASINO_DRUMS_P2: AudioStreamWAV = preload("res://assets/audio/music/casino_Drums_p2.wav")
-const CASINO_P1: AudioStreamWAV = preload("res://assets/audio/music/casino_p1.wav")
-const CASINO_P2: AudioStreamWAV = preload("res://assets/audio/music/casino_p2.wav")
-const CASINO_LIKE_THAT: AudioStreamWAV = preload("res://assets/audio/music/casino_like_that.wav")
+const CASINO_DRUMS_P1: AudioStream = preload("res://assets/audio/music/casino_Drums_p1.ogg")
+const CASINO_DRUMS_P2: AudioStream = preload("res://assets/audio/music/casino_Drums_p2.ogg")
+const CASINO_P1: AudioStream = preload("res://assets/audio/music/casino_p1.ogg")
+const CASINO_P2: AudioStream = preload("res://assets/audio/music/casino_p2.ogg")
+const CASINO_LIKE_THAT: AudioStream = preload("res://assets/audio/music/casino_like_that.ogg")
 
 const MENU_INDEX := 0
 const OVERWORLD_INDEX := 1
@@ -76,8 +76,8 @@ func _ready() -> void:
 
 	_sync_stream = AudioStreamSynchronized.new()
 	_sync_stream.stream_count = 2
-	_sync_stream.set_sync_stream(MENU_INDEX, _make_looped_wav(MENU_STEM))
-	_sync_stream.set_sync_stream(OVERWORLD_INDEX, _make_looped_wav(OVERWORLD_STEM))
+	_sync_stream.set_sync_stream(MENU_INDEX, _make_looped(MENU_STEM))
+	_sync_stream.set_sync_stream(OVERWORLD_INDEX, _make_looped(OVERWORLD_STEM))
 	_set_layer_volumes(SILENT_DB, SILENT_DB)
 
 	_player.stream = _sync_stream
@@ -93,11 +93,11 @@ func _ready() -> void:
 
 	_combat_sync = AudioStreamSynchronized.new()
 	_combat_sync.stream_count = COMBAT_LAYER_COUNT
-	_combat_sync.set_sync_stream(COMBAT_DRUMS_P1_INDEX, _make_looped_wav(CASINO_DRUMS_P1))
-	_combat_sync.set_sync_stream(COMBAT_DRUMS_P2_INDEX, _make_looped_wav(CASINO_DRUMS_P2))
-	_combat_sync.set_sync_stream(COMBAT_P1_INDEX, _make_looped_wav(CASINO_P1))
-	_combat_sync.set_sync_stream(COMBAT_P2_INDEX, _make_looped_wav(CASINO_P2))
-	_combat_sync.set_sync_stream(COMBAT_LIKE_THAT_INDEX, _make_looped_wav(CASINO_LIKE_THAT))
+	_combat_sync.set_sync_stream(COMBAT_DRUMS_P1_INDEX, _make_looped(CASINO_DRUMS_P1))
+	_combat_sync.set_sync_stream(COMBAT_DRUMS_P2_INDEX, _make_looped(CASINO_DRUMS_P2))
+	_combat_sync.set_sync_stream(COMBAT_P1_INDEX, _make_looped(CASINO_P1))
+	_combat_sync.set_sync_stream(COMBAT_P2_INDEX, _make_looped(CASINO_P2))
+	_combat_sync.set_sync_stream(COMBAT_LIKE_THAT_INDEX, _make_looped(CASINO_LIKE_THAT))
 	_set_combat_volumes_all_silent()
 
 	_combat_player.stream = _combat_sync
@@ -202,7 +202,7 @@ func _apply_scene_music() -> void:
 	var path := tree.current_scene.scene_file_path
 	var resumed := _ensure_player_active()
 
-	if path == MENU_SCENE_PATH:
+	if path == MENU_SCENE_PATH or path.begins_with("res://scenes/Main_Menu/"):
 		_stop_combat_music()
 		## New Game starts the crossfade while the menu is still current.
 		if _state == MusicState.OVERWORLD:
@@ -463,6 +463,18 @@ static func _is_combat_path(path: String) -> bool:
 
 static func _music_disabled() -> bool:
 	return OS.has_environment("AXEL_DISABLE_MUSIC") and OS.get_environment("AXEL_DISABLE_MUSIC") == "1"
+
+
+static func _make_looped(stream: AudioStream) -> AudioStream:
+	if stream is AudioStreamWAV:
+		return _make_looped_wav(stream as AudioStreamWAV)
+	if stream is AudioStreamOggVorbis:
+		var ogg := (stream as AudioStreamOggVorbis).duplicate(true) as AudioStreamOggVorbis
+		if ogg == null:
+			return stream
+		ogg.loop = true
+		return ogg
+	return stream
 
 
 static func _make_looped_wav(stream: AudioStreamWAV) -> AudioStreamWAV:
