@@ -276,10 +276,7 @@ func _begin_go_to_lounge() -> void:
 
 
 func _begin_go_to_classroom() -> void:
-	if is_instance_valid(_player) and is_instance_valid(_classroom_area):
-		GameManager.set_interact_arrival_t(
-			InteractArrival.fraction_along(_player, _classroom_area, Vector2.AXIS_X)
-		)
+	# Always land at 5.1 DoorInteractArea center — do not save leave t.
 	GameManager.set_classroom_spawn_side("corridor_door")
 	_begin_scene_change(CLASSROOM_SCENE)
 
@@ -345,11 +342,11 @@ func _apply_spawn_peek_if_pending() -> void:
 	# so a post-place scale change cannot move the Front circle off the land point.
 	match side:
 		"cafeteria_door":
-			# Live CafeteriaInteractArea center (today ~5856×352). Skip wall
-			# clearance — that was pushing Front down to ~815.
-			_player.global_position = InteractArrival.place_in_area(
-				_player, _cafeteria_area, InteractArrival.DEFAULT_T, Vector2.AXIS_X,
-				InteractArrival.PeekEdge.CENTER_Y, 0.5
+			# Live CafeteriaInteractArea center this Play. Stand the Player
+			# node (the model) on that box — Front-on-center shoves the tall
+			# walk drawing out the top of the PNG.
+			_player.global_position = InteractArrival.place_node_on_area_center(
+				_player, _cafeteria_area
 			)
 			_arrival_latched_zone = "cafeteria"
 			_arm_zone_grace("cafeteria")
@@ -367,10 +364,10 @@ func _apply_spawn_peek_if_pending() -> void:
 			)
 			_arrival_latched_zone = "classroom"
 			_arm_zone_grace("classroom")
-	_seed_depth_from_spawn_side(side)
-	_apply_player_cover_and_depth(_player)
+	# Place last — do not re-apply cover/depth after (that moves Front).
 	_pending_spawn_side = ""
 	_spawn_placement_pending = false
+
 
 func _physics_process(_delta: float) -> void:
 	if not _cover_layout_ready or _is_transitioning:

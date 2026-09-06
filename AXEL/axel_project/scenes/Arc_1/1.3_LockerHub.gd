@@ -4,7 +4,6 @@ const LockerInteriorScript := preload("res://scenes/ui/locker_interior.gd")
 const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const MAP_SCENE := "res://scenes/Arc_1/1.3_SchoolMap.tscn"
 const MEMORY_KEY := "scene_3"
-const WARNING_LINE := "AXEL: If you lose in there, this version of you is gone. The locker will remember that you died."
 
 @onready var _map_hotspot = $MapHotspot
 @onready var _top_dialogue: Node = $TopDialogueOverlay
@@ -15,7 +14,6 @@ var _is_transitioning := false
 var _first_visit_dialogue_running := false
 var _locker: CanvasLayer
 var _locker_button: Button
-var _warning_playing := false
 
 
 func _ready() -> void:
@@ -34,8 +32,6 @@ func _build_locker() -> void:
 	_locker = LockerInteriorScript.new()
 	_locker.name = "LockerInterior"
 	add_child(_locker)
-	if _locker.has_signal("start_requested"):
-		_locker.connect("start_requested", _on_start_requested)
 	_locker_button = Button.new()
 	_locker_button.name = "LockerButton"
 	_locker_button.text = "LOCKER"
@@ -75,33 +71,15 @@ func _input(event: InputEvent) -> void:
 		return
 	if _locker != null and _locker.has_method("is_open") and bool(_locker.call("is_open")):
 		return
-	if _warning_playing:
-		return
 	get_viewport().set_input_as_handled()
 	_on_exit_pressed()
 
 
 func _on_locker_pressed() -> void:
-	if _first_visit_dialogue_running or _warning_playing or _is_transitioning:
+	if _first_visit_dialogue_running or _is_transitioning:
 		return
 	if _locker != null and _locker.has_method("open_locker"):
 		_locker.call("open_locker")
-
-
-func _on_start_requested() -> void:
-	if _is_transitioning or _warning_playing:
-		return
-	var run := get_node_or_null("/root/AxelRun")
-	if run == null or not bool(run.call("can_start_encounter")):
-		return
-	if not bool(run.state.first_encounter_warned):
-		_warning_playing = true
-		if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("show_line"):
-			await _top_dialogue.show_line(WARNING_LINE)
-		run.call("mark_first_encounter_warned")
-		_warning_playing = false
-	_is_transitioning = true
-	run.call("enter_combat")
 
 
 

@@ -10,6 +10,19 @@ func _ready() -> void:
 		return
 	call_deferred("_hide_playtest_chrome")
 	call_deferred("_wire_empty_sfx")
+	call_deferred("_open_combat_wipe")
+
+
+func _open_combat_wipe() -> void:
+	if not is_instance_valid(AxelEventFx):
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.process_frame
+	if not is_instance_valid(AxelEventFx):
+		return
+	AxelEventFx.clear_combat_wipe()
 
 
 func _wire_empty_sfx() -> void:

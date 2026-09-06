@@ -6219,3 +6219,73 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: identical keyboard feel; controllers now move Mike, interact, advance dialogue, back out, and pause; Esc pauses everywhere outside the menu (placeholder scrim until Phase 1.5); settings persist across restarts separately from saves; Master/Music/Effects volumes have live plumbing; fixed-pixel chrome stays readable at 4K.
 - Verification: full gate 18/19 pass (`bot_dialogue_loop` is the documented headless-expected failure) including the three new checks; 90-capture matrix with zero failures/blank frames; before/after captures reviewed for the map, hub, chip, pause scrim, dialogue at extremes.
 - Notes: Rebinding UI intentionally lands with the Phase 1.3 Options screen (storage/apply layer already live). New `class_name` scripts need a warm `--import` before headless/console runs pick them up (stale `global_script_class_cache` otherwise).
+
+## 2026-09-06
+
+### 2.1→2.4 spawn on live CafeteriaInteractArea; swap ExtraDoor1/3
+- Request: Coming from 2.1, 2.4 spawned the player model outside the world borders. Spawn must always follow the live 2.4→2.1 InteractArea. Also ExtraDoor1 and ExtraDoor3 had each other's dialogues.
+- Implementation: `2.1`→`2.4` now stands the Player node on the live `CafeteriaInteractArea` center (`InteractArrival.place_node_on_area_center`) after cover-fit — not Front-on-center (that shoved the tall walk drawing out the top of the PNG). Skip wall clearance; no stored Vector2. The 2.4 PNG import had `process/size_limit=2048` while colliders are authored on the real `7016×4960` drawing, so the live door box sat off the right of the room; size limit is now `0` and Background scale is `1`. ExtraDoor1 and ExtraDoor3 swapped places so "Try the next one." is at the cafeteria-end door and "You missed it." is at the classroom-end door. 2.4 no longer re-applies cover/depth after door place.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Leaving 2.1 for 2.4 puts Mike on the current cafeteria-door `[E]` box, inside the room art. Drag that box in the editor and the land point follows. Extra door lines now match walking from the cafeteria. Fresh Play / F6 still uses the Player node.
+- Verification: `interact_arrival_check.gd`, `corridor_depth_seed_check.gd`, plus the AGENTS.md headless suite.
+- Notes: `2.4`→`2.1` still lands Front on the live cafeteria `ClassroomsInteractArea` center.
+
+### 2.4→5.1 spawn on live DoorInteractArea
+- Request: Walking 2.4 → 5.1 spawned the player model outside the collision borders at the top-right (same class of bug as 2.1→2.4).
+- Implementation: Leave `t` no longer slides onto 5.1 `DoorInteractArea` Y (that parked Front inside `DoorWall`). Arrival now stands the Player node on the live door-box center (`place_node_on_area_center`) and skips clearance. 2.4 no longer saves leave `t` when going to the classroom.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/scenes/core/interact_arrival.gd`
+  - `AXEL/axel_project/scenes/core/test/interact_arrival_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Leaving the classrooms corridor for 5.1 puts Mike on the classroom door `[E]` box, on the walkable floor, not in the top-right wall.
+- Verification: `interact_arrival_check.gd` (2.4→5.1 node at live door center, not in DoorWall).
+- Notes: 5.1→2.4 still uses inside-box `t` on the corridor classroom door.
+
+## 2026-09-06
+
+### School to fight loop (walk / pickup / memory), world items, visited-room map
+- Request: Put the rest of the master-plan work in the live game plus a real school -> fight loop: memories start a fight after the still, lore and combat-item pickups start a fight, rare indoor walking fights (~0.1% per step early, ~1% late), combat items scattered in rooms, item ranks start Common and untouched areas improve, locker loses START RUN, the school map hides unvisited rooms, and a Pokemon-like wipe plays into every fight.
+- Implementation: New autoload `AxelWorld` owns the narrative side of the loop (six areas mapped onto the live rooms, floor-item scatter and rank tiers, walk-step roll with a 200-step cooldown and a 2-per-visit cap, one-fight-per-lore-item guard, visited-room marking, return-to-spot after a win). `AxelRun.enter_world_encounter()` is a second, single-encounter door that never moves the act pointer and returns to the room it started in; the old three-act `enter_combat()` stays in the file but is unreachable. New red-bar wipe overlay lives on `AxelEventFx` so it survives the scene change, with a 4s safety clear. Floor pickups are spawned under `EnvironmentColliders` so they share cover-fit.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd` (new)
+  - `AXEL/axel_project/scenes/world/world_item_pickup.gd` (new)
+  - `AXEL/axel_project/scenes/fx/combat_wipe_overlay.gd` (new)
+  - `AXEL/axel_project/tools/qa/world_combat_loop_check.gd` (new)
+  - `AXEL/axel_project/tools/qa/world_item_scatter_check.gd` (new)
+  - `AXEL/axel_project/tools/qa/world_combat_roundtrip_check.gd` (new)
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md` (new)
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/combat/scripts/run_state.gd`
+  - `AXEL/axel_project/combat/scripts/combat_run.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/ui/locker_interior.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_SchoolMap.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.2_CafeteriaMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.2_BackyardMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.2_TeachersMemory.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.2_ClassroomDesk.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.3_Kitchen.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/core/greybox_choice.gd`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Fights now start out in the school instead of from the locker. Walking indoors can trigger one; `1.1` and `3.1` never do. Every memory still, every lore item, and every floor combat item starts exactly one fight. Winning returns to the same room and standing spot; losing still writes the tombstone. The locker panel is equip-only. The school map shows `?????` dark cards for rooms never walked in.
+- Verification: `world_combat_loop_check.gd` and `world_combat_roundtrip_check.gd` (new, both exit 0), plus determinism, princess, combat scaffold, scene smoke, audio bus, settings persistence, pause contract, spawn sync, cover sync, walk speed, interact arrival, collision-shape-unique, and the arc1 playthrough bot. `wall_sprite_clearance_check.gd` fails identically with `AXEL_WORLD_COMBAT=0`, so it is pre-existing and unrelated.
+- Fixed while building: player repositioning (spawn placement, cover-fit, post-fight return) was feeding the walk-step counter, so entering a room banked hundreds of steps at once and could start a fight on arrival. `Player.gd` now drops any jump of 64 px or more; this also fixes the same flaw in the existing CRT pulse cadence. Also: an area now grants only one rank upgrade to the untouched areas (first pickup there or clearing it, whichever comes first) instead of one for each, and floor spots are searched on both axes and dodge interact zones as well as walls.
+- Notes: Replaces master-plan **D7** (locker is the only door) and the old `AXEL_notes` line "memories do not trigger combat" - both confirmed by the user before implementing. Shop / The Hole / 50/50 (master plan section 7 Q3) stay out until asked. `5.2` desk starts a fight but is still not a 5/5 memory. Rollback: `AXEL_WORLD_COMBAT=0`.

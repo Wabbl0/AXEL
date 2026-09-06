@@ -1,6 +1,8 @@
 extends Node2D
 
 const CORRIDOR_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
+## Where a lore-pickup fight comes back to.
+const LOUNGE_SELF_SCENE := "res://scenes/Arc_4/4.1_TeachersLounge.tscn"
 const MEMORY_SCENE := "res://scenes/Arc_4/4.2_TeachersMemory.tscn"
 const MEMORY_KEY := "teachers_memory"
 const ENTER_LINES := [
@@ -329,6 +331,12 @@ func _pickup_key_async() -> void:
 	_key_line_running = false
 	if _active_zone == "key":
 		_active_zone = ""
+	# Lore item: the school answers with a fight, once per item ever.
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and bool(
+		world.call("start_lore_fight", "hasKey", LOUNGE_SELF_SCENE, true)
+	):
+		_hide_interact_prompt_immediate()
 
 
 func _save_memory_return_pos() -> void:

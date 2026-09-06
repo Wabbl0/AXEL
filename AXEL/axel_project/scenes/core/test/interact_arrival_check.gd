@@ -44,6 +44,9 @@ func _main() -> void:
 	if not await _test_classrooms_to_cafeteria_inside_box():
 		quit(1)
 		return
+	if not await _test_corridor_to_classroom_on_door_box():
+		quit(1)
+		return
 	if not await _test_exterior_door_fraction():
 		quit(1)
 		return
@@ -391,9 +394,8 @@ func _assert_kitchen_return_at_door(t: float) -> bool:
 	return true
 
 
-## 2.1 → 2.4: Front always at live CafeteriaInteractArea center (ignore leave t).
-## Do not require TopWall drawing clearance — user wants the box center even if
-## the tall sprite overlaps the wall (same skip as kitchen return).
+## 2.1 → 2.4: Player node (the model) always on live CafeteriaInteractArea
+## center (ignore leave t). Front-on-center pushed the drawing out the PNG.
 func _test_cafeteria_to_classrooms_inside_box() -> bool:
 	var xs: Array[float] = []
 	var center := Vector2.INF
@@ -401,18 +403,26 @@ func _test_cafeteria_to_classrooms_inside_box() -> bool:
 		var result := await _spawn_24_from_cafeteria(t)
 		if result.is_empty():
 			return false
-		xs.append(float(result["front_tex_x"]))
+		xs.append(float(result["node_tex_x"]))
 		if center.x == INF:
 			center = result["box_center"]
 		print(
-			"2.1→2.4 t=%s front_tex=%s box_center=%s"
-			% [t, result["front_tex"], center]
+			"2.1→2.4 t=%s node_tex=%s box_center=%s world=%s player_global=%s"
+			% [t, result["node_tex"], center, result["world_rect"], result["player_global"]]
 		)
-		var front_tex: Vector2 = result["front_tex"]
-		if absf(front_tex.x - center.x) > 40.0 or absf(front_tex.y - center.y) > 40.0:
+		var node_tex: Vector2 = result["node_tex"]
+		if absf(node_tex.x - center.x) > 40.0 or absf(node_tex.y - center.y) > 40.0:
 			push_error(
-				"InteractArrival FAIL: 2.1→2.4 Front not at box center (t=%s tex=%s want %s)"
-				% [t, front_tex, center]
+				"InteractArrival FAIL: 2.1→2.4 Player node not at live box center (t=%s tex=%s want %s)"
+				% [t, node_tex, center]
+			)
+			return false
+		var world_rect: Rect2 = result["world_rect"]
+		var player_global: Vector2 = result["player_global"]
+		if not world_rect.grow(8.0).has_point(player_global):
+			push_error(
+				"InteractArrival FAIL: 2.1→2.4 Player node outside world borders (t=%s pos=%s world=%s)"
+				% [t, player_global, world_rect]
 			)
 			return false
 	if absf(xs[0] - xs[1]) > 8.0 or absf(xs[1] - xs[2]) > 8.0:
@@ -441,14 +451,123 @@ func _spawn_24_from_cafeteria(t: float) -> Dictionary:
 		"WalkableWorld/EnvironmentColliders/CafeteriaInteractArea"
 	) as Area2D
 	var player := scene.get_node("PlayerLayer/Player") as CharacterBody2D
-	var front := player.get_node("CollisionFront") as CollisionShape2D
-	var front_global := player.to_global(front.position)
-	var front_tex := env.to_local(front_global)
+	var bg := scene.get_node("WalkableWorld/Background") as Sprite2D
+	var node_tex := env.to_local(player.global_position)
 	var box := InteractArrival._area_rect_in_env(area, env)
+	var tex := bg.texture
+	if tex != null and box.end.x > tex.get_width() + 8.0:
+		push_error(
+			"InteractArrival FAIL: 2.4 CafeteriaInteractArea is outside the imported PNG (box=%s tex=%sx%s). Check process/size_limit."
+			% [box, tex.get_width(), tex.get_height()]
+		)
+		scene.queue_free()
+		await process_frame
+		return {}
 	var out := {
-		"front_tex": front_tex,
-		"front_tex_x": front_tex.x,
+		"node_tex": node_tex,
+		"node_tex_x": node_tex.x,
 		"box_center": box.get_center(),
+		"player_global": player.global_position,
+		"world_rect": BackgroundLayout.compute_global_world_rect(bg),
+	}
+	scene.queue_free()
+	await process_frame
+	return out
+
+
+## 2.4 → 5.1: Player node always on live DoorInteractArea center (ignore leave t).
+## t-slide on Y used to park Front in DoorWall at the top-right.
+func _test_corridor_to_classroom_on_door_box() -> bool:
+	var xs: Array[float] = []
+	var center := Vector2.INF
+	for t in [0.1, 0.5, 0.9]:
+		var result := await _spawn_51_from_corridor(t)
+		if result.is_empty():
+			return false
+		xs.append(float(result["node_tex_x"]))
+		if center.x == INF:
+			center = result["box_center"]
+		print(
+			"2.4→5.1 t=%s node_tex=%s box_center=%s world=%s player_global=%s"
+			% [t, result["node_tex"], center, result["world_rect"], result["player_global"]]
+		)
+		var node_tex: Vector2 = result["node_tex"]
+		if absf(node_tex.x - center.x) > 40.0 or absf(node_tex.y - center.y) > 40.0:
+			push_error(
+				"InteractArrival FAIL: 2.4→5.1 Player node not at live door center (t=%s tex=%s want %s)"
+				% [t, node_tex, center]
+			)
+			return false
+		var world_rect: Rect2 = result["world_rect"]
+		var player_global: Vector2 = result["player_global"]
+		if not world_rect.grow(8.0).has_point(player_global):
+			push_error(
+				"InteractArrival FAIL: 2.4→5.1 Player node outside world (t=%s pos=%s world=%s)"
+				% [t, player_global, world_rect]
+			)
+			return false
+		var door_wall: Rect2 = result["door_wall"]
+		if door_wall.size.x > 0.0 and door_wall.has_point(node_tex):
+			push_error(
+				"InteractArrival FAIL: 2.4→5.1 Player node inside DoorWall (t=%s tex=%s wall=%s)"
+				% [t, node_tex, door_wall]
+			)
+			return false
+	if absf(xs[0] - xs[1]) > 8.0 or absf(xs[1] - xs[2]) > 8.0:
+		push_error(
+			"InteractArrival FAIL: 2.4→5.1 X changed with t (x0=%s x0.5=%s x0.9=%s)"
+			% [xs[0], xs[1], xs[2]]
+		)
+		return false
+	return true
+
+
+func _spawn_51_from_corridor(t: float) -> Dictionary:
+	_gm().call("set_interact_arrival_t", t)
+	_gm().call("set_classroom_spawn_side", "corridor_door")
+	var ps: PackedScene = load("res://scenes/Arc_5/5.1_Classroom.tscn")
+	if ps == null:
+		push_error("InteractArrival FAIL: could not load 5.1")
+		return {}
+	var scene: Node = ps.instantiate()
+	root.add_child(scene)
+	if not scene.is_node_ready():
+		await scene.ready
+	await _await_frames(ARRIVAL_SETTLE_FRAMES + 4)
+	var env := scene.get_node("WalkableWorld/EnvironmentColliders") as Node2D
+	var area := scene.get_node(
+		"WalkableWorld/EnvironmentColliders/DoorInteractArea"
+	) as Area2D
+	var player := scene.get_node("PlayerLayer/Player") as CharacterBody2D
+	var bg := scene.get_node("WalkableWorld/Background") as Sprite2D
+	var node_tex := env.to_local(player.global_position)
+	var box := InteractArrival._area_rect_in_env(area, env)
+	var door_wall_rect := Rect2()
+	var door_wall := env.get_node_or_null("DoorWall") as StaticBody2D
+	if door_wall != null:
+		var wall_shape := door_wall.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if wall_shape != null and wall_shape.shape is RectangleShape2D:
+			var half := (wall_shape.shape as RectangleShape2D).size * 0.5
+			var corners: Array[Vector2] = [
+				Vector2(-half.x, -half.y),
+				Vector2(half.x, -half.y),
+				Vector2(-half.x, half.y),
+				Vector2(half.x, half.y),
+			]
+			var min_v := Vector2(INF, INF)
+			var max_v := Vector2(-INF, -INF)
+			for local_pt in corners:
+				var tex := env.to_local(wall_shape.to_global(local_pt))
+				min_v = min_v.min(tex)
+				max_v = max_v.max(tex)
+			door_wall_rect = Rect2(min_v, max_v - min_v)
+	var out := {
+		"node_tex": node_tex,
+		"node_tex_x": node_tex.x,
+		"box_center": box.get_center(),
+		"player_global": player.global_position,
+		"world_rect": BackgroundLayout.compute_global_world_rect(bg),
+		"door_wall": door_wall_rect,
 	}
 	scene.queue_free()
 	await process_frame

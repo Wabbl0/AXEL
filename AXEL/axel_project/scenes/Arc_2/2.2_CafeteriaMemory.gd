@@ -76,6 +76,10 @@ func _begin_return_to_cafeteria() -> void:
 	GameManager.add_memory_once(MEMORY_KEY)
 	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
 		_top_dialogue.interrupt_line()
+	# The memory is over: the school takes its turn before the room comes back.
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and bool(world.call("start_memory_fight", CAFETERIA_SCENE)):
+		return
 	var err := get_tree().change_scene_to_file(CAFETERIA_SCENE)
 	if err != OK:
 		push_error("Failed to change scene to %s (error %d)." % [CAFETERIA_SCENE, err])

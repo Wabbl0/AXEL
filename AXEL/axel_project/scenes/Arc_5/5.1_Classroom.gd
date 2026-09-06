@@ -93,7 +93,10 @@ func _restore_player_position_if_needed() -> void:
 		return
 	if GameManager.take_classroom_spawn_side() == "corridor_door":
 		_pending_door_peek = true
-		_arrival_t = InteractArrival.take_arrival_t_or_default()
+		# Consume leftover t, then pin to dest-box center (same as 2.1→2.4).
+		# Sliding t on Y parked Front in DoorWall at the top-right.
+		InteractArrival.take_arrival_t_or_default()
+		_arrival_t = InteractArrival.DEFAULT_T
 		if _cover_layout_ready:
 			call_deferred("_apply_door_peek_after_wake")
 		return
@@ -403,13 +406,10 @@ func _apply_door_peek_if_pending() -> void:
 	if not _cover_layout_ready:
 		return
 	_pending_door_peek = false
-	InteractArrival.apply_arrival_inside(
-		_player,
-		_door_interact_area,
-		_arrival_t,
-		Vector2.AXIS_Y,
-		InteractArrival.PeekEdge.RIGHT,
-		0.5
+	# Live DoorInteractArea center this Play. Stand the Player node (the model)
+	# on that box — t-slide + clearance put Front in DoorWall (top-right).
+	_player.global_position = InteractArrival.place_node_on_area_center(
+		_player, _door_interact_area
 	)
 	_arrival_latched_zone = "door"
 	_arm_door_zone_grace()

@@ -73,6 +73,8 @@ var teachers_key_line_seen: bool = false
 var teachers_memory_line_seen: bool = false
 ## Once-ever teachers lounge post-memory line (4.1 after leaving 4.2).
 var teachers_liar_line_seen: bool = false
+## Rooms the player has actually walked in. The school map only travels to these.
+var visited_rooms: Dictionary = {}
 
 # ============================================================
 # INITIALIZATION
@@ -119,6 +121,10 @@ func _load_persistent_state() -> void:
 	teachers_key_line_seen = false
 	teachers_memory_line_seen = false
 	teachers_liar_line_seen = false
+	visited_rooms = {}
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("reset_world"):
+		world.call("reset_world")
 	# Slot files are owned by AxelSaves. This only installs defaults.
 
 func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
@@ -177,10 +183,14 @@ func export_save_body() -> Dictionary:
 		"teachers_memory_line_seen": teachers_memory_line_seen,
 		"teachers_liar_line_seen": teachers_liar_line_seen,
 		"pause_map_return_path": pause_map_return_path,
+		"visited_rooms": visited_rooms.keys(),
 	}
 	var run := get_node_or_null("/root/AxelRun")
 	if run != null and run.has_method("to_dict"):
 		body["run_state"] = run.call("to_dict")
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("to_dict"):
+		body["world_state"] = world.call("to_dict")
 	return body
 
 
@@ -202,9 +212,15 @@ func import_save_body(data: Dictionary) -> void:
 	teachers_memory_line_seen = bool(data.get("teachers_memory_line_seen", false))
 	teachers_liar_line_seen = bool(data.get("teachers_liar_line_seen", false))
 	pause_map_return_path = String(data.get("pause_map_return_path", ""))
+	visited_rooms = {}
+	for room_path in data.get("visited_rooms", []):
+		visited_rooms[String(room_path)] = true
 	var run := get_node_or_null("/root/AxelRun")
 	if run != null and run.has_method("from_dict"):
 		run.call("from_dict", data.get("run_state", {}))
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("from_dict"):
+		world.call("from_dict", data.get("world_state", {}))
 	state_changed.emit()
 
 
@@ -242,6 +258,15 @@ func _save_persistent_state() -> void:
 
 func has_memory_scene(scene_key: String) -> bool:
 	return game_state.get("memoryScenes", {}).has(scene_key)
+
+func mark_room_visited(scene_path: String) -> void:
+	if scene_path.is_empty() or visited_rooms.has(scene_path):
+		return
+	visited_rooms[scene_path] = true
+	_save_persistent_state()
+
+func has_visited(scene_path: String) -> bool:
+	return visited_rooms.has(scene_path)
 
 func set_corridor_locker_line_seen(value: bool = true) -> void:
 	corridor_locker_line_seen = value

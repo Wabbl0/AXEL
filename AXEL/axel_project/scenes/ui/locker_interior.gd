@@ -1,9 +1,9 @@
 class_name LockerInterior
 extends CanvasLayer
-## Locker loadout (D7 / D11). Owned items on a shelf grid; click to equip.
+## Locker loadout (D11). Owned items on a shelf grid; click to equip.
+## Equip only — fights start out in the school, never from here.
 
 signal closed
-signal start_requested
 
 const COLS := 6
 const ICON_PX := 72
@@ -13,8 +13,6 @@ var _panel: Control
 var _grid: GridContainer
 var _hover: Label
 var _equip_label: Label
-var _act_label: Label
-var _start_btn: Button
 var _status: Label
 
 
@@ -89,11 +87,6 @@ func _build() -> void:
 	MenuLook.apply_label(title, 40, MenuLook.ACCENT)
 	_panel.add_child(title)
 
-	_act_label = Label.new()
-	_act_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	MenuLook.apply_label(_act_label, 22, MenuLook.TEXT)
-	_panel.add_child(_act_label)
-
 	_equip_label = Label.new()
 	_equip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	MenuLook.apply_label(_equip_label, 22, MenuLook.DIM)
@@ -116,12 +109,6 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	MenuLook.apply_label(_status, 20, MenuLook.DIM)
 	_panel.add_child(_status)
-
-	_start_btn = Button.new()
-	_start_btn.text = "START RUN"
-	MenuLook.apply_button(_start_btn, 32)
-	_start_btn.pressed.connect(_on_start)
-	_panel.add_child(_start_btn)
 
 	var close_btn := Button.new()
 	close_btn.text = "Close"
@@ -149,39 +136,8 @@ func _refresh() -> void:
 	if run.has_method("max_equip_slots"):
 		max_slots = int(run.call("max_equip_slots"))
 	_equip_label.text = "Equipped  %d / %d" % [equipped.size(), max_slots]
-	_act_label.text = _act_line(run)
 	_hover.text = "Hover an item to read it. Click to equip."
-	var can_start := bool(run.call("can_start_encounter"))
-	_start_btn.disabled = not can_start
-	if can_start:
-		_status.text = ""
-	elif int(run.state.act) >= 3:
-		_status.text = "The locker is quiet. This run is finished."
-	else:
-		_status.text = "The locker is quiet."
-
-
-func _act_line(run: Node) -> String:
-	var act: int = int(run.state.act)
-	var names: PackedStringArray = ["", "THE LOCKER", "CAFETERIA + CLASSROOMS", "THE BASEMENT"]
-	var act_name: String = names[act] if act < names.size() else "UNKNOWN"
-	if not bool(run.call("can_start_encounter")):
-		return "ACT %s — %s  ·  done" % [_roman(act), act_name]
-	var idx: int = int(run.state.encounter_index) + 1
-	var total: int = int(run.call("encounters_in_act"))
-	return "ACT %s — %s  ·  encounter %d / %d" % [_roman(act), act_name, idx, total]
-
-
-func _roman(act: int) -> String:
-	match act:
-		1:
-			return "I"
-		2:
-			return "II"
-		3:
-			return "III"
-		_:
-			return str(act)
+	_status.text = "The school decides when you fight. Not this locker."
 
 
 func _make_item_button(item: Resource, equipped: PackedStringArray) -> Button:
@@ -214,8 +170,5 @@ func _on_item_clicked(item_id: String) -> void:
 		return
 	if not bool(run.call("toggle_equip", item_id)):
 		_status.text = "Loadout is full."
+		return
 	_refresh()
-
-
-func _on_start() -> void:
-	start_requested.emit()

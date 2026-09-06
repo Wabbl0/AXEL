@@ -191,7 +191,7 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 | `L-E` | **Diagonal Covenant** | `E` | Diagonal wins treated as full standard line wins |
 | `L-F` | **Threshold Dominion** | `F` | Board-count wins become full resolver wins (strict priority order vs line wins) |
 | `L-M` | **Red Glyph** | `M` | Glyph value immediately to active total multiplier for the spin; late pool; high volatility |
-| `L-G` | **Iron Lung** | `G` | Maximum seal + payout trade (`+50%`+); base game regular spins; **area-gated** |
+| `L-G` | **Iron Lung** | `G` | Maximum seal + payout trade (`+50%`+); base game regular spins; **area-gated to the Basement** (`1.4_BasementDoor`, family `G`) |
 | `L-H` | **True Name Tag** | `H` | Optional — encounter goal **+35%**; strongest True Ending unlock weight. Requires meta credit: equip for final qualifying encounter + narrative gates, or own all five `*-H` pieces in meta |
 
 ---
@@ -226,6 +226,29 @@ Reroll-scaling on baseline items uses a **separate encounter payout scalar** whe
 - Mythics excluded from the **75** numbered pool until unlocked.
 
 ## Area / Rarity Progression Plan
+
+Live rule (implemented in `scripts/autoload/axel_world.gd`): every area starts
+**Common**. An area lifts the rank of every *untouched* area by one tier, once,
+the first time you either take an item there or clear it. Cap is Legendary, so
+touching four areas puts a still-untouched area at `L-*`.
+
+The six written areas map onto the live rooms like this. `Families` are the
+extended lanes each area rolls from; the roll walks down from the area's rank
+until a real `.tres` exists.
+
+| Area | Rooms | Floor items | Families |
+|:---|:---|:---:|:---:|
+| Halls | `1.2_Corridor`, `2.4_ClassroomsCorridor` | 2 + 1 | `F`, `H`, `M` |
+| Cafeteria | `2.1_Cafeteria` | 3 | `A`, `D`, `M` |
+| Kitchen | `2.3_Kitchen` | 2 | `B`, `E`, `H` |
+| Teachers Lounge | `4.1_TeachersLounge` | 2 | `C`, `H`, `M` |
+| Classroom | `5.1_Classroom` | 2 | `D`, `E`, `A` |
+| Basement | `1.4_BasementDoor` | 1 | `G`, `B`, `F` |
+
+`1.1_SchoolExterior` and `3.1_Backyard` are outdoors: no floor items, and no
+walking encounters.
+
+Rough shape over a playthrough (unchanged in spirit):
 
 - Early: baseline + low extended.
 - Mid: `R-*`, `E-*`.

@@ -55,18 +55,20 @@ func _build_destination_buttons() -> void:
 		child.queue_free()
 	for destination in DESTINATIONS:
 		var button := Button.new()
-		button.text = destination["label"]
 		button.custom_minimum_size = _BUTTON_MIN_SIZE
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.add_theme_font_override("font", _UI_FONT)
 		var scene_path: String = destination["path"]
-		if ResourceLoader.exists(scene_path):
+		# The map only travels to rooms you have actually walked in.
+		if ResourceLoader.exists(scene_path) and _is_unlocked(scene_path):
+			button.text = destination["label"]
 			button.pressed.connect(func() -> void:
 				_go_to_scene(scene_path)
 			)
 		else:
+			button.text = "?????"
 			button.disabled = true
-			button.modulate = Color(0.45, 0.45, 0.45, 1.0)
+			button.modulate = Color(0.35, 0.35, 0.35, 1.0)
 		_choices_panel.add_child(button)
 
 	var basement := Button.new()
@@ -83,6 +85,16 @@ func _build_destination_buttons() -> void:
 			_go_to_scene("res://scenes/Arc_6/6.1_BasementDoor.tscn")
 		)
 	_choices_panel.add_child(basement)
+
+
+## A room card / travel button works only after the player walked there once.
+func _is_unlocked(scene_path: String) -> bool:
+	if scene_path.is_empty():
+		return false
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("has_visited"):
+		return true
+	return bool(gm.call("has_visited", scene_path))
 
 
 func _apply_chrome_scale() -> void:
@@ -195,12 +207,17 @@ func _make_room_card(room: Dictionary) -> Node3D:
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	var tex_path := String(room.get("tex", ""))
-	var thumb := _thumb(String(room.get("id", "")), tex_path)
+	var room_path := String(room.get("path", ""))
+	var is_locked_basement := bool(room.get("locked", false))
+	# Unvisited rooms stay blank on the map: you can see the shape, not the room.
+	var thumb: Texture2D = null
+	if not is_locked_basement and _is_unlocked(room_path):
+		thumb = _thumb(String(room.get("id", "")), tex_path)
 	if thumb != null:
 		mat.albedo_texture = thumb
 	else:
-		mat.albedo_color = Color(0.15, 0.15, 0.15, 1)
-	if bool(room.get("locked", false)) and not GameManager.get_flag("hasKey"):
+		mat.albedo_color = Color(0.09, 0.09, 0.09, 1)
+	if is_locked_basement and not GameManager.get_flag("hasKey"):
 		mat.albedo_color = Color(0.08, 0.08, 0.08, 1)
 	mesh.material_override = mat
 	root.add_child(mesh)
@@ -261,9 +278,15 @@ func _try_pick_room(screen: Vector2) -> void:
 	var room: Dictionary = _room_bodies.get(collider.get_instance_id(), {})
 	if room.is_empty():
 		return
-	if bool(room.get("locked", false)) and not GameManager.get_flag("hasKey"):
+	if bool(room.get("locked", false)):
+		if not GameManager.get_flag("hasKey"):
+			return
+		_go_to_scene(String(room.get("path", "")))
 		return
-	_go_to_scene(String(room.get("path", "")))
+	var room_path := String(room.get("path", ""))
+	if not _is_unlocked(room_path):
+		return
+	_go_to_scene(room_path)
 
 
 func _is_exit_key(event: InputEvent) -> bool:

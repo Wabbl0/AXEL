@@ -11,7 +11,11 @@ class_name InteractArrival
 ## Frozen trips (1.2→1.4, 1.4→2.1, 2.1→2.3): place_on_area into-room peek past the
 ## short edge of the LIVE dest box, then clamp_hitbox_to_walls. Approved peek:
 ## 1.2↔1.4 ExitTrigger.
-## 2.1↔2.4: place_in_area at dest center; skip resolve_inside_clearance.
+## 2.1→2.4: Player node on live CafeteriaInteractArea center
+## (place_node_on_area_center); skip resolve_inside_clearance. Front-on-center
+## pushes the walk drawing out the top of the PNG.
+## 2.4→2.1: place_in_area at dest center; skip resolve_inside_clearance.
+## 2.4→5.1: Player node on live DoorInteractArea center; skip clearance.
 ## Other non-frozen [E]: place_in_area + resolve_inside_clearance. Do not copy
 ## world Y or floor-line offsets.
 ##
@@ -20,7 +24,8 @@ class_name InteractArrival
 ## 2. Every layout_applied: always PlayerSpawnSync + PlayerCoverSync.apply.
 ## 3. If a door peek is pending: call_deferred place — do NOT place inside
 ##    _sync_world_space, and do NOT clear pending before that defer.
-## 4. Frozen: place_on_area + clamp. 2.1↔2.4: place_in_area center last.
+## 4. Frozen: place_on_area + clamp. 2.1→2.4: place_node_on_area_center last.
+##    2.4→2.1: place_in_area center last.
 ##    Other non-frozen: apply_arrival_inside last (do not re-scale after place).
 ## 5. Fresh Play / F6 uses the Player node. Memory stills keep exact restore.
 
@@ -179,6 +184,20 @@ static func place_in_area(
 			tex.y = lerpf(inner.position.y, inner.end.y, t_clamped)
 	var dest_global := env.to_global(tex) if is_instance_valid(env) else tex
 	return dest_global - _hitbox_offset_global(player)
+
+
+## Put the Player node (the walk drawing) on the live dest box center.
+## Re-reads the dest InteractArea after cover-fit this Play — no stored Vector2.
+static func place_node_on_area_center(player: Node2D, dest_area: Area2D) -> Vector2:
+	if not is_instance_valid(dest_area):
+		return player.global_position if is_instance_valid(player) else Vector2.ZERO
+	var env := _colliders_of(dest_area)
+	var rect := _area_rect_in_env(dest_area, env)
+	if rect.size.x <= 0.001 or rect.size.y <= 0.001:
+		return dest_area.global_position
+	if is_instance_valid(env):
+		return env.to_global(rect.get_center())
+	return rect.get_center()
 
 
 static func apply_arrival_inside(

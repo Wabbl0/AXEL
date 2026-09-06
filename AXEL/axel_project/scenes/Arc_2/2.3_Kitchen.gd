@@ -1,6 +1,8 @@
 extends Node2D
 
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
+## Where a lore-pickup fight comes back to.
+const KITCHEN_SELF_SCENE := "res://scenes/Arc_2/2.3_Kitchen.tscn"
 const ENTER_LINES := [
 	"Everything is rotten here. Everything.",
 	"This includes you.",
@@ -244,6 +246,12 @@ func _pickup_flashlight_async() -> void:
 	if _active_zone == "flashlight":
 		_active_zone = ""
 	_hide_interact_prompt()
+	# Lore item: the school answers with a fight, once per item ever.
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and bool(
+		world.call("start_lore_fight", "hasFlashlight", KITCHEN_SELF_SCENE, true)
+	):
+		_hide_interact_prompt_immediate()
 
 
 func _begin_return_to_cafeteria() -> void:

@@ -18,6 +18,15 @@ extends Resource
 @export var first_encounter_warned: bool = false
 @export var locker_stash_granted: bool = false
 @export var in_encounter: bool = false
+## World fights (walk / pickup / memory) are single encounters that return to
+## the room they started in. Acts stay untouched while one is running.
+@export var world_encounter: bool = false
+@export var world_reason: String = ""
+@export var world_return_scene: String = ""
+@export var world_return_tex_x: float = 0.0
+@export var world_return_tex_y: float = 0.0
+@export var world_return_tex_valid: bool = false
+@export var world_encounter_index: int = 0
 
 
 func to_dict() -> Dictionary:
@@ -37,6 +46,13 @@ func to_dict() -> Dictionary:
 		"first_encounter_warned": first_encounter_warned,
 		"locker_stash_granted": locker_stash_granted,
 		"in_encounter": in_encounter,
+		"world_encounter": world_encounter,
+		"world_reason": world_reason,
+		"world_return_scene": world_return_scene,
+		"world_return_tex_x": world_return_tex_x,
+		"world_return_tex_y": world_return_tex_y,
+		"world_return_tex_valid": world_return_tex_valid,
+		"world_encounter_index": world_encounter_index,
 	}
 
 
@@ -59,4 +75,11 @@ static func from_dict(data: Dictionary) -> RunState:
 	state.first_encounter_warned = bool(data.get("first_encounter_warned", false))
 	state.locker_stash_granted = bool(data.get("locker_stash_granted", false))
 	state.in_encounter = bool(data.get("in_encounter", false))
+	state.world_encounter = bool(data.get("world_encounter", false))
+	state.world_reason = String(data.get("world_reason", ""))
+	state.world_return_scene = String(data.get("world_return_scene", ""))
+	state.world_return_tex_x = float(data.get("world_return_tex_x", 0.0))
+	state.world_return_tex_y = float(data.get("world_return_tex_y", 0.0))
+	state.world_return_tex_valid = bool(data.get("world_return_tex_valid", false))
+	state.world_encounter_index = maxi(int(data.get("world_encounter_index", 0)), 0)
 	return state

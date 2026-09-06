@@ -15,6 +15,12 @@ const STARTER_ITEMS: PackedStringArray = ["C1", "C2", "C3"]
 ## Act I locker, Act II cafeteria/classrooms, Act III basement. No Act IV.
 const MAX_PLAYABLE_ACT := 3
 const WIN_RETURN_SEC := 1.6
+## World fights (walk / pickup / memory). One encounter, then back to the room.
+const WORLD_ENCOUNTER_PATHS: PackedStringArray = [
+	"res://combat/data/encounters/encounter_payout.tres",
+	"res://combat/data/encounters/encounter_wild_count.tres",
+	"res://combat/data/encounters/encounter_grid_clear.tres",
+]
 const ACT_PATHS := [
 	[
 		"res://combat/data/encounters/encounter_payout.tres",
@@ -100,6 +106,9 @@ func lore_goal_bonus() -> float:
 
 
 func current_encounter_path() -> String:
+	if state.world_encounter:
+		var world_i: int = clampi(int(state.world_encounter_index), 0, WORLD_ENCOUNTER_PATHS.size() - 1)
+		return String(WORLD_ENCOUNTER_PATHS[world_i])
 	if state.act < 1 or state.act > MAX_PLAYABLE_ACT:
 		return ""
 	var act_i: int = int(state.act) - 1
@@ -128,7 +137,39 @@ func can_start_encounter() -> bool:
 
 
 func encounter_seed() -> int:
+	if state.world_encounter:
+		return state.seed + 500009 + state.world_encounter_index * 10007
 	return state.seed + state.act * 10007 + state.encounter_index * 97
+
+
+## Narrative-side door: one encounter, then back to `return_scene`.
+## `return_tex` is an EnvironmentColliders-local (texture pixel) standing spot;
+## pass `has_tex = false` to let the room place the player its own way.
+func enter_world_encounter(
+	reason: String,
+	return_scene: String,
+	return_tex: Vector2 = Vector2.ZERO,
+	has_tex: bool = false,
+) -> void:
+	if state.in_encounter or _finish_busy:
+		return
+	state.world_encounter = true
+	state.world_reason = reason
+	state.world_return_scene = return_scene
+	state.world_return_tex_x = return_tex.x
+	state.world_return_tex_y = return_tex.y
+	state.world_return_tex_valid = has_tex
+	state.world_encounter_index = (int(state.world_encounter_index) + 1) % WORLD_ENCOUNTER_PATHS.size()
+	state.in_encounter = true
+	_persist_now()
+	if is_instance_valid(AxelEventFx):
+		await AxelEventFx.play_combat_wipe()
+	if get_tree() == null:
+		return
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("to_combat"):
+		music.call("to_combat")
+	get_tree().change_scene_to_file(COMBAT_SCENE)
 
 
 func enter_combat() -> void:
@@ -151,6 +192,9 @@ func on_encounter_finished(success: bool) -> void:
 		_permadeath_to_title()
 		return
 	_apply_win_progress()
+	if state.world_encounter:
+		_return_to_world_room()
+		return
 	_to_overworld_music()
 	get_tree().change_scene_to_file(LOCKER_SCENE)
 	_finish_busy = false
@@ -291,6 +335,10 @@ func max_equip_slots() -> int:
 
 func _apply_win_progress() -> void:
 	state.in_encounter = false
+	if state.world_encounter:
+		# World fights are one-offs: they never move the act pointer.
+		_persist_now()
+		return
 	state.encounter_index += 1
 	var act_i: int = clampi(int(state.act) - 1, 0, ACT_PATHS.size() - 1)
 	if int(state.encounter_index) >= (ACT_PATHS[act_i] as Array).size():
@@ -307,12 +355,44 @@ func _return_after_win() -> void:
 		await get_tree().create_timer(WIN_RETURN_SEC).timeout
 	if get_tree() == null:
 		return
+	if state.world_encounter:
+		_return_to_world_room()
+		return
 	_to_overworld_music()
 	get_tree().change_scene_to_file(LOCKER_SCENE)
 	_finish_busy = false
 
 
+## Win after a walk / pickup / memory fight: back to the room, same spot.
+func _return_to_world_room() -> void:
+	var dest := String(state.world_return_scene)
+	var tex := Vector2(float(state.world_return_tex_x), float(state.world_return_tex_y))
+	var has_tex := bool(state.world_return_tex_valid)
+	var reason := String(state.world_reason)
+	_clear_world_encounter()
+	_persist_now()
+	if dest.is_empty() or not ResourceLoader.exists(dest):
+		dest = LOCKER_SCENE
+		has_tex = false
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("notify_fight_won"):
+		world.call("notify_fight_won", reason, dest, tex, has_tex)
+	_to_overworld_music()
+	get_tree().change_scene_to_file(dest)
+	_finish_busy = false
+
+
+func _clear_world_encounter() -> void:
+	state.world_encounter = false
+	state.world_reason = ""
+	state.world_return_scene = ""
+	state.world_return_tex_x = 0.0
+	state.world_return_tex_y = 0.0
+	state.world_return_tex_valid = false
+
+
 func _permadeath_to_title() -> void:
+	_clear_world_encounter()
 	_write_tombstone()
 	_to_overworld_music()
 	get_tree().change_scene_to_file(TITLE_SCENE)

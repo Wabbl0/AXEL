@@ -82,7 +82,26 @@ func _play_and_offer() -> void:
 	var lines: PackedStringArray = def.get("lines", PackedStringArray())
 	if _dialogue != null and lines.size() > 0 and _dialogue.has_method("show_lines"):
 		await _dialogue.show_lines(Array(lines))
+	if _start_lore_fight_if_needed(def):
+		return
 	_offer_choices(def)
+
+
+## Shovel (6.5) and name (5.4) are true-ending lore: each starts one fight.
+## The fight returns to this same screen, and the guard in AxelWorld keeps it
+## from firing again on the way back.
+func _start_lore_fight_if_needed(def: Dictionary) -> bool:
+	var flag := String(def.get("set_flag", ""))
+	if flag != "hasShovel" and flag != "hasName":
+		return false
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("start_lore_fight"):
+		return false
+	if not bool(world.call("start_lore_fight", flag, scene_file_path, false)):
+		return false
+	if _dialogue != null and _dialogue.has_method("interrupt_line"):
+		_dialogue.interrupt_line()
+	return true
 
 
 func _offer_choices(def: Dictionary) -> void:

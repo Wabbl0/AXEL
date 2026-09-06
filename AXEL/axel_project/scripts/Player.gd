@@ -110,8 +110,14 @@ var _input_enabled: bool = true
 var _scripted_velocity: Vector2 = Vector2.ZERO
 var _step_distance_accumulator: float = 0.0
 var _last_step_position: Vector2 = Vector2.ZERO
+## AxelWorld autoload, resolved once. Rolls the rare indoor walking fight.
+var _world_loop: Node = null
 
 const _STEP_DISTANCE_PX := 8.0
+## Walking moves ~5 px per physics frame at most. Anything bigger is a
+## reposition (spawn placement, cover-fit, post-fight return, room arrival) and
+## must not count as steps, or entering a room would bank hundreds of them.
+const _TELEPORT_JUMP_PX := 64.0
 const _EDITOR_HITBOX_FILL := Color(0.0, 0.92, 0.95, 0.22)
 const _EDITOR_HITBOX_LINE := Color(0.0, 0.92, 0.95, 0.95)
 
@@ -163,6 +169,7 @@ func _ready() -> void:
 	motion_mode = MOTION_MODE_FLOATING
 	safe_margin = 0.1
 	_last_step_position = global_position
+	_world_loop = get_node_or_null("/root/AxelWorld")
 	if sprite_sheet == null:
 		sprite_sheet = _try_load_default_sprite_sheet()
 	if sprite_sheet:
@@ -1080,10 +1087,15 @@ func _report_walk_steps_for_cadence() -> void:
 	if moved <= 0.001:
 		return
 	_last_step_position = global_position
+	if moved >= _TELEPORT_JUMP_PX:
+		_step_distance_accumulator = 0.0
+		return
 	_step_distance_accumulator += moved
 	while _step_distance_accumulator >= _STEP_DISTANCE_PX:
 		_step_distance_accumulator -= _STEP_DISTANCE_PX
 		AxelEventFx.register_walk_step()
+		if _world_loop != null:
+			_world_loop.call("register_walk_step")
 
 func _update_animation(direction: Vector2) -> void:
 	if animated_sprite.sprite_frames == null:

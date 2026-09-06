@@ -6,6 +6,9 @@ extends Node
 const GLITCH_SCENE := "res://scenes/fx/IntroGlitchOverlay.tscn"
 const PULSE_SCENE := "res://scenes/fx/InterfacePulseOverlay.tscn"
 const SCENE_1_1 := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
+const CombatWipeScript := preload("res://scenes/fx/combat_wipe_overlay.gd")
+## Safety net: a wipe never stays on screen longer than this.
+const COMBAT_WIPE_MAX_SEC := 4.0
 
 const ENTER_GLITCH_DURATION := 0.65
 const DEFAULT_GLITCH_DURATION := 0.85
@@ -19,6 +22,8 @@ const CADENCE_COOLDOWN_SEC := 30.0
 
 var _glitch: CanvasLayer
 var _pulse: CanvasLayer
+var _combat_wipe: CanvasLayer
+var _wipe_guard_left := 0.0
 
 var _active_scene: Node = null
 var _cadence_enabled := true
@@ -39,6 +44,9 @@ func _ready() -> void:
 		add_child(_glitch)
 	if _pulse != null:
 		add_child(_pulse)
+	_combat_wipe = CombatWipeScript.new()
+	_combat_wipe.name = "CombatWipeOverlay"
+	add_child(_combat_wipe)
 
 	var tree := get_tree()
 	if tree == null:
@@ -49,6 +57,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _wipe_guard_left > 0.0:
+		_wipe_guard_left -= delta
+		if _wipe_guard_left <= 0.0:
+			clear_combat_wipe()
 	if not _cadence_active or not _cadence_enabled or _pulse_in_progress:
 		return
 	if _cooldown_remaining > 0.0:
@@ -176,6 +188,39 @@ func register_walk_step() -> void:
 	_steps_accumulated += 1
 	if _steps_accumulated >= _steps_target:
 		_fire_cadence_pulse()
+
+
+## Pokemon-style cover before an overworld -> combat scene change.
+## Awaited by AxelRun.enter_world_encounter; cleared by combat_run.gd.
+func play_combat_wipe() -> void:
+	if _combat_wipe == null or not is_instance_valid(_combat_wipe):
+		return
+	if _event_fx_disabled():
+		return
+	_wipe_guard_left = COMBAT_WIPE_MAX_SEC
+	await _combat_wipe.call("close_wipe")
+
+
+func clear_combat_wipe() -> void:
+	_wipe_guard_left = 0.0
+	if _combat_wipe == null or not is_instance_valid(_combat_wipe):
+		return
+	if not bool(_combat_wipe.call("is_covered")):
+		_combat_wipe.call("clear_now")
+		return
+	await _combat_wipe.call("open_wipe")
+
+
+func is_combat_wipe_covered() -> bool:
+	if _combat_wipe == null or not is_instance_valid(_combat_wipe):
+		return false
+	return bool(_combat_wipe.call("is_covered"))
+
+
+static func _event_fx_disabled() -> bool:
+	if OS.has_environment("AXEL_DISABLE_POST_FX") and OS.get_environment("AXEL_DISABLE_POST_FX") == "1":
+		return true
+	return OS.has_environment("AXEL_DISABLE_EVENT_FX") and OS.get_environment("AXEL_DISABLE_EVENT_FX") == "1"
 
 
 func play_glitch_burst(duration_sec: float = DEFAULT_GLITCH_DURATION) -> void:

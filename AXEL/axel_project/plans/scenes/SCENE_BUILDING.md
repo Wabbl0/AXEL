@@ -180,7 +180,7 @@ Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialog
 
 ### Rule: always measure the live dest box this Play
 
-Door arrival is **not** a remembered `Vector2`. After cover-fit on **this** run, `InteractArrival` must read the dest `InteractArea` / `ExitTrigger` (`_area_rect_in_env` via `place_in_area` / `place_on_area`). That follows the shape as it is in the scene now — including editor drags since the last chat.
+Door arrival is **not** a remembered `Vector2`. After cover-fit on **this** run, `InteractArrival` must read the dest `InteractArea` / `ExitTrigger` (`_area_rect_in_env` via `place_in_area` / `place_on_area` / `place_node_on_area_center`). That follows the shape as it is in the scene now — including editor drags since the last chat.
 
 Applies to **every** room-to-room door, including `1.x` (`1.1`↔`1.2`, `1.2`↔`1.4`, `1.4`↔`2.1`), `2.1`→`2.3`, `2.1`↔`2.4`, `2.1`→`3.1`, and the other `[E]` pairs — unless the pair is a **hard spawn** listed below.
 
@@ -207,9 +207,9 @@ Use the live dest box (rule above). Then pick the **placement mode** for that pa
 
 **Frozen peek (do not change the peek to “fix” others):** `1.2`→`1.4`, `1.4`→`2.1`, `2.1`→`2.3` — `place_on_area` on the **live** dest box, into-room past the short edge, then `clamp_hitbox_to_walls`. **Approved peek example:** `1.2`↔`1.4` `ExitTrigger`. Top of the leave box → top of the arrive box; bottom → bottom. Do **not** copy world Y, floor-line offsets, or scene size. Peek still measures the live shape every Play.
 
-**`2.1`↔`2.4` cafeteria/classrooms:** Front on the live dest box **center** (`place_in_area` + `DEFAULT_T` + `CENTER_Y`). Skip `resolve_inside_clearance`. Do not hardcode `5856×352`.
+**`2.1`→`2.4` cafeteria door:** Player node (the model) on the live `CafeteriaInteractArea` center (`place_node_on_area_center`). Skip `resolve_inside_clearance`. Do not land Front-on-center — that pushes the walk drawing out the top of the PNG. **`2.4`→`2.1`:** Front on the live `ClassroomsInteractArea` center (`place_in_area` + `DEFAULT_T` + `CENTER_Y`); skip clearance. **`2.4`→`5.1` classroom door:** Player node on the live `DoorInteractArea` center (`place_node_on_area_center`); skip clearance. Leave-`t` on Y parked Front in `DoorWall` at the top-right. Do not hardcode coords.
 
-**Other non-frozen `[E]` pairs:** save `GameManager.interact_arrival_t` (0 = top/left of the source box, 1 = bottom/right). Measure `t` from the Front hitbox in `EnvironmentColliders` texture space. Take `t` **once** on the destination (deferred restore after first layout, like `1.2`). On every `layout_applied`: always `PlayerSpawnSync` + cover-sync; if a door peek is still pending, `call_deferred` place — do **not** place-and-clear inside the first layout, and do **not** re-apply cover/depth after place. Map `t` onto the matching dest box with `apply_arrival_inside` (inset by Front radius; `t` on the long axis; `depth_frac` usually `0.5`), then `resolve_inside_clearance` so the walk drawing stays on the floor (may sit a little off the box if a wall overlaps — e.g. 4.1 vs TopWall). Live pairs on this mode: `1.1`→`1.2`, `2.1`↔`3.1`, `2.4`↔`4.1`/`5.1`. Missing `t` (hub/map) falls back to center (`0.5`).
+**Other non-frozen `[E]` pairs:** save `GameManager.interact_arrival_t` (0 = top/left of the source box, 1 = bottom/right). Measure `t` from the Front hitbox in `EnvironmentColliders` texture space. Take `t` **once** on the destination (deferred restore after first layout, like `1.2`). On every `layout_applied`: always `PlayerSpawnSync` + cover-sync; if a door peek is still pending, `call_deferred` place — do **not** place-and-clear inside the first layout, and do **not** re-apply cover/depth after place. Map `t` onto the matching dest box with `apply_arrival_inside` (inset by Front radius; `t` on the long axis; `depth_frac` usually `0.5`), then `resolve_inside_clearance` so the walk drawing stays on the floor (may sit a little off the box if a wall overlaps — e.g. 4.1 vs TopWall). Live pairs on this mode: `1.1`→`1.2`, `2.1`↔`3.1`, `2.4`↔`4.1`. Missing `t` (hub/map) falls back to center (`0.5`).
 
 ### Rule: Player node is the spawn (mandatory)
 
@@ -306,7 +306,7 @@ The Front circle is what `move_and_slide` stops. The walk cell (`439×971`) plus
 **Required inset** (from the picture edge to the wall’s inner face) = how far the drawing sticks past the circle in that facing, times live Player scale. The checker computes this; do not copy a one-size-fits-all texture width.
 
 - Grow `LeftWall` / `RightWall` / `TopWall` / `BottomWall` **from the PNG edge inward**. Give each wall its own `RectangleShape2D` (Make Unique) so one edit does not resize the opposite wall.
-- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play). `2.1`↔`2.4` cafeteria arrival skips `resolve_inside_clearance` and may overlap `TopWall` (intended). Do not thin walls that already pass.
+- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play). `2.1`→`2.4` cafeteria arrival stands the Player node on the live box (skip clearance) so the model stays on the PNG. Do not thin walls that already pass.
 - Furniture / door blockers are not this rule.
 
 Live: 1.1 Top only; 1.2 / 1.4 / 2.1 / 2.3 / 3.1 / 4.1 / 5.1 edge walls that were too thin. Kitchen example: unique Left `200×2480` / Right `158×2480` / Top `3508×346` / Bottom `3508×193`. 3.1 after the 40% scale bump: Left `138×2480` / Right `132×2480` / Bottom `3508×162` (Top already thicker than required). Regression: `tools/qa/wall_sprite_clearance_check.gd` (`WALL_SPRITE_CLEARANCE OK`).
@@ -359,7 +359,7 @@ Always target `<arc>.<index>_<Name>.tscn` (e.g. `1.2_Corridor.tscn`). Never crea
 
 **Naming:** `exports/Drawings/<sceneNumber>_<SceneName>.png` (e.g. `2.3_Kitchen.png`).
 
-1. Drawing exists + `.import` generated; note texture uid.
+1. Drawing exists + `.import` generated; note texture uid. `process/size_limit` must stay `0` if colliders are authored on the PNG’s real pixels (2.4 was capped at `2048` and the cafeteria door sat off the room).
 2. Inventory `.tscn` nodes — remove visual-only placeholders; keep collision, interact areas, player, UI overlays, scene script.
 3. Wire `Sprite2D` background (`z_index=-100`, `centered=false`) to the drawing; prefer `WalkableWorld/Background` + lock script for new scenes. PNG empty fill = pure **white** (never black — VFX turns white ground dark / black ink red). Placeholders and **all outlines** = **black**.
 4. Remove orphaned `ext_resource` / tilemap `sub_resource` entries.
