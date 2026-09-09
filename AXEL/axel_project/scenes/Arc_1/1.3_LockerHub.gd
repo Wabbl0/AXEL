@@ -110,7 +110,17 @@ func _apply_chrome_scale() -> void:
 
 
 func _on_exit_pressed() -> void:
+	_queue_locker_tutorial_fight()
 	_go_to_scene(CORRIDOR_SCENE)
+
+
+## Leaving the hub on your own after opening the locker is what earns the first
+## fight. This only asks — AxelWorld decides and starts it in the corridor, so
+## no fight logic lives in an exploration scene.
+func _queue_locker_tutorial_fight() -> void:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("queue_locker_tutorial_fight"):
+		world.call("queue_locker_tutorial_fight")
 
 
 func _go_to_scene(scene_path: String) -> void:

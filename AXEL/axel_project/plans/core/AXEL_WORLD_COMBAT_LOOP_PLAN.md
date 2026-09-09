@@ -32,16 +32,82 @@ starts one, and combat still never reads a story flag. The new autoload
 
 | Area id | Rooms | Floor items | Step fights |
 | --- | --- | --- | --- |
-| `halls` | `1.2_Corridor`, `2.4_ClassroomsCorridor` | 2 + 1 | yes |
+| `halls` | `1.2_Corridor`, `2.4_ClassroomsCorridor` | 0 + 1 | 1.2 gated, 2.4 yes |
 | `cafeteria` | `2.1_Cafeteria` | 3 | yes |
 | `kitchen` | `2.3_Kitchen` | 2 | yes |
 | `lounge` | `4.1_TeachersLounge` | 2 | yes |
 | `classroom` | `5.1_Classroom` | 2 | yes |
 | `basement` | `1.4_BasementDoor` | 1 | yes |
 
-`1.1_SchoolExterior` and `3.1_Backyard` are outdoors: no step fights, no floor
-items. Greybox rooms (`6.x`, `5.3`, `5.4`) have no Player node, so they get no
-step fights either — only their lore pickups start fights.
+`3.1_Backyard` is outdoors and is in no area table: no step fights, no floor
+items, ever. Greybox rooms (`6.x`, `5.3`, `5.4`) have no Player node, so they
+get no step fights either — only their lore pickups start fights.
+
+### Gated rooms: `1.1_SchoolExterior` and `1.2_Corridor`
+
+The two rooms the player sees first are quiet on purpose, so a new run cannot
+open with a random fight.
+
+- **No floor items, ever.** `1.2` stays in `halls` with a count of `0` (so its
+  rank plumbing keeps working and `halls` is cleared by 2.4's single item);
+  `1.1` is deliberately left out of `AREAS` entirely, which is what keeps
+  scatter off it while `can_walk_fight()` can still say yes later.
+- **Walk fights only, and only after the gate opens.** `AxelWorld.can_walk_fight()`
+  routes `GATED_WALK_SCENES` through `walk_fights_unlocked()`, which needs
+  `RunState.tutorial_fight_done` **and** a non-empty `RunState.fought_rooms`
+  (some other room has already hosted a fight — `1.4` is the usual first).
+  A fight in `1.1` or `1.2` never counts toward their own unlock.
+
+### Locker tutorial (first fight)
+
+Open the locker (which grants C1–C3), look around as long as you like, then
+leave the hub yourself with the red `X` or Esc. `1.3_LockerHub` calls
+`AxelWorld.queue_locker_tutorial_fight()`, which only marks the fight as owed;
+`AxelWorld._on_scene_changed` starts it once `1.2_Corridor` is loaded and the
+player is standing. Reason string: `locker_tutorial`.
+
+That fight is the lowest rung of the goal ladder (3x), runs with an **empty**
+loadout, and gets a one-time last-spin assist (see below). No in-fiction
+warning line plays — master plan D10's `first_encounter_warned` flag stays
+unwired.
+
+### World goal ladder
+
+`AxelRun.WORLD_GOAL_LADDER_CENTS` = `3000, 5000, 7500, 10000, 15000, 20000,
+30000` — 3x / 5x / 7.5x / 10x / 15x / 20x / 30x of the 1000-cent chip bar,
+indexed by `RunState.world_fight_count` (monotonic; **not**
+`world_encounter_index`, which wraps at 3). Past the last rung each further
+fight multiplies by `1.5`, rounded to 100 cents. It reaches combat as a plain
+number through the pre-existing `CombatRoot.set_goal_base_target_cents()`; the
+lore goal bonus and family-H percents still multiply on top. Act fights are
+untouched and keep combat's own 10x default.
+
+### Last-spin assist (tutorial only)
+
+`CombatRoot.set_final_spin_goal_assist(p)` defaults to `0.0`. When `p > 0` and
+the spin that would end the encounter leaves the goal unmet, combat rolls once
+against `p`; on success it credits the shortfall instead of losing. Only the
+locker tutorial passes a value (`0.99`), so you can still lose your first fight
+about 1 in 100 times — and losing still deletes the save (D8).
+
+This is a deliberate, narrow carve-out from `AXEL_notes` §8.3 ("no minimum
+payout safety net"). Determinism is safe: with `p == 0.0` no RNG draw happens
+at all, so every existing seed replays bit for bit, and the tutorial's single
+draw lands after every spin draw so it cannot shift the reels.
+
+### Floor marker and info card
+
+Every floor pickup draws the same animated pentacle
+(`scenes/world/PentacleMarker.tscn`, `assets/sprites/animated_pentacle_48x48.png`
+— 12 frames of 48x96, disc in the lower half). It is hosted under
+`EnvironmentColliders`, so it takes the room's cover-fit and the live
+`AxelPostFxStack` noir + scanline + CRT pass. Do **not** move it to
+`PlayerLayer`; that skip is the MemoryIndicator exception.
+
+What the item actually is only shows up when you walk into the existing
+220 px radius: `scenes/ui/world_item_info_card.gd` (one per room, layer 109 —
+above CRT 108, below the `[E]` chip 110 and dialogue 111) shows the item's real
+`display_name`, `description` and catalog `icon` next to the `[E]` chip.
 
 ## Rank progression (AXEL_notes §2.3)
 
@@ -109,10 +175,17 @@ short family list; the roll walks down from the area rank until an id exists.
 
 ## Acceptance criteria
 
-- Walking indoors sometimes starts a fight; `1.1` and `3.1` never do.
+- Walking indoors sometimes starts a fight; `3.1` never does, and `1.1` / `1.2`
+  only after the tutorial gate opens.
+- Opening the locker and then leaving the hub yourself starts one fight on
+  arrival in `1.2`: 3x goal, empty loadout, ~99% winnable.
 - Flashlight / key / shovel / name each start exactly one fight, ever.
 - Every memory still ends in a fight. The locker map paper (`scene_3`) does not.
+- Every floor item looks like the same pentacle from across the room; walking
+  near one shows its real name, description and icon.
 - Floor items show `[E]`, join the locker on pickup, and start a fight.
+- `1.1` and `1.2` never hold a floor item.
+- Fight goals climb 3x, 5x, 7.5x, 10x, 15x, 20x, 30x of the chip bar.
 - The first area's floor items are Common; untouched areas read one rank higher
   after the first pickup.
 - The locker panel has no START RUN.
@@ -121,16 +194,14 @@ short family list; the roll walks down from the area rank until an id exists.
 
 ## Manual test checklist
 
-1. New game → walk `1.2` until a fight starts → win → you are back in `1.2`
-   where you stood.
-2. Open the map before visiting `2.3`: kitchen is dark and dead. Walk there,
+1. New game → walk `1.1` and `1.2` for a while: no pentacles and no fights.
+2. Locker → close → red `X`: a fight starts as you land in `1.2`, with a 3x
+   goal and an empty item panel. Win → back in `1.2` where you stood.
+3. Walk to `1.4`, walk near the pentacle: its real name, description and icon
+   show before you press `[E]`. Take it → fight (5x goal) → win.
+4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot.
+5. Open the map before visiting `2.3`: kitchen is dark and dead. Walk there,
    reopen: it works.
-3. Take the floor item in `2.1` → fight → win → the `4.1` floor item reads one
-   rank above Common.
-4. Play the cafeteria memory to the end → fight starts after the last line →
-   win → back in `2.1`.
-5. Open the locker (equip grid only, no START RUN), then walk `1.1` and `3.1`
-   for a while: no fight.
 
 ## Found while building
 

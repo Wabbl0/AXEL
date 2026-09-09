@@ -1,16 +1,22 @@
 extends SceneTree
-## Floor items appear in every indoor room, and nowhere else.
+## Floor items appear in every room the area table gives a non-zero count, and
+## nowhere else.
 ##
 ## Asserts, for each room in the AxelWorld area table:
-## 1. A WorldItemScatter host appears with the room's item count.
+## 1. A WorldItemScatter host appears with the room's item count — or no host at
+##    all when that count is zero (1.2 is in `halls` but scatters nothing).
 ## 2. Every rolled item id resolves to a real .tres.
 ## 3. No floor item sits inside a wall, a table, or an interact zone.
-## And for the outdoor rooms: no scatter host at all.
+## 4. Every pickup draws the shared pentacle marker, never a catalog icon.
+## And for the no-item rooms (1.1 / 1.2 / 3.1): no scatter host at all.
 ##
 ## Run: tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/world_item_scatter_check.gd
 
-const OUTDOOR := [
+## Rooms that must never hold a floor item. 1.1 and 1.2 are gated walk-fight
+## rooms; 3.1 is outdoors and never fights at all.
+const NO_FLOOR_ITEMS := [
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
+	"res://scenes/Arc_1/1.2_Corridor.tscn",
 	"res://scenes/Arc_3/3.1_Backyard.tscn",
 ]
 
@@ -45,8 +51,8 @@ func _main() -> void:
 		for room_path in rooms.keys():
 			await _check_room(run, String(room_path), int(rooms[room_path]))
 
-	for room_path in OUTDOOR:
-		await _check_outdoor(String(room_path))
+	for room_path in NO_FLOOR_ITEMS:
+		await _check_no_floor_items(String(room_path))
 
 	if _failures.is_empty():
 		print("World item scatter check OK.")
@@ -77,6 +83,10 @@ func _check_room(run: Node, room_path: String, want: int) -> void:
 		return
 	var player := current_scene.find_child("Player", true, false) as Node2D
 	var host := env.get_node_or_null("WorldItemScatter")
+	if want <= 0:
+		if host != null:
+			_fail("%s is a zero-item room but got a scatter host" % room_path)
+		return
 	if host == null:
 		_fail("%s got no floor items" % room_path)
 		return
@@ -86,6 +96,11 @@ func _check_room(run: Node, room_path: String, want: int) -> void:
 		var item_id := String(child.get("item_id"))
 		if item_id.is_empty() or run.call("load_item", item_id) == null:
 			_fail("%s rolled an unusable item id '%s'" % [room_path, item_id])
+		# Every marker is the shared pentacle: no per-item icon on the floor.
+		if child.get_node_or_null("Pentacle") == null:
+			_fail("%s %s is missing the shared pentacle marker" % [room_path, item_id])
+		if child.get_node_or_null("Icon") != null or child.get_node_or_null("Blob") != null:
+			_fail("%s %s still draws its own catalog icon" % [room_path, item_id])
 		# Hard rule: never inside a wall or furniture (unreachable item).
 		if _is_blocked(env, child as Node2D, player, false):
 			_fail("%s put %s inside a wall or furniture" % [room_path, item_id])
@@ -96,14 +111,14 @@ func _check_room(run: Node, room_path: String, want: int) -> void:
 			])
 
 
-func _check_outdoor(room_path: String) -> void:
+func _check_no_floor_items(room_path: String) -> void:
 	if change_scene_to_file(room_path) != OK:
 		_fail("could not load %s" % room_path)
 		return
 	await _frames(45)
 	var env := current_scene.get_node_or_null("WalkableWorld/EnvironmentColliders") as Node2D
 	if env != null and env.get_node_or_null("WorldItemScatter") != null:
-		_fail("%s is outdoors and must have no floor items" % room_path)
+		_fail("%s must have no floor items" % room_path)
 
 
 func _is_blocked(env: Node2D, item: Node2D, player: Node2D, include_zones: bool) -> bool:

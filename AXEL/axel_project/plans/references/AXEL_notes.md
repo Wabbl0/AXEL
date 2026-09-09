@@ -238,6 +238,13 @@ Pricing for these upgrades should be calculated against the system's RTP (§8).
 - No floor on losing streaks. No guaranteed cascade after dry spins. No minimum payout safety net.
 - A full wipeout (run → 0 currency → restart) is always on the table.
 - This is **the central tension of the game** — it justifies the value of items and the importance of synergy hunting.
+- **One approved exception: the locker tutorial.** The very first fight of a run
+  (reason `locker_tutorial`) gets a single last-spin nudge —
+  `CombatRoot.set_final_spin_goal_assist(0.99)` — so a brand-new player is not
+  usually killed by their first spin set. It is a 99% bias, not a lock: you can
+  still lose it, and losing still deletes the save. Every other fight passes
+  `0.0`, which takes no RNG draw at all, so no other encounter is affected and
+  determinism is unchanged. Details: `../core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`.
 
 ---
 

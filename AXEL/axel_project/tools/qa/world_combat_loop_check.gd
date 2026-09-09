@@ -2,21 +2,31 @@ extends SceneTree
 ## World combat loop regression check.
 ##
 ## Asserts:
-## 1. The six areas cover the indoor rooms; 1.1 / 3.1 stay outdoors.
+## 1. The six areas cover the indoor rooms; 3.1 never fights.
 ## 2. Every area starts Common and taking an item upgrades only the untouched
 ##    areas (AXEL_notes §2.3).
 ## 3. The walk-step curve runs 0.1% -> 1% and never leaves that band.
 ## 4. Every area family resolves to a real item .tres at every rank.
 ## 5. The locker panel has no START RUN button.
 ## 6. The school map refuses a room the player has not walked in.
+## 7. 1.1 / 1.2 walk fights stay locked until the locker tutorial is done and
+##    some other room has hosted a fight.
+## 8. The world goal ladder starts at 3x the chip bar and keeps climbing.
 ##
 ## Run: tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/world_combat_loop_check.gd
 
 const LockerInteriorScript := preload("res://scenes/ui/locker_interior.gd")
 
-const OUTDOOR := [
-	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
+## Outdoors and never in any area table: no floor items and no step fights, at
+## any point in the run. 1.1 used to be on this list and is now gated instead.
+const NEVER_FIGHTS := [
 	"res://scenes/Arc_3/3.1_Backyard.tscn",
+]
+
+## Allowed to walk-fight, but only after the tutorial gate opens.
+const GATED := [
+	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
+	"res://scenes/Arc_1/1.2_Corridor.tscn",
 ]
 
 var _failures: Array[String] = []
@@ -53,6 +63,8 @@ func _main() -> void:
 	_check_lore_guard(world)
 	_check_locker_has_no_start_run()
 	_check_visited_gate(gm)
+	_check_walk_gate(world, run)
+	_check_goal_ladder(run)
 
 	if _failures.is_empty():
 		print("World combat loop check OK.")
@@ -72,9 +84,18 @@ func _check_area_table(world: Node) -> void:
 			_fail("area room missing on disk: %s" % room_path)
 		if not bool(world.call("is_indoor_scene", room_path)):
 			_fail("area room not reported indoor: %s" % room_path)
-	for path in OUTDOOR:
+	for path in NEVER_FIGHTS:
 		if bool(world.call("is_indoor_scene", path)):
 			_fail("outdoor scene must not allow step fights: %s" % path)
+		if bool(world.call("can_walk_fight", path)):
+			_fail("outdoor scene must never walk-fight: %s" % path)
+	# 1.1 stays out of the area table on purpose: that is what keeps floor
+	# items off it while `can_walk_fight` can still open up later.
+	if bool(world.call("is_indoor_scene", GATED[0])):
+		_fail("1.1 must stay out of the area table so it never scatters items")
+	var halls_rooms: Dictionary = areas["halls"]["rooms"]
+	if int(halls_rooms.get(GATED[1], -1)) != 0:
+		_fail("1.2 must be in halls with zero floor items")
 
 
 func _all_rooms(areas: Dictionary) -> Array:
@@ -248,6 +269,65 @@ func _button_texts(node: Node) -> Array[String]:
 	for child in node.get_children():
 		out.append_array(_button_texts(child))
 	return out
+
+
+## 1.1 and 1.2 are silent on a fresh save, and only the walk roll ever wakes
+## them — never floor items.
+func _check_walk_gate(world: Node, run: Node) -> void:
+	world.call("reset_world")
+	run.call("reset_run")
+	for path in GATED:
+		if bool(world.call("can_walk_fight", path)):
+			_fail("%s must not walk-fight on a fresh save" % path)
+
+	# Tutorial alone is not enough: another room still has to fight first.
+	run.state.tutorial_fight_done = true
+	for path in GATED:
+		if bool(world.call("can_walk_fight", path)):
+			_fail("%s must stay locked until another room has fought" % path)
+
+	# A fight in a gated room must not unlock the gated rooms.
+	world.call("_record_fight_room", GATED[1])
+	for path in GATED:
+		if bool(world.call("can_walk_fight", path)):
+			_fail("%s unlocked itself from its own fight" % path)
+
+	world.call("_record_fight_room", "res://scenes/Arc_1/1.4_BasementDoor.tscn")
+	for path in GATED:
+		if not bool(world.call("can_walk_fight", path)):
+			_fail("%s should walk-fight once the gate is open" % path)
+
+	# The gate must survive a save round trip.
+	var parsed: Variant = JSON.parse_string(JSON.stringify(run.call("to_dict")))
+	var round_tripped := RunState.from_dict(parsed as Dictionary)
+	if not bool(round_tripped.tutorial_fight_done):
+		_fail("tutorial_fight_done lost on save round trip")
+	if round_tripped.fought_rooms.size() != 1:
+		_fail("fought_rooms lost on save round trip")
+
+	world.call("reset_world")
+	run.call("reset_run")
+
+
+## 3x, 5x, 7.5x, 10x, 15x, 20x, 30x of the 1000-cent chip bar, then it keeps
+## climbing. Fight 1 (the locker tutorial) must land on the 3x rung.
+func _check_goal_ladder(run: Node) -> void:
+	run.call("reset_run")
+	var want := [3000, 5000, 7500, 10000, 15000, 20000, 30000]
+	for i in want.size():
+		run.state.world_fight_count = i + 1
+		var got := int(run.call("world_goal_base_cents"))
+		if got != int(want[i]):
+			_fail("world fight %d should need %d cents, got %d" % [i + 1, want[i], got])
+	# Past the table the curve must keep rising, never flatten or wrap.
+	var previous := int(want[want.size() - 1])
+	for extra in range(want.size() + 1, want.size() + 5):
+		run.state.world_fight_count = extra
+		var got := int(run.call("world_goal_base_cents"))
+		if got <= previous:
+			_fail("world fight %d goal did not grow past %d (got %d)" % [extra, previous, got])
+		previous = got
+	run.call("reset_run")
 
 
 func _check_visited_gate(gm: Node) -> void:

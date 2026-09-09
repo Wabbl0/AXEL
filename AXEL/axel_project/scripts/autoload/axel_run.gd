@@ -12,6 +12,20 @@ const ITEM_DIR := "res://combat/data/items/"
 const LORE_FLAGS: PackedStringArray = ["hasFlashlight", "hasKey", "hasShovel", "hasName"]
 const LORE_GOAL_BONUS := 0.15
 const STARTER_ITEMS: PackedStringArray = ["C1", "C2", "C3"]
+## World-fight difficulty curve, in chip-bar multiples of 1000 cents:
+## 3x, 5x, 7.5x, 10x, 15x, 20x, 30x. Fed to combat as a plain number through
+## `set_goal_base_target_cents`; lore bonus and family-H percents multiply on
+## top of it. Act fights keep combat's own 10x default.
+const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
+	3000, 5000, 7500, 10000, 15000, 20000, 30000,
+]
+## Past the last rung the curve keeps climbing by this factor per fight.
+const WORLD_GOAL_LADDER_GROWTH := 1.5
+const WORLD_GOAL_LADDER_ROUNDING := 100
+## Locker tutorial: no items, the lowest rung, and one last-spin nudge that
+## still leaves roughly a 1-in-100 loss. Deliberately not a 100% lock.
+const REASON_LOCKER_TUTORIAL := "locker_tutorial"
+const TUTORIAL_FINAL_SPIN_ASSIST := 0.99
 ## Act I locker, Act II cafeteria/classrooms, Act III basement. No Act IV.
 const MAX_PLAYABLE_ACT := 3
 const WIN_RETURN_SEC := 1.6
@@ -136,6 +150,24 @@ func can_start_encounter() -> bool:
 	return current_encounter() != null
 
 
+## Goal for the world fight that is starting / running now. `world_fight_count`
+## is 1 on the very first fight, so it maps onto rung 0 (3x).
+func world_goal_base_cents() -> int:
+	var rung := maxi(int(state.world_fight_count) - 1, 0)
+	var last := WORLD_GOAL_LADDER_CENTS.size() - 1
+	if rung <= last:
+		return int(WORLD_GOAL_LADDER_CENTS[rung])
+	var value := float(WORLD_GOAL_LADDER_CENTS[last])
+	for _i in rung - last:
+		value *= WORLD_GOAL_LADDER_GROWTH
+	var step := float(WORLD_GOAL_LADDER_ROUNDING)
+	return maxi(int(round(value / step)) * WORLD_GOAL_LADDER_ROUNDING, 1)
+
+
+func is_tutorial_encounter() -> bool:
+	return state.world_encounter and String(state.world_reason) == REASON_LOCKER_TUTORIAL
+
+
 func encounter_seed() -> int:
 	if state.world_encounter:
 		return state.seed + 500009 + state.world_encounter_index * 10007
@@ -160,6 +192,7 @@ func enter_world_encounter(
 	state.world_return_tex_y = return_tex.y
 	state.world_return_tex_valid = has_tex
 	state.world_encounter_index = (int(state.world_encounter_index) + 1) % WORLD_ENCOUNTER_PATHS.size()
+	state.world_fight_count = int(state.world_fight_count) + 1
 	state.in_encounter = true
 	_persist_now()
 	if is_instance_valid(AxelEventFx):
@@ -297,10 +330,16 @@ func _wire_combat_root() -> void:
 	var encounter := current_encounter()
 	if encounter != null:
 		root.set("encounter_def", encounter)
+	# Combat gets numbers only — never the reason string, never a story flag.
+	var tutorial := is_tutorial_encounter()
 	if root.has_method("set_lore_goal_bonus"):
-		root.call("set_lore_goal_bonus", lore_goal_bonus())
+		root.call("set_lore_goal_bonus", 0.0 if tutorial else lore_goal_bonus())
 	if root.has_method("set_equipped_items"):
-		root.call("set_equipped_items", equipped_items())
+		root.call("set_equipped_items", [] if tutorial else equipped_items())
+	if state.world_encounter and root.has_method("set_goal_base_target_cents"):
+		root.call("set_goal_base_target_cents", world_goal_base_cents())
+	if tutorial and root.has_method("set_final_spin_goal_assist"):
+		root.call("set_final_spin_goal_assist", TUTORIAL_FINAL_SPIN_ASSIST)
 	if root.has_method("set_limit_spins"):
 		root.call("set_limit_spins", true)
 	if encounter != null and root.has_method("set_spin_budget"):

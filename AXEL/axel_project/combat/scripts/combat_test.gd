@@ -31,35 +31,60 @@ const WINNINGS_BAND_MIN_HEIGHT := 40.0
 const WINNINGS_ROW_SEPARATION := 8
 const CENTER_FOOTER_SEPARATION := 12
 const ECONOMICS_STACK_SEPARATION := 4
+## Fallback only. BALANCE and the bet strip normally auto-fit to their drawn bars.
 const BANKROLL_READOUT_FONT := 36
-const BANKROLL_READOUT_FONT_NARROW := 28
+## BALANCE + BETS share one size that almost fills the shorter of the two bars.
+const ECON_BAR_FONT_FILL := 0.9
+const ECON_BAR_FONT_MIN := 24
+const ECON_BAR_FONT_MAX := 200
+## Widest BALANCE string the bar has to hold without clipping.
+const ECON_BAR_FIT_SAMPLE := "BALANCE: 0000/0000"
+## The "|" dividers stay slightly shorter than the numbers, as drawn.
+const BET_STRIP_SEPARATOR_FONT_RATIO := 0.875
 const EXECUTE_BUTTON_MIN_HEIGHT := 72.0
 const BOTTOM_WINDOW_MARGIN := 18.0
 
 const LAYOUT_META_ICONS_SEPARATION := 4
 const META_ICON_GLYPH := "⬡"
-## Single knob for combat readout size (~2×). Balance / bet strip ignore this.
+## Single knob for combat readout size (~2×). Balance / bet strip auto-fit their bars instead.
 const COMBAT_TEXT_SCALE := 2.0
 const META_ICON_FONT := int(round(31.0 * COMBAT_TEXT_SCALE))
 const SIDE_PANEL_HEADER_FONT := int(round(32.0 * COMBAT_TEXT_SCALE))
 const SIDE_PANEL_BODY_FONT := int(round(18.0 * COMBAT_TEXT_SCALE))
 const SIDE_PANEL_BODY_FONT_MIN := int(round(14.0 * COMBAT_TEXT_SCALE))
-const HISTORY_BODY_FONT_SCALE := 1.5
-const ITEMS_BODY_FONT_SCALE := 1.25
+## History fits the largest size its rectangle allows; this is only the ceiling.
+const HISTORY_BODY_FONT_SCALE := 3.0
+## Worst-case history row ("<bet> x <symbol value> x <cascade multiplier>").
+const HISTORY_FIT_SAMPLE := "1000 x 12.5 x 20"
+const ITEMS_BODY_FONT_SCALE := 1.78
+const ITEMS_BODY_FONT_MIN := int(round(20.0 * COMBAT_TEXT_SCALE))
+## Hover description keeps its old size — it is drawn unscaled, not inside the HudCanvas.
+const ITEM_DESC_BODY_FONT_SCALE := 1.25
 const SIDE_PANEL_HINT_FONT := int(round(14.0 * COMBAT_TEXT_SCALE))
 const ITEM_PICKER_ROW_H_SEP := 4
 const ITEM_PICKER_CHECKBOX_ICON_MAX := int(round(18.0 * COMBAT_TEXT_SCALE))
 const ITEM_PICKER_CHECKBOX_COL_W := int(round(22.0 * COMBAT_TEXT_SCALE))
-const ITEM_ICON_DRAW_SIZE := int(round(24.0 * COMBAT_TEXT_SCALE))
+const ITEM_ICON_DRAW_SIZE := int(round(36.0 * COMBAT_TEXT_SCALE))
 const ITEM_RANK_BTN_W := int(round(88.0 * COMBAT_TEXT_SCALE))
+const ITEM_RANK_BTN_TEXT_PAD := 8.0
+const ITEM_RANK_BTN_FIT_SAMPLE := "Uncommon"
 const ITEM_DESC_Z := 40
 const ITEM_DESC_PREFERRED_WIDTH := 420.0
 const ITEM_DESC_CURSOR_GAP := 8.0
 const ITEM_DESC_PANEL_INSET := 8.0
 const ITEM_DESC_FADE_IN := 0.08
-const ITEM_DESC_BG_ALPHA := 0.8
-const WINNINGS_READOUT_FONT := int(round(31.0 * COMBAT_TEXT_SCALE))
-const CASCADE_MULT_READOUT_FONT := int(round(24.0 * COMBAT_TEXT_SCALE))
+const ITEM_DESC_BG_ALPHA := 1.0
+## Whole card (panel, border, text) renders at 90% so the rows read faintly through it.
+const ITEM_DESC_OPACITY := 0.9
+## Own CanvasLayer above WidgetLayer (106) and below the combat CRT (108) so the card
+## draws over the item rows instead of behind them.
+const ITEM_DESC_LAYER_INDEX := 107
+## GOAL, the spin-rewards bar and the cascade multiplier share one big size, so GOAL
+## and the multiplier number always match. ~2x the old multiplier size.
+const COMBAT_HUD_MAJOR_FONT := int(round(48.0 * COMBAT_TEXT_SCALE))
+const COMBAT_HUD_MAJOR_FONT_NARROW := int(round(37.5 * COMBAT_TEXT_SCALE))
+const WINNINGS_READOUT_FONT := COMBAT_HUD_MAJOR_FONT
+const CASCADE_MULT_READOUT_FONT := COMBAT_HUD_MAJOR_FONT
 const WINNINGS_READOUT_OUTLINE := 0
 const CASCADE_MULT_READOUT_OUTLINE := 0
 const READOUT_ACCENT_COLOR := Color(0.98, 0.35, 0.35, 1.0)
@@ -75,8 +100,8 @@ const HUD_WHITE_TEXT_SHADOW_COLOR := Color(0.22, 0.22, 0.22, 0.72)
 const HUD_WHITE_TEXT_SHADOW_OFFSET_Y := 1
 const SETTINGS_PANEL_SCENE := preload("res://combat/scenes/combat_settings_panel.tscn")
 const BET_STRIP_TWEEN_SEC := 0.15
-const GOAL_READOUT_FONT := int(round(36.0 * COMBAT_TEXT_SCALE))
-const GOAL_READOUT_FONT_NARROW := int(round(28.0 * COMBAT_TEXT_SCALE))
+const GOAL_READOUT_FONT := COMBAT_HUD_MAJOR_FONT
+const GOAL_READOUT_FONT_NARROW := COMBAT_HUD_MAJOR_FONT_NARROW
 const PREMIUM_BAR_COLORS := [
 	Color(0.22, 0.22, 0.22, 1.0),
 	Color(0.55, 0.12, 0.12, 1.0),
@@ -144,6 +169,12 @@ var _spin_history_panel: PanelContainer
 var _history_spin_list: VBoxContainer
 var _item_picker_panel: PanelContainer
 var _item_picker_title: Label
+## Row name strings per row kind, used to fit the item body font against real widths.
+var _item_row_texts: Dictionary = {
+	&"family": PackedStringArray(),
+	&"unique": PackedStringArray(),
+}
+var _item_desc_layer: CanvasLayer
 var _item_desc_clip: Control
 var _item_desc_panel: PanelContainer
 var _item_desc_label: Label
@@ -1324,8 +1355,22 @@ func _apply_item_picker_body_typography() -> void:
 			continue
 		if label.name == "SectionHeader":
 			continue
+		if bool(label.get_meta("item_row_name", false)):
+			label.add_theme_font_size_override("font_size", body_font)
+			continue
 		if label.text == "No items available":
 			label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	var rank_font := _resolved_item_rank_font()
+	for child in _item_picker_panel.find_children("*", "Button", true, false):
+		var btn := child as Button
+		if btn == null or not bool(btn.get_meta("item_rank_button", false)):
+			continue
+		btn.add_theme_font_size_override("font_size", rank_font)
+	for child in _item_picker_panel.find_children("*", "TextureRect", true, false):
+		var icon := child as TextureRect
+		if icon == null or not bool(icon.get_meta("item_row_icon", false)):
+			continue
+		icon.custom_minimum_size = Vector2(ITEM_ICON_DRAW_SIZE, ITEM_ICON_DRAW_SIZE)
 
 func _style_item_picker_checkbox(cb: CheckBox, body_font: int = -1) -> void:
 	if cb == null:
@@ -1442,6 +1487,11 @@ func _stake_button_style() -> StyleBoxFlat:
 
 func _style_stake_buttons() -> void:
 	_cache_hud_pieces()
+	## The live buttons sit above the drawings and eat the hover, so they own the cursor.
+	for btn in [bet_minus_btn, bet_plus_btn]:
+		if btn == null:
+			continue
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	## Piece drawings own +/- look; do not paint the old computer boxes on top.
 	if _piece_bet_minus != null or _piece_bet_plus != null:
 		var empty := StyleBoxEmpty.new()
@@ -1968,8 +2018,8 @@ func _ensure_bet_strip_row() -> void:
 			var sep := Label.new()
 			sep.text = "|"
 			sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			sep.set_meta("bet_strip_separator", true)
 			sep.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55, 1.0))
-			sep.add_theme_font_size_override("font_size", 28)
 			sep.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			_bet_strip_row.add_child(sep)
 		var lab := Label.new()
@@ -1977,10 +2027,10 @@ func _ensure_bet_strip_row() -> void:
 		lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lab.add_theme_font_size_override("font_size", 32)
 		_apply_white_hud_text_style(lab)
 		_bet_strip_row.add_child(lab)
 		_bet_strip_labels.append(lab)
+	_apply_bet_strip_typography(_fitted_balance_bet_font())
 
 
 func _refresh_bet_strip() -> void:
@@ -2203,7 +2253,13 @@ func _shrink_grid_host_to_content(_host_w: float) -> void:
 func _side_panel_inner_width(panel: PanelContainer) -> float:
 	if panel == null:
 		return 200.0
+	## A PanelContainer grows to fit its content, so measuring the panel would feed the
+	## font fitters their own output and let a big font push the rows past the clipped
+	## host. Measure the fixed host (the piece's MOVE_TextBox follower) instead.
 	var panel_w := panel.size.x
+	var host := panel.get_parent() as Control
+	if host != null and host.size.x > 32.0:
+		panel_w = minf(panel_w, host.size.x - panel.offset_left + panel.offset_right)
 	if panel_w < 32.0:
 		panel_w = panel.custom_minimum_size.x
 	var style := panel.get_theme_stylebox("panel") as StyleBox
@@ -2211,38 +2267,112 @@ func _side_panel_inner_width(panel: PanelContainer) -> float:
 		panel_w -= style.get_content_margin(Side.SIDE_LEFT) + style.get_content_margin(Side.SIDE_RIGHT)
 	return maxf(panel_w - 6.0, 64.0)
 
-func _fit_body_font_size(sample_text: String, target_scale: float, max_width: float, font: Font) -> int:
-	var max_size := maxi(int(round(float(SIDE_PANEL_BODY_FONT) * target_scale)), SIDE_PANEL_BODY_FONT)
+func _fit_body_font_size(
+	sample_text: String,
+	target_scale: float,
+	max_width: float,
+	font: Font,
+	min_size: int = SIDE_PANEL_BODY_FONT_MIN,
+) -> int:
+	var max_size := maxi(int(round(float(SIDE_PANEL_BODY_FONT) * target_scale)), min_size)
 	if font == null or max_width <= 0.0:
 		return max_size
-	for font_size in range(max_size, SIDE_PANEL_BODY_FONT_MIN - 1, -1):
+	for font_size in range(max_size, min_size - 1, -1):
 		var text_size := font.get_string_size(sample_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 		if text_size.x <= max_width:
 			return font_size
-	return SIDE_PANEL_BODY_FONT_MIN
+	return min_size
 
+## Largest size that still fits the HISTORY rectangle. The mini-icon grows with the
+## font, so the icon column has to be re-measured for every candidate size.
 func _resolved_history_body_font() -> int:
 	var inner_w := _side_panel_inner_width(_spin_history_panel)
-	var max_font := int(round(float(SIDE_PANEL_BODY_FONT) * HISTORY_BODY_FONT_SCALE))
-	var icon_w := float(_history_mini_icon_size_for_font(max_font))
-	var font := get_theme_font("font", "Label")
-	return _fit_body_font_size(
-		"100 x 0.5 x 9",
-		HISTORY_BODY_FONT_SCALE,
-		inner_w - icon_w - float(HISTORY_ROW_SEPARATION),
-		font,
+	var max_size := maxi(
+		int(round(float(SIDE_PANEL_BODY_FONT) * HISTORY_BODY_FONT_SCALE)), SIDE_PANEL_BODY_FONT_MIN
 	)
+	var font := get_theme_font("font", "Label")
+	if font == null or inner_w <= 0.0:
+		return max_size
+	for font_size in range(max_size, SIDE_PANEL_BODY_FONT_MIN - 1, -1):
+		var avail := inner_w - float(_history_mini_icon_size_for_font(font_size)) - float(HISTORY_ROW_SEPARATION)
+		if avail <= 0.0:
+			continue
+		if font.get_string_size(HISTORY_FIT_SAMPLE, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= avail:
+			return font_size
+	return SIDE_PANEL_BODY_FONT_MIN
 
-func _resolved_items_body_font() -> int:
-	var inner_w := _side_panel_inner_width(_item_picker_panel)
+func _item_row_body_font() -> Font:
 	var font := get_theme_font("font", "CheckBox")
 	if font == null:
 		font = get_theme_font("font", "Label")
+	return font
+
+## Widest name actually in the list, so the fit is measured against real rows instead
+## of a sample. Family and unique rows are tracked apart — only family rows carry a
+## rank button, so they have less room for the name.
+func _widest_item_row_text(kind: StringName) -> String:
+	var texts: PackedStringArray = _item_row_texts.get(kind, PackedStringArray())
+	if texts.is_empty():
+		return "◈ Void Satchel"
+	var font := _item_row_body_font()
+	if font == null:
+		return texts[0]
+	var best := texts[0]
+	var best_w := 0.0
+	for text in texts:
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, SIDE_PANEL_BODY_FONT).x
+		if w > best_w:
+			best_w = w
+			best = text
+	return best
+
+## Row furniture (checkbox column, icon, rank button, separators) is reserved so the
+## bigger name text cannot push a row wider than the ITEMS rectangle.
+func _resolved_items_body_font() -> int:
+	var inner_w := _side_panel_inner_width(_item_picker_panel)
+	var font := _item_row_body_font()
+	var fixed := float(ITEM_PICKER_CHECKBOX_COL_W + ITEM_ICON_DRAW_SIZE)
+	var family_budget := inner_w - fixed - float(ITEM_RANK_BTN_W + ITEM_PICKER_ROW_H_SEP * 3)
+	var unique_budget := inner_w - fixed - float(ITEM_PICKER_ROW_H_SEP * 2)
+	return mini(
+		_fit_body_font_size(
+			_widest_item_row_text(&"family"),
+			ITEMS_BODY_FONT_SCALE,
+			family_budget,
+			font,
+			ITEMS_BODY_FONT_MIN,
+		),
+		_fit_body_font_size(
+			_widest_item_row_text(&"unique"),
+			ITEMS_BODY_FONT_SCALE,
+			unique_budget,
+			font,
+			ITEMS_BODY_FONT_MIN,
+		),
+	)
+
+## Rank buttons keep their authored width, so their label grows only as far as the
+## widest rarity name fits.
+func _resolved_item_rank_font() -> int:
+	var max_size := _resolved_items_body_font()
+	var font := _item_row_body_font()
+	if font == null:
+		return SIDE_PANEL_HINT_FONT
+	var avail := float(ITEM_RANK_BTN_W) - ITEM_RANK_BTN_TEXT_PAD * 2.0
+	for font_size in range(max_size, SIDE_PANEL_HINT_FONT - 1, -1):
+		if font.get_string_size(
+			ITEM_RANK_BTN_FIT_SAMPLE, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+		).x <= avail:
+			return font_size
+	return SIDE_PANEL_HINT_FONT
+
+func _resolved_item_desc_font() -> int:
+	var inner_w := _side_panel_inner_width(_item_picker_panel)
 	return _fit_body_font_size(
 		"◈ Void Satchel",
-		ITEMS_BODY_FONT_SCALE,
+		ITEM_DESC_BODY_FONT_SCALE,
 		inner_w - float(ITEM_PICKER_CHECKBOX_ICON_MAX + ITEM_PICKER_ROW_H_SEP),
-		font,
+		_item_row_body_font(),
 	)
 
 func _history_mini_icon_size_for_font(body_font: int) -> int:
@@ -2268,11 +2398,61 @@ func _refresh_history_row_typography() -> void:
 			elif child is Label:
 				_apply_history_text_style(child as Label)
 
+## One size for BALANCE and the bet strip, sized off the drawn bars so the text almost
+## fills them. Height sets the ceiling; the widest BALANCE string caps it so the bar
+## (which clips its text) can never cut the readout off.
+func _fitted_balance_bet_font() -> int:
+	_cache_hud_pieces()
+	var bar_h := 0.0
+	var bar_w := 0.0
+	for piece_variant in [_piece_balance, _piece_bet_strip]:
+		var piece := piece_variant as CombatHudPiece
+		if piece == null or not is_instance_valid(piece):
+			continue
+		var box: Control = piece.get_text_box()
+		if box == null or box.size.y <= 0.0:
+			continue
+		var inset: float = 2.0 * piece.text_inset_px
+		var usable_h := maxf(box.size.y - inset, 8.0)
+		bar_h = usable_h if bar_h <= 0.0 else minf(bar_h, usable_h)
+		if piece == _piece_balance:
+			bar_w = maxf(box.size.x - inset, 8.0)
+	if bar_h <= 0.0:
+		return BANKROLL_READOUT_FONT
+	var font: Font = null
+	if bankroll_label != null and is_instance_valid(bankroll_label):
+		font = bankroll_label.get_theme_font("font")
+	if font == null:
+		font = get_theme_font("font", "Label")
+	var height_limit := bar_h * ECON_BAR_FONT_FILL
+	if font == null:
+		return clampi(int(round(height_limit)), ECON_BAR_FONT_MIN, ECON_BAR_FONT_MAX)
+	for font_size in range(ECON_BAR_FONT_MAX, ECON_BAR_FONT_MIN - 1, -1):
+		var text_size := font.get_string_size(
+			ECON_BAR_FIT_SAMPLE, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+		)
+		if text_size.y > height_limit:
+			continue
+		if bar_w > 0.0 and text_size.x > bar_w:
+			continue
+		return font_size
+	return clampi(int(round(height_limit)), ECON_BAR_FONT_MIN, ECON_BAR_FONT_MAX)
+
+func _apply_bet_strip_typography(font_size: int) -> void:
+	if _bet_strip_row == null or not is_instance_valid(_bet_strip_row):
+		return
+	var sep_size := maxi(int(round(float(font_size) * BET_STRIP_SEPARATOR_FONT_RATIO)), 8)
+	for child in _bet_strip_row.get_children():
+		var lab := child as Label
+		if lab == null:
+			continue
+		var is_sep := bool(lab.get_meta("bet_strip_separator", false))
+		lab.add_theme_font_size_override("font_size", sep_size if is_sep else font_size)
+
 func _apply_economics_typography() -> void:
-	var bankroll_font := BANKROLL_READOUT_FONT
+	var bankroll_font := _fitted_balance_bet_font()
 	var goal_font := GOAL_READOUT_FONT
 	if size.x < RESPONSIVE_NARROW_W:
-		bankroll_font = BANKROLL_READOUT_FONT_NARROW
 		goal_font = GOAL_READOUT_FONT_NARROW
 	if bankroll_label != null:
 		bankroll_label.add_theme_font_size_override("font_size", bankroll_font)
@@ -2280,6 +2460,7 @@ func _apply_economics_typography() -> void:
 		goal_label.add_theme_font_size_override("font_size", goal_font)
 	if bet_label != null:
 		bet_label.add_theme_font_size_override("font_size", bankroll_font)
+	_apply_bet_strip_typography(bankroll_font)
 	if bet_minus_btn != null and bet_plus_btn != null:
 		var btn_size := STAKE_BUTTON_SIZE if size.x >= RESPONSIVE_NARROW_W else STAKE_BUTTON_SIZE_NARROW
 		bet_minus_btn.custom_minimum_size = Vector2(btn_size, btn_size)
@@ -2433,7 +2614,7 @@ func _first_descendant_of_class(node: Node, class_nm: String) -> Node:
 func _item_desc_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.0, 0.0, 0.0, ITEM_DESC_BG_ALPHA)
-	style.border_color = Color(0.45, 0.03, 0.03, 0.75)
+	style.border_color = Color(0.45, 0.03, 0.03, 1.0)
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(4)
 	style.content_margin_left = 14
@@ -2441,6 +2622,21 @@ func _item_desc_style() -> StyleBoxFlat:
 	style.content_margin_top = 12
 	style.content_margin_bottom = 12
 	return style
+
+
+## The card is hosted on its own CanvasLayer so it paints over the item rows, which
+## live on WidgetLayer (106). Transform stays identity, so the existing global-rect
+## layout math is unchanged.
+func _ensure_item_desc_layer() -> CanvasLayer:
+	if _item_desc_layer != null and is_instance_valid(_item_desc_layer):
+		return _item_desc_layer
+	_item_desc_layer = get_node_or_null("ItemDescLayer") as CanvasLayer
+	if _item_desc_layer == null:
+		_item_desc_layer = CanvasLayer.new()
+		_item_desc_layer.name = "ItemDescLayer"
+		add_child(_item_desc_layer)
+	_item_desc_layer.layer = ITEM_DESC_LAYER_INDEX
+	return _item_desc_layer
 
 
 func _ensure_item_desc_overlay() -> void:
@@ -2454,7 +2650,7 @@ func _ensure_item_desc_overlay() -> void:
 	_item_desc_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_item_desc_clip.clip_contents = true
 	_item_desc_clip.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
-	add_child(_item_desc_clip)
+	_ensure_item_desc_layer().add_child(_item_desc_clip)
 	_item_desc_panel = PanelContainer.new()
 	_item_desc_panel.name = "ItemDescOverlay"
 	_item_desc_panel.visible = false
@@ -2559,7 +2755,7 @@ func _show_item_desc_for_row(row: Control) -> void:
 	var already_shown := _item_desc_panel.visible and _item_desc_panel.modulate.a > 0.05
 	_item_desc_hover_row = row
 	_item_desc_label.text = desc
-	_item_desc_label.add_theme_font_size_override("font_size", _resolved_items_body_font())
+	_item_desc_label.add_theme_font_size_override("font_size", _resolved_item_desc_font())
 	if _item_desc_clip != null:
 		_item_desc_clip.visible = true
 	_item_desc_panel.visible = true
@@ -2567,12 +2763,12 @@ func _show_item_desc_for_row(row: Control) -> void:
 	call_deferred("_layout_item_desc_overlay")
 	if already_shown:
 		_stop_item_desc_fade()
-		_item_desc_panel.modulate.a = 1.0
+		_item_desc_panel.modulate.a = ITEM_DESC_OPACITY
 		return
 	_item_desc_panel.modulate.a = 0.0
 	_stop_item_desc_fade()
 	_item_desc_fade = create_tween()
-	_item_desc_fade.tween_property(_item_desc_panel, "modulate:a", 1.0, ITEM_DESC_FADE_IN)
+	_item_desc_fade.tween_property(_item_desc_panel, "modulate:a", ITEM_DESC_OPACITY, ITEM_DESC_FADE_IN)
 
 
 func _hide_item_desc() -> void:
@@ -2766,6 +2962,8 @@ func _rebuild_item_picker_contents() -> void:
 		items_vbox.remove_child(child)
 		child.free()
 	_item_entries.clear()
+	_item_row_texts[&"family"] = PackedStringArray()
+	_item_row_texts[&"unique"] = PackedStringArray()
 	var available := _discover_available_items()
 	var by_id: Dictionary = {}
 	for item in available:
@@ -2829,8 +3027,21 @@ func _family_item_at_rank(by_id: Dictionary, letter: String, rank: int) -> Resou
 	return by_id.get(key, null)
 
 
+## Tags a row name for the typography refresh, records its width for the fitter, and
+## makes it trim rather than push the row past the panel if a name is ever too long.
+func _mark_item_row_name(name_lab: Label, kind: StringName) -> void:
+	name_lab.set_meta("item_row_name", true)
+	name_lab.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name_lab.clip_text = true
+	name_lab.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var texts: PackedStringArray = _item_row_texts.get(kind, PackedStringArray())
+	texts.append(name_lab.text)
+	_item_row_texts[kind] = texts
+
+
 func _make_item_icon(item: Resource) -> TextureRect:
 	var icon := TextureRect.new()
+	icon.set_meta("item_row_icon", true)
 	icon.custom_minimum_size = Vector2(ITEM_ICON_DRAW_SIZE, ITEM_ICON_DRAW_SIZE)
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -2857,6 +3068,7 @@ func _make_family_row(letter: String, family_name: String, item: Resource, rank:
 	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lab.text = family_name
 	name_lab.mouse_filter = Control.MOUSE_FILTER_PASS
+	_mark_item_row_name(name_lab, &"family")
 	var rarity_idx: int = clampi(rank, 0, 3)
 	name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
 	name_lab.add_theme_font_size_override("font_size", _resolved_items_body_font())
@@ -2865,7 +3077,8 @@ func _make_family_row(letter: String, family_name: String, item: Resource, rank:
 	rank_btn.text = RARITY_NAMES[rarity_idx]
 	rank_btn.custom_minimum_size.x = ITEM_RANK_BTN_W
 	rank_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
-	rank_btn.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	rank_btn.set_meta("item_rank_button", true)
+	rank_btn.add_theme_font_size_override("font_size", _resolved_item_rank_font())
 	rank_btn.pressed.connect(_on_family_rank_pressed.bind(letter))
 	row.add_child(rank_btn)
 	_bind_item_row_hover(row, _item_desc_text_for_item(item, family_name))
@@ -2900,6 +3113,7 @@ func _make_unique_row(item: Resource) -> HBoxContainer:
 	name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
 	name_lab.add_theme_font_size_override("font_size", _resolved_items_body_font())
 	name_lab.mouse_filter = Control.MOUSE_FILTER_PASS
+	_mark_item_row_name(name_lab, &"unique")
 	row.add_child(name_lab)
 	_bind_item_row_hover(row, _item_desc_text_for_item(item))
 	_item_entries.append({"kind": "unique", "checkbox": cb, "item": item, "row": row})

@@ -7,8 +7,10 @@ extends Node
 ## AxelRun stays the only thing that actually starts an encounter.
 
 const PickupScript := preload("res://scenes/world/world_item_pickup.gd")
+const InfoCardScript := preload("res://scenes/ui/world_item_info_card.gd")
 const PROMPT_SCENE := "res://scenes/ui/InteractPromptOverlay.tscn"
 const PROMPT_NODE_NAME := "WorldItemPromptOverlay"
+const INFO_CARD_NODE_NAME := "WorldItemInfoCard"
 const PICKUP_HOST_NAME := "WorldItemScatter"
 
 ## Common -> Legendary. Item ids are `TIER-FAMILY` (`C-G`) or `TIER<digit>` (`C1`).
@@ -34,7 +36,9 @@ const AREAS := {
 		"label": "HALLS",
 		"families": ["F", "H", "M"],
 		"rooms": {
-			"res://scenes/Arc_1/1.2_Corridor.tscn": 2,
+			# The corridor is a gated walk-fight room and gets no floor items,
+			# so `halls` is cleared by 2.4's single item.
+			"res://scenes/Arc_1/1.2_Corridor.tscn": 0,
 			"res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn": 1,
 		},
 	},
@@ -80,6 +84,22 @@ const REASON_WALK := "walk"
 const REASON_ITEM := "item_pickup"
 const REASON_LORE := "lore_pickup"
 const REASON_MEMORY := "memory"
+## The tutorial needs its own reason so AxelRun can hand combat a low goal, an
+## empty loadout, and the last-spin assist without combat reading a story flag.
+const REASON_LOCKER_TUTORIAL := "locker_tutorial"
+
+## Where the locker tutorial fight happens: you open the locker, look around,
+## then leave the hub yourself and the corridor takes you.
+const TUTORIAL_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
+
+## 1.1 and 1.2 get no floor items, ever, and stay completely quiet until the
+## locker tutorial is done AND some other room has hosted a fight. After that
+## they only ever fight from the random walk roll. 3.1 is in neither table, so
+## it never fights at all.
+const GATED_WALK_SCENES: PackedStringArray = [
+	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
+	"res://scenes/Arc_1/1.2_Corridor.tscn",
+]
 
 var _rank: Dictionary = {}
 var _engaged: Dictionary = {}
@@ -153,6 +173,25 @@ func is_indoor_scene(scene_path: String) -> bool:
 	return not area_for_scene(scene_path).is_empty()
 
 
+## Whether the walk-step roll is allowed to fire in this room at all. Indoor
+## rooms qualify by being in the area table; 1.1 and 1.2 have to earn it.
+func can_walk_fight(scene_path: String) -> bool:
+	if GATED_WALK_SCENES.has(scene_path):
+		return walk_fights_unlocked()
+	return is_indoor_scene(scene_path)
+
+
+## The 1.1 / 1.2 gate: the locker tutorial has happened and at least one other
+## room has already hosted a fight.
+func walk_fights_unlocked() -> bool:
+	var run := _run()
+	if run == null:
+		return false
+	if not bool(run.state.tutorial_fight_done):
+		return false
+	return run.state.fought_rooms.size() > 0
+
+
 func area_rank(area_id: String) -> int:
 	return int(_rank.get(area_id, 0))
 
@@ -177,7 +216,8 @@ func step_chance() -> float:
 ## --- Walk fights ---
 
 
-## Called by Player.gd once per 8 px walked. Rolls a rare indoor fight.
+## Called by Player.gd once per 8 px walked. Rolls a rare fight in any room
+## that `can_walk_fight` allows.
 func register_walk_step() -> void:
 	if not is_enabled() or _starting_fight:
 		return
@@ -188,7 +228,7 @@ func register_walk_step() -> void:
 	if scene == null:
 		return
 	var path := scene.scene_file_path
-	if not is_indoor_scene(path):
+	if not can_walk_fight(path):
 		return
 	_steps_since_fight += 1
 	if _steps_since_fight < STEP_GRACE_AFTER_FIGHT:
@@ -225,6 +265,7 @@ func start_fight_here(reason: String) -> bool:
 		has_tex = true
 	if player != null and player.has_method("set_input_enabled"):
 		player.call("set_input_enabled", false)
+	_record_fight_room(scene.scene_file_path)
 	AxelRun.enter_world_encounter(reason, scene.scene_file_path, tex, has_tex)
 	return true
 
@@ -238,6 +279,7 @@ func start_fight_to_scene(reason: String, return_scene: String) -> bool:
 		return false
 	_starting_fight = true
 	_steps_since_fight = 0
+	_record_fight_room(return_scene)
 	AxelRun.enter_world_encounter(reason, return_scene, Vector2.ZERO, false)
 	return true
 
@@ -270,6 +312,64 @@ func start_lore_fight(flag_name: String, return_scene: String, use_player_spot: 
 
 func has_lore_fight_happened(flag_name: String) -> bool:
 	return bool(_lore_fights.get(flag_name, false))
+
+
+## The locker hub asks for the tutorial when the player leaves it on their own
+## after opening the locker. AxelWorld still owns *when* it happens: nothing
+## fires until the corridor is actually loaded and the player is standing.
+func queue_locker_tutorial_fight() -> bool:
+	if not is_enabled():
+		return false
+	var run := _run()
+	if run == null:
+		return false
+	if not bool(run.state.locker_stash_granted):
+		return false
+	if bool(run.state.tutorial_fight_done) or bool(run.state.tutorial_fight_pending):
+		return false
+	run.state.tutorial_fight_pending = true
+	_save()
+	return true
+
+
+func is_locker_tutorial_pending() -> bool:
+	var run := _run()
+	return run != null and bool(run.state.tutorial_fight_pending)
+
+
+func _start_locker_tutorial(scene: Node) -> void:
+	await _settle_frames(scene, 12)
+	if scene != _current_scene():
+		return
+	var run := _run()
+	if run == null or bool(run.call("is_in_encounter")):
+		return
+	if not bool(run.state.tutorial_fight_pending):
+		return
+	run.state.tutorial_fight_pending = false
+	run.state.tutorial_fight_done = true
+	if not start_fight_here(REASON_LOCKER_TUTORIAL):
+		# Nothing to fight from (loop off, no Player node): stay owed instead of
+		# quietly eating the tutorial.
+		run.state.tutorial_fight_pending = true
+		run.state.tutorial_fight_done = false
+		return
+	_save()
+
+
+## Gate bookkeeping for 1.1 / 1.2: which rooms have already hosted a fight. The
+## two gated rooms never count toward their own unlock.
+func _record_fight_room(scene_path: String) -> void:
+	if scene_path.is_empty() or GATED_WALK_SCENES.has(scene_path):
+		return
+	var run := _run()
+	if run == null:
+		return
+	var rooms: Array = Array(run.state.fought_rooms)
+	if rooms.has(scene_path):
+		return
+	rooms.append(scene_path)
+	run.state.fought_rooms = PackedStringArray(rooms)
 
 
 ## Called by AxelRun after a world fight is won.
@@ -410,6 +510,8 @@ func _on_scene_changed() -> void:
 		_pending_return_scene = ""
 	if is_enabled() and is_indoor_scene(path):
 		_populate_room(scene)
+	if is_enabled() and path == TUTORIAL_SCENE and is_locker_tutorial_pending():
+		_start_locker_tutorial(scene)
 
 
 func _mark_visited_if_walkable(scene: Node) -> void:
@@ -585,6 +687,7 @@ func _spawn_pickups(scene: Node, env: Node2D, path: String) -> void:
 	for child in host.get_children():
 		child.queue_free()
 	var prompt := _ensure_prompt_overlay(scene)
+	var info_card := _ensure_info_card(scene)
 	for i in entries.size():
 		var entry: Dictionary = entries[i]
 		if bool(entry.get("taken", false)):
@@ -592,7 +695,7 @@ func _spawn_pickups(scene: Node, env: Node2D, path: String) -> void:
 		var pickup := PickupScript.new()
 		pickup.name = "WorldItem%d" % i
 		pickup.position = Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
-		pickup.setup(String(entry.get("id", "")), path, i, prompt)
+		pickup.setup(String(entry.get("id", "")), path, i, prompt, info_card)
 		host.add_child(pickup)
 
 
@@ -609,6 +712,18 @@ func _ensure_prompt_overlay(scene: Node) -> Node:
 	overlay.name = PROMPT_NODE_NAME
 	scene.add_child(overlay)
 	return overlay
+
+
+## One card per room, shared by every pickup in it — only one item can be
+## within reach at a time.
+func _ensure_info_card(scene: Node) -> Node:
+	var existing := scene.get_node_or_null(INFO_CARD_NODE_NAME)
+	if existing != null:
+		return existing
+	var card := InfoCardScript.new()
+	card.name = INFO_CARD_NODE_NAME
+	scene.add_child(card)
+	return card
 
 
 ## --- Small helpers ---

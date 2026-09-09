@@ -62,6 +62,46 @@ func play_drop(from_local: Vector2, to_local: Vector2, duration: float, delay: f
 	_drop_tween.tween_property(_icon, "scale", Vector2.ONE, 0.08)
 
 
+func has_visible_symbol() -> bool:
+	_ensure_icon()
+	return _icon.texture != null
+
+
+## Board swap, phase 1: slide this symbol straight down past the board, then clear it.
+## LINEAR so a whole column keeps its shape while it leaves.
+func play_fall_off(distance_px: float, duration: float, delay: float = 0.0) -> void:
+	_ensure_icon()
+	_cancel_tween(_drop_tween)
+	_icon.position = Vector2.ZERO
+	_icon.scale = Vector2.ONE
+	_drop_tween = create_tween()
+	if delay > 0.0:
+		_drop_tween.tween_interval(delay)
+	_drop_tween.set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN_OUT)
+	_drop_tween.tween_property(_icon, "position", Vector2(0.0, distance_px), max(duration, 0.01))
+	_drop_tween.tween_callback(_clear_icon_after_fall_off)
+
+
+func _clear_icon_after_fall_off() -> void:
+	if _icon == null or not is_instance_valid(_icon):
+		return
+	_icon.texture = null
+	_icon.position = Vector2.ZERO
+
+
+## Board swap, phase 2: this symbol starts `distance_px` above its cell and slides in.
+## LINEAR, and every slot in a column gets the same distance and duration, so the
+## column arrives as one rigid tube.
+func play_tube_in(distance_px: float, duration: float) -> void:
+	_ensure_icon()
+	_cancel_tween(_drop_tween)
+	_icon.scale = Vector2.ONE
+	_icon.position = Vector2(0.0, -distance_px)
+	_drop_tween = create_tween()
+	_drop_tween.set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN_OUT)
+	_drop_tween.tween_property(_icon, "position", Vector2.ZERO, max(duration, 0.01))
+
+
 func play_count_flash(duration: float, peak_alpha: float = 0.55, delay: float = 0.0) -> void:
 	_ensure_flash_overlay()
 	_cancel_tween(_flash_tween)

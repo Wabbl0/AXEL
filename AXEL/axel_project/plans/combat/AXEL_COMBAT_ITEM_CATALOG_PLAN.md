@@ -238,15 +238,21 @@ until a real `.tres` exists.
 
 | Area | Rooms | Floor items | Families |
 |:---|:---|:---:|:---:|
-| Halls | `1.2_Corridor`, `2.4_ClassroomsCorridor` | 2 + 1 | `F`, `H`, `M` |
+| Halls | `1.2_Corridor`, `2.4_ClassroomsCorridor` | 0 + 1 | `F`, `H`, `M` |
 | Cafeteria | `2.1_Cafeteria` | 3 | `A`, `D`, `M` |
 | Kitchen | `2.3_Kitchen` | 2 | `B`, `E`, `H` |
 | Teachers Lounge | `4.1_TeachersLounge` | 2 | `C`, `H`, `M` |
 | Classroom | `5.1_Classroom` | 2 | `D`, `E`, `A` |
 | Basement | `1.4_BasementDoor` | 1 | `G`, `B`, `F` |
 
-`1.1_SchoolExterior` and `3.1_Backyard` are outdoors: no floor items, and no
-walking encounters.
+`3.1_Backyard` is outdoors: no floor items, and no walking encounters, ever.
+`1.1_SchoolExterior` and `1.2_Corridor` also never hold floor items, but they
+do get walking encounters once the locker tutorial is done and some other room
+has already hosted a fight — so `Halls` is cleared by 2.4's single item.
+Details: `plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`.
+
+Every floor item shows the same animated pentacle marker rather than its own
+picture; the item's name, description and real icon appear on a walk-near card.
 
 Rough shape over a playthrough (unchanged in spirit):
 
@@ -292,7 +298,7 @@ Not player-final. Right-hand ITEMS list:
 - **Unique items** grouped by rarity (rainbow rarity text). Within a rarity group, sort by real item number (`C1`…`C10`, not string `C1,C10,C2`). `L-A` is not listed.
 - Header `ITEMS (n/max)` plus debug **Ignore slot cap** (off by default). Default cap 7, or 9 with Void Satchel.
 - **REROLLS** (paid EXECUTE spins only, not Free Spins remaining): Used SpinBox sets `_spins_used` (C1 / U1 / R1 / E4 / C10). Optional Budget + Limit spins gate. Does not reseed.
-- **GOAL:** Base Target (default 10000) + Progress. Effective = `round(base * (1 + sum of equipped H percents))`. Family H applies on the playtest Base target. `%GoalLabel` stays as display.
+- **GOAL:** Base Target (default 10000) + Progress. Effective = `round(base * (1 + sum of equipped H percents))`. Family H applies on the playtest Base target. `%GoalLabel` stays as display. **Live world fights do not use the 10000 default** — `AxelRun` pushes the ladder rung (3000 / 5000 / 7500 / 10000 / 15000 / 20000 / 30000, then ×1.5 per further fight) through `set_goal_base_target_cents()`, and H percents multiply on top of that. Act fights keep 10000.
 - **Hover description:** runtime `ItemDescOverlay` (not saved in the `.tscn`). Opens **under** the cursor and **under** the hovered row, clipped to the ITEMS panel rectangle (does not cover the name or spill onto the grid). 80% black fill, word wrap, 0.08s fade-in (text swap while open stays instant).
 - **Icons:** Playtest icons are 48×48 PNGs under `combat/art/item_icons/{id}.png`, remapped to the 8-band noir palette. Live catalog is fully mapped in `tools/combat/item_icon_sources.json` (`L-A` unused — skip). Sources are LimeZu singles folders (CLI args only — no machine-absolute paths in gameplay):
   - Interiors: `Theme_Sorter_Singles_48x48` (room subfolders; filenames are a mixed 1…N index, not object types).

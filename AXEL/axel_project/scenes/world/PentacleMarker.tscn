@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/world/pentacle_marker.gd" id="1_script"]
+
+[node name="PentacleMarker" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]
+texture_filter = 1

@@ -258,6 +258,8 @@ Pure-wild runs are valid and pay as wild (wild has explicit x3/x4/x5 pay values)
 
 Initial spin setup still populates a fresh 5x5 via `grid.populate()` at paid-spin start and encounter setup. `GridManager.refill()` remains available for future item hooks but is not called from cascade resolution.
 
+Every `grid.populate()` (paid-spin start, encounter setup, Trinity entry, Free Spins entry) plays the **board swap**: the old symbols leave as rigid per-column tubes falling off the bottom, rightmost column first, then the new board streams in the same way from the top, leftmost column first, each column one row behind its left neighbour. It is visual only — no RNG draws — and takes ~1.9 s (`board_swap_*` exports on `CombatRoot`). At paid-spin start it replaces the old flat `pause_at_spin_start_sec` wait; Free Spins keep that pause because they reuse the entry board. The mid-round cascade never uses it.
+
 Item hooks like `Rotted notebook` may later peek at buffered draws if a separate preview/refill feature is added; cascade resolution itself does not consume the drop queue.
 
 ---
@@ -432,8 +434,8 @@ Ship those before filling out the full table from design doc §6.
 
 ## 10. UI / renderer
 
-- Grid: a `GridContainer` with 25 `TextureRect` children, each bound to a cell. Listen to `grid_populated`, `cells_cleared`, `symbols_fell`, `symbols_spawned` — animate from signal payloads. Keep animations short (≤200ms per step) so cascade chains don't drag.
-- HUD: current goal text + progress, spin budget remaining, current multiplier, stake, active princess portrait, Trinity meter (3 sections).
+- Grid: a `GridContainer` with 25 `TextureRect` children, each bound to a cell. Listen to `grid_populated`, `cells_cleared`, `symbols_fell`, `symbols_spawned` — animate from signal payloads. Keep animations short (≤200ms per step) so cascade chains don't drag. **One exception:** the ~1.9 s board swap on `grid_populated` (§5). It happens once per fresh board, never inside a cascade chain.
+- HUD: current goal text + progress, spin budget remaining, current multiplier, stake, Trinity meter (3 sections). The acting princess is named by the center power-intro flash, not by a portrait — the old dim corner icon row was removed.
 - Free Spins HUD: chosen princess, spins remaining, carry multiplier, total-spin-cap progress.
 - **Feel FX to ship early:** CRT scanline shader overlay (carry from prototype), glitch flash on big multipliers, screen shake scaled to multiplier value. Audio: muffled stab on princess trigger, a quiet tone on grid clear. Big wins should feel *wrong* — see design doc §7.
 

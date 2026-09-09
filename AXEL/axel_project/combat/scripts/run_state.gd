@@ -26,7 +26,18 @@ extends Resource
 @export var world_return_tex_x: float = 0.0
 @export var world_return_tex_y: float = 0.0
 @export var world_return_tex_valid: bool = false
+## Cycles 0..2 to pick the encounter .tres and shuffle the seed.
 @export var world_encounter_index: int = 0
+## Monotonic count of world fights started. Drives the goal ladder, so it must
+## never wrap the way `world_encounter_index` does.
+@export var world_fight_count: int = 0
+## Locker tutorial: owed once the locker has been opened, spent when the player
+## leaves the hub on their own and lands in the corridor.
+@export var tutorial_fight_pending: bool = false
+@export var tutorial_fight_done: bool = false
+## Rooms that have already hosted a fight (never 1.1 / 1.2). Walk fights in
+## 1.1 and 1.2 stay locked until the tutorial is done and this is non-empty.
+@export var fought_rooms: PackedStringArray = PackedStringArray()
 
 
 func to_dict() -> Dictionary:
@@ -53,6 +64,10 @@ func to_dict() -> Dictionary:
 		"world_return_tex_y": world_return_tex_y,
 		"world_return_tex_valid": world_return_tex_valid,
 		"world_encounter_index": world_encounter_index,
+		"world_fight_count": world_fight_count,
+		"tutorial_fight_pending": tutorial_fight_pending,
+		"tutorial_fight_done": tutorial_fight_done,
+		"fought_rooms": Array(fought_rooms),
 	}
 
 
@@ -82,4 +97,8 @@ static func from_dict(data: Dictionary) -> RunState:
 	state.world_return_tex_y = float(data.get("world_return_tex_y", 0.0))
 	state.world_return_tex_valid = bool(data.get("world_return_tex_valid", false))
 	state.world_encounter_index = maxi(int(data.get("world_encounter_index", 0)), 0)
+	state.world_fight_count = maxi(int(data.get("world_fight_count", 0)), 0)
+	state.tutorial_fight_pending = bool(data.get("tutorial_fight_pending", false))
+	state.tutorial_fight_done = bool(data.get("tutorial_fight_done", false))
+	state.fought_rooms = PackedStringArray(data.get("fought_rooms", []))
 	return state

@@ -812,7 +812,6 @@ layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="@PanelContainer@21364" type="PanelContainer" parent="HudCanvas/PlayArea/PlayRow/HistoryPanel/@VBoxContainer@21363" unique_id=1967885035]
-visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_pmmvo")
 
@@ -847,7 +846,6 @@ offset_bottom = 1922.0002
 mouse_filter = 2
 
 [node name="WinningsCenter" type="CenterContainer" parent="HudCanvas/PlayArea/PlayRow/CenterColumn" unique_id=737807599]
-visible = false
 layout_mode = 0
 offset_left = 62.00026
 offset_top = 2119.625
@@ -926,7 +924,6 @@ layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="@PanelContainer@21370" type="PanelContainer" parent="HudCanvas/PlayArea/PlayRow/ItemPickerPanel/@VBoxContainer@21369" unique_id=632672414]
-visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_pmmvo")
 
@@ -969,7 +966,6 @@ theme_override_font_sizes/font_size = 23
 text = "✦ Void Satchel"
 
 [node name="EconomicsCenter" type="CenterContainer" parent="HudCanvas" unique_id=1076663173]
-visible = false
 z_index = 20
 layout_mode = 0
 offset_left = 1262.88
@@ -1037,7 +1033,6 @@ text = "+"
 
 [node name="GoalBox" type="PanelContainer" parent="HudCanvas" unique_id=131385751]
 unique_name_in_owner = true
-visible = false
 z_index = 20
 layout_mode = 0
 offset_left = 2736.24
@@ -1292,7 +1287,6 @@ script = ExtResource("4_meter")
 
 [node name="BudgetLabel" type="Label" parent="." unique_id=11483691]
 unique_name_in_owner = true
-visible = false
 z_index = 20
 layout_mode = 1
 anchors_preset = 12
@@ -1350,7 +1344,6 @@ mouse_filter = 2
 unique_name_in_owner = true
 
 [node name="PremiumProgressBar" type="ProgressBar" parent="WidgetLayer/WidgetRoot/GridHost" unique_id=1152686182]
-visible = false
 z_index = 6
 layout_mode = 0
 offset_left = 62.00006

@@ -42,6 +42,17 @@ signal sfx_requested(cue: StringName)
 @export var fx_stagger_sec: float = 0.01
 ## Left-to-right column land delay (D14). Full 5-col grid ≈ 1.32 s plus drop time.
 @export var cascade_column_step_sec: float = 0.33
+@export_group("Board swap FX (populate only)")
+## Time one cell of travel takes while the old board falls off the bottom.
+@export var board_swap_fall_cell_sec: float = 0.08
+## Per-column head start while leaving. Rightmost column goes first; matching this to
+## `board_swap_fall_cell_sec` keeps each column exactly one cell behind its neighbour.
+@export var board_swap_fall_column_step_sec: float = 0.08
+## Time one cell of travel takes while the new board streams in. Column `c` starts
+## `c` cells higher, so column 0 lands first and each column trails it by one cell.
+@export var board_swap_fill_cell_sec: float = 0.13
+## Extra rows of travel past the bottom edge so the last symbol is fully gone.
+@export var board_swap_fall_overshoot_cells: float = 0.5
 @export_group("Transition FX")
 ## Master toggle for premium-meter-full and free-spin entry animations.
 @export var enable_transition_fx: bool = true
@@ -150,6 +161,12 @@ var _encounter_goal_winnings_cents: int = 0
 var _encounter_goal_base_target_cents: int = CHIP_BAR_FULL_CENTS * CHIP_BAR_GOAL_MULTIPLE
 ## Extra goal percent from lore items. Passed in by AxelRun — combat never reads story flags.
 var _lore_goal_bonus: float = 0.0
+## Chance that an unmet goal is topped up instead of losing, rolled once on the
+## spin that would otherwise end the encounter. Zero for every normal fight, so
+## no RNG draw happens and existing seeds replay bit for bit. Only the locker
+## tutorial passes a value (AXEL_notes 8.3 carve-out).
+var _final_spin_goal_assist: float = 0.0
+var _final_spin_assist_rolled: bool = false
 var _playtest_spin_budget: int = 8
 var _playtest_limit_spins: bool = false
 var _item_fx := ItemEffectDispatcherScript.new()
@@ -164,6 +181,8 @@ var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
 var _power_intro_fallback_label: Label
 var _suppress_grid_populated_fx: bool = false
+var _board_swap_fx_active: bool = false
+var _board_swap_fx_gen: int = 0
 var _cached_multiplier_emit_value: int = -1
 var _winnings_popup_target: Control = null
 var _feel: Node
@@ -345,6 +364,12 @@ func set_goal_base_target_cents(n: int) -> void:
 	_encounter_goal_base_target_cents = maxi(n, 1)
 	_on_loadout_or_goal_changed()
 
+func set_final_spin_goal_assist(p: float) -> void:
+	_final_spin_goal_assist = clampf(p, 0.0, 1.0)
+
+func get_final_spin_goal_assist() -> float:
+	return _final_spin_goal_assist
+
 func set_goal_progress_cents(n: int) -> void:
 	_encounter_goal_winnings_cents = maxi(n, 0)
 	_on_loadout_or_goal_changed()
@@ -497,6 +522,7 @@ func setup_new_grid(seed_value: int) -> void:
 	_awaiting_free_spin_choice = false
 	_round_winnings_cents = 0
 	_encounter_goal_winnings_cents = 0
+	_final_spin_assist_rolled = false
 	_last_spin_summary = _empty_spin_summary()
 	_bankroll_cents = STARTING_BANKROLL_CENTS
 	_clamp_bankroll()
@@ -542,7 +568,12 @@ func spin() -> void:
 		multiplier.reset()
 	_refresh_multiplier_label()
 	emit_signal("readouts_progressed")
-	await _pause_visual(pause_at_spin_start_sec)
+	## Paid spins repopulate, so the board swap replaces the flat read pause. Free Spins
+	## reuse the entry board and keep the pause so the grid still reads before resolving.
+	if _board_swap_fx_active:
+		await _await_board_swap_fx()
+	else:
+		await _pause_visual(pause_at_spin_start_sec)
 	var spin_summary := _empty_spin_summary()
 	await _try_regular_spin_start_girl_power_async(spin_summary)
 	var main_summary := await _play_one_spin_async()
@@ -763,6 +794,7 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	_awaiting_free_spin_choice = false
 	_round_winnings_cents = 0
 	_encounter_goal_winnings_cents = 0
+	_final_spin_assist_rolled = false
 	_bankroll_cents = preserved_bankroll
 	_clamp_bankroll()
 	_item_fx.reset_encounter()
@@ -1052,7 +1084,7 @@ func _on_grid_populated() -> void:
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 		return
-	_play_initial_grid_drop_fx()
+	_play_board_swap_fx()
 
 func _on_cells_cleared(_coords: Array) -> void:
 	pass
@@ -1226,33 +1258,89 @@ func _cell_size_px() -> float:
 		return slot.custom_minimum_size.y
 	return 32.0
 
-func _play_initial_grid_drop_fx() -> void:
+## Distance between two stacked cells: cell height plus the GridContainer separation.
+## Board-swap travel is measured in pitch, so "one column behind" lands exactly one row.
+func _row_pitch_px() -> float:
+	return _cell_size_px() + float(grid_ui.get_theme_constant("v_separation"))
+
+## Board swap for a fresh `populate()` (paid spin, Trinity entry, Free Spins entry).
+## The old symbols fall off the bottom; once the board is empty the new 5x5 streams in
+## as rigid per-column tubes. Purely visual and fully deterministic — no RNG draws.
+## Never used for the mid-round cascade, which stays gravity-only.
+func _play_board_swap_fx() -> void:
 	if _dev_skip_visuals:
 		_refresh_cells_visual()
 		return
+	_board_swap_fx_gen += 1
+	var gen := _board_swap_fx_gen
+	_board_swap_fx_active = true
 	await _ensure_slot_positions()
-	var max_delay := 0.0
+	if gen != _board_swap_fx_gen:
+		return
+	## Tubes travel outside the board rect; clip so they are hidden until they arrive.
+	## Only the newest run clears this again, so a restarted swap cannot leave it on.
+	grid_ui.clip_contents = true
+	var pitch := _row_pitch_px()
+	await _play_board_fall_off_fx(pitch)
+	if gen == _board_swap_fx_gen:
+		await _play_board_stream_in_fx(pitch)
+	if gen != _board_swap_fx_gen:
+		return
+	grid_ui.clip_contents = false
+	sfx_requested.emit(&"land")
+	_refresh_cells_visual()
+	_board_swap_fx_active = false
+
+## Phase 1: every column drops off the bottom as one tube, rightmost column first.
+func _play_board_fall_off_fx(pitch: float) -> void:
+	var travel_rows := float(GridManager.ROWS) + maxf(board_swap_fall_overshoot_cells, 0.0)
+	var duration: float = maxf(travel_rows * board_swap_fall_cell_sec, 0.01)
+	var max_total := 0.0
 	for r in GridManager.ROWS:
 		for c in GridManager.COLS:
+			var slot := _get_slot(Vector2i(c, r))
+			if slot == null or not slot.has_method("play_fall_off"):
+				continue
+			if slot.has_method("has_visible_symbol") and not bool(slot.call("has_visible_symbol")):
+				continue
+			var delay := float(GridManager.COLS - 1 - c) * board_swap_fall_column_step_sec
+			max_total = maxf(max_total, delay + duration)
+			slot.call("play_fall_off", pitch * travel_rows, duration, delay)
+	if max_total <= 0.0:
+		return
+	await get_tree().create_timer(max_total).timeout
+
+## Phase 2: column `c` starts `ROWS + c` cells above its cells and slides down at a
+## shared speed, so column 0 lands first and each column trails it by exactly one row.
+func _play_board_stream_in_fx(pitch: float) -> void:
+	var max_total := 0.0
+	for c in GridManager.COLS:
+		var travel_rows := float(GridManager.ROWS + c)
+		var distance := pitch * travel_rows
+		var duration: float = maxf(travel_rows * board_swap_fill_cell_sec, 0.01)
+		max_total = maxf(max_total, duration)
+		for r in GridManager.ROWS:
 			var coord := Vector2i(c, r)
 			var slot := _get_slot(coord)
 			if slot == null:
 				continue
-			var sym: SymbolDef = grid.cells[r][c]
 			if slot.has_method("cancel_active_fx"):
 				slot.call("cancel_active_fx")
 			if slot.has_method("set_symbol"):
-				slot.call("set_symbol", sym)
-			var to_pos := _slot_target_position(coord)
-			var lift_cells := 0.5 + rng.randf() * 0.5
-			var from_pos := to_pos - Vector2(0.0, _cell_size_px() * lift_cells)
-			var delay := float(c) * cascade_column_step_sec
-			max_delay = max(max_delay, delay)
-			if slot.has_method("play_drop"):
-				slot.call("play_drop", from_pos, to_pos, drop_duration_sec, delay)
-	await get_tree().create_timer(max_delay + drop_duration_sec).timeout
-	sfx_requested.emit(&"land")
-	_refresh_cells_visual()
+				slot.call("set_symbol", grid.cells[r][c] as SymbolDef)
+			if slot.has_method("play_tube_in"):
+				slot.call("play_tube_in", distance, duration)
+	if max_total <= 0.0:
+		return
+	await get_tree().create_timer(max_total).timeout
+
+## Paid spins fire the swap from the `grid_populated` signal, which cannot be awaited.
+func _await_board_swap_fx() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	while _board_swap_fx_active and not _dev_skip_visuals:
+		await tree.process_frame
 
 func _notify_free_spins_entry() -> void:
 	sfx_requested.emit(&"free_spins")
@@ -1431,12 +1519,16 @@ func _begin_spin_round() -> void:
 	_start_spin_with_new_grid()
 
 ## Fresh 5x5 at feature handoff; continues encounter RNG stream (no reseed).
+## Callers here are not coroutines (Free Spins entry, sync Trinity), so the swap runs
+## unawaited — it still ends with the new board settled.
 func _repopulate_grid_handoff(handoff: String) -> void:
 	_suppress_grid_populated_fx = true
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	_suppress_grid_populated_fx = false
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
+		return
+	_play_board_swap_fx()
 
 func _repopulate_grid_handoff_async(handoff: String) -> void:
 	_suppress_grid_populated_fx = true
@@ -1445,7 +1537,7 @@ func _repopulate_grid_handoff_async(handoff: String) -> void:
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 		return
-	await _play_initial_grid_drop_fx()
+	await _play_board_swap_fx()
 
 func _can_afford_spin() -> bool:
 	return _bankroll_cents >= _to_cents(total_bet)
@@ -2042,11 +2134,28 @@ func _finalize_encounter_if_needed() -> void:
 		end_encounter(true)
 		return
 	if not free_spins.active and not _can_afford_spin():
-		end_encounter(false)
+		end_encounter(_try_final_spin_goal_assist())
 		return
 	if _playtest_limit_spins and not free_spins.active and not _in_trinity_round:
 		if _playtest_spin_budget > 0 and _spins_used >= _playtest_spin_budget:
-			end_encounter(false)
+			end_encounter(_try_final_spin_goal_assist())
+
+
+## Last-spin nudge for the locker tutorial only. Rolls once per encounter, and
+## only when a probability was handed in, so a normal fight never touches the
+## RNG here and stays byte-identical under the same seed. The draw lands after
+## every spin draw, so it cannot shift the reels either.
+func _try_final_spin_goal_assist() -> bool:
+	if _final_spin_goal_assist <= 0.0 or _final_spin_assist_rolled:
+		return false
+	_final_spin_assist_rolled = true
+	if rng.randf() >= _final_spin_goal_assist:
+		return false
+	var shortfall := get_chip_bar_goal_target_cents() - _encounter_goal_winnings_cents
+	if shortfall > 0:
+		_encounter_goal_winnings_cents += shortfall
+		emit_signal("readouts_progressed")
+	return true
 
 
 func _init_playtest_budget_from_encounter() -> void:

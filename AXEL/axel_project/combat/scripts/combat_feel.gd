@@ -3,9 +3,6 @@ extends Node
 ## Visual-only combat juice (Phase 3). Never touches CombatRNG.
 
 const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
-const ICON_LOVE := preload("res://combat/art/grid_symbols/bloody_hand.png")
-const ICON_STAR := preload("res://combat/art/grid_symbols/blue_star.png")
-const ICON_STORM := preload("res://combat/art/grid_symbols/cigarette.png")
 
 var _root: Node2D
 var _grid_ui: Control
@@ -15,8 +12,6 @@ var _banner_scrim: ColorRect
 var _grime: ColorRect
 var _win_line_host: Control
 var _grime_band: ColorRect
-var _hud: HBoxContainer
-var _hud_icons: Dictionary = {}
 var _banner_tween: Tween
 var _shake_tween: Tween
 var _wobble_tween: Tween
@@ -76,20 +71,6 @@ func _build() -> void:
 	_banner.modulate.a = 0.0
 	_banner.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(_banner)
-	_hud = HBoxContainer.new()
-	_hud.name = "FeelPrincessHud"
-	_hud.position = Vector2(24, 24)
-	_hud.add_theme_constant_override("separation", 8)
-	layer.add_child(_hud)
-	for pair in [["love", ICON_LOVE], ["star", ICON_STAR], ["storm", ICON_STORM]]:
-		var icon := TextureRect.new()
-		icon.texture = pair[1]
-		icon.custom_minimum_size = Vector2(48, 48)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.modulate = Color(0.35, 0.35, 0.35, 0.7)
-		_hud.add_child(icon)
-		_hud_icons[StringName(pair[0])] = icon
 
 
 func set_goal_progress(ratio: float) -> void:
@@ -110,12 +91,10 @@ func set_goal_progress(ratio: float) -> void:
 		_grime_band.color.a = t * 0.45
 
 
-func highlight_princess(id_name: StringName) -> void:
-	for key in _hud_icons.keys():
-		var icon: TextureRect = _hud_icons[key]
-		var on: bool = key == id_name
-		icon.modulate = Color(1, 1, 1, 1) if on else Color(0.35, 0.35, 0.35, 0.7)
-		icon.scale = Vector2(1.15, 1.15) if on else Vector2.ONE
+## No-op. The dim corner icon row is gone; the center PowerIntroIcon already shows
+## which princess is acting. Kept so Trinity call sites stay valid.
+func highlight_princess(_id_name: StringName) -> void:
+	pass
 
 
 func show_win_lines(point_sets: Array) -> void:
