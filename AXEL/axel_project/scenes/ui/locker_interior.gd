@@ -146,7 +146,6 @@ func _make_item_button(item: Resource, equipped: PackedStringArray) -> Button:
 	button.custom_minimum_size = Vector2(ICON_PX + 16, ICON_PX + 28)
 	button.toggle_mode = true
 	button.button_pressed = equipped.has(item_id)
-	button.tooltip_text = String(item.get("description"))
 	var icon := item.get("icon") as Texture2D
 	if icon != null:
 		button.icon = icon

@@ -58,12 +58,18 @@ const HISTORY_BODY_FONT_SCALE := 3.0
 const HISTORY_FIT_SAMPLE := "1000 x 12.5 x 20"
 const ITEMS_BODY_FONT_SCALE := 1.78
 const ITEMS_BODY_FONT_MIN := int(round(20.0 * COMBAT_TEXT_SCALE))
-## Hover description keeps its old size — it is drawn unscaled, not inside the HudCanvas.
+## Authored hover size (HudCanvas pixels). The card itself is unscaled, so live
+## font size is this fit × HudCanvas scale — the on-screen size from before the layer move.
 const ITEM_DESC_BODY_FONT_SCALE := 1.25
 const SIDE_PANEL_HINT_FONT := int(round(14.0 * COMBAT_TEXT_SCALE))
+## REROLLS / FAMILIES / rarity titles: at least 2× the old 28 px hint size.
+const SIDE_PANEL_CHROME_FONT_MIN := SIDE_PANEL_HINT_FONT * 2
 const ITEM_PICKER_ROW_H_SEP := 4
 const ITEM_PICKER_CHECKBOX_ICON_MAX := int(round(18.0 * COMBAT_TEXT_SCALE))
+## Playtest Ignore/Limit check squares: at least 2× the old 36 px cap.
+const ITEM_PICKER_PLAYTEST_CHECK_MIN := ITEM_PICKER_CHECKBOX_ICON_MAX * 2
 const ITEM_PICKER_CHECKBOX_COL_W := int(round(22.0 * COMBAT_TEXT_SCALE))
+const ITEM_PICKER_SPIN_MIN_W := 176
 const ITEM_ICON_DRAW_SIZE := int(round(36.0 * COMBAT_TEXT_SCALE))
 const ITEM_RANK_BTN_W := int(round(88.0 * COMBAT_TEXT_SCALE))
 const ITEM_RANK_BTN_TEXT_PAD := 8.0
@@ -99,6 +105,8 @@ const HUD_WHITE_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
 const HUD_WHITE_TEXT_SHADOW_COLOR := Color(0.22, 0.22, 0.22, 0.72)
 const HUD_WHITE_TEXT_SHADOW_OFFSET_Y := 1
 const SETTINGS_PANEL_SCENE := preload("res://combat/scenes/combat_settings_panel.tscn")
+const TERMINAL_THEME := preload("res://combat/ui/terminal_theme.tres")
+const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const BET_STRIP_TWEEN_SEC := 0.15
 const GOAL_READOUT_FONT := COMBAT_HUD_MAJOR_FONT
 const GOAL_READOUT_FONT_NARROW := COMBAT_HUD_MAJOR_FONT_NARROW
@@ -191,6 +199,7 @@ var _goal_base_spin: SpinBox
 var _goal_progress_spin: SpinBox
 var _goal_effective_label: Label
 var _playtest_tuning: VBoxContainer
+var _playtest_check_icons: Dictionary = {}
 var _stake_pill: PanelContainer
 var _economics_center: CenterContainer
 var _economics_stack: VBoxContainer
@@ -1360,11 +1369,22 @@ func _apply_item_picker_body_typography() -> void:
 			continue
 		if label.text == "No items available":
 			label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+			continue
+		if bool(label.get_meta("item_chrome_label", false)) or _is_item_chrome_label(label):
+			_style_item_chrome_label(label)
+	var chrome_font := _resolved_items_chrome_font()
+	for child in _item_picker_panel.find_children("*", "SpinBox", true, false):
+		var spin := child as SpinBox
+		if spin == null:
+			continue
+		if spin.name == "RerollUsedSpin" or spin.name == "RerollBudgetSpin":
+			_style_playtest_spin(spin, chrome_font)
 	var rank_font := _resolved_item_rank_font()
 	for child in _item_picker_panel.find_children("*", "Button", true, false):
 		var btn := child as Button
 		if btn == null or not bool(btn.get_meta("item_rank_button", false)):
 			continue
+		btn.add_theme_font_override("font", VT323_FONT)
 		btn.add_theme_font_size_override("font_size", rank_font)
 	for child in _item_picker_panel.find_children("*", "TextureRect", true, false):
 		var icon := child as TextureRect
@@ -1375,13 +1395,137 @@ func _apply_item_picker_body_typography() -> void:
 func _style_item_picker_checkbox(cb: CheckBox, body_font: int = -1) -> void:
 	if cb == null:
 		return
-	if body_font < 0:
-		body_font = _resolved_items_body_font()
-	cb.add_theme_font_size_override("font_size", body_font)
+	var font_size := _resolved_items_chrome_font()
+	if body_font >= 0:
+		font_size = maxi(font_size, body_font)
+	cb.add_theme_font_override("font", VT323_FONT)
+	cb.add_theme_font_size_override("font_size", font_size)
 	cb.add_theme_constant_override("h_separation", ITEM_PICKER_ROW_H_SEP)
-	cb.add_theme_constant_override("icon_max_width", ITEM_PICKER_CHECKBOX_ICON_MAX)
+	var icon_px := maxi(font_size, ITEM_PICKER_PLAYTEST_CHECK_MIN)
+	cb.add_theme_constant_override("icon_max_width", icon_px)
+	_apply_playtest_checkbox_icons(cb, icon_px)
 	cb.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+func _resolved_items_chrome_font() -> int:
+	return maxi(_resolved_items_body_font(), SIDE_PANEL_CHROME_FONT_MIN)
+
+
+func _is_item_chrome_label(label: Label) -> bool:
+	if label == null or label.name == "RerollHint":
+		return false
+	var t := label.text.strip_edges()
+	if t == "FAMILIES" or t == "REROLLS" or t == "Used" or t == "Budget":
+		return true
+	return t in RARITY_NAMES
+
+
+func _style_item_chrome_label(lab: Label) -> void:
+	if lab == null:
+		return
+	lab.set_meta("item_chrome_label", true)
+	lab.add_theme_font_override("font", VT323_FONT)
+	lab.add_theme_font_size_override("font_size", _resolved_items_chrome_font())
+
+
+func _style_playtest_spin(spin: SpinBox, chrome: int = -1) -> void:
+	if spin == null:
+		return
+	if chrome < 0:
+		chrome = _resolved_items_chrome_font()
+	spin.add_theme_font_override("font", VT323_FONT)
+	spin.add_theme_font_size_override("font_size", chrome)
+	spin.custom_minimum_size.x = float(ITEM_PICKER_SPIN_MIN_W)
+	var line := spin.get_line_edit()
+	if line != null:
+		line.add_theme_font_override("font", VT323_FONT)
+		line.add_theme_font_size_override("font_size", chrome)
+
+
+func _apply_playtest_checkbox_icons(cb: CheckBox, px: int) -> void:
+	if cb == null:
+		return
+	var on := _playtest_checkbox_icon(true, px)
+	var off := _playtest_checkbox_icon(false, px)
+	cb.add_theme_icon_override("checked", on)
+	cb.add_theme_icon_override("unchecked", off)
+	cb.add_theme_icon_override("checked_disabled", on)
+	cb.add_theme_icon_override("unchecked_disabled", off)
+	cb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
+func _playtest_checkbox_icon(checked: bool, px: int) -> Texture2D:
+	px = maxi(px, 8)
+	var key := "%d_%s" % [px, "1" if checked else "0"]
+	if _playtest_check_icons.has(key):
+		return _playtest_check_icons[key]
+	var tex := _make_playtest_checkbox_texture(checked, px)
+	_playtest_check_icons[key] = tex
+	return tex
+
+
+func _make_playtest_checkbox_texture(checked: bool, px: int) -> Texture2D:
+	var img := Image.create(px, px, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.0, 0.0, 0.0, 1.0))
+	var ink := READOUT_ACCENT_COLOR
+	var border := maxi(int(round(float(px) / 16.0)), 2)
+	for y in px:
+		for x in px:
+			if x < border or y < border or x >= px - border or y >= px - border:
+				img.set_pixel(x, y, ink)
+	if checked:
+		var w := maxi(border + 1, int(round(float(px) * 0.12)))
+		_draw_thick_line(
+			img,
+			Vector2i(int(px * 0.22), int(px * 0.52)),
+			Vector2i(int(px * 0.42), int(px * 0.78)),
+			ink,
+			w,
+		)
+		_draw_thick_line(
+			img,
+			Vector2i(int(px * 0.42), int(px * 0.78)),
+			Vector2i(int(px * 0.80), int(px * 0.24)),
+			ink,
+			w,
+		)
+	return ImageTexture.create_from_image(img)
+
+
+func _draw_thick_line(img: Image, a: Vector2i, b: Vector2i, color: Color, thickness: int) -> void:
+	var x0 := a.x
+	var y0 := a.y
+	var x1 := b.x
+	var y1 := b.y
+	var dx := absi(x1 - x0)
+	var dy := -absi(y1 - y0)
+	var sx := 1 if x0 < x1 else -1
+	var sy := 1 if y0 < y1 else -1
+	var err := dx + dy
+	var r := maxi(int(round(float(thickness) * 0.5)), 1)
+	while true:
+		_stamp_px(img, x0, y0, color, r)
+		if x0 == x1 and y0 == y1:
+			break
+		var e2 := err * 2
+		if e2 >= dy:
+			err += dy
+			x0 += sx
+		if e2 <= dx:
+			err += dx
+			y0 += sy
+
+
+func _stamp_px(img: Image, x: int, y: int, color: Color, radius: int) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	for dy in range(-radius, radius + 1):
+		for dx in range(-radius, radius + 1):
+			var px := x + dx
+			var py := y + dy
+			if px >= 0 and py >= 0 and px < w and py < h:
+				img.set_pixel(px, py, color)
 
 
 func _style_item_row_checkbox(cb: CheckBox, body_font: int = -1) -> void:
@@ -2366,14 +2510,22 @@ func _resolved_item_rank_font() -> int:
 			return font_size
 	return SIDE_PANEL_HINT_FONT
 
+func _hud_art_scale() -> float:
+	var canvas := _hud_canvas_node()
+	if canvas == null:
+		return 1.0
+	return maxf(canvas.scale.x, 0.01)
+
+
 func _resolved_item_desc_font() -> int:
 	var inner_w := _side_panel_inner_width(_item_picker_panel)
-	return _fit_body_font_size(
+	var authored := _fit_body_font_size(
 		"◈ Void Satchel",
 		ITEM_DESC_BODY_FONT_SCALE,
 		inner_w - float(ITEM_PICKER_CHECKBOX_ICON_MAX + ITEM_PICKER_ROW_H_SEP),
 		_item_row_body_font(),
 	)
+	return maxi(1, int(round(float(authored) * _hud_art_scale())))
 
 func _history_mini_icon_size_for_font(body_font: int) -> int:
 	return maxi(
@@ -2641,6 +2793,7 @@ func _ensure_item_desc_layer() -> CanvasLayer:
 
 func _ensure_item_desc_overlay() -> void:
 	if _item_desc_panel != null and is_instance_valid(_item_desc_panel):
+		_apply_item_desc_typography()
 		_ensure_item_desc_scroll_hook()
 		return
 	_item_desc_clip = Control.new()
@@ -2664,10 +2817,19 @@ func _ensure_item_desc_overlay() -> void:
 	_item_desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_item_desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_item_desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_apply_white_hud_text_style(_item_desc_label)
 	_item_desc_panel.add_child(_item_desc_label)
 	_item_desc_clip.add_child(_item_desc_panel)
+	_apply_item_desc_typography()
 	_ensure_item_desc_scroll_hook()
+
+
+func _apply_item_desc_typography() -> void:
+	if _item_desc_clip != null:
+		_item_desc_clip.theme = TERMINAL_THEME
+	if _item_desc_label == null:
+		return
+	_item_desc_label.add_theme_font_override("font", VT323_FONT)
+	_apply_white_hud_text_style(_item_desc_label)
 
 
 func _ensure_item_desc_scroll_hook() -> void:
@@ -2926,8 +3088,8 @@ func _hide_playtest_goal_controls(tuning: VBoxContainer) -> void:
 func _make_playtest_label(text: String) -> Label:
 	var lab := Label.new()
 	lab.text = text
-	lab.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 	lab.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+	_style_item_chrome_label(lab)
 	return lab
 
 
@@ -2935,15 +3097,15 @@ func _make_spin_row(label_text: String, min_v: int, max_v: int, spin_name: Strin
 	var row := HBoxContainer.new()
 	var lab := Label.new()
 	lab.text = label_text
-	lab.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 	lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_style_item_chrome_label(lab)
 	row.add_child(lab)
 	var spin := SpinBox.new()
 	spin.name = spin_name
 	spin.min_value = min_v
 	spin.max_value = max_v
 	spin.step = 1
-	spin.custom_minimum_size.x = 88
+	_style_playtest_spin(spin)
 	row.add_child(spin)
 	return row
 
@@ -2981,8 +3143,8 @@ func _rebuild_item_picker_contents() -> void:
 	]
 	var fam_header := Label.new()
 	fam_header.text = "FAMILIES"
-	fam_header.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 	fam_header.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+	_style_item_chrome_label(fam_header)
 	items_vbox.add_child(fam_header)
 	for fam in family_defs:
 		var letter: String = str(fam["letter"])
@@ -3005,8 +3167,8 @@ func _rebuild_item_picker_contents() -> void:
 		group.sort_custom(func(a, b): return _item_id_sort_key(String(a.id)) < _item_id_sort_key(String(b.id)))
 		var rh := Label.new()
 		rh.text = RARITY_NAMES[rarity_idx]
-		rh.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 		rh.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
+		_style_item_chrome_label(rh)
 		items_vbox.add_child(rh)
 		for item in group:
 			items_vbox.add_child(_make_unique_row(item))
@@ -3031,6 +3193,7 @@ func _family_item_at_rank(by_id: Dictionary, letter: String, rank: int) -> Resou
 ## makes it trim rather than push the row past the panel if a name is ever too long.
 func _mark_item_row_name(name_lab: Label, kind: StringName) -> void:
 	name_lab.set_meta("item_row_name", true)
+	name_lab.add_theme_font_override("font", VT323_FONT)
 	name_lab.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_lab.clip_text = true
 	name_lab.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -3078,6 +3241,7 @@ func _make_family_row(letter: String, family_name: String, item: Resource, rank:
 	rank_btn.custom_minimum_size.x = ITEM_RANK_BTN_W
 	rank_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	rank_btn.set_meta("item_rank_button", true)
+	rank_btn.add_theme_font_override("font", VT323_FONT)
 	rank_btn.add_theme_font_size_override("font_size", _resolved_item_rank_font())
 	rank_btn.pressed.connect(_on_family_rank_pressed.bind(letter))
 	row.add_child(rank_btn)

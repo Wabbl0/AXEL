@@ -47,6 +47,26 @@ func _main() -> void:
 	if settings == null:
 		failures.append("AxelSettings autoload not found")
 	else:
+		if master_idx >= 0:
+			var original_mute := AudioServer.is_bus_mute(master_idx)
+			AudioServer.set_bus_mute(master_idx, true)
+			settings._bus_volumes_applied = false
+			settings._apply_bus_volumes()
+			if not AudioServer.is_bus_mute(master_idx):
+				failures.append("AxelSettings volume apply unmuted Master (Audio panel work-mute must stick on boot)")
+			# Options slider must still mute/unmute after boot, even if the
+			# layout started muted (restore that mute when the slider test ends).
+			var original_master: float = settings.master_volume()
+			if original_master > 0.001:
+				AudioServer.set_bus_mute(master_idx, false)
+				settings._bus_volumes_applied = true
+				settings.set_value("audio", "master_volume", 0.0)
+				if not AudioServer.is_bus_mute(master_idx):
+					failures.append("master_volume=0 should mute Master")
+				settings.set_value("audio", "master_volume", original_master)
+				if AudioServer.is_bus_mute(master_idx):
+					failures.append("master_volume>0 should unmute Master after an Options change")
+			AudioServer.set_bus_mute(master_idx, original_mute)
 		var effects_idx := AudioServer.get_bus_index("Effects")
 		if effects_idx >= 0:
 			var original: float = settings.get_value("audio", "effects_volume")

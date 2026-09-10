@@ -6349,3 +6349,17 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Fall-off `0.76 s` + stream-in `1.17 s` = `1.93 s` per fresh board, replacing the old `1.275 s` flat pause, so a paid spin starts ~`0.66 s` later. Mid-round cascade is untouched: `_on_cells_cleared` is still empty, `refill()` is still uncalled, nothing spawns from the top during a round. Item rows land at `72 px` icons + `57 px` text (up from `48`/`45`), so the list scrolls further. No faded icons anywhere.
 - Verification: All eight headless gates exit 0 (determinism 100 spins seed 12345, princess, combat scaffold, scene smoke 21 scenes, RTP audit, audio bus, settings persistence, pause contract). Windowed captures at 1920x1280 and 3840x2560 confirmed the readouts and that no item row overflows its host. A scripted spin logged the live icon offsets: fall-off staggered right-to-left, then all five slots of a column sharing one offset with exactly `408 px` (one row pitch) between neighbouring columns, reaching zero by `2.0 s`, with `GridUI.clip_contents` back to `false` and all 25 slots holding a texture at rest.
 - Notes: **RNG stream shift (accepted).** The old drop FX drew `rng.randf()` per cell for a random lift height; the new animation has no randomness and draws nothing, so a given seed no longer reproduces the boards it produced before this change. Same-seed replay inside the new build is still exact, which is why `determinism_check.gd` still passes. `AXEL_combat_implementation.md` §10 now records the swap as the one documented exception to the "≤200 ms per step" animation guideline, and drops "active princess portrait" from the HUD list. Item-list changes only show on the F6 test path and wherever the picker appears - `combat_run.gd` hides `NEW_Items` for world encounters. Rollback: the four `board_swap_*` exports are the whole timing surface; restoring the flat `pause_at_spin_start_sec` wait reverts spin pacing without touching the HUD work.
+
+## 2026-09-10
+
+### ITEMS playtest type sizes + VT323 on item text
+
+- Request: Make Ignore slot cap / Limit spins check squares at least 200% larger so they match the text; grow REROLLS, Used, Budget, FAMILIES, and rarity titles the same way; restore the item hover description to its size from before the HUD-layer move; use VT323 for all item text in combat and the overworld (size may differ).
+- Implementation: Playtest checkboxes now use drawn red-on-black check textures at `max(font, 72)` because Godot `icon_max_width` cannot enlarge the default icon. REROLLS / Used / Budget / FAMILIES / rarity headers and the Used/Budget spin boxes share a chrome size of at least 56 (2× the old 28). The hover card applies VT323 and multiplies its fitted font by HudCanvas scale so it reads at the old on-screen size. Locker buttons no longer set a native tooltip (hover line already shows the description in VT323).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/scenes/ui/locker_interior.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 ITEMS chrome is much larger. Hover descriptions are smaller and in VT323. World fights still hide the picker. Floor cards were already VT323.
+- Verification: determinism (OK, 100 spins seed 12345), princess, combat scaffold, scene smoke (21 scenes) — all exit 0.
+- Notes: World item card sizes (name 26 / desc 20) were left unchanged. Family/unique row checkboxes stay at the old column width so names still fit.

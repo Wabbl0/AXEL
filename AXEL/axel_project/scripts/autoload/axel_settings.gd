@@ -57,6 +57,10 @@ const DEFAULTS := {
 
 var _config := ConfigFile.new()
 var _save_queued := false
+## True after the first volume apply. First apply must not unmute a bus that
+## the Audio panel / bus layout already muted (author work-mute). Later Options
+## slider moves may unmute when the saved volume is above zero.
+var _bus_volumes_applied := false
 
 
 func _enter_tree() -> void:
@@ -227,17 +231,24 @@ func _apply_fps_cap() -> void:
 
 
 func _apply_bus_volumes() -> void:
-	_set_bus_linear("Master", master_volume())
-	_set_bus_linear("Music", music_volume())
-	_set_bus_linear("Effects", effects_volume())
+	var respect_existing_mute := not _bus_volumes_applied
+	_set_bus_linear("Master", master_volume(), respect_existing_mute)
+	_set_bus_linear("Music", music_volume(), respect_existing_mute)
+	_set_bus_linear("Effects", effects_volume(), respect_existing_mute)
+	_bus_volumes_applied = true
 
 
-func _set_bus_linear(bus_name: String, linear: float) -> void:
+func _set_bus_linear(bus_name: String, linear: float, respect_existing_mute: bool = false) -> void:
 	var idx := AudioServer.get_bus_index(bus_name)
 	if idx < 0:
 		return  # Bus tree may not have this bus yet (Effects lands in Phase 0.5).
 	AudioServer.set_bus_volume_db(idx, linear_to_db(maxf(linear, 0.0001)))
-	AudioServer.set_bus_mute(idx, linear <= 0.001)
+	if linear <= 0.001:
+		AudioServer.set_bus_mute(idx, true)
+		return
+	if respect_existing_mute and AudioServer.is_bus_mute(idx):
+		return
+	AudioServer.set_bus_mute(idx, false)
 
 
 func _apply_input_overrides() -> void:
