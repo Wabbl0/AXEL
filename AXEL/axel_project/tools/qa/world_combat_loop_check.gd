@@ -176,6 +176,60 @@ func _check_item_pools(world: Node, run: Node) -> void:
 			_fail("area %s rolled no item at Common" % area_id)
 		elif run.call("load_item", rolled) == null:
 			_fail("area %s rolled a missing item id %s" % [area_id, rolled])
+		# With area families marked used, Common must land on C1–C10.
+		var used_families: Array = []
+		for family in families:
+			used_families.append(String(family))
+		var baseline := String(world.call("_roll_item", area_id, rng, used_families))
+		if not _is_c1_to_c10(baseline):
+			_fail("area %s should roll a C1–C10 when families are used, got %s" % [area_id, baseline])
+		elif run.call("load_item", baseline) == null:
+			_fail("area %s rolled a missing baseline id %s" % [area_id, baseline])
+	_check_owned_ids_are_skipped(world, run)
+
+
+func _is_c1_to_c10(item_id: String) -> bool:
+	if item_id == "C10":
+		return true
+	if item_id.length() != 2 or item_id[0] != "C":
+		return false
+	var digit := item_id.substr(1)
+	return digit.is_valid_int() and digit.to_int() >= 1 and digit.to_int() <= 9
+
+
+func _check_owned_ids_are_skipped(world: Node, run: Node) -> void:
+	world.call("reset_world")
+	run.call("reset_run")
+	run.state.owned_item_ids = PackedStringArray([
+		"C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10",
+	])
+	var families: Array = []
+	for family in (world.AREAS as Dictionary)["cafeteria"]["families"]:
+		families.append(String(family))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var blocked := String(world.call("_roll_item", "cafeteria", rng, families))
+	if _is_c1_to_c10(blocked):
+		_fail("owned C1–C10 must not drop when area families are used, got %s" % blocked)
+	for _i in 24:
+		var mixed := String(world.call("_roll_item", "cafeteria", rng, []))
+		if _is_c1_to_c10(mixed):
+			_fail("owned Common baseline id leaked onto the floor: %s" % mixed)
+			break
+		if mixed == "C1":
+			_fail("owned C1 leaked onto the floor")
+			break
+	if String(world.call("_resolve_lane", "A", 0, [])) != "C-A":
+		_fail("family A at Common should resolve to C-A")
+	if not String(world.call("_resolve_lane", "A", 0, ["C-A"])).is_empty():
+		_fail("placed or owned C-A must not resolve family A at Common")
+	world._room_items["res://scenes/Arc_2/2.1_Cafeteria.tscn"] = [
+		{"id": "C-A", "x": 0.0, "y": 0.0, "taken": false},
+	]
+	if String(world.call("_resolve_lane", "A", 0, world.call("_blocked_item_ids"))) == "C-A":
+		_fail("an id already on a floor must not be rolled again")
+	world.call("reset_world")
+	run.call("reset_run")
 
 
 func _check_take_item(world: Node, run: Node) -> void:

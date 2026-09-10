@@ -60,7 +60,7 @@ open with a random fight.
 
 ### Locker tutorial (first fight)
 
-Open the locker (which grants C1–C3), look around as long as you like, then
+Open the locker (which only sets the opened-locker flag — no starter items), look around as long as you like, then
 leave the hub yourself with the red `X` or Esc. `1.3_LockerHub` calls
 `AxelWorld.queue_locker_tutorial_fight()`, which only marks the fight as owed;
 `AxelWorld._on_scene_changed` starts it once `1.2_Corridor` is loaded and the
@@ -116,8 +116,11 @@ area, that area is *engaged* and its rank freezes; every area that is neither
 engaged nor cleared moves up one rank (cap Legendary). Clearing an area (all
 its floor items taken) upgrades the untouched areas again.
 
-Item ids resolve as `TIER-FAMILY` from the live `.tres` files. Each area owns a
-short family list; the roll walks down from the area rank until an id exists.
+Item ids resolve as `TIER-FAMILY` from the live `.tres` files, or as a baseline
+line from `combat/scripts/item_lines.gd` (C1–C10 and their later rungs). Each
+area owns a short family list; the roll mixes those families with leftover
+baseline lines and walks down from the area rank until an id exists. It skips
+ids the player already owns and ids already placed on a floor.
 
 ## Numbers (tuning constants at the top of `axel_world.gd`)
 
@@ -154,7 +157,7 @@ short family list; the roll walks down from the area rank until an id exists.
    the existing `AxelEventFx.register_walk_step()`.
 9. `scenes/ui/locker_interior.gd` + `scenes/Arc_1/1.3_LockerHub.gd` — remove the
    `START RUN` button, the act line, and the pre-run warning. Keep the LOCKER
-   button, the equip grid, and the C1/C2/C3 starter grant.
+   button, the equip grid, and the opened-locker flag (no C1/C2/C3 grant).
 10. `scenes/Arc_1/1.3_SchoolMap.gd` — travel needs `GameManager.has_visited()`.
     Unvisited rooms get a dark card, a `?????` label, and no click.
 11. Memory stills — `2.2_CafeteriaMemory.gd`, `3.2_BackyardMemory.gd`,

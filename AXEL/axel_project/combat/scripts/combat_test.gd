@@ -13,10 +13,10 @@ const COMBAT_ROOT_INSTANCED_CHILDREN := [
 	"RoundWinningsLabel", "EncounterWonLabel", "MultiplierLabel",
 ]
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
+const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
 const PRINCESS_LOVE: StringName = &"love"
 const PRINCESS_STAR: StringName = &"star"
 const PRINCESS_STORM: StringName = &"storm"
-const RARITY_GLYPHS := ["◇", "◈", "◆", "★", "✦"]
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const GRID_COLUMN_GAP := 10.0
 const PREMIUM_BAR_HEIGHT := 10.0
@@ -56,22 +56,30 @@ const SIDE_PANEL_BODY_FONT_MIN := int(round(14.0 * COMBAT_TEXT_SCALE))
 const HISTORY_BODY_FONT_SCALE := 3.0
 ## Worst-case history row ("<bet> x <symbol value> x <cascade multiplier>").
 const HISTORY_FIT_SAMPLE := "1000 x 12.5 x 20"
-const ITEMS_BODY_FONT_SCALE := 1.78
-const ITEMS_BODY_FONT_MIN := int(round(20.0 * COMBAT_TEXT_SCALE))
+## ITEMS box names, chrome, and icons are 33% larger than the last playtest size.
+const ITEM_BOX_SIZE_MUL := 1.33
+const ITEMS_BODY_FONT_SCALE := 1.78 * ITEM_BOX_SIZE_MUL
+const ITEMS_BODY_FONT_MIN := int(round(20.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
 ## Authored hover size (HudCanvas pixels). The card itself is unscaled, so live
 ## font size is this fit × HudCanvas scale — the on-screen size from before the layer move.
-const ITEM_DESC_BODY_FONT_SCALE := 1.25
+## Same 33% bump as ITEMS names/icons.
+const ITEM_DESC_BODY_FONT_SCALE := 1.25 * ITEM_BOX_SIZE_MUL
 const SIDE_PANEL_HINT_FONT := int(round(14.0 * COMBAT_TEXT_SCALE))
 ## REROLLS / FAMILIES / rarity titles: at least 2× the old 28 px hint size.
-const SIDE_PANEL_CHROME_FONT_MIN := SIDE_PANEL_HINT_FONT * 2
+const SIDE_PANEL_CHROME_FONT_MIN := int(round(float(SIDE_PANEL_HINT_FONT * 2) * ITEM_BOX_SIZE_MUL))
 const ITEM_PICKER_ROW_H_SEP := 4
-const ITEM_PICKER_CHECKBOX_ICON_MAX := int(round(18.0 * COMBAT_TEXT_SCALE))
-## Playtest Ignore/Limit check squares: at least 2× the old 36 px cap.
-const ITEM_PICKER_PLAYTEST_CHECK_MIN := ITEM_PICKER_CHECKBOX_ICON_MAX * 2
-const ITEM_PICKER_CHECKBOX_COL_W := int(round(22.0 * COMBAT_TEXT_SCALE))
-const ITEM_PICKER_SPIN_MIN_W := 176
-const ITEM_ICON_DRAW_SIZE := int(round(36.0 * COMBAT_TEXT_SCALE))
-const ITEM_RANK_BTN_W := int(round(88.0 * COMBAT_TEXT_SCALE))
+const ITEM_PICKER_LIST_SEP := 10
+const ITEM_PICKER_CHECKBOX_ICON_MAX := int(round(18.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
+## Playtest Ignore/Limit check squares: at least 2× the old 36 px cap, then +33%.
+const ITEM_PICKER_PLAYTEST_CHECK_MIN := int(round(float(ITEM_PICKER_CHECKBOX_ICON_MAX * 2)))
+const ITEM_PICKER_CHECKBOX_COL_W := int(round(22.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
+const ITEM_PICKER_SPIN_MIN_W := int(round(176.0 * ITEM_BOX_SIZE_MUL))
+const ITEM_ICON_DRAW_SIZE := int(round(36.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
+const ITEM_RANK_BTN_W := int(round(88.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
+## Extra left gap so row icons sit inside the ink (applied after attach()).
+const ITEM_BOX_LEFT_INSET_PX := 12.0
+const ITEM_NAME_RIGHT_PAD := 8.0
+const ITEM_NAME_MAX_LINES := 2
 const ITEM_RANK_BTN_TEXT_PAD := 8.0
 const ITEM_RANK_BTN_FIT_SAMPLE := "Uncommon"
 const ITEM_DESC_Z := 40
@@ -698,7 +706,10 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 	_configure_spin_button_layer()
 	if budget_label != null:
 		budget_label.visible = false
-	_build_item_picker()
+	if _is_player_combat_host():
+		_hide_scene_item_picker()
+	else:
+		_build_item_picker()
 	_apply_side_panel_typography()
 	if not resized.is_connected(_on_size_changed):
 		resized.connect(_on_size_changed)
@@ -1391,6 +1402,7 @@ func _apply_item_picker_body_typography() -> void:
 		if icon == null or not bool(icon.get_meta("item_row_icon", false)):
 			continue
 		icon.custom_minimum_size = Vector2(ITEM_ICON_DRAW_SIZE, ITEM_ICON_DRAW_SIZE)
+	_fit_all_item_row_names()
 
 func _style_item_picker_checkbox(cb: CheckBox, body_font: int = -1) -> void:
 	if cb == null:
@@ -1427,6 +1439,11 @@ func _style_item_chrome_label(lab: Label) -> void:
 	lab.set_meta("item_chrome_label", true)
 	lab.add_theme_font_override("font", VT323_FONT)
 	lab.add_theme_font_size_override("font_size", _resolved_items_chrome_font())
+	lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lab.clip_text = false
+	lab.max_lines_visible = ITEM_NAME_MAX_LINES
+	lab.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 func _style_playtest_spin(spin: SpinBox, chrome: int = -1) -> void:
@@ -1574,6 +1591,7 @@ func _make_side_panel(header_text: String, with_scroll_list: bool = true) -> Pan
 		list.add_theme_constant_override("separation", 4)
 		list.alignment = BoxContainer.ALIGNMENT_BEGIN
 		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		list.propagate_maximum_size = true
 		scroll.add_child(list)
 
 		panel.set_meta("scroll", scroll)
@@ -1657,6 +1675,45 @@ func _style_stake_buttons() -> void:
 		btn.add_theme_stylebox_override("pressed", flat.duplicate())
 		btn.add_theme_stylebox_override("focus", flat.duplicate())
 		btn.add_theme_stylebox_override("disabled", flat.duplicate())
+
+func _input(event: InputEvent) -> void:
+	if not _wants_spin_hotkey(event):
+		return
+	if not _spin_hotkey_allowed():
+		return
+	get_viewport().set_input_as_handled()
+	await _request_spin()
+
+
+func _wants_spin_hotkey(event: InputEvent) -> bool:
+	if Engine.is_editor_hint():
+		return false
+	return event.is_action_pressed("interact")
+
+
+func _spin_hotkey_allowed() -> bool:
+	if _spin_busy or not _can_use_combat_api():
+		return false
+	if _safe_is_waiting_for_free_spin_choice():
+		return false
+	if _settings_panel != null and is_instance_valid(_settings_panel) and _settings_panel.has_method("is_open"):
+		if bool(_settings_panel.call("is_open")):
+			return false
+	var tools := get_node_or_null("/root/AxelCombatDevTools")
+	if tools != null and tools.has_method("is_menu_open") and bool(tools.call("is_menu_open")):
+		return false
+	var focus := get_viewport().gui_get_focus_owner() as Control
+	if focus != null and focus.is_visible_in_tree() and _focus_uses_interact(focus):
+		return false
+	return true
+
+
+func _focus_uses_interact(focus: Control) -> bool:
+	if focus is LineEdit or focus is TextEdit or focus is SpinBox or focus is CheckBox:
+		return true
+	var parent := focus.get_parent()
+	return parent is SpinBox
+
 
 func _on_spin_pressed() -> void:
 	await _request_spin()
@@ -1993,6 +2050,25 @@ func _cache_hud_pieces() -> void:
 		_widget_layer = find_child("WidgetLayer", true, false)
 
 
+func _is_player_combat_host() -> bool:
+	var parent := get_parent()
+	return parent != null and String(parent.name) == "CombatRun"
+
+
+func _hide_scene_item_picker() -> void:
+	var panel := find_child("ItemPickerPanel", true, false) as CanvasItem
+	if panel != null:
+		panel.visible = false
+	var tuning := find_child("PlaytestTuning", true, false) as CanvasItem
+	if tuning != null:
+		tuning.visible = false
+
+
+func get_items_widget_host() -> Control:
+	_cache_hud_pieces()
+	return _host_for_piece(_piece_items, "items")
+
+
 func _host_for_piece(piece: CombatHudPiece, id: String) -> Control:
 	if piece == null or _widget_layer == null or not _widget_layer.has_method("register"):
 		return null
@@ -2016,6 +2092,9 @@ func _bind_widgets_to_pieces() -> void:
 		goal_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	if _piece_items != null and _item_picker_panel != null:
 		_piece_items.attach(_item_picker_panel, _host_for_piece(_piece_items, "items"))
+		_item_picker_panel.offset_left = ITEM_BOX_LEFT_INSET_PX
+	elif _piece_items != null:
+		_host_for_piece(_piece_items, "items")
 	if _piece_history != null and _spin_history_panel != null:
 		_piece_history.attach(_spin_history_panel, _host_for_piece(_piece_history, "history"))
 	if _piece_multiplier != null and _cascade_mult_label != null:
@@ -2050,6 +2129,7 @@ func _bind_widgets_to_pieces() -> void:
 			spin_btn.reparent(_piece_execute)
 		spin_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		spin_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		spin_btn.focus_mode = Control.FOCUS_NONE
 		spin_btn.z_index = 5
 		var empty := StyleBoxEmpty.new()
 		spin_btn.add_theme_stylebox_override("normal", empty)
@@ -2303,6 +2383,7 @@ func _apply_hud_chrome() -> void:
 func _layout_combat() -> void:
 	if _widget_layer != null and _widget_layer.has_method("sync_now"):
 		_widget_layer.sync_now()
+	call_deferred("_fit_all_item_row_names")
 	if _grid_host == null:
 		return
 	var host_w := maxf(_grid_host.size.x, 64.0)
@@ -2451,49 +2532,10 @@ func _item_row_body_font() -> Font:
 		font = get_theme_font("font", "Label")
 	return font
 
-## Widest name actually in the list, so the fit is measured against real rows instead
-## of a sample. Family and unique rows are tracked apart — only family rows carry a
-## rank button, so they have less room for the name.
-func _widest_item_row_text(kind: StringName) -> String:
-	var texts: PackedStringArray = _item_row_texts.get(kind, PackedStringArray())
-	if texts.is_empty():
-		return "◈ Void Satchel"
-	var font := _item_row_body_font()
-	if font == null:
-		return texts[0]
-	var best := texts[0]
-	var best_w := 0.0
-	for text in texts:
-		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, SIDE_PANEL_BODY_FONT).x
-		if w > best_w:
-			best_w = w
-			best = text
-	return best
-
-## Row furniture (checkbox column, icon, rank button, separators) is reserved so the
-## bigger name text cannot push a row wider than the ITEMS rectangle.
+## Names wrap inside the ITEMS rectangle, so this is the target size — not a
+## one-line shrink-to-fit.
 func _resolved_items_body_font() -> int:
-	var inner_w := _side_panel_inner_width(_item_picker_panel)
-	var font := _item_row_body_font()
-	var fixed := float(ITEM_PICKER_CHECKBOX_COL_W + ITEM_ICON_DRAW_SIZE)
-	var family_budget := inner_w - fixed - float(ITEM_RANK_BTN_W + ITEM_PICKER_ROW_H_SEP * 3)
-	var unique_budget := inner_w - fixed - float(ITEM_PICKER_ROW_H_SEP * 2)
-	return mini(
-		_fit_body_font_size(
-			_widest_item_row_text(&"family"),
-			ITEMS_BODY_FONT_SCALE,
-			family_budget,
-			font,
-			ITEMS_BODY_FONT_MIN,
-		),
-		_fit_body_font_size(
-			_widest_item_row_text(&"unique"),
-			ITEMS_BODY_FONT_SCALE,
-			unique_budget,
-			font,
-			ITEMS_BODY_FONT_MIN,
-		),
-	)
+	return maxi(int(round(float(SIDE_PANEL_BODY_FONT) * ITEMS_BODY_FONT_SCALE)), ITEMS_BODY_FONT_MIN)
 
 ## Rank buttons keep their authored width, so their label grows only as far as the
 ## widest rarity name fits.
@@ -2520,7 +2562,7 @@ func _hud_art_scale() -> float:
 func _resolved_item_desc_font() -> int:
 	var inner_w := _side_panel_inner_width(_item_picker_panel)
 	var authored := _fit_body_font_size(
-		"◈ Void Satchel",
+		"Void Satchel",
 		ITEM_DESC_BODY_FONT_SCALE,
 		inner_w - float(ITEM_PICKER_CHECKBOX_ICON_MAX + ITEM_PICKER_ROW_H_SEP),
 		_item_row_body_font(),
@@ -2751,6 +2793,7 @@ func _bind_item_picker_live_nodes() -> void:
 		if child is VBoxContainer:
 			_item_picker_panel.set_meta("list", child)
 			break
+	_configure_item_picker_list()
 
 
 func _first_descendant_of_class(node: Node, class_nm: String) -> Node:
@@ -3141,6 +3184,11 @@ func _rebuild_item_picker_contents() -> void:
 		{"letter": "G", "name": "Sealed grid"},
 		{"letter": "H", "name": "True-path"},
 	]
+	for line_key in ItemLinesScript.picker_line_keys():
+		family_defs.append({
+			"letter": String(line_key),
+			"name": ItemLinesScript.display_name(String(line_key)),
+		})
 	var fam_header := Label.new()
 	fam_header.text = "FAMILIES"
 	fam_header.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
@@ -3149,8 +3197,14 @@ func _rebuild_item_picker_contents() -> void:
 	for fam in family_defs:
 		var letter: String = str(fam["letter"])
 		if not _family_rank.has(letter):
-			_family_rank[letter] = 0
+			if ItemLinesScript.is_picker_line(letter):
+				_family_rank[letter] = ItemLinesScript.first_picker_rank(letter)
+			else:
+				_family_rank[letter] = 0
 		var rank: int = int(_family_rank[letter])
+		if ItemLinesScript.is_picker_line(letter) and ItemLinesScript.rung_id(letter, rank).is_empty():
+			rank = ItemLinesScript.first_picker_rank(letter)
+			_family_rank[letter] = rank
 		var item: Resource = _family_item_at_rank(by_id, letter, rank)
 		items_vbox.add_child(_make_family_row(letter, str(fam["name"]), item, rank))
 	var uniques: Dictionary = {0: [], 1: [], 2: [], 3: [], 4: []}
@@ -3180,26 +3234,105 @@ func _rebuild_item_picker_contents() -> void:
 	_refresh_item_picker_title()
 	_refresh_playtest_readouts()
 	_apply_item_picker_body_typography()
+	call_deferred("_fit_all_item_row_names")
 
 
 func _family_item_at_rank(by_id: Dictionary, letter: String, rank: int) -> Resource:
+	if ItemLinesScript.is_picker_line(letter):
+		var baseline_id := ItemLinesScript.rung_id(letter, rank)
+		if baseline_id.is_empty():
+			baseline_id = ItemLinesScript.item_id_at_rank(letter, rank)
+		return by_id.get(baseline_id, null)
 	var prefixes: Array[String] = ["C", "U", "R", "E"]
 	var r: int = clampi(rank, 0, 3)
 	var key := "%s-%s" % [prefixes[r], letter]
 	return by_id.get(key, null)
 
 
-## Tags a row name for the typography refresh, records its width for the fitter, and
-## makes it trim rather than push the row past the panel if a name is ever too long.
+## Tags a row name for the typography refresh. Godot 4.7 wrap needs a max width,
+## not a 1px minimum. Long names wrap to a second line inside the ITEMS box.
 func _mark_item_row_name(name_lab: Label, kind: StringName) -> void:
 	name_lab.set_meta("item_row_name", true)
 	name_lab.add_theme_font_override("font", VT323_FONT)
-	name_lab.autowrap_mode = TextServer.AUTOWRAP_OFF
-	name_lab.clip_text = true
-	name_lab.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lab.clip_text = false
+	name_lab.max_lines_visible = ITEM_NAME_MAX_LINES
+	name_lab.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lab.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	name_lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	var texts: PackedStringArray = _item_row_texts.get(kind, PackedStringArray())
 	texts.append(name_lab.text)
 	_item_row_texts[kind] = texts
+
+
+func _configure_item_picker_list() -> void:
+	if _item_picker_panel == null:
+		return
+	var list := _item_picker_panel.get_meta("list") as VBoxContainer
+	if list == null:
+		return
+	list.propagate_maximum_size = true
+	list.add_theme_constant_override("separation", ITEM_PICKER_LIST_SEP)
+	var inner := _side_panel_inner_width(_item_picker_panel)
+	list.custom_maximum_size = Vector2(inner, -1.0)
+
+
+func _item_name_column_width(with_rank: bool) -> float:
+	var inner := _side_panel_inner_width(_item_picker_panel)
+	var used := float(ITEM_ICON_DRAW_SIZE + ITEM_PICKER_CHECKBOX_COL_W)
+	var seps := 2
+	if with_rank:
+		used += float(ITEM_RANK_BTN_W)
+		seps = 3
+	used += float(ITEM_PICKER_ROW_H_SEP * seps) + ITEM_NAME_RIGHT_PAD
+	return maxf(inner - used, 48.0)
+
+
+func _item_entry_name_label(entry: Dictionary) -> Label:
+	var named := entry.get("name") as Label
+	if named != null:
+		return named
+	var row := entry.get("row") as Control
+	if row == null:
+		return null
+	for child in row.get_children():
+		var lab := child as Label
+		if lab != null and bool(lab.get_meta("item_row_name", false)):
+			return lab
+	return null
+
+
+func _fit_item_name_wrap(name_lab: Label, with_rank: bool) -> void:
+	if name_lab == null:
+		return
+	var max_w := _item_name_column_width(with_rank)
+	name_lab.custom_maximum_size = Vector2(max_w, -1.0)
+	name_lab.size.x = max_w
+	var line_h := name_lab.get_line_height()
+	if line_h <= 0:
+		line_h = _resolved_items_body_font()
+	var lines := clampi(name_lab.get_line_count(), 1, ITEM_NAME_MAX_LINES)
+	name_lab.custom_minimum_size = Vector2(0.0, float(line_h * lines))
+
+
+func _fit_all_item_row_names() -> void:
+	if _item_picker_panel == null or not is_instance_valid(_item_picker_panel):
+		return
+	_configure_item_picker_list()
+	var inner := _side_panel_inner_width(_item_picker_panel)
+	for entry in _item_entries:
+		var name_lab := _item_entry_name_label(entry)
+		if name_lab == null:
+			continue
+		_fit_item_name_wrap(name_lab, str(entry.get("kind", "")) == "family")
+	for child in _item_picker_panel.find_children("*", "Label", true, false):
+		var lab := child as Label
+		if lab == null or not bool(lab.get_meta("item_chrome_label", false)):
+			continue
+		lab.custom_maximum_size = Vector2(inner, -1.0)
+		lab.clip_text = false
+		lab.max_lines_visible = ITEM_NAME_MAX_LINES
 
 
 func _make_item_icon(item: Resource) -> TextureRect:
@@ -3220,13 +3353,14 @@ func _make_family_row(letter: String, family_name: String, item: Resource, rank:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", ITEM_PICKER_ROW_H_SEP)
+	var icon := _make_item_icon(item)
+	row.add_child(icon)
 	var cb := CheckBox.new()
 	cb.text = ""
 	cb.set_meta("item_row_checkbox", true)
 	_style_item_row_checkbox(cb)
 	cb.toggled.connect(_on_family_toggled.bind(letter, cb))
 	row.add_child(cb)
-	row.add_child(_make_item_icon(item))
 	var name_lab := Label.new()
 	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lab.text = family_name
@@ -3251,7 +3385,7 @@ func _make_family_row(letter: String, family_name: String, item: Resource, rank:
 		"letter": letter,
 		"checkbox": cb,
 		"item": item,
-		"icon": row.get_child(1),
+		"icon": icon,
 		"name": name_lab,
 		"rank_btn": rank_btn,
 		"row": row,
@@ -3263,24 +3397,24 @@ func _make_unique_row(item: Resource) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", ITEM_PICKER_ROW_H_SEP)
+	var rarity_idx: int = clampi(int(item.get("rarity")), 0, RARITY_NAMES.size() - 1)
+	row.add_child(_make_item_icon(item))
 	var cb := CheckBox.new()
-	var rarity_idx: int = clampi(int(item.get("rarity")), 0, RARITY_GLYPHS.size() - 1)
 	cb.text = ""
 	cb.set_meta("item_row_checkbox", true)
 	_style_item_row_checkbox(cb)
 	cb.toggled.connect(_on_item_checkbox_toggled.bind(item, cb))
 	row.add_child(cb)
-	row.add_child(_make_item_icon(item))
 	var name_lab := Label.new()
 	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lab.text = "%s %s" % [RARITY_GLYPHS[rarity_idx], item.display_name]
+	name_lab.text = item.display_name
 	name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
 	name_lab.add_theme_font_size_override("font_size", _resolved_items_body_font())
 	name_lab.mouse_filter = Control.MOUSE_FILTER_PASS
 	_mark_item_row_name(name_lab, &"unique")
 	row.add_child(name_lab)
 	_bind_item_row_hover(row, _item_desc_text_for_item(item))
-	_item_entries.append({"kind": "unique", "checkbox": cb, "item": item, "row": row})
+	_item_entries.append({"kind": "unique", "checkbox": cb, "item": item, "name": name_lab, "row": row})
 	return row
 
 
@@ -3361,7 +3495,8 @@ func _current_family_item(letter: String) -> Resource:
 
 
 func _on_family_rank_pressed(letter: String) -> void:
-	var next_rank: int = (int(_family_rank.get(letter, 0)) + 1) % 4
+	var current_rank: int = int(_family_rank.get(letter, 0))
+	var next_rank: int = ItemLinesScript.next_picker_rank(letter, current_rank) if ItemLinesScript.is_picker_line(letter) else ((current_rank + 1) % 4)
 	_family_rank[letter] = next_rank
 	var by_id: Dictionary = {}
 	for item in _discover_available_items():

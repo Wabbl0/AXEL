@@ -1,5 +1,5 @@
 extends SceneTree
-## Phase 4: 75 icons at 256×256, every tres resolves, L-A has no file.
+## Phase 4: 75 icons at 1024×1024, every tres resolves, L-A has no file.
 
 const ITEM_DIR := "res://combat/data/items/"
 const ICON_DIR := "res://combat/art/item_icons/"
@@ -39,8 +39,8 @@ func _main() -> void:
 						var img := Image.new()
 						if img.load(ProjectSettings.globalize_path(icon_path)) != OK:
 							failures.append("%s icon failed to load" % item_id)
-						elif img.get_width() != 256 or img.get_height() != 256:
-							failures.append("%s icon is %dx%d not 256x256" % [item_id, img.get_width(), img.get_height()])
+						elif img.get_width() != 1024 or img.get_height() != 1024:
+							failures.append("%s icon is %dx%d not 1024x1024" % [item_id, img.get_width(), img.get_height()])
 					if res.get("icon") == null:
 						failures.append("%s tres has no icon" % item_id)
 		name = dir.get_next()
@@ -48,7 +48,7 @@ func _main() -> void:
 	if icon_count != 75:
 		failures.append("expected 75 item icons, got %d" % icon_count)
 	if failures.is_empty():
-		print("Item icons check OK (75 × 256).")
+		print("Item icons check OK (75 × 1024).")
 		quit(0)
 	else:
 		for f in failures:

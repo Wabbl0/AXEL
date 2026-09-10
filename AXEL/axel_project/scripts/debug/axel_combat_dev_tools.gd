@@ -284,6 +284,10 @@ func _open_menu() -> void:
 	_refresh_economy_labels()
 
 
+func is_menu_open() -> bool:
+	return _menu_open
+
+
 func _close_menu() -> void:
 	_menu_open = false
 	if _menu != null:

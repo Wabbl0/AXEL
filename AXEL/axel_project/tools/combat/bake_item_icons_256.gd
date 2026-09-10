@@ -1,5 +1,5 @@
 extends SceneTree
-## Bake 256×256 8-band noir icons for every item tres. L-A stays absent.
+## DO NOT RUN — overwrites live 1024 AI icons with 256 glyphs. L-A stays absent.
 
 const SIZE := 256
 const OUT_DIR := "res://combat/art/item_icons/"

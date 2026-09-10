@@ -6363,3 +6363,130 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: F6 ITEMS chrome is much larger. Hover descriptions are smaller and in VT323. World fights still hide the picker. Floor cards were already VT323.
 - Verification: determinism (OK, 100 spins seed 12345), princess, combat scaffold, scene smoke (21 scenes) — all exit 0.
 - Notes: World item card sizes (name 26 / desc 20) were left unchanged. Family/unique row checkboxes stay at the old column width so names still fit.
+
+### Board-swap fall-off starts on the left
+
+- Request: After Spin, the old icons falling off should go left-to-right (left column first), reversing the previous right-to-left leave order.
+- Implementation: `_play_board_fall_off_fx` delay is now `c * board_swap_fall_column_step_sec` instead of `(COLS - 1 - c) * …`. Stream-in was already left-first and is unchanged. Timing totals stay the same.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Visual only. Old board tubes now drop left column, then the next, then the right. New board still lands left-first.
+- Verification: determinism, princess, combat scaffold, scene smoke.
+- Notes: Corrects the leave order from the HUD-cleanup board-swap request. Cascade gravity (`play_drop`) was already left-to-right and was not touched.
+
+### Remove combat match win-line overlay
+
+- Request: When icons match in combat, a red line stays on the grid. Remove it completely.
+- Implementation: Deleted the `FeelWinLines` overlay and `show_win_lines` / `clear_win_lines` from `combat_feel.gd`. `_feel_on_line_wins` no longer builds cell-center point sets or draws `Line2D` connectors. Shake, glitch, wobble, goal grime, and payout popups are unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_feel.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Matching rows/cols no longer draw or leave a red line. Line wins, payouts, and cascades are the same.
+- Verification: determinism, princess, combat scaffold, scene smoke.
+- Notes: The line was visual-only and was never cleared except when a later match replaced it.
+
+### Combat spin on Space / E
+
+- Request: Pressing Space or E during combat should start a spin.
+- Implementation: Combat HUD `_input` treats the named `interact` action (E / Space / Enter / pad A) as Execute. Same path as the spin button. Skips while a spin is running, while the Free Spins princess picker is up, while settings or debug tools are open, and while a visible text box or checkbox has focus. World fights also drop focus from hidden playtest widgets so a leftover seed box cannot swallow the key.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_run.gd`
+  - `AXEL/axel_project/scripts/debug/axel_combat_dev_tools.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Space or E now spins. Clicking Execute still works. Pause, settings, and Free Spins choice are unchanged.
+- Verification: determinism, princess, combat scaffold, scene smoke.
+- Notes: Uses `interact`, not raw keycodes, so player rebinds still apply.
+
+### ITEMS box 33% larger, wrap, left icons
+
+- Request: Make all text and icons in the ITEMS rectangle 33% larger; wrap names that hit the edge; sit icons on the left, almost touching the box.
+- Implementation: One `ITEM_BOX_SIZE_MUL` `1.33` scales item fonts, icons, checkboxes, and rank buttons. Names wrap (`AUTOWRAP_WORD_SMART`) instead of ellipsis. Icons are the first child in each row. The ITEMS text box left inset is `28 → 6` and the attached list left offset is `2` so icons sit on the left edge.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 ITEMS list is bigger, wraps long names, and lines icons up on the left. World fights still hide this panel. Combat RNG is unchanged.
+- Verification: determinism, princess, combat scaffold, scene smoke.
+- Notes: Hover description size was left as-is. Rollback: set `ITEM_BOX_SIZE_MUL` to `1.0` and restore `MOVE_TextBox` `offset_left` `28`.
+
+### Sync combat item catalog plan to the live game
+
+- Request: Update `AXEL_COMBAT_ITEM_CATALOG_PLAN.md` to match the live game and include all icons in the list.
+- Implementation: Rewrote the catalog as the live 75-item roster (31 baseline + 44 extended). Every row now shows its 256×256 icon at 48 px. Counts, G/H/M/F numbers, playtest HUD, and icon notes match shipped code. `L-A` stays unused (Overclock is `L2` only). The old C2–C10 40% cut is marked history — it did not ship.
+- Files changed:
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Combat items, icons, and RNG are unchanged.
+- Verification: Plan icon `src` paths match all 75 live `.tres` ids and `combat/art/item_icons/{id}.png` files. No `L-A` row.
+- Notes: `.tres` description strings were left as-is (some H items still say “playtest Base target”; the plan records that the code also applies on world fights).
+
+### Two combat scenes: playtest picker vs player item box
+
+- Request: Keep the F6 playtest scene as the Godot-only all-items tool. Overworld fights should show the item rectangle: first fight empty with a DVD mill + “Nothing but us chickens.” ticker; later fights show equipped icons only.
+- Implementation: `combat_run.tscn` no longer hides `NEW_Items`. Hosted `combat_test` skips the catalog picker. Tutorial / F6 preview attach a visual-only DVD mill (red/white/grey bounce, rare corner flame burst). Later world fights attach a read-only equipped list. Combat RNG is unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_run.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/empty_item_dvd.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/combat/test/combat_player_item_box_check.gd`
+  - `AXEL/axel_project/assets/sprites/combat/wind_mill_blades_48x48.png`
+  - `AXEL/axel_project/assets/sprites/combat/flame_1_48x48.png`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: World fights show the drawn item box. First fight is the chickens easter egg. Later fights show locker loadout icons. F6 `combat_test.tscn` is unchanged as a catalog tool.
+- Verification: combat_test_scaffold_check OK (exit 0); determinism OK (exit 0, 100 spins seed 12345); princess OK (exit 0); scene smoke OK (exit 0, 21 scenes); combat_player_item_box_check OK (exit 0). Windowed F6 look was not run here.
+- Notes: Corner hit is rare on purpose. Visual RNG is time-seeded and never touches the combat seed.
+
+### ITEMS list names wrap; icons stay inside the box
+
+- Request: After the 33% size-up, item names vanished and icons sat on the red rectangle edge. Wrap long names onto a second row and keep icons a few pixels inside the left ink.
+- Implementation: Godot 4.7 wrap now uses `custom_maximum_size` plus `propagate_maximum_size` (not the old 1px minimum + `clip_text`). Name column width is leftover space after icon, checkbox, and rank button. Rows can be two lines tall. ITEMS `MOVE_TextBox` left inset is `6 → 20`; attached list left offset is `4`. Same wrap/inset on the world-fight equipped list. Headless layout asserts visible lines and host containment.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/combat/scripts/combat_run.gd`
+  - `AXEL/axel_project/combat/test/combat_player_item_box_check.gd`
+  - `.cursor/rules/max-effort-temporary.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: F6 ITEMS names show again and wrap to a second line when needed. Icons sit just inside the left edge. World-fight equipped names use the same wrap. Combat RNG is unchanged.
+- Verification: combat_player_item_box_check OK (exit 0); determinism OK (exit 0, 100 spins seed 12345); princess OK (exit 0); combat scaffold OK (exit 0); scene smoke OK (exit 0, 21 scenes).
+- Notes: The last size-up missed this because mechanic headless scripts do not measure Label rects, and 4.7 wrap needs a max width.
+
+## 2026-09-10
+
+### ITEMS list gap, rarity marks, description size
+
+- Request: Icons still touched the ITEMS rectangle; rarity diamond prefixes were redundant with colored names; hover descriptions should grow 33%.
+- Implementation: Attached list left inset is `4 → 12` on F6 picker and world-fight equipped list. Unique/equipped names drop `◇◈◆★✦` prefixes and keep rarity colors. Hover description scale is `1.25 × 1.33`; player hover font is `22 → 29`.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_run.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/combat/test/combat_player_item_box_check.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: ITEMS icons sit farther from the left ink. Rarity is color-only on names. Hover text is larger. Combat RNG is unchanged.
+- Verification: combat_player_item_box_check OK (exit 0); determinism OK (exit 0, 100 spins seed 12345); princess OK (exit 0); combat scaffold OK (exit 0); scene smoke OK (exit 0, 21 scenes).
+- Notes: Did not move `MOVE_TextBox`. Catalog markdown rarity key is unchanged.
+
+### Combat item icons at 1024
+
+- Request: Make AI icons for the 51 glyph placeholders, keep every live icon at 1024×1024, and copy the existing 24 staged originals into the live folder at 1024 (no shrink).
+- Implementation: Generated 51 noir locker-object icons and staged them in `tools/combat/ai_icon_src`. Remap now posterizes at 1024 and never downscales. QA requires 75 × 1024. The old 24 staged files were remapped into the live folder at 1024. `L-A` stays unused. Combat rules, `.tres` effects, and RNG are unchanged.
+- Files changed:
+  - `AXEL/axel_project/tools/combat/remap_item_icons_noir.gd`
+  - `AXEL/axel_project/tools/qa/item_icons_check.gd`
+  - `AXEL/axel_project/tools/combat/bake_item_icons_256.gd`
+  - `AXEL/axel_project/tools/combat/ai_icon_src/*.png`
+  - `AXEL/axel_project/combat/art/item_icons/*.png`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Locker shelves and item lists show sharper 1024 icons. No combat math change.
+- Verification: item_icons_check OK (exit 0, 75 × 1024); determinism OK (exit 0, 100 spins seed 12345); princess OK (exit 0); combat scaffold OK (exit 0); scene smoke OK (exit 0, 21 scenes).
+- Notes: GenerateImage wrote JPEGs named `.png`; they were converted to real PNGs before remap. Do not run `bake_item_icons_256.gd`.

@@ -35,8 +35,11 @@ func _main() -> void:
 	run.call("grant_locker_stash_once")
 	run.call("grant_locker_stash_once")
 	var owned: Array = run.call("owned_items")
-	if owned.size() != 3:
-		failures.append("locker stash should grant C1 C2 C3 once, got %d" % owned.size())
+	if owned.size() != 0:
+		failures.append("locker open should grant no items, got %d" % owned.size())
+	if not bool(run.state.locker_stash_granted):
+		failures.append("locker open should set locker_stash_granted")
+	run.state.owned_item_ids = PackedStringArray(["C1"])
 	if bool(run.call("toggle_equip", "C1")) != true:
 		failures.append("equip C1 failed")
 	if run.state.equipped_item_ids.size() != 1:

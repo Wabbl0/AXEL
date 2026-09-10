@@ -11,7 +11,6 @@ const TITLE_SCENE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
 const ITEM_DIR := "res://combat/data/items/"
 const LORE_FLAGS: PackedStringArray = ["hasFlashlight", "hasKey", "hasShovel", "hasName"]
 const LORE_GOAL_BONUS := 0.15
-const STARTER_ITEMS: PackedStringArray = ["C1", "C2", "C3"]
 ## World-fight difficulty curve, in chip-bar multiples of 1000 cents:
 ## 3x, 5x, 7.5x, 10x, 15x, 20x, 30x. Fed to combat as a plain number through
 ## `set_goal_base_target_cents`; lore bonus and family-H percents multiply on
@@ -98,13 +97,11 @@ func mark_first_encounter_warned() -> void:
 	_persist()
 
 
+## Marks the locker as opened so the corridor tutorial can fire. Adds no items.
 func grant_locker_stash_once() -> void:
 	if state.locker_stash_granted:
 		return
 	state.locker_stash_granted = true
-	for item_id in STARTER_ITEMS:
-		if not state.owned_item_ids.has(item_id):
-			state.owned_item_ids.append(item_id)
 	_persist()
 
 

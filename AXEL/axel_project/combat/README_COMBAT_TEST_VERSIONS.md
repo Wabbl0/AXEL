@@ -2,15 +2,17 @@
 
 The playtest shell uses a **drawing-backed HUD**: white plate + one node per drawing under `%HudCanvas` (3508×2480 drawing pixels), integer economy readouts, and a dev item picker.
 
-## Canonical entry
+## Canonical entries
 
-| Entry | Scene | Script |
-|-------|-------|--------|
-| **Default** | `res://combat/combat_test.tscn` | `scripts/combat_test.gd` |
+| Entry | Scene | Script | Who |
+|-------|-------|--------|-----|
+| **Playtest (Godot / F6 only)** | `res://combat/combat_test.tscn` | `scripts/combat_test.gd` | Full catalog picker, seed, Ignore cap, DEV TOOLS. Overworld never loads this file. |
+| **Player (overworld)** | `res://combat/combat_run.tscn` | `scripts/combat_run.gd` | Instanced HUD. Hides playtest chrome. Shows `NEW_Items`: locker tutorial / F6 preview = empty DVD mill + “Nothing but us chickens.” ticker; later fights = read-only equipped icons. |
 
 ## Launch
 
-- Open `combat/combat_test.tscn` → **F6** (Play Scene).
+- Open `combat/combat_test.tscn` → **F6** (Play Scene) for the catalog tool.
+- Overworld fights load `combat/combat_run.tscn` via `AxelRun`. F6 on that scene previews the empty item box.
 
 Headless combat checks (`princess_check`, `determinism_check`) use `combat_root.tscn` only — not this shell.
 

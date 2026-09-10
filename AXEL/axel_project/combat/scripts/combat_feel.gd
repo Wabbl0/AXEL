@@ -10,7 +10,6 @@ var _shake_host: Node2D
 var _banner: Label
 var _banner_scrim: ColorRect
 var _grime: ColorRect
-var _win_line_host: Control
 var _grime_band: ColorRect
 var _banner_tween: Tween
 var _shake_tween: Tween
@@ -47,10 +46,6 @@ func _build() -> void:
 	_grime_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_grime_band.color = Color(0.04, 0.0, 0.0, 0.0)
 	overlay.add_child(_grime_band)
-	_win_line_host = Control.new()
-	_win_line_host.name = "FeelWinLines"
-	_win_line_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(_win_line_host)
 	var layer := CanvasLayer.new()
 	layer.name = "FeelLayer"
 	layer.layer = 95
@@ -95,32 +90,6 @@ func set_goal_progress(ratio: float) -> void:
 ## which princess is acting. Kept so Trinity call sites stay valid.
 func highlight_princess(_id_name: StringName) -> void:
 	pass
-
-
-func show_win_lines(point_sets: Array) -> void:
-	if _win_line_host == null:
-		return
-	clear_win_lines()
-	for pts in point_sets:
-		var packed: PackedVector2Array = pts
-		if packed.size() < 2:
-			continue
-		var line := Line2D.new()
-		line.width = 4.0
-		line.default_color = Color(0.85, 0.05, 0.05, 0.85)
-		line.joint_mode = Line2D.LINE_JOINT_ROUND
-		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
-		line.end_cap_mode = Line2D.LINE_CAP_ROUND
-		for i in packed.size():
-			line.add_point(packed[i])
-		_win_line_host.add_child(line)
-
-
-func clear_win_lines() -> void:
-	if _win_line_host == null:
-		return
-	for child in _win_line_host.get_children():
-		child.queue_free()
 
 
 func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62) -> void:

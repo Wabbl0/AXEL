@@ -258,7 +258,7 @@ Pure-wild runs are valid and pay as wild (wild has explicit x3/x4/x5 pay values)
 
 Initial spin setup still populates a fresh 5x5 via `grid.populate()` at paid-spin start and encounter setup. `GridManager.refill()` remains available for future item hooks but is not called from cascade resolution.
 
-Every `grid.populate()` (paid-spin start, encounter setup, Trinity entry, Free Spins entry) plays the **board swap**: the old symbols leave as rigid per-column tubes falling off the bottom, rightmost column first, then the new board streams in the same way from the top, leftmost column first, each column one row behind its left neighbour. It is visual only — no RNG draws — and takes ~1.9 s (`board_swap_*` exports on `CombatRoot`). At paid-spin start it replaces the old flat `pause_at_spin_start_sec` wait; Free Spins keep that pause because they reuse the entry board. The mid-round cascade never uses it.
+Every `grid.populate()` (paid-spin start, encounter setup, Trinity entry, Free Spins entry) plays the **board swap**: the old symbols leave as rigid per-column tubes falling off the bottom, leftmost column first, then the new board streams in the same way from the top, leftmost column first, each column one row behind its left neighbour. It is visual only — no RNG draws — and takes ~1.9 s (`board_swap_*` exports on `CombatRoot`). At paid-spin start it replaces the old flat `pause_at_spin_start_sec` wait; Free Spins keep that pause because they reuse the entry board. The mid-round cascade never uses it.
 
 Item hooks like `Rotted notebook` may later peek at buffered draws if a separate preview/refill feature is added; cascade resolution itself does not consume the drop queue.
 

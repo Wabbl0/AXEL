@@ -8,12 +8,13 @@ extends Node
 
 const PickupScript := preload("res://scenes/world/world_item_pickup.gd")
 const InfoCardScript := preload("res://scenes/ui/world_item_info_card.gd")
+const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
 const PROMPT_SCENE := "res://scenes/ui/InteractPromptOverlay.tscn"
 const PROMPT_NODE_NAME := "WorldItemPromptOverlay"
 const INFO_CARD_NODE_NAME := "WorldItemInfoCard"
 const PICKUP_HOST_NAME := "WorldItemScatter"
 
-## Common -> Legendary. Item ids are `TIER-FAMILY` (`C-G`) or `TIER<digit>` (`C1`).
+## Common -> Legendary. Item ids are `TIER-FAMILY` (`C-G`) or baseline lines (`C1`).
 const RANK_PREFIXES: PackedStringArray = ["C", "U", "R", "E", "L"]
 const RANK_NAMES: PackedStringArray = [
 	"Common", "Uncommon", "Rare", "Epic", "Legendary",
@@ -570,7 +571,7 @@ func _decide_placements(
 	if player is CollisionObject2D:
 		exclude.append((player as CollisionObject2D).get_rid())
 	var out: Array = []
-	var used_families: Array = []
+	var used_lanes: Array = []
 	for i in want:
 		var frac := (float(i) + 1.0) / (float(want) + 1.0)
 		frac = clampf(frac + rng.randf_range(-0.07, 0.07), 0.14, 0.86)
@@ -580,10 +581,10 @@ func _decide_placements(
 			clampf(player_tex.x + away, tex_size.x * 0.08, tex_size.x * 0.92), player_tex.y
 		)
 		var spot := _find_free_spot(env, wanted, tex_size, fallback, exclude)
-		var item_id := _roll_item(area_id, rng, used_families)
+		var item_id := _roll_item(area_id, rng, used_lanes)
 		if item_id.is_empty():
 			continue
-		used_families.append(_family_of(item_id))
+		used_lanes.append(_lane_of(item_id))
 		out.append({"id": item_id, "x": spot.x, "y": spot.y, "taken": false})
 	return out
 
@@ -640,27 +641,77 @@ func _find_free_spot(
 	return wanted
 
 
-func _roll_item(area_id: String, rng: RandomNumberGenerator, used_families: Array) -> String:
-	var families: Array = (AREAS[area_id]["families"] as Array).duplicate()
-	# Prefer a family this room has not used yet, then fall back to any.
-	var ordered: Array = []
-	for family in families:
-		if not used_families.has(family):
-			ordered.append(family)
-	for family in families:
-		if not ordered.has(family):
-			ordered.append(family)
+func _roll_item(area_id: String, rng: RandomNumberGenerator, used_lanes: Array) -> String:
+	var ordered := _candidate_lanes(area_id, used_lanes)
 	if ordered.is_empty():
 		return ""
 	var start := rng.randi() % ordered.size()
 	var rank := area_rank(area_id)
+	var blocked := _blocked_item_ids()
 	for i in ordered.size():
-		var family := String(ordered[(start + i) % ordered.size()])
+		var lane := String(ordered[(start + i) % ordered.size()])
+		var item_id := _resolve_lane(lane, rank, blocked)
+		if not item_id.is_empty():
+			return item_id
+	return ""
+
+
+func _candidate_lanes(area_id: String, used_lanes: Array) -> Array:
+	var families: Array = (AREAS[area_id]["families"] as Array).duplicate()
+	var baselines: Array = []
+	for lane in ItemLinesScript.scatter_lane_keys():
+		baselines.append(String(lane))
+	var unused: Array = []
+	var used_fallback: Array = []
+	for lane in families + baselines:
+		var key := String(lane)
+		if used_lanes.has(key):
+			if not used_fallback.has(key):
+				used_fallback.append(key)
+		elif not unused.has(key):
+			unused.append(key)
+	return unused + used_fallback
+
+
+func _resolve_lane(lane: String, rank: int, blocked: Array) -> String:
+	if ItemLinesScript.is_baseline_lane(lane):
 		for tier in range(rank, -1, -1):
-			var item_id := "%s-%s" % [RANK_PREFIXES[tier], family]
+			var item_id := ItemLinesScript.rung_id(lane, tier)
+			if item_id.is_empty() or blocked.has(item_id):
+				continue
 			if _item_exists(item_id):
 				return item_id
+		return ""
+	for tier in range(rank, -1, -1):
+		var item_id := "%s-%s" % [RANK_PREFIXES[tier], lane]
+		if blocked.has(item_id):
+			continue
+		if _item_exists(item_id):
+			return item_id
 	return ""
+
+
+func _blocked_item_ids() -> Array:
+	var blocked: Array = []
+	var run := _run()
+	if run != null:
+		for item_id in Array(run.state.owned_item_ids):
+			var owned := String(item_id)
+			if not owned.is_empty() and not blocked.has(owned):
+				blocked.append(owned)
+	for room_path in _room_items.keys():
+		for entry in (_room_items[room_path] as Array):
+			var placed := String((entry as Dictionary).get("id", ""))
+			if not placed.is_empty() and not blocked.has(placed):
+				blocked.append(placed)
+	return blocked
+
+
+func _lane_of(item_id: String) -> String:
+	var baseline := ItemLinesScript.lane_of_id(item_id)
+	if not baseline.is_empty():
+		return baseline
+	return _family_of(item_id)
 
 
 func _family_of(item_id: String) -> String:

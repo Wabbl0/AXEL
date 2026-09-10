@@ -45,7 +45,7 @@ signal sfx_requested(cue: StringName)
 @export_group("Board swap FX (populate only)")
 ## Time one cell of travel takes while the old board falls off the bottom.
 @export var board_swap_fall_cell_sec: float = 0.08
-## Per-column head start while leaving. Rightmost column goes first; matching this to
+## Per-column head start while leaving. Leftmost column goes first; matching this to
 ## `board_swap_fall_cell_sec` keeps each column exactly one cell behind its neighbour.
 @export var board_swap_fall_column_step_sec: float = 0.08
 ## Time one cell of travel takes while the new board streams in. Column `c` starts
@@ -1291,7 +1291,7 @@ func _play_board_swap_fx() -> void:
 	_refresh_cells_visual()
 	_board_swap_fx_active = false
 
-## Phase 1: every column drops off the bottom as one tube, rightmost column first.
+## Phase 1: every column drops off the bottom as one tube, leftmost column first.
 func _play_board_fall_off_fx(pitch: float) -> void:
 	var travel_rows := float(GridManager.ROWS) + maxf(board_swap_fall_overshoot_cells, 0.0)
 	var duration: float = maxf(travel_rows * board_swap_fall_cell_sec, 0.01)
@@ -1303,7 +1303,7 @@ func _play_board_fall_off_fx(pitch: float) -> void:
 				continue
 			if slot.has_method("has_visible_symbol") and not bool(slot.call("has_visible_symbol")):
 				continue
-			var delay := float(GridManager.COLS - 1 - c) * board_swap_fall_column_step_sec
+			var delay := float(c) * board_swap_fall_column_step_sec
 			max_total = maxf(max_total, delay + duration)
 			slot.call("play_fall_off", pitch * travel_rows, duration, delay)
 	if max_total <= 0.0:
@@ -2109,20 +2109,6 @@ func _feel_on_line_wins(lines: Array) -> void:
 		_feel.glitch_flash(settings)
 	if multiplier.value >= 4 and _feel.has_method("crt_wobble"):
 		_feel.crt_wobble(multiplier.value, settings)
-	var point_sets: Array = []
-	for line in lines:
-		var cells: Array = line.get("cells", [])
-		var pts := PackedVector2Array()
-		for p in cells:
-			var coord := p as Vector2i
-			var pos := _slot_target_position(coord)
-			var slot := _get_slot(coord) as Control
-			if slot != null:
-				pos += slot.size * 0.5
-			pts.append(pos)
-		if pts.size() >= 2:
-			point_sets.append(pts)
-	_feel.show_win_lines(point_sets)
 	_feel.set_goal_progress(
 		clampf(float(_encounter_goal_winnings_cents) / float(maxi(get_effective_goal_target_cents(), 1)), 0.0, 1.0)
 	)
