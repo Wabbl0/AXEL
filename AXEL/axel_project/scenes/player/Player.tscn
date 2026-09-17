@@ -1,0 +1,35 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Player.gd" id="1_player"]
+[ext_resource type="SpriteFrames" uid="uid://4eiekoqcuo44" path="res://assets/sprites/mike_sprite_frames.tres" id="2_frames"]
+[ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_sheet"]
+[ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="4_hitbox"]
+
+[node name="Player" type="CharacterBody2D"]
+script = ExtResource("1_player")
+pose_nudge_back = Vector2(-114.725, 2.49)
+pose_nudge_side = Vector2(41.76, -15.86)
+sprite_sheet = ExtResource("3_sheet")
+
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]
+visible = false
+sprite_frames = ExtResource("2_frames")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="ShadowOutline" type="AnimatedSprite2D" parent="."]
+modulate = Color(0, 0, 0, 0.55)
+z_index = -1
+position = Vector2(-5.0416956, -5.041732)
+scale = Vector2(1.0335996, 0.9969109)
+sprite_frames = ExtResource("2_frames")
+animation = &"idle"
+
+[node name="FallbackBody" type="Polygon2D" parent="."]
+visible = false
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+
+[node name="CollisionFront" type="CollisionShape2D" parent="."]
+position = Vector2(-37.812428, 126.04143)
+shape = ExtResource("4_hitbox")
+metadata/authored_pos = Vector2(-37.812428, 126.04143)

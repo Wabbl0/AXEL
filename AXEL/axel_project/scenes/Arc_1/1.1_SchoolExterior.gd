@@ -1,4 +1,4 @@
-extends Node2D
+extends ExplorationRoom
 
 @export var skip_intro: bool = false
 
@@ -7,9 +7,6 @@ enum IntroState {
 	PLAYER_FREE,
 }
 
-@onready var _top_dialogue: Node = $TopDialogueOverlay
-@onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
-@onready var _player: CharacterBody2D = $PlayerLayer/Player
 @onready var _left_wall_collision: CollisionShape2D = $EnvironmentColliders/LeftWall/CollisionShape2D
 
 var _door_interact_area: Area2D
@@ -50,7 +47,6 @@ const INTRO_CAMERA_TILT_DURATION_SEC := 3.4
 const INTRO_OFFSCREEN_PAD_PX := 96.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
 
-var _is_transitioning := false
 var _unlock_position: Vector2 = Vector2.ZERO
 var _second_dialogue_fired := false
 var _watching_movement := false
@@ -59,24 +55,15 @@ var _exit_trigger_armed := true
 var _pending_corridor_door_spawn := false
 var _arrival_t := InteractArrival.DEFAULT_T
 var _arrival_latched_door := false
-var _enter_dialogue_pending := false
 
 const _OLD_BG_POSITION := Vector2(32.0, -297.0)
 const _OLD_BG_SCALE := Vector2(0.33494318, 0.32130682)
 
-var _player_cover_sync := PlayerCoverSync.new()
-
-
 func _ready() -> void:
+	_use_default_interact_loop = false
 	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
 	_player_cover_sync.authored_bg_baseline_position = _OLD_BG_POSITION
-	_player_cover_sync.bind_from_player(_player)
-
-	_player_cover_sync.bind_design_from_background(
-		get_node_or_null("Background_1_1") as Sprite2D,
-		$Camera2D.fit_mode,
-		$Camera2D.background_y,
-	)
+	bind_player_cover(get_node_or_null("Background_1_1") as Sprite2D, null, false)
 	_door_interact_area = get_node_or_null(
 		"EnvironmentColliders/Doors/DoorInteractArea"
 	) as Area2D
@@ -92,7 +79,9 @@ func _ready() -> void:
 		_pending_corridor_door_spawn = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
 	set_process_unhandled_input(true)
-	$Camera2D.layout_applied.connect(_on_background_layout_applied)
+	if $Camera2D.has_signal("layout_applied"):
+		if not $Camera2D.layout_applied.is_connected(_on_background_layout_applied):
+			$Camera2D.layout_applied.connect(_on_background_layout_applied)
 	_sync_environment_colliders_from_current_background()
 	_configure_leaf_occlusion_masks()
 	if _pending_corridor_door_spawn or _should_skip_intro():
@@ -440,7 +429,6 @@ func _refresh_door_interact_prompt() -> void:
 
 
 func _begin_door_transition() -> void:
-	_is_transitioning = true
 	if is_instance_valid(_player) and is_instance_valid(_door_interact_area):
 		GameManager.set_interact_arrival_t(
 			InteractArrival.fraction_along(
@@ -448,13 +436,7 @@ func _begin_door_transition() -> void:
 			)
 		)
 	GameManager.set_corridor_spawn_side("exterior_door")
-	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
-		_interact_prompt.hide_prompt_immediate()
-	var err := get_tree().change_scene_to_file(_NEXT_SCENE_PATH)
-	if err != OK:
-		push_error("Failed to change scene to %s (error %d)." % [_NEXT_SCENE_PATH, err])
-		_is_transitioning = false
-		AxelPostFxStack.apply_to_scene(get_tree().current_scene)
+	begin_scene_change(_NEXT_SCENE_PATH, false)
 
 
 func _on_exit_trigger_body_entered(body: Node) -> void:
@@ -472,18 +454,7 @@ func _arm_exit_trigger_grace() -> void:
 
 
 func _begin_ending_1_transition() -> void:
-	if _is_transitioning:
-		return
-	_is_transitioning = true
-	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
-		_interact_prompt.hide_prompt_immediate()
-	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
-		_top_dialogue.interrupt_line()
-	var err := get_tree().change_scene_to_file(_ENDING_1_SCENE_PATH)
-	if err != OK:
-		push_error("Failed to change scene to %s (error %d)." % [_ENDING_1_SCENE_PATH, err])
-		_is_transitioning = false
-		AxelPostFxStack.apply_to_scene(get_tree().current_scene)
+	begin_scene_change(_ENDING_1_SCENE_PATH)
 
 
 func _get_leaf_occlusion_zones() -> Array[Area2D]:

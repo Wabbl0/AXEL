@@ -6861,4 +6861,84 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: determinism OK (exit 0); princess OK; scaffold OK; scene smoke OK (21 scenes); pause contract OK; menu nav OK; world_combat_loop_check OK; world_combat_roundtrip_check OK; run_state_check OK; hud_piece_placement_check OK; hud_click_rect_check OK; combat_player_item_box_check OK; corridor_right_hint_check OK; playtest_hud_interact_check OK. Replaced the invalid `direction_arrow.png` (escaped-text bytes) with a real 48×48 PNG and reimported. Settings `MOVE_TextBox` now matches the 162×167 click plate so the HUD checks pass.
 - Notes: Do not scale `NEW_Execute`. `corridor_from_locker` survives the tutorial fight; `corridor_return_pos` does not.
 
+### Vice names on items and symbols
+
+- Request: Player-facing combat copy should say Vice Round and the real power names, not Trinity / Storm / Star / Love.
+- Implementation: Display names now use Vice (Vice Ash, Vice Matchbook, Weighted Vice Die, Cigarette Charm, Alcohol Charm, Bloody Hand Charm, …). Item descriptions say Vice Round and cigarette / alcohol / bloody hand. Princess symbol labels are just Bloody Hand / Alcohol / Cigarette. File stems and `effect_id` `trinity_run` stay. Catalog / generator strings match.
+- Files changed:
+  - `AXEL/axel_project/combat/data/items/` (family-C, charms, U3, R6, L2, E-A, C-G, E1)
+  - `AXEL/axel_project/combat/data/symbols/sym_bloody_hand.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_booze.tres`
+  - `AXEL/axel_project/combat/data/symbols/sym_cigarette.tres`
+  - `AXEL/axel_project/tools/combat/generate_item_resources.py`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+- Behavior impact: ITEMS, locker hover, and the floor walk-near card show the new names. Combat math is unchanged except U-C (next row).
+- Verification: Read live `.tres` `display_name` / `description` fields against the catalog tables.
+- Notes: Catch-up for `0c6ffa6`. The paid-spin changelog row only covered C1 / U1 / C10 / R1 / E4. Older rows that still say Weighted Trinity Die stay as written (append-only).
+
+### Vice Matchbook extra spin on first miss
+
+- Request: U-C should not always add a Vice Round spin at the start.
+- Implementation: `U-C` `effect_params` is now `first_miss_extra_spins`. Combat grants the extra spin only when the opening Vice Round board has no matches, then fills a new board. Princess check covers both the miss and the already-matching cases.
+- Files changed:
+  - `AXEL/axel_project/combat/data/items/U-C_trinity_matchbook.tres`
+  - `AXEL/axel_project/combat/scripts/item_effect_dispatcher.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/test/princess_check.gd`
+  - `AXEL/axel_project/tools/combat/generate_item_resources.py`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+- Behavior impact: Equipped Vice Matchbook gives `+1` extra Vice Round spin only after a first spin with no matches.
+- Verification: `princess_check.gd` OK (includes `_assert_uc_grants_extra_trinity_spin_only_on_first_miss`).
+- Notes: Shipped in `0c6ffa6`. Internal function names still say trinity.
+
+### Load Game delete and tombstone Load
+
+- Request: Load Game should delete a slot (press again to confirm), including dead runs. Load should stay available when only tombstones exist.
+- Implementation: `AxelSaves.delete_slot()` removes living slots and tombstones. `has_any_slot()` drives the title Load button; Continue still needs a living slot. Load Game shows Delete on the right; New Game does not. Confirm copy is “Press again to delete this slot.”
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_saves.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/tools/qa/save_slots_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: After a loss you can still open Load Game and wipe the tombstone. Deleting a slot does not reset volume.
+- Verification: `save_slots_check.gd` OK (exit 0).
+- Notes: Catch-up for `0c6ffa6`. The menu-focus row mentioned the Delete button layout, not this behavior.
+
+### Title menu pre-graded backdrop
+
+- Request: Title art should stay black/red and not get rematched by noir.
+- Implementation: New `assets/ui/title_backdrop.png` on CanvasLayer 100 (above noir 90, below scanline 105 / CRT 108). `MenuLook` draws it behind title / saves / credits / options. Buttons stay on chrome 110.
+- Files changed:
+  - `AXEL/axel_project/assets/ui/title_backdrop.png`
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Main menu background is the pre-graded title picture. Keyboard focus and WASD are unchanged.
+- Verification: `save_slots_check.gd` asserts backdrop layer 100 and a live texture. `menu_nav_check.gd` OK.
+- Notes: Catch-up for `0c6ffa6`. Already described in `AI_DOCS.md` layer order; this is the changelog row.
+
+### Shared scene building blocks
+
+- Request: Share exploration building blocks the way floor items use `world_item_pickup.gd`, with per-room leaves (lines, flags, dest scenes) and no behavior change on working rooms.
+- Implementation: Added `ExplorationRoom`, `ExplorationTransition`, `LorePickup`, `InteractSpot`, `MemoryStill`, `MemoryFrame`, and `Player.tscn`. Memory glow now remaps/hides itself from instance exports. Walkable rooms and memory stills call those trunks instead of copied functions. 1.1 intro, 1.2 arrow, 2.4 depth, frozen peeks, and kitchen Y `90` stay local.
+- Files changed:
+  - `AXEL/axel_project/scenes/core/exploration_room.gd`
+  - `AXEL/axel_project/scenes/core/exploration_transition.gd`
+  - `AXEL/axel_project/scenes/core/lore_pickup.gd`
+  - `AXEL/axel_project/scenes/core/interact_spot.gd`
+  - `AXEL/axel_project/scenes/core/memory_still.gd`
+  - `AXEL/axel_project/scenes/core/memory_frame.gd`
+  - `AXEL/axel_project/scenes/player/Player.tscn`
+  - `AXEL/axel_project/scenes/fx/memory_indicator.gd`
+  - `AXEL/axel_project/scenes/Arc_1/` `1.1` `1.2` `1.4`
+  - `AXEL/axel_project/scenes/Arc_2/` `2.1` `2.2` `2.3` `2.4`
+  - `AXEL/axel_project/scenes/Arc_3/` `3.1` `3.2`
+  - `AXEL/axel_project/scenes/Arc_4/` `4.1` `4.2`
+  - `AXEL/axel_project/scenes/Arc_5/` `5.1` `5.2`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Same doors, pickups, stills, and peeks; new rooms should instance the shared blocks instead of pasting functions.
+- Verification: `scene_smoke_check.gd` OK (21 scenes). `interact_arrival_check.gd` OK. `player_cover_sync_check.gd` / `player_spawn_sync_check.gd` / `player_walk_speed_check.gd` OK. `corridor_depth_seed_check.gd` OK. `world_combat_loop_check.gd` / `world_combat_roundtrip_check.gd` OK. `determinism_check.gd` / `princess_check.gd` / `combat_test_scaffold_check.gd` OK.
+- Notes: Room scripts still hold peek/occlusion leaves. Do not merge frozen peek policies.
+
 

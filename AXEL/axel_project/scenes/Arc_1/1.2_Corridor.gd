@@ -1,8 +1,4 @@
-extends Node2D
-
-@onready var _top_dialogue: Node = $TopDialogueOverlay
-@onready var _interact_prompt: CanvasLayer = $InteractPromptOverlay
-@onready var _player: CharacterBody2D = $PlayerLayer/Player
+extends ExplorationRoom
 
 const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
 const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
@@ -17,8 +13,6 @@ var _locker_interact_area: Area2D
 var _exterior_interact_area: Area2D
 var _exit_trigger: Area2D
 var _spawn_line_active := false
-var _enter_dialogue_pending := false
-var _is_transitioning := false
 var _locker_zone_active := false
 var _exterior_zone_active := false
 var _exterior_zone_armed := true
@@ -29,8 +23,6 @@ var _pending_basement_peek := false
 var _pending_exterior_peek := false
 var _arrival_t := InteractArrival.DEFAULT_T
 var _exit_trigger_armed := true
-var _cover_layout_ready := false
-var _player_cover_sync := PlayerCoverSync.new()
 var _direction_hint: Node2D
 var _direction_hint_tex := Vector2.ZERO
 var _hint_elapsed := 0.0
@@ -39,19 +31,13 @@ var _arrival_spawn_side := ""
 
 
 func _ready() -> void:
+	_use_default_interact_loop = false
 	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
-	_player_cover_sync.bind_from_player(_player)
-
-	_player_cover_sync.bind_design_from_background(
-		get_node_or_null("WalkableWorld/Background") as Sprite2D,
-		$Camera2D.fit_mode,
-		$Camera2D.background_y,
-	)
 	_direction_hint = get_node_or_null("PlayerLayer/DirectionHint") as Node2D
 	if is_instance_valid(_direction_hint):
 		_direction_hint_tex = _direction_hint.position
 		_direction_hint.visible = false
-		_player_cover_sync.bind_extra_node(_direction_hint)
+	bind_player_cover(null, _direction_hint)
 	_locker_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/LockerInteractArea"
 	) as Area2D
@@ -71,8 +57,6 @@ func _ready() -> void:
 		_exit_trigger.body_entered.connect(_on_exit_trigger_body_entered)
 	set_process(true)
 	set_process_unhandled_input(true)
-	$Camera2D.layout_applied.connect(_on_background_layout_applied)
-
 	_latch_corridor_arrival()
 	call_deferred("_restore_player_position_if_needed")
 	_arm_exterior_zone_grace()
@@ -160,7 +144,7 @@ func _apply_basement_peek_if_pending() -> void:
 
 
 func _apply_exterior_peek_after_wake() -> void:
-	_wake_static_colliders()
+	wake_static_colliders()
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_apply_exterior_peek_if_pending()
@@ -409,9 +393,6 @@ func _begin_locker_transition() -> void:
 
 
 func _begin_exterior_transition() -> void:
-	if _is_transitioning:
-		return
-	_is_transitioning = true
 	if is_instance_valid(_player) and is_instance_valid(_exterior_interact_area):
 		GameManager.set_interact_arrival_t(
 			InteractArrival.fraction_along(
@@ -419,16 +400,7 @@ func _begin_exterior_transition() -> void:
 			)
 		)
 	GameManager.set_exterior_spawn_side("corridor_door")
-	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
-		_interact_prompt.hide_prompt_immediate()
-	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
-		_top_dialogue.interrupt_line()
-	var err := get_tree().change_scene_to_file(EXTERIOR_SCENE)
-	if err != OK:
-		push_error("Failed to change scene to %s (error %d)." % [EXTERIOR_SCENE, err])
-		_is_transitioning = false
-		if is_instance_valid(AxelPostFxStack):
-			AxelPostFxStack.apply_to_scene(get_tree().current_scene)
+	begin_scene_change(EXTERIOR_SCENE)
 
 
 func _on_exit_trigger_body_entered(body: Node) -> void:
@@ -454,47 +426,17 @@ func _begin_basement_transition() -> void:
 func _begin_scene_transition(scene_path: String, return_pos: Vector2) -> void:
 	if not is_instance_valid(_player):
 		return
-	_is_transitioning = true
 	GameManager.set_corridor_return_pos(return_pos)
-	if is_instance_valid(_interact_prompt) and _interact_prompt.has_method("hide_prompt_immediate"):
-		_interact_prompt.hide_prompt_immediate()
-	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
-		_top_dialogue.interrupt_line()
-	var err := get_tree().change_scene_to_file(scene_path)
-	if err != OK:
-		push_error("Failed to change scene to %s (error %d)." % [scene_path, err])
-		_is_transitioning = false
-		if is_instance_valid(AxelPostFxStack):
-			AxelPostFxStack.apply_to_scene(get_tree().current_scene)
+	begin_scene_change(scene_path)
 
 
-func _on_background_layout_applied(
-	scale_factor: float, bg_position: Vector2, _world_rect: Rect2
-) -> void:
-	_sync_environment_colliders(scale_factor, bg_position)
-
-
-func _sync_environment_colliders(cover_scale: float, bg_position: Vector2) -> void:
-	var env := $WalkableWorld/EnvironmentColliders
-	var tex_pos := PlayerSpawnSync.capture_tex(env, _player)
-	env.position = bg_position
-	env.scale = Vector2.ONE * cover_scale
-	PlayerSpawnSync.apply_tex(env, _player, tex_pos)
-	if is_instance_valid(_player):
-		_player_cover_sync.apply(_player, cover_scale, bg_position)
+func on_world_space_synced(_cover_scale: float, _bg_position: Vector2) -> void:
 	_sync_direction_hint()
-	_cover_layout_ready = true
-	call_deferred("_wake_static_colliders")
+	call_deferred("wake_static_colliders")
 	if _pending_basement_peek:
 		call_deferred("_apply_basement_peek_if_pending")
 	elif _pending_exterior_peek:
 		call_deferred("_apply_exterior_peek_after_wake")
-
-
-func _wake_static_colliders() -> void:
-	for child in $WalkableWorld/EnvironmentColliders.get_children():
-		if child is StaticBody2D:
-			child.position = child.position
 
 
 func _sync_direction_hint() -> void:

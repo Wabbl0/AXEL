@@ -23,7 +23,7 @@ Opening the locker only sets the tutorial flag (`locker_stash_granted`). It does
 - Alignment target: [AI_DOCS.md](../core/AI_DOCS.md) and [AXEL_combat_implementation.md](AXEL_combat_implementation.md).
 - User-approved override path: diagonal and board-count wins are allowed as **item-scoped core resolver overrides** when equipped.
 - **Family G:** live combat is already gravity-only (`grid.refill()` is never called). G’s live effect is a **regular-spin payout bonus**. A refill skip-guard still exists if refill is ever invoked. G does not run in Vice Round or Free Spins.
-- Terminology lock: Vice Round naming and power alias map from [AXEL_combat_design.md](AXEL_combat_design.md). Prefer the name “alcohol” (not “booze”) in docs and user-facing text.
+- Terminology lock: Vice Round naming and power alias map from [AXEL_combat_design.md](AXEL_combat_design.md). Prefer the name “alcohol” (not “booze”) in docs and user-facing text. Player-facing item names use **Vice** (Vice Ash, Weighted Vice Die, …), not Trinity. File stems and `effect_id` may still say `trinity`. Princess charms and symbols use cigarette / alcohol / bloody hand (code ids stay `storm` / `star` / `love`).
 
 ## External Reference Correlation (Cloverpit)
 

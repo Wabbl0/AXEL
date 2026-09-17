@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
 [ext_resource type="Script" path="res://scenes/core/background_camera_controller.gd" id="4_camera_script"]
 [ext_resource type="Script" path="res://scenes/core/locked_exploration_background.gd" id="5_bg_lock"]
-[ext_resource type="Script" path="res://scenes/Arc_4/4.2_teachers_memory_frame.gd" id="6_frame"]
+[ext_resource type="Script" path="res://scenes/core/memory_frame.gd" id="6_frame"]
 [ext_resource type="FontFile" path="res://combat/ui/fonts/VT323-Regular.ttf" id="7_font"]
 
 [node name="4_2_TeachersMemory" type="Node2D"]

@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="4_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="5_bg_lock"]
-[ext_resource type="Script" uid="uid://dcqmn1lf1uf5d" path="res://scenes/Arc_2/2.2_cafeteria_memory_frame.gd" id="6_frame"]
+[ext_resource type="Script" path="res://scenes/core/memory_frame.gd" id="6_frame"]
 [ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="7_font"]
 
 [node name="2_2_CafeteriaMemory" type="Node2D" unique_id=1824663402]

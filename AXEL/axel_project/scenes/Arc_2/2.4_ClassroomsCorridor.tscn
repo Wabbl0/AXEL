@@ -1,15 +1,12 @@
 [gd_scene format=3 uid="uid://d3ygv0rkychc1"]
 
 [ext_resource type="Script" uid="uid://bnm8js32wt8kr" path="res://scenes/Arc_2/2.4_ClassroomsCorridor.gd" id="1_corridor"]
-[ext_resource type="Script" uid="uid://bcb8x3xxb1621" path="res://scripts/Player.gd" id="2_player_script"]
-[ext_resource type="SpriteFrames" uid="uid://4eiekoqcuo44" path="res://assets/sprites/mike_sprite_frames.tres" id="3_mike_frames"]
-[ext_resource type="Texture2D" uid="uid://dl3hqdhy81kq5" path="res://assets/sprites/mike_walking-Sheet.png" id="3_player_sheet"]
 [ext_resource type="Texture2D" uid="uid://bpiwdk824u4rj" path="res://exports/Drawings/2.4_ClassroomsCorridor.png" id="4_corridor_bg"]
 [ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="5_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="6_interact_prompt"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="7_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
-[ext_resource type="Shape2D" uid="uid://ck6l5fbjq1usr" path="res://scenes/player/hitbox_front.tres" id="hb_front"]
+[ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player_packed"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fill_top_left"]
 size = Vector2(4960, 2432)
@@ -195,42 +192,15 @@ target_path = NodePath("../PlayerLayer/Player")
 layer = 100
 follow_viewport_enabled = true
 
-[node name="Player" type="CharacterBody2D" parent="PlayerLayer" unique_id=580889261]
+[node name="Player" parent="PlayerLayer" unique_id=580889261 instance=ExtResource("player_packed")]
 z_index = 10
 position = Vector2(5887, 352)
 scale = Vector2(0.198, 0.198)
-script = ExtResource("2_player_script")
 speed = 185.3
-pose_nudge_back = Vector2(-114.725, 2.49)
-pose_nudge_side = Vector2(41.76, -15.86)
-sprite_sheet = ExtResource("3_player_sheet")
 collision_polygon_epsilon = 4.0
 collision_alpha_shrink_pixels = 4
 collision_inward_margin = 4.0
 collision_lower_body_ratio = 0.42
-
-[node name="AnimatedSprite" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=852536683]
-visible = false
-sprite_frames = ExtResource("3_mike_frames")
-animation = &"idle"
-autoplay = "idle"
-
-[node name="ShadowOutline" type="AnimatedSprite2D" parent="PlayerLayer/Player" unique_id=25986406]
-modulate = Color(0, 0, 0, 0.55)
-z_index = -1
-position = Vector2(-5.0416956, -5.041732)
-scale = Vector2(1.0335996, 0.9969109)
-sprite_frames = ExtResource("3_mike_frames")
-animation = &"idle"
-
-[node name="FallbackBody" type="Polygon2D" parent="PlayerLayer/Player" unique_id=2060611027]
-visible = false
-polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
-
-[node name="CollisionFront" type="CollisionShape2D" parent="PlayerLayer/Player" unique_id=1841193671]
-position = Vector2(-37.812428, 126.04143)
-shape = ExtResource("hb_front")
-metadata/authored_pos = Vector2(-37.812428, 126.04143)
 
 [node name="TopDialogueOverlay" parent="." unique_id=1061292165 instance=ExtResource("5_top_dialogue")]
 

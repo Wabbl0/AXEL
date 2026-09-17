@@ -85,8 +85,8 @@ Root (Node2D + scene script)
 │   ├── Background (Sprite2D, centered=false, z_index=-100, script: locked_exploration_background.gd, metadata/_edit_lock_ = true)
 │   └── EnvironmentColliders (Node2D) — texture-pixel space; sync on layout_applied
 ├── Camera2D — script: res://scenes/core/background_camera_controller.gd
-├── Player (CharacterBody2D under WalkableWorld/Player for new scenes — see migration note)
-│   (legacy Arc 1 still uses PlayerLayer CanvasLayer — do not rewire without approval)
+├── PlayerLayer (CanvasLayer 100, follow viewport)
+│   └── Player — instance `res://scenes/player/Player.tscn` (legacy Arc 1 also uses this layer — do not rewire without approval)
 ├── TopDialogueOverlay (instanced) — must draw ABOVE InteractPromptOverlay
 └── InteractPromptOverlay (instanced)
 ```
@@ -97,9 +97,15 @@ Root (Node2D + scene script)
 
 **Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; combat casino layers via `to_combat` / first-win / Vice Round hooks). Loudness: `Music` bus in `default_bus_layout.tres`.
 
-**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25` + shared white outer-glow `Halo` (`memory_outer_glow.gdshader`). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked.
+**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25` + shared white outer-glow `Halo` (`memory_outer_glow.gdshader`). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked. Set `memory_key` (or `collected_bool_property` for the desk) and `interact_area_path` on the instance so the glow hides itself and disables the walk-up box when collected. Do not copy `_sync_memory_indicator` / `_apply_collected_memory` into a new room.
+
+**Player packed scene:** instance `scenes/player/Player.tscn` under `PlayerLayer`. Keep that room’s authored `position` / `scale` / `speed` (and collision extras if that room already had them). Do not paste a new AnimatedSprite + ShadowOutline tree. Silhouette numbers stay on the packed scene.
+
+**Room script trunk:** new walkable rooms `extends ExplorationRoom` (`scenes/core/exploration_room.gd`). Fill in `zone_ids` / `zone_area` / `on_zone_interact` (and peek/occlusion leaves). Doors use `leave_through` + `ExplorationTransition`. Lore pickups use `LorePickup.take` (flashlight and key are the same function, different flag/lines). Memory stills `extends MemoryStill`; picture crop uses `memory_frame.gd`. 1.1 intro and 1.2 locker/arrow keep `_use_default_interact_loop = false`. Frozen peeks, kitchen Y `90`, and 2.4 depth ramp stay in those room scripts.
 
 **Floor item marker:** runtime `scenes/world/ItemMarker.tscn` on `PlayerLayer` (white pointing hand, drop shadow, faint red outline). The pickup `Area2D` stays under `EnvironmentColliders`. Do not put a catalog icon on the floor. Scatter must keep the 220 px interact circle off walls and furniture.
+
+**1.2 right-arrow hint (1.2 only):** runtime `scenes/fx/DirectionHint.tscn` on `PlayerLayer`. Do not copy it into other rooms. Details: `AI_DOCS.md`.
 
 ### Camera2D exports (`BackgroundCamera`)
 
@@ -118,26 +124,15 @@ Root (Node2D + scene script)
 
 ### `_ready()` order
 
-1. `PlayerCoverSync.bind_from_player` then `bind_design_from_background(background, camera.fit_mode)` (1.1/1.2 set `_OLD_BG_SCALE` first so bind_design no-ops; 1.4 sets 1.2’s `0.546` the same way). Do **not** store a separate spawn constant.
+1. `bind_player_cover()` on `ExplorationRoom` (sets `_OLD_BG_SCALE` on `_player_cover_sync` first for 1.1/1.2/1.4). It binds Mike, the PNG baseline, memory glow, and `layout_applied` → `sync_world_space`. Do **not** store a separate spawn constant.
 2. Bind PlayerLayer extras that should match the room (e.g. memory glow) via `bind_extra_node`. Capture glow editor positions if needed (`_foo_tex`).
 3. Connect `Camera2D.layout_applied` → sync `EnvironmentColliders` + `PlayerSpawnSync` + `PlayerCoverSync.apply`.
 4. Layout via `BackgroundLayout.apply` (camera does this when `background_path` is set).
 
 ```gdscript
 func _ready() -> void:
-	_player_cover_sync.bind_from_player(_player)
-	_player_cover_sync.bind_design_from_background(
-		$WalkableWorld/Background, $Camera2D.fit_mode, $Camera2D.background_y
-	)
-	$Camera2D.layout_applied.connect(_on_background_layout_applied)
-
-func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
-	var env := $WalkableWorld/EnvironmentColliders
-	var tex := PlayerSpawnSync.capture_tex(env, _player)
-	env.position = bg_position
-	env.scale = Vector2.ONE * cover_scale
-	PlayerSpawnSync.apply_tex(env, _player, tex)
-	_player_cover_sync.apply(_player, cover_scale, bg_position)
+	bind_player_cover()
+	# Then look up this room’s InteractAreas and call_deferred restore/enter lines.
 ```
 
 ### Background / camera helpers
