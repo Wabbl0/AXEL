@@ -80,7 +80,7 @@ Do not use red, brown, or grey “preview” colors in the editor for outlines �
 ### Scene tree
 
 ```
-Root (Node2D + scene script)
+Root (`extends ExplorationRoom`)
 ├── WalkableWorld (Node2D)
 │   ├── Background (Sprite2D, centered=false, z_index=-100, script: locked_exploration_background.gd, metadata/_edit_lock_ = true)
 │   └── EnvironmentColliders (Node2D) — texture-pixel space; sync on layout_applied
@@ -97,7 +97,7 @@ Root (Node2D + scene script)
 
 **Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; combat casino layers via `to_combat` / first-win / Vice Round hooks). Loudness: `Music` bus in `default_bus_layout.tres`.
 
-**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25` + shared white outer-glow `Halo` (`memory_outer_glow.gdshader`). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked. Set `memory_key` (or `collected_bool_property` for the desk) and `interact_area_path` on the instance so the glow hides itself and disables the walk-up box when collected. Do not copy `_sync_memory_indicator` / `_apply_collected_memory` into a new room.
+**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25` + shared white outer-glow `Halo` (`memory_outer_glow.gdshader`). The glow captures its editor position and remaps on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked. Set `memory_key` (or `collected_bool_property` for the desk) and `interact_area_path` on the instance so the glow hides itself and disables the walk-up box when collected. Do not copy `_sync_memory_indicator` / `_apply_collected_memory` into a new room.
 
 **Player packed scene:** instance `scenes/player/Player.tscn` under `PlayerLayer`. Keep that room’s authored `position` / `scale` / `speed` (and collision extras if that room already had them). Do not paste a new AnimatedSprite + ShadowOutline tree. Silhouette numbers stay on the packed scene.
 
@@ -124,10 +124,9 @@ Root (Node2D + scene script)
 
 ### `_ready()` order
 
-1. `bind_player_cover()` on `ExplorationRoom` (sets `_OLD_BG_SCALE` on `_player_cover_sync` first for 1.1/1.2/1.4). It binds Mike, the PNG baseline, memory glow, and `layout_applied` → `sync_world_space`. Do **not** store a separate spawn constant.
-2. Bind PlayerLayer extras that should match the room (e.g. memory glow) via `bind_extra_node`. Capture glow editor positions if needed (`_foo_tex`).
-3. Connect `Camera2D.layout_applied` → sync `EnvironmentColliders` + `PlayerSpawnSync` + `PlayerCoverSync.apply`.
-4. Layout via `BackgroundLayout.apply` (camera does this when `background_path` is set).
+1. `bind_player_cover()` on `ExplorationRoom` (set `_OLD_BG_SCALE` on `_player_cover_sync` first for 1.1/1.2/1.4). That binds Mike, the PNG baseline, memory glow, and `layout_applied` → `sync_world_space`. Do **not** store a separate spawn constant.
+2. Look up this room’s InteractAreas. Call_deferred restore / enter lines.
+3. Layout via `BackgroundLayout.apply` (camera does this when `background_path` is set). `bind_player_cover()` already connected `layout_applied` — do not connect it a second time.
 
 ```gdscript
 func _ready() -> void:
@@ -140,7 +139,7 @@ func _ready() -> void:
 - Layout: `scenes/core/background_layout.gd`
 - Camera: `scenes/core/background_camera_controller.gd`
 - Colliders: texture-pixel space under `WalkableWorld/EnvironmentColliders`
-- Player: world space under `WalkableWorld/Player` on **new** scenes (legacy 1.1/1.2 still use `PlayerLayer`)
+- Player: world space under `PlayerLayer` (instance `scenes/player/Player.tscn`). Do not rewire 1.1/1.2 off `PlayerLayer` without approval.
 - Cover sync: `scenes/core/player_cover_sync.gd` — first layout uses the 1920×1280 (or legacy `_OLD_BG_SCALE`) baseline; later resizes keep the same Mike-vs-room ratio. 1.4 uses 1.2’s `0.546` (same 2400×1500 PNG size).
 - Spawn: `scenes/core/player_spawn_sync.gd` — the Player node is the spawn. Capture with `env.to_local` **before** moving `EnvironmentColliders`, apply with `env.to_global` after. Do this on the **first** layout, not only later resizes. Regression: `scenes/core/test/player_spawn_sync_check.gd`.
 
@@ -165,7 +164,7 @@ If Mike looks wrong vs the furniture **at 1920×1280**, change the authored scal
 
 ### Rule: PlayerLayer extras share the cover ratio
 
-Anything on `PlayerLayer` that should match the drawing (memory glow) gets the same cover ratio via `bind_extra_node` + `apply`. Props under `EnvironmentColliders` (e.g. kitchen flashlight, 5.1 board glow) already follow `env.scale` — no second scaler.
+`bind_player_cover()` already binds `PlayerLayer/MemoryIndicator` to the cover ratio. Extra PlayerLayer nodes (not Mike, not the glow) use `bind_extra_node` + `apply`. Props under `EnvironmentColliders` (e.g. kitchen flashlight, 5.1 board glow) already follow `env.scale` — no second scaler.
 
 ### Rule: first-visit enter lines play once
 
@@ -173,7 +172,7 @@ Scene enter / discovery lines use a GameManager `*_seen` flag. They must not rep
 
 ### Rule: memory still leave (after the bar closes)
 
-Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialogue finished, or already-seen skip), leave with: red `[X]`, left-click, tap, or Tab/E/Space/Enter. Same keys during lines still skip/advance — they must not leave until the bar is closed. Live: `2.2`, `3.2`, `5.2`.
+Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialogue finished, or already-seen skip), leave with: red `[X]`, left-click, tap, or Tab/E/Space/Enter. Same keys during lines still skip/advance — they must not leave until the bar is closed. Shared controller: `scenes/core/memory_still.gd`. Picture crop: `scenes/core/memory_frame.gd`. Live: `2.2`, `3.2`, `4.2`, `5.2` (desk keeps local shake).
 
 ### Rule: always measure the live dest box this Play
 
@@ -212,18 +211,18 @@ Use the live dest box (rule above). Then pick the **placement mode** for that pa
 
 There is no separate spawn point. The `Player` node **is** the spawn.
 
-- Drag `PlayerLayer/Player` (or `WalkableWorld/Player` on new scenes) on the drawing. That is where Mike starts a fresh Play / F6.
+- Drag `PlayerLayer/Player` (instance of `scenes/player/Player.tscn`) on the drawing. That is where Mike starts a fresh Play / F6.
 - **Forbidden:** hardcoded `env.to_global(Vector2(...))`, skipping the first cover-fit remap, teleporting default spawn onto a door / stones / interact shape, or storing a spawn constant that can go stale.
 - **Allowed elsewhere:** only GameManager peek / return when arriving from another room. Arrival along a dest InteractArea / ExitTrigger (`interact_arrival_t`) may place off the Player node.
 - 1.1 intro may start off-screen and walk **to** the remapped Player node. Skip-intro leaves Mike on that node. Do not walk to a computed stones target instead.
 - Helper: `PlayerSpawnSync.capture_tex` before mutating `EnvironmentColliders`, then `apply_tex` after. Works for both unscaled (2.1-style) and pre-scaled (1.2/1.4 `_OLD_BG_SCALE`) colliders.
 - Editor: assign `res://assets/sprites/mike_sprite_frames.tres` on `AnimatedSprite` / `ShadowOutline` so Mike is visible on the node while you drag. Play still rebuilds frames in `Player.gd`. Keep `ShadowOutline` visible in the editor (the pose-nudge tool must not force it off). `AnimatedSprite` stays hidden in the 2D view because the pose stack draws it.
-- Shared hitbox (default): `CollisionFront` points at `res://scenes/player/hitbox_front.tres`. That `.tres` is **radius only**; node `position` is the shared 1.1 Front `(-37.812428, 126.04143)`. Pose nudges line every facing onto this one circle. Walking left (A) mirrors Front X so the circle stays on the flipped side pose (right/D is the authored side). `Player.gd` reapplies Front on Play and removes `CollisionBack` / `CollisionSide` if they still exist. Copy the 1.1 Front position into a new room’s `.tscn` so the editor preview matches. Do not recreate Back/Side.
+- Shared hitbox (default): `CollisionFront` points at `res://scenes/player/hitbox_front.tres`. That `.tres` is **radius only**; node `position` is the shared 1.1 Front `(-37.812428, 126.04143)` on `Player.tscn`. Pose nudges line every facing onto this one circle. Walking left (A) mirrors Front X so the circle stays on the flipped side pose (right/D is the authored side). `Player.gd` reapplies Front on Play and removes `CollisionBack` / `CollisionSide` if they still exist. Instance `Player.tscn` so the editor preview matches. Do not recreate Back/Side.
 - Alpha hitbox (opt-in): set `use_alpha_collision` on that Player. Select `Player` for the cyan editor preview of the traced outline.
 
 ### Rule: any other node placed against the background must spawn from its own editor position
 
-Memory-indicator glows and any other node whose on-screen
+Memory-indicator glows follow this pattern **inside** `memory_indicator.gd` (`capture_editor_tex` / `remap_to_env`). Do not copy `_memory_indicator_tex` into a room script. Any other node whose on-screen
 spot should match where you dragged it in the editor MUST follow this pattern
 — never hardcode a position constant, and never re-derive a node's runtime
 position from a *different* node (e.g. snapping onto an interact area's shape).
@@ -239,8 +238,8 @@ in the editor does nothing at runtime.
    offset constant or point it at another node's position.
 
 Player spawn uses `PlayerSpawnSync` (above), not a `_player_spawn_tex` copy of
-`player.position`. See `2.1_Cafeteria.gd` (`_memory_indicator_tex`) for the
-glow pattern.
+`player.position`. Glow: instance `MemoryIndicator.tscn` and set `memory_key` /
+`interact_area_path` (desk: `collected_bool_property`).
 
 ### Rule: no visual offset from the node (default)
 
@@ -259,15 +258,14 @@ must sit on their node. No extra offset.
   so `pose_nudge.tres` is saved.
 - Shared exception — hitbox: `CollisionFront` uses the shared 1.1 Front
   `(-37.812428, 126.04143)`. `Player.gd` reapplies it at Play and removes
-  `CollisionBack` / `CollisionSide`. Copy Front into a new room’s `.tscn` so
-  the editor preview matches. Do not zero it or invent a per-room player polygon.
+  `CollisionBack` / `CollisionSide`. That placement lives on `Player.tscn`.
+  Do not zero it or invent a per-room player polygon.
 - Shared exception — `ShadowOutline`: uses the 1.2 fit on every walkable room
   (`position` `(-5.0416956, -5.041732)`, `scale` `(1.0335996, 0.9969109)`).
   `Player.gd` reapplies this at Play and in the editor. The same fit is used
   for every spritesheet pose; pose-nudge `offset` is divided by that scale so
-  Front / Back / Side do not shift the silhouette. Copy the 1.2 position/scale
-  into a new room’s `.tscn` so the editor preview matches. Do not invent a
-  per-room silhouette.
+  Front / Back / Side do not shift the silhouette. That fit lives on
+  `Player.tscn`. Do not invent a per-room silhouette.
 - Memory glow: `MemoryIndicator.visual_offset` stays `Vector2.ZERO`. Align
   `MemoryInteractArea` to the same editor point as the glow node.
 - `[E]` chip: `InteractPromptOverlay.screen_offset` stays `Vector2.ZERO`
@@ -319,9 +317,10 @@ on the interact anchor (the `CollisionShape2D`'s `global_position`). Never
 add a nudge (screen-space `screen_offset` override in a scene's `.tscn`, or
 a world-space anchor offset in the scene script) as a blanket/default
 choice. Only add one when explicitly asked for a specific interact point,
-and scope it as narrowly as possible (ideally per-zone in the scene
-script's anchor function, not the whole-scene `screen_offset`, since one
-`InteractPromptOverlay` node is shared by every interact zone in a scene).
+and scope it as narrowly as possible (`InteractSpot.prompt_visual_offset`,
+or override `interact_anchor()` on `ExplorationRoom` — not the whole-scene
+`screen_offset`, since one `InteractPromptOverlay` node is shared by every
+interact zone in a scene).
 
 After duplicating an InteractArea, reset the child’s `CollisionShape2D`
 **position** to `(0, 0)` (or a small ink nudge). A leftover thousands-of-pixels
@@ -335,7 +334,7 @@ After `_ready`, headless smoke MUST call:
 - `QaCanonValidators.collect_background_camera_findings(root, scene_path)`
 - `QaCanonValidators.collect_background_editor_lock_findings` (background must have `metadata/_edit_lock_`)
 
-New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_design_from_background`) and spawn through `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_walk_speed_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`. Room-edge walls: `tools/qa/wall_sprite_clearance_check.gd`. Independent colliders: `tools/qa/collision_shape_unique_check.gd`.
+New walkable scenes `extends ExplorationRoom`, call `bind_player_cover()`, and instance `Player.tscn`. That wires `PlayerCoverSync` + `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_walk_speed_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`. Room-edge walls: `tools/qa/wall_sprite_clearance_check.gd`. Independent colliders: `tools/qa/collision_shape_unique_check.gd`.
 
 ### Playtest variants (optional)
 

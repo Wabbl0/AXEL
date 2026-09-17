@@ -15,8 +15,8 @@ Prefer the **live project tree** when this file and disk disagree — update thi
 - `default_bus_layout.tres` — `Master`, `Music` (~`-12` dB), `Typewriter` (typing loop), `TypewriterOpen` (bar open/close + Panner)
 - `scenes/`
   - `Main_Menu/`, `Arc_1/` … `Arc_7/`, `Endings/`
-  - `core/` — background/camera/player helpers, placeholders
-  - `player/` — shared Front hitbox (`hitbox_front.tres`), shared pose nudge (`pose_nudge.tres` + `mike_pose_nudge.gd`); unused `hitbox_back.tres` / `hitbox_side.tres` were archived 2026-09-17
+  - `core/` — exploration room trunk (`exploration_room.gd`), scene change (`exploration_transition.gd`), lore pickup, interact spot, memory still + frame, plus background/camera/player helpers
+  - `player/` — packed Mike (`Player.tscn`), shared Front hitbox (`hitbox_front.tres`), shared pose nudge (`pose_nudge.tres` + `mike_pose_nudge.gd`); unused `hitbox_back.tres` / `hitbox_side.tres` were archived 2026-09-17
   - `ui/` — dialogue, interact prompt, locker, pause, world-item card
   - `fx/` — noir/scanline/CRT overlays, memory indicator, glitch/pulse, 1.2 `DirectionHint`
   - `world/` — floor-item pickup + white pointing-hand marker (`ItemMarker.tscn`)

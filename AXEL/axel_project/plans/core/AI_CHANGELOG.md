@@ -6941,4 +6941,21 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: `scene_smoke_check.gd` OK (21 scenes). `interact_arrival_check.gd` OK. `player_cover_sync_check.gd` / `player_spawn_sync_check.gd` / `player_walk_speed_check.gd` OK. `corridor_depth_seed_check.gd` OK. `world_combat_loop_check.gd` / `world_combat_roundtrip_check.gd` OK. `determinism_check.gd` / `princess_check.gd` / `combat_test_scaffold_check.gd` OK.
 - Notes: Room scripts still hold peek/occlusion leaves. Do not merge frozen peek policies.
 
+### Shared-block how-to catch-up
+
+- Request: Update docs so how-to matches the shared exploration blocks.
+- Implementation: Canon how-to now says new rooms `extends ExplorationRoom`, instance `Player.tscn`, set glow exports, and use `LorePickup` / `MemoryStill`. Per-arc Implemented notes no longer tell you to copy `_sync_memory_indicator` or paste Front/ShadowOutline. Frozen peeks, kitchen Y `90`, 1.1 intro, 1.2 arrow, and 2.4 depth stay local.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+- Behavior impact: None (docs only).
+- Verification: Read-back of how-to vs live `extends ExplorationRoom` / `MemoryStill` / `Player.tscn` / glow exports. No game scripts changed in this pass.
+- Notes: Does not rewrite the Shared scene building blocks row above. Do not copy `_begin_scene_change` / `_show_interact_prompt` into a new room.
+
 
