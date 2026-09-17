@@ -1,37 +1,12 @@
 extends RefCounted
 class_name BotScenarioRunner
 
-## Deterministic command-list interpreter for AXEL playthrough bots.
-##
-## Scenarios are arrays of dictionaries. Each command has an `op` string and
-## op-specific fields. The runner sequences commands in order, advancing the
-## scene tree between actions, and emits a structured log on failure so the
-## first broken assertion can be diagnosed without a live UI.
-##
-## Supported ops (all lowercase strings):
-##   {"op": "press",        "key": KEY_W}
-##   {"op": "release",      "key": KEY_W}
-##   {"op": "release_all"}
-##   {"op": "tap",          "key": KEY_E, "frames": 2}            # frames optional, default 1
-##   {"op": "hold",         "key": KEY_D, "frames": 300}          # press, wait, release
-##   {"op": "wait_frames",  "frames": 10}                          # physics frames
-##   {"op": "wait_process_frames", "frames": 10}
-##   {"op": "wait_seconds", "seconds": 1.0}
-##   {"op": "log",          "msg": "phase 2 entered"}
-##   {"op": "assert",       "fn": Callable, "desc": "..."}         # one-shot
-##   {"op": "assert_eventually",
-##                          "fn": Callable, "desc": "...",
-##                          "timeout_frames": 120,
-##                          "poll_every_frames": 1}                 # polls each tick
-##
-## Callables for assertions take no args and return bool. The runner stores the
-## last failure context so the test driver can print/log a clean diagnostic.
 
 const _DEFAULT_EVENTUAL_TIMEOUT_FRAMES := 240
 const _DEFAULT_EVENTUAL_POLL := 1
 
 var _tree: SceneTree
-var _driver  # InputEventDriver (untyped to avoid load-order dependency on class_name cache)
+var _driver
 var _verbose: bool
 
 var last_error: String = ""
@@ -50,8 +25,6 @@ func driver():
 	return _driver
 
 
-## Execute a scenario command list. Returns true on success, false on first failure.
-## On failure, callers can read `last_error`, `last_failed_index`, `last_failed_op`.
 func run(commands: Array) -> bool:
 	commands_executed = 0
 	for i in commands.size():
@@ -155,7 +128,6 @@ func _run_assert_eventually(cmd: Dictionary) -> bool:
 	return false
 
 
-## Build a single-line failure summary suitable for `push_error` / log dumps.
 func failure_summary() -> String:
 	if last_failed_index < 0:
 		return "no failure"

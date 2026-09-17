@@ -1,5 +1,4 @@
 extends SceneTree
-## Phase 4: 75 icons at 1024×1024, every tres resolves, L-A has no file.
 
 const ITEM_DIR := "res://combat/data/items/"
 const ICON_DIR := "res://combat/art/item_icons/"

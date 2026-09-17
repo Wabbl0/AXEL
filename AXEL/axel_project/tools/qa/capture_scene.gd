@@ -1,23 +1,4 @@
 extends SceneTree
-## Generic Windows scene-to-PNG capture (Master Build Plan Phase 0.1).
-##
-## Needs a real GPU context — do NOT pass --headless (shaders never compile
-## there and the captured image would be null/blank).
-##
-## Run via the driver (recommended):
-##   powershell -File AXEL/axel_project/tools/qa/capture_scene.ps1 -Scene res://scenes/Main_Menu/0.1_MainMenu.tscn -Out out/menu.png
-##
-## Or by hand from the repo root:
-##   Godot_v4.7.2-stable_win64_console.exe --path AXEL/axel_project -s res://tools/qa/capture_scene.gd -- --scene=res://combat/combat_test.tscn --out=user://cap.png --frames=60 --size=1920x1280 --mode=windowed
-##
-## Args (after the -- separator):
-##   --scene=res://...      scene to load (required)
-##   --out=<path>           output PNG: user://, res://, or an absolute path (required)
-##   --frames=N             warm-up frames before the grab (default 60)
-##   --size=WxH             window/render size (default 1920x1280); ignored for --mode=fullscreen
-##   --mode=windowed|borderless|fullscreen   (default windowed)
-##
-## Prints CAPTURE_OK <abs path> <WxH> on success; exits 0/1.
 
 const DEFAULT_FRAMES := 60
 const DEFAULT_SIZE := Vector2i(1920, 1280)
@@ -70,8 +51,7 @@ func _main() -> void:
 		quit(1)
 		return
 
-	# Apply window mode/size BEFORE the scene loads so the first cover-fit
-	# layout (PlayerCoverSync first-layout rule) sees the final size.
+
 	match _mode:
 		"fullscreen":
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -82,7 +62,7 @@ func _main() -> void:
 			root.size = _size
 	await process_frame
 
-	# change_scene_to_file so autoloads (post-FX, music, event FX) wire up like a real run.
+
 	if change_scene_to_file(_scene_path) != OK:
 		push_error("capture_scene: could not load %s" % _scene_path)
 		quit(1)

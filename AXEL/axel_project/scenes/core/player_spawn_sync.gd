@@ -1,9 +1,5 @@
 extends RefCounted
 class_name PlayerSpawnSync
-## Default spawn is the Player node's live editor position.
-## Capture in EnvironmentColliders local space *before* cover-fit, then apply
-## after. Never hardcode a spawn Vector2. Peek / return from another room may
-## place elsewhere; a fresh Play with no transition flag must use this node.
 
 
 static func capture_tex(env: Node2D, player: Node2D) -> Vector2:

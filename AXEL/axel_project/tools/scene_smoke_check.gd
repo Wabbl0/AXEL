@@ -1,11 +1,5 @@
 extends SceneTree
-## Headless smoke: instantiate canonical scenes, ensure load + ready without bailing early.
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/scene_smoke_check.gd
-##
-## Exit 0 on success; exit 1 on missing resource, load failure, or instantiate failure.
 
-## Curated canonical scenes (not const: PackedStringArray literal is not a const expression in all analyzers).
 const ValidatorsScript := preload("res://tools/qa/qa_canon_validators.gd")
 
 const COMBAT_TEST_SCENE := ValidatorsScript.COMBAT_TEST_SCENE

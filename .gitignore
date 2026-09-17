@@ -16,3 +16,8 @@
 
 # QA capture output (regenerable PNGs from tools/qa/capture_scene.ps1)
 /out/
+
+# Dated leftover archive dumps that were already untracked at their old paths
+AXEL/axel_project/archive/**/html/
+AXEL/axel_project/archive/**/out/
+AXEL/axel_project/archive/**/exports/

@@ -5,9 +5,7 @@ const BASE_MAX_SLOTS := 7
 const SLOT_BONUS_EFFECT_ID := &"extra_inventory_slots"
 const LEGENDARY_RARITY_INT := 4
 
-## Direct access for iteration; use equip()/unequip() to enforce constraints.
 var items: Array = []
-## Playtest only: when true, skip the 7/9 overflow reject. Duplicate ids still rejected.
 var ignore_slot_cap: bool = false
 
 

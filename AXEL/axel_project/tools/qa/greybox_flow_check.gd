@@ -1,5 +1,4 @@
 extends SceneTree
-## Phase 6: every grey-box room and ending has a route in and a route out.
 
 const ROOM_SCENES := {
 	"6.1": "res://scenes/Arc_6/6.1_BasementDoor.tscn",

@@ -1,13 +1,5 @@
 extends Camera2D
 class_name BackgroundCamera
-## Derives Camera2D limits from a background PNG world rect so the view never
-## slides past the art (avoids clear-color / post-FX red fringe on exploration scenes).
-##
-## Scene contract (new PNG exploration scenes):
-## 1. Wire exports on this node (`background_path`, `fit_mode`, `camera_mode`, …).
-## 2. Connect `layout_applied` from scene script to sync `EnvironmentColliders`.
-## 3. Default `camera_mode = static_locked`; enable `movable_follow` when designer needs pan.
-## Manual `limit_*` / `fixed_x` tuning is forbidden on new scenes — limits come from art size.
 
 const Layout := preload("res://scenes/core/background_layout.gd")
 
@@ -24,16 +16,12 @@ const DEFAULT_MAX_AUTO_ZOOM := 4.0
 @export var fit_mode: Layout.FitMode = Layout.FitMode.COVER
 @export var camera_mode: CameraMode = CameraMode.STATIC_LOCKED
 @export var margin_px: float = DEFAULT_MARGIN_PX
-## For static COVER rooms, allow a thin reveal strip around the art before the CRT vignette.
-## Negative = use the shared default only for STATIC_LOCKED + COVER.
 @export var edge_reveal: float = -1.0
 @export var target_path: NodePath
 @export var background_y: float = Layout.DEFAULT_BACKGROUND_Y
 @export var follow_smoothing: float = DEFAULT_FOLLOW_SMOOTHING
 @export var max_auto_zoom: float = DEFAULT_MAX_AUTO_ZOOM
-## When set (finite), static_locked centers here instead of art rect center.
 @export var static_center: Vector2 = Vector2.INF
-## When false, MOVABLE_FOLLOW holds its current center (used by 1.1 intro off-screen spawn).
 var follow_enabled: bool = true
 
 signal layout_applied(scale_factor: float, bg_position: Vector2, world_rect: Rect2)
@@ -89,8 +77,8 @@ func _run_pipeline() -> void:
 			)
 			if not layout.is_empty():
 				Layout.apply_to_sprite(background, layout)
-				# Limits/clamp must use global art bounds so a non-zero scene-root
-				# offset cannot open clear-color / post-FX red void at the edges.
+
+
 				world_rect = Layout.compute_global_world_rect(background)
 				layout_applied.emit(
 					layout["scale_factor"], layout["position"], world_rect

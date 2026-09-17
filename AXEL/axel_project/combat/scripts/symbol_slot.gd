@@ -5,13 +5,11 @@ signal win_popup_border_touched(payout_cents: int)
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
 const WIN_POPUP_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 
-## Winnings popup — distinct phases: appear small -> scale up -> glow -> lob -> fade.
 const WIN_POPUP_FONT_SIZE := 40
 const WIN_POPUP_SCALE_START := 0.72
 const WIN_POPUP_SCALE_PEAK := 1.45
 const WIN_POPUP_SCALE_LOB_END := 0.92
 const WIN_POPUP_ARC_HEIGHT := 52.0
-## Baseline total ~0.62s; default is 2x slower (~1.24s) with fixed phase shares.
 const WIN_POPUP_TOTAL_DURATION := 1.24
 const WIN_POPUP_PHASE_APPEAR_SHARE := 0.12
 const WIN_POPUP_PHASE_SCALE_SHARE := 0.22
@@ -67,8 +65,6 @@ func has_visible_symbol() -> bool:
 	return _icon.texture != null
 
 
-## Board swap, phase 1: slide this symbol straight down past the board, then clear it.
-## LINEAR so a whole column keeps its shape while it leaves.
 func play_fall_off(distance_px: float, duration: float, delay: float = 0.0) -> void:
 	_ensure_icon()
 	_cancel_tween(_drop_tween)
@@ -89,9 +85,6 @@ func _clear_icon_after_fall_off() -> void:
 	_icon.position = Vector2.ZERO
 
 
-## Board swap, phase 2: this symbol starts `distance_px` above its cell and slides in.
-## LINEAR, and every slot in a column gets the same distance and duration, so the
-## column arrives as one rigid tube.
 func play_tube_in(distance_px: float, duration: float) -> void:
 	_ensure_icon()
 	_cancel_tween(_drop_tween)
@@ -173,19 +166,19 @@ func play_win_popup(
 	if delay > 0.0:
 		_win_tween.tween_interval(delay)
 
-	# 1) Appear small at symbol — fade in only, no scale change yet.
+
 	_win_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_win_tween.tween_property(_win_label, "modulate:a", 0.65, phase.appear)
 	_win_tween.parallel().tween_property(_win_glow_label, "modulate:a", 0.35, phase.appear)
 
-	# 2) Scale up to peak.
+
 	_win_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_win_tween.tween_property(_win_label, "scale", Vector2.ONE * WIN_POPUP_SCALE_PEAK, phase.scale_up)
 	_win_tween.parallel().tween_property(_win_glow_label, "scale", Vector2.ONE * WIN_POPUP_SCALE_PEAK, phase.scale_up)
 	_win_tween.parallel().tween_property(_win_label, "modulate:a", 1.0, phase.scale_up)
 	_win_tween.parallel().tween_property(_win_glow_label, "modulate:a", 0.85, phase.scale_up)
 
-	# 3) Glow hold — pulse glow layer before throw; main text stays opaque.
+
 	var glow_half: float = float(phase.glow_hold) * 0.5
 	_win_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_win_tween.tween_property(_win_glow_label, "modulate:a", WIN_POPUP_GLOW_PEAK_ALPHA, glow_half)
@@ -195,16 +188,16 @@ func play_win_popup(
 		_lob_p0 = start_pos
 		_lob_p2 = end_pos
 		_lob_p1 = (start_pos + end_pos) * 0.5 + Vector2(0.0, -WIN_POPUP_ARC_HEIGHT)
-		# 4) Lob toward total winnings value — position only; no fade during flight.
+
 		_win_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		_win_tween.tween_method(_apply_lob_position, 0.0, 1.0, phase.lob)
 		_win_tween.parallel().tween_property(_win_label, "scale", Vector2.ONE * WIN_POPUP_SCALE_LOB_END, phase.lob)
 		_win_tween.parallel().tween_property(_win_glow_label, "scale", Vector2.ONE * WIN_POPUP_SCALE_LOB_END, phase.lob)
 	else:
-		# No target wired: hold at symbol through lob share, then fade.
+
 		_win_tween.tween_interval(phase.lob)
 
-	# 5) Fade out after arrival (or hold at symbol).
+
 	_win_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	_win_tween.tween_property(_win_label, "modulate:a", 0.0, phase.fade_out)
 	_win_tween.parallel().tween_property(_win_glow_label, "modulate:a", 0.0, phase.fade_out)

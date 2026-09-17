@@ -1,17 +1,16 @@
 @tool
 class_name CombatHudPiece
 extends Control
-## One movable HUD piece: art + clipped TextBox. Widgets attach into TextBox at runtime.
 
 signal activated
 
 @export var clickable: bool = false
-@export var use_alpha_hit: bool = false ## Unused. Clicks always use MOVE_TextBox.
+@export var use_alpha_hit: bool = false
 @export var text_inset_px: float = 8.0
 @export var hover_scale: float = 1.04
 @export var press_scale: float = 0.96
 @export var pop_on_change: bool = true
-@export var alpha_hit_threshold: float = 0.08 ## Unused. Kept so combat_test.tscn still loads.
+@export var alpha_hit_threshold: float = 0.08
 @export var art_node_path: NodePath = NodePath("")
 
 var _art: TextureRect
@@ -104,7 +103,7 @@ func attach(widget: Control, host: Control = null) -> void:
 		widget.reparent(target)
 	widget.visible = true
 	widget.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	## Clickable widgets must fill the TextBox. Inset is only for readout text.
+
 	var inset := 0.0 if clickable else text_inset_px
 	widget.offset_left = inset
 	widget.offset_top = inset
@@ -151,10 +150,8 @@ func _has_point(point: Vector2) -> bool:
 		return false
 	if not clickable:
 		return true
-	## Click area is the MOVE_TextBox, in this piece's local pixels.
-	## Do not mix get_global_rect() into this test: HudCanvas is scaled to the
-	## window, so that rect is already in screen pixels while `point` is not.
-	## Mixing them made every hit box sit in the top-left and look too small.
+
+
 	return _text_box_local_rect().has_point(point)
 
 

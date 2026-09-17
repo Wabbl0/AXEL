@@ -145,4 +145,3 @@ static func _coords_to_strings(coords: Array[Vector2i]) -> Array:
 	for p in coords:
 		out.append("%d:%d" % [p.x, p.y])
 	return out
-

@@ -1,29 +1,11 @@
 extends SceneTree
-## World combat loop regression check.
-##
-## Asserts:
-## 1. The six areas cover the indoor rooms; 3.1 never fights.
-## 2. Every area starts Common and taking an item upgrades only the untouched
-##    areas (AXEL_notes §2.3).
-## 3. The walk-step curve runs 0.1% -> 1% and never leaves that band.
-## 4. Every area family resolves to a real item .tres at every rank.
-## 5. The locker panel has no START RUN button.
-## 6. The school map refuses a room the player has not walked in.
-## 7. 1.1 / 1.2 walk fights stay locked until the locker tutorial is done and
-##    some other room has hosted a fight.
-## 8. The world goal ladder starts at 3x the chip bar and keeps climbing.
-##
-## Run: tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/world_combat_loop_check.gd
 
 const LockerInteriorScript := preload("res://scenes/ui/locker_interior.gd")
 
-## Outdoors and never in any area table: no floor items and no step fights, at
-## any point in the run. 1.1 used to be on this list and is now gated instead.
 const NEVER_FIGHTS := [
 	"res://scenes/Arc_3/3.1_Backyard.tscn",
 ]
 
-## Allowed to walk-fight, but only after the tutorial gate opens.
 const GATED := [
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
 	"res://scenes/Arc_1/1.2_Corridor.tscn",
@@ -89,8 +71,8 @@ func _check_area_table(world: Node) -> void:
 			_fail("outdoor scene must not allow step fights: %s" % path)
 		if bool(world.call("can_walk_fight", path)):
 			_fail("outdoor scene must never walk-fight: %s" % path)
-	# 1.1 stays out of the area table on purpose: that is what keeps floor
-	# items off it while `can_walk_fight` can still open up later.
+
+
 	if bool(world.call("is_indoor_scene", GATED[0])):
 		_fail("1.1 must stay out of the area table so it never scatters items")
 	var halls_rooms: Dictionary = areas["halls"]["rooms"]
@@ -112,7 +94,7 @@ func _check_rank_progression(world: Node) -> void:
 		if int(world.call("area_rank", area_id)) != 0:
 			_fail("area %s should start Common" % area_id)
 
-	# Engaging one area freezes it and lifts every untouched area by one rank.
+
 	world.call("_engage_area", "cafeteria")
 	if int(world.call("area_rank", "cafeteria")) != 0:
 		_fail("engaged area must keep its rank")
@@ -122,13 +104,13 @@ func _check_rank_progression(world: Node) -> void:
 		if int(world.call("area_rank", area_id)) != 1:
 			_fail("untouched area %s should be Uncommon after first pickup" % area_id)
 
-	# Engaging the same area twice must not double-upgrade the others.
+
 	world.call("_engage_area", "cafeteria")
 	world.call("_upgrade_untouched_areas", "cafeteria")
 	if int(world.call("area_rank", "kitchen")) != 1:
 		_fail("one area may only ever grant one upgrade")
 
-	# Rank is capped at Legendary no matter how many areas get engaged.
+
 	for area_id in ["kitchen", "lounge", "classroom", "halls", "basement"]:
 		world.call("_engage_area", area_id)
 	for area_id in (world.AREAS as Dictionary).keys():
@@ -167,7 +149,7 @@ func _check_item_pools(world: Node, run: Node) -> void:
 					break
 			if not found:
 				_fail("area %s family %s has no item .tres at any rank" % [area_id, family])
-		# Common is the starting rank, so it must always resolve.
+
 		world.call("reset_world")
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 12345
@@ -176,7 +158,7 @@ func _check_item_pools(world: Node, run: Node) -> void:
 			_fail("area %s rolled no item at Common" % area_id)
 		elif run.call("load_item", rolled) == null:
 			_fail("area %s rolled a missing item id %s" % [area_id, rolled])
-		# With area families marked used, Common must land on C1–C10.
+
 		var used_families: Array = []
 		for family in families:
 			used_families.append(String(family))
@@ -250,7 +232,7 @@ func _check_take_item(world: Node, run: Node) -> void:
 	if bool(world._cleared.get("cafeteria", false)):
 		_fail("area cleared with items still on the floor")
 
-	# Same slot twice must not double-count.
+
 	world.call("take_item", room, 0)
 	if Array(run.state.owned_item_ids).count("C-A") != 1:
 		_fail("taking the same floor item twice duplicated it")
@@ -271,7 +253,7 @@ func _check_save_round_trip(world: Node) -> void:
 	world.call("_engage_area", "classroom")
 	world._lore_fights["hasKey"] = true
 	var saved: Dictionary = world.call("to_dict")
-	# JSON is what actually hits the slot file, so round trip through it.
+
 	var text := JSON.stringify(saved)
 	var parsed: Variant = JSON.parse_string(text)
 	if not parsed is Dictionary:
@@ -292,7 +274,6 @@ func _check_save_round_trip(world: Node) -> void:
 	world.call("reset_world")
 
 
-## Flashlight / key / shovel / name each pay out one fight, ever.
 func _check_lore_guard(world: Node) -> void:
 	world.call("reset_world")
 	for flag in ["hasFlashlight", "hasKey", "hasShovel", "hasName"]:
@@ -325,8 +306,6 @@ func _button_texts(node: Node) -> Array[String]:
 	return out
 
 
-## 1.1 and 1.2 are silent on a fresh save, and only the walk roll ever wakes
-## them — never floor items.
 func _check_walk_gate(world: Node, run: Node) -> void:
 	world.call("reset_world")
 	run.call("reset_run")
@@ -334,13 +313,13 @@ func _check_walk_gate(world: Node, run: Node) -> void:
 		if bool(world.call("can_walk_fight", path)):
 			_fail("%s must not walk-fight on a fresh save" % path)
 
-	# Tutorial alone is not enough: another room still has to fight first.
+
 	run.state.tutorial_fight_done = true
 	for path in GATED:
 		if bool(world.call("can_walk_fight", path)):
 			_fail("%s must stay locked until another room has fought" % path)
 
-	# A fight in a gated room must not unlock the gated rooms.
+
 	world.call("_record_fight_room", GATED[1])
 	for path in GATED:
 		if bool(world.call("can_walk_fight", path)):
@@ -351,7 +330,7 @@ func _check_walk_gate(world: Node, run: Node) -> void:
 		if not bool(world.call("can_walk_fight", path)):
 			_fail("%s should walk-fight once the gate is open" % path)
 
-	# The gate must survive a save round trip.
+
 	var parsed: Variant = JSON.parse_string(JSON.stringify(run.call("to_dict")))
 	var round_tripped := RunState.from_dict(parsed as Dictionary)
 	if not bool(round_tripped.tutorial_fight_done):
@@ -363,8 +342,6 @@ func _check_walk_gate(world: Node, run: Node) -> void:
 	run.call("reset_run")
 
 
-## 3x, 5x, 7.5x, 10x, 15x, 20x, 30x of the 1000-cent chip bar, then it keeps
-## climbing. Fight 1 (the locker tutorial) must land on the 3x rung.
 func _check_goal_ladder(run: Node) -> void:
 	run.call("reset_run")
 	var want := [3000, 5000, 7500, 10000, 15000, 20000, 30000]
@@ -373,7 +350,7 @@ func _check_goal_ladder(run: Node) -> void:
 		var got := int(run.call("world_goal_base_cents"))
 		if got != int(want[i]):
 			_fail("world fight %d should need %d cents, got %d" % [i + 1, want[i], got])
-	# Past the table the curve must keep rising, never flatten or wrap.
+
 	var previous := int(want[want.size() - 1])
 	for extra in range(want.size() + 1, want.size() + 5):
 		run.state.world_fight_count = extra
@@ -387,7 +364,7 @@ func _check_goal_ladder(run: Node) -> void:
 func _check_visited_gate(gm: Node) -> void:
 	var probe := "res://scenes/Arc_2/2.3_Kitchen.tscn"
 	if bool(gm.call("has_visited", probe)):
-		# A previous check may have loaded it; only the toggle matters here.
+
 		print("world_combat_loop_check: %s already marked visited" % probe)
 		return
 	gm.call("mark_room_visited", probe)

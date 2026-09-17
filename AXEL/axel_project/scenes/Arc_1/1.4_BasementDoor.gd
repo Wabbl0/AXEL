@@ -4,14 +4,10 @@ const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const DOOR_LINE := "Not yet."
 const BASEMENT_SCENE := "res://scenes/Arc_6/6.1_BasementDoor.tscn"
-## Just left of CafeteriaInteractArea so only a sliver peeks on the right.
 const CAFETERIA_PEEK_MARGIN_PX := 12.0
-## Just right of ExitTrigger so only a sliver peeks on the left.
 const CORRIDOR_PEEK_MARGIN_PX := 12.0
 const CAFETERIA_ZONE_GRACE_SEC := 0.15
 const EXIT_TRIGGER_GRACE_SEC := 0.15
-## Same 2400×1500 plate as 1.2 — share the corridor's authored cover baseline
-## so Mike is the same on-screen size (do not use 1920×1280 bind_design).
 const _OLD_BG_SCALE := Vector2(0.546, 0.546)
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
@@ -39,7 +35,7 @@ func _ready() -> void:
 	_player_cover_sync.bind_from_player(_player)
 	var _bg := $WalkableWorld/Background as Sprite2D
 	var _cam := $Camera2D
-	# Legacy 1.2 baseline already set; bind_design no-ops (do not switch to 1920x1280).
+
 	_player_cover_sync.bind_design_from_background(
 		_bg, _cam.fit_mode, _cam.background_y
 	)
@@ -57,7 +53,7 @@ func _ready() -> void:
 	set_process(true)
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
-	# Match 1.2: take spawn side + t after first layout settles, then re-queue peek.
+
 	call_deferred("_restore_player_position_if_needed")
 
 
@@ -108,7 +104,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _is_interaction_event(event):
 		return
 	_refresh_active_zones()
-	# Busy (line / CRT / bar) → overlay skips/advances; snap chip off; never stack a new line.
+
 	if _door_dialogue_busy():
 		_hide_interact_prompt_immediate()
 		return
@@ -127,7 +123,7 @@ func _door_dialogue_busy() -> bool:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 
@@ -152,7 +148,7 @@ func _begin_basement_entry() -> void:
 
 func _play_door_line_async() -> void:
 	_door_line_running = true
-	# Snap chip away with dialogue start so spam cannot CRT-shrink/re-open mid-line.
+
 	_hide_interact_prompt_immediate()
 	await _top_dialogue.show_line(DOOR_LINE, 3.0)
 	_door_line_running = false
@@ -256,7 +252,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var tex_pos := PlayerSpawnSync.capture_tex(env, player_node)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
-	# Always remap Player node (1.2 style). Peek overwrite runs deferred after.
+
 	PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	call_deferred("_wake_static_colliders")

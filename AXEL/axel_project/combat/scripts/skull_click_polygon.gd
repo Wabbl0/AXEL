@@ -1,5 +1,4 @@
 extends Control
-## Editable click polygon for the Execute skull. Drag Polygon2D vertices in the editor.
 
 signal pressed
 
@@ -9,7 +8,7 @@ var _pressing := false
 
 
 func _ready() -> void:
-	## Clicks live on Execute's MOVE_TextBox. This polygon is editor tracing only.
+
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _poly != null:
 		_poly.color = Color(1.0, 1.0, 1.0, 0.0)

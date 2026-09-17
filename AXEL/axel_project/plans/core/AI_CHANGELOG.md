@@ -6490,3 +6490,256 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Locker shelves and item lists show sharper 1024 icons. No combat math change.
 - Verification: item_icons_check OK (exit 0, 75 × 1024); determinism OK (exit 0, 100 spins seed 12345); princess OK (exit 0); combat scaffold OK (exit 0); scene smoke OK (exit 0, 21 scenes).
 - Notes: GenerateImage wrote JPEGs named `.png`; they were converted to real PNGs before remap. Do not run `bake_item_icons_256.gd`.
+
+## 2026-09-03
+
+### 4.1 lounge — table/chair behind fade (docs catch-up)
+
+- Request: Walking behind the lounge table and chair should fade Mike the same way other rooms fade behind furniture.
+- Implementation: Added `TableBlock_Behind` and `ChairBlock_Behind` (`leaf_occlusion_zone.gd`) under `EnvironmentColliders`. After cover-fit, `4.1_TeachersLounge.gd` sends those polygons to `Player.configure_leaf_occlusion_polygons`. Also wakes `Area2D` colliders after layout, not only `StaticBody2D`.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Standing behind the lounge table or chair fades Mike. Drag the green behind polygons in the editor to match the drawing.
+- Verification: Scene node names + script slot wiring (shipped in `079a6ac`). No extra headless check this catch-up.
+- Notes: Catch-up — this shipped in the Sep 3 locker-line / combat-UI commit and was never logged. Key / memory loop was already logged on Aug 27.
+
+## 2026-09-04
+
+### Master Build Plan Phase 1–3 — saves, menu, pause, locker, combat run (docs catch-up)
+
+- Request: Put the rest of the master-plan shell in the live game after Phase 0: three save slots, a real title menu, Options, Credits, a real pause menu, locker loadout, a player combat scene, combat juice, and playable grey-box rooms / endings.
+- Implementation:
+  - **Saves (D2 / D3 / D9):** new autoload `AxelSaves` — three slots under `user://saves/`, separate from `AxelSettings`. A slot turns on only after New Game / Load / Continue, so editor F6 of a room still starts fresh. Playtime ticks only while a slot is active and the tree is unpaused.
+  - **Title menu:** Continue / New Game / Load / Options / Credits / Quit. Shared `menu_look.gd` chrome. New Game and Load open `Saves.tscn`. Continue uses the last living slot.
+  - **Options (D4 / Phase 1.3):** `options_panel.gd` on the title Options scene and inside pause — window mode / size, vsync, FPS cap, CRT, quality, UI scale, volumes, text speed, auto-advance, reduce flashing, shake, glitch, and key rebinds. Writes through `AxelSettings`.
+  - **Pause (D6 / Phase 1.5):** `AxelPause` dropped the placeholder `PAUSED` scrim and now draws `pause_menu.gd` — Resume / Options / Inventory / Map / Quit to Title / Quit to Desktop. `AxelPause` is still the only writer of `tree.paused`.
+  - **Run owner (Phase 2):** new autoload `AxelRun` — combat run state, lore goal bonus as a number (no story flags in combat), `enter_combat()` into `combat/combat_run.tscn`. That day the locker still had **START RUN** and opening it granted `C1`/`C2`/`C3` once.
+  - **Locker (D7 / D11):** `locker_interior.gd` shelf grid — click to equip, plus START RUN. Hub opens this panel.
+  - **Player combat scene:** `combat_run.tscn` / `combat_run.gd` hosts the protected scaffold and hides playtest chrome. `combat_feel.gd` is visual-only juice (shake, banner, goal grime) and never touches combat RNG. Skull meter gained a feel-only rotation. `combat_root` grew named SFX / feel signals.
+  - **School map thumbs:** baked room cards in `assets/map_thumbs/` via `bake_map_thumbs.gd`.
+  - **Grey-box rooms / endings (D18):** `greybox_choice.gd` on remaining stub rooms (board puzzle, basement chain). `ending_still.gd` plays locked ending lines, then returns to title (true ending goes to the epilogue).
+  - **Assets / export:** first noir item-icon remap + 256 bake tools; overworld/combat music converted to `.ogg`; Windows `export_presets.cfg`.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_saves.gd` (new)
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd` (new)
+  - `AXEL/axel_project/scripts/autoload/axel_pause.gd`, `axel_settings.gd`, `axel_music.gd`, `axel_event_fx.gd`, `axel_post_fx_stack.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`, `0.1_MainMenu.tscn`
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd` / `Saves.tscn`, `Options.gd` / `Options.tscn`, `Credits.gd` / `Credits.tscn`, `menu_look.gd` (new)
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`, `options_panel.gd`, `locker_interior.gd` (new)
+  - `AXEL/axel_project/combat/combat_run.tscn`, `combat/scripts/combat_run.gd`, `combat/scripts/combat_feel.gd` (new)
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`, `run_state.gd`, `premium_skull_meter.gd`, `symbol_slot.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`, `1.3_SchoolMap.gd` / `.tscn`, `1.1_SchoolExterior.gd`, `1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/core/greybox_choice.gd` (new)
+  - `AXEL/axel_project/scenes/Endings/ending_still.gd` (new) + ending / basement / board stub `.tscn`
+  - `AXEL/axel_project/exports/GameManager.gd`, `project.godot`, `export_presets.cfg`
+  - `AXEL/axel_project/assets/map_thumbs/*.png`, `assets/audio/music/*.ogg`, `combat/art/item_icons/*.png`
+  - `AXEL/axel_project/tools/qa/save_slots_check.gd`, `corrupt_save_check.gd`, `run_state_check.gd`, `greybox_flow_check.gd`, `item_icons_check.gd`, `graphics_preset_check.gd`, `bake_map_thumbs.gd`, `convert_music_to_ogg.ps1` (new)
+  - `AXEL/axel_project/tools/combat/remap_item_icons_noir.gd`, `bake_item_icons_256.gd` (new)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: You can start / load / continue a run from the title, pause into a real menu, rebind keys, and open the locker. That day, locker START RUN was still the door into a fight. Grey-box rooms and endings play their locked lines. Combat juice is look-only.
+- Verification: New checks from that commit — `save_slots_check.gd`, `corrupt_save_check.gd`, `run_state_check.gd`, `greybox_flow_check.gd`, `item_icons_check.gd`, `graphics_preset_check.gd` — plus the existing playtest gate. This catch-up did not re-run them.
+- Notes: Catch-up — commit `1cc3ea3` never wrote a changelog day. **Later the same week:** Sep 6 removed locker START RUN and added the school → fight loop; Sep 9 made opening the locker a tutorial flag only (no `C1`/`C2`/`C3` grant). `enter_combat()` is still in the file but unused for world fights. `AI_DOCS` got the Saves / menu / pause UI line in the 2026-09-10 catch-up below.
+
+## 2026-09-10
+
+### Settings must not unmute author-muted buses (docs catch-up)
+
+- Request: Boot / first volume apply was turning buses back on even when they were muted in the Godot Audio panel (author work-mute).
+- Implementation: `AxelSettings._apply_bus_volumes` now respects an already-muted bus on the first apply. Later Options slider moves can still unmute when the saved volume is above zero. `audio_bus_layout_check.gd` asserts that boot apply cannot unmute Master, and that Master must not ship muted in `default_bus_layout.tres`.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_settings.gd`
+  - `AXEL/axel_project/default_bus_layout.tres`
+  - `AXEL/axel_project/tools/qa/audio_bus_layout_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: A bus you muted while authoring stays muted after Play. Options sliders still work after that first apply.
+- Verification: `audio_bus_layout_check.gd` (shipped in `ace3506`). This catch-up did not re-run it.
+- Notes: Catch-up — the same Sep 10 commit logged ITEMS type sizes, not this mute rule. Canon line was already in `AI_DOCS.md`.
+
+### Baseline item lines + family tags (docs catch-up)
+
+- Request: World scatter and the F6 ITEMS picker should group baseline items by effect (reroll, normal payout, …), not by matching digits (`C1` is not `L1`). Empty `family` fields on those `.tres` files needed filling.
+- Implementation: New `combat/scripts/item_lines.gd` holds the eight effect lines plus Common-only uniques `C3`/`C5`/`C9`/`C10`. Scatter and the picker read those rungs. Baseline `.tres` files got `family` tags (`reroll`, `normpay`, `pwrwgt`, …) and a few description cleanups. `AxelWorld` uses the same table for floor rolls.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/item_lines.gd` (new)
+  - `AXEL/axel_project/combat/data/items/*.tres` (baseline family + some descriptions)
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Floor pentacles and the F6 picker step along the same effect lines. Pairing is by effect, not by digit. Combat math / RNG streams are unchanged.
+- Verification: Catalog plan paths match live ids; `item_lines.gd` is the source listed in `AI_DOCS.md` / the catalog plan. This catch-up did not re-run headless scripts.
+- Notes: Catch-up — shipped in `01a3160` with the ITEMS box / 1024-icon work, but never given its own changelog row. `L-A` stays unused.
+
+### AI_DOCS — name saves, menu, and pause UI (docs catch-up)
+
+- Request: Log the missed last-two-weeks work and put saves / menu / pause in canon so later chats can find them.
+- Implementation: Added an Architecture bullet for `AxelSaves`, the title menu, `pause_menu.gd`, and `AxelRun`. Added the matching headless checks to the optional list.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs only. Gameplay already matched.
+- Verification: Read the new Architecture bullet against `axel_saves.gd`, `MainMenu.gd`, and `axel_pause.gd`.
+- Notes: This is the catch-up session that wrote the Sep 3 / Sep 4 / Sep 10 rows above.
+
+## 2026-09-17
+
+### First-pass leftover archive (approved list only)
+
+- Request: Archive ONLY the approved leftover list from the first-pass cleanup chat into `AXEL/axel_project/archive/<dated>/` with `.gdignore`. Do not delete from disk, strip comments, or unmute Master. Then re-run `run_default_playtest.ps1`.
+- Implementation: Copied approved leftovers into `archive/2026-09-17/` (empty `.gdignore` in `archive/` and the dated folder so Godot will not import them — official project-organization rule). Removed them from live paths after the copy verified. Kept live `option_2_vhs_glitch.gdshader` because `IntroGlitchOverlay.tscn` still uses it. Did not archive music, logs, item bakers, `ScenePlaceholder.gd`, `GameManager.gd`, or live room drawings. `default_bus_layout.tres` Master mute is unchanged. Recreated empty repo `out/` for later captures.
+- Files changed:
+  - `AXEL/axel_project/archive/.gdignore` (new)
+  - `AXEL/axel_project/archive/2026-09-17/` (approved leftovers)
+  - `.gitignore`, `.cursorignore`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Unused leftover scenes/scripts/art are no longer on live `res://` paths. Play behavior should match the keep list. Style-sweep option_3 path is now in archive only.
+- Verification: `tools/qa/run_default_playtest.ps1` after the archive.
+- Notes: Source chat: first-pass cleanup. Skipped `option_2` on purpose. Comment-strip and hidden combat ring meter stay for later chats.
+
+### White pointing-hand floor markers
+
+- Request: Replace the overworld floor-item pentacle with a new pointing-hand animation, drawn white like the memory indicator, with a drop shadow and faint red outline. Place items only where the interact circle does not touch collision.
+- Implementation: Packed the 5-frame 48×48 hand strip to white-on-transparent `item_hand-Sheet.png`. New `ItemMarker.tscn` (white hand + drop shadow + red `memory_outer_glow`) lives on `PlayerLayer` so noir does not crush it; the pickup `Area2D` stays under `EnvironmentColliders`. Scatter now uses a shape query of the 220 px interact circle plus pad, never falling back onto a blocked spot, and re-rolls saved spots that overlap walls.
+- Files changed:
+  - `AXEL/axel_project/assets/sprites/item_hand-Sheet.png` (new)
+  - `AXEL/axel_project/scenes/world/ItemMarker.tscn` (new)
+  - `AXEL/axel_project/scenes/world/item_marker.gd` (new)
+  - `AXEL/axel_project/scenes/world/world_item_pickup.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/tools/qa/world_item_scatter_check.gd`
+  - `AXEL/axel_project/scenes/ui/world_item_info_card.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+  - Removed `PentacleMarker.tscn`, `pentacle_marker.gd`, `animated_pentacle_48x48.png`
+- Behavior impact: Floor items look like the same white pointing hand from across the room (not a pentacle, not a catalog icon). Interact circles sit fully off walls and furniture. Walk-near card, `[E]`, and fight-on-take are unchanged. `1.1` / `1.2` / `3.1` still hold no floor items.
+- Verification: `world_item_scatter_check.gd` OK; `world_combat_loop_check.gd` OK; `world_combat_roundtrip_check.gd` OK; determinism OK (100 spins, seed 12345); princess OK; combat scaffold OK; scene smoke OK (21 scenes). All exit 0.
+- Notes: This is the approved canon change from the pentacle-under-noir rule: item pictures now skip noir like memory glows, and stay distinct via shadow + red outline.
+
+### No `##` comments in source code
+
+- Request: Agents must not add any `##` comments to game scripts or other project code from here on.
+- Implementation: New always-on Cursor rule. Pointer in the AI docs governance file and a How-to-work line in `AI_DOCS.md`. Regular `#` comments are still allowed. Markdown headings are unchanged. Existing `##` lines are left in place unless the user asks to strip them.
+- Files changed:
+  - `.cursor/rules/no-double-hash-comments.mdc` (new)
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None at runtime. Agents stop writing GDScript docs comments (`##`) and other `##` comments in source.
+- Verification: Read back the new rule and the two pointer edits.
+- Notes: Code only. Plans and `.mdc` files may still use `##` headings.
+
+### First-pass leftover archive (finish live leftovers)
+
+- Request: Finish the approved archive list: leftovers still on live paths after the first copy, plus the tiny path/docs follow-ups. Do not strip comments.
+- Implementation: Most approved leftovers were already under `archive/2026-09-17/`. Moved leftover `tools/qa/_mike_look_preview/` PNGs into the dated archive, dropped the stale `game_data.json` Cursor index exception, removed archived `option_3` from the style-sweep matrix, and stopped Mike packers from recreating a live `legacy13` sheet. Kept `option_2`, item bakers, live drawings, music, and Master mute.
+- Files changed:
+  - `AXEL/axel_project/archive/2026-09-17/` (mike look previews + MANIFEST)
+  - `.cursorignore`
+  - `AXEL/axel_project/tools/visual_style/variant_matrix.gd`
+  - `AXEL/axel_project/tools/visual_style/README_gd_scripts.md`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.gd`
+  - `AXEL/axel_project/tools/pack_mike_walk_sheet.py`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Play is unchanged. Style sweep no longer names archived `option_3`. Re-packing Mike does not write a live 13-frame backup.
+- Verification: `tools/qa/run_default_playtest.ps1` — required gates exit 0 (princess, determinism, scaffold, scene smoke, item icons). `bot_dialogue_loop` still fails under `--headless` (known). Master `bus/0/mute = true`.
+- Notes: Correction to the earlier 2026-09-17 archive row: playtest was re-run in this finish pass. Ring meter, 48/1024 icons, and comment-strip stay later in this same implement chat.
+
+### Hidden leftover ring + 48px combat / 1024px locker icons
+
+- Request: Delete the leftover combat ring widgets. Draw combat item icons at 48px. Draw locker shelf icons at 1024px on screen. Keep Trinity math and the skull. Do not re-bake icon files. Do not strip comments yet.
+- Implementation: Removed `RightMeterStack` / `PremiumMeterCircle` / `PremiumProgressBar` and `premium_meter_circle.gd`. Skull + `meter.gd` stay. Combat ITEMS and equipped panel draw at 48px from the live 1024 files. Locker is a one-column full-window scroller with 1024px buttons (`expand_icon` off).
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/combat_test_scaffold_baseline.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/scenes/ui/locker_interior.gd`
+  - `AXEL/axel_project/tools/qa/item_icon_draw_size_check.gd` (new)
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/combat/VERIFICATION_CHECKLIST.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: No red ring. Trinity still fills the skull. Combat lists show 48px icons. Locker buttons are 1024px and scroll. Icon files stay 75 × 1024.
+- Verification: `item_icon_draw_size_check.gd` OK; princess OK; determinism OK; scaffold OK; `item_icons_check.gd` OK (75 × 1024). All exit 0.
+- Notes: Walk-near card stays 64px. Did not run `bake_item_icons.gd`.
+
+### Strip every `#` / `##` comment from live `.gd` files
+
+- Request: Remove every `#` and `##` comment from live GDScript, including Inspector docs. Skip `archive/`. Do not change combat math.
+- Implementation: Added a string-aware Python stripper and ran it on `AXEL/axel_project` (`132/151` files changed). Quotes and triple-quoted strings kept their `#` characters. Archive copies were not touched.
+- Files changed:
+  - `AXEL/axel_project/tools/qa/strip_gd_comments.py` (new)
+  - Most live `*.gd` under `AXEL/axel_project` (comments only)
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Runtime logic is unchanged. Inspector `@export` descriptions from `##` are gone. Master mute is unchanged.
+- Verification: `item_icon_draw_size_check.gd` OK; princess OK; determinism OK; scaffold OK; item icons OK; scene smoke OK (21 scenes); pause/settings/world-loop/cover-sync OK. `audio_bus_layout_check.gd` still fails because Master ships muted (kept on purpose).
+- Notes: This is the user-asked mass strip. The no-`##` rule still applies for new comments going forward.
+
+## 2026-09-10
+
+### Player-facing item copy: "more likely to appear" (docs catch-up)
+
+- Request: Rewrite player-facing "spawn weight" blurbs so they say the symbol is more likely to appear. Keep item names.
+- Implementation: Updated the five weight-item descriptions and the catalog / generator strings. Combat math and `base_weight` fields are unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/data/items/C3_locker_map_pin.tres`
+  - `AXEL/axel_project/combat/data/items/U3_weighted_trinity_die.tres`
+  - `AXEL/axel_project/combat/data/items/R2_gilded_commons.tres`
+  - `AXEL/axel_project/combat/data/items/R3_triune_sigil.tres`
+  - `AXEL/axel_project/combat/data/items/E1_ash_crown.tres`
+  - `AXEL/axel_project/tools/combat/generate_item_resources.py`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Locker hover, floor walk-near card, and ITEMS hover show wording like "Makes Normal-symbols 8% more likely to appear." Names (including Weighted Trinity Die) stay.
+- Verification: Read live `.tres` `description` fields and the catalog table rows. Shipped in `01a3160`.
+- Notes: Catch-up — the Sep 10 item-lines row only said "a few description cleanups." Chat: [Simplify spawn weight copy](ee923fd5-56d7-4610-a581-14f6bbac184a).
+
+### Unused-name cleanup in `combat_root.gd` (docs catch-up)
+
+- Request: Clear Godot unused-name warnings in `combat_root.gd`.
+- Implementation: Deleted unused `before_snapshot` and `spawn_index`. Renamed `handoff` → `_handoff` (callers still pass the label). Mixed into the later comment-strip working tree; HEAD `01a3160` still has the old names.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Play and RNG unchanged. Editor unused-name warnings on those locals go away.
+- Verification: Read `combat_root.gd` — no `before_snapshot` / `spawn_index`; `_repopulate_grid_handoff(_handoff: String)` is the live signature.
+- Notes: Catch-up — chat [Unused-name cleanup](ac2c8cba-c2fb-4558-bb61-f9e1dcd1c032). Not a combat-math change.
+
+### Ask before Other Models (docs catch-up)
+
+- Request: Grok and Composer must ask before ImageGenerating, screenshotting, or any Other Model subagent, because that quota is limited.
+- Implementation: Added the **Ask before Other Models** block to `.cursor/rules/max-effort-temporary.mdc`. Default is inherit / same model. If the user has not said yes, skip that step and say so.
+- Files changed:
+  - `.cursor/rules/max-effort-temporary.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None at runtime. Agents stop spending Other Models quota unless asked.
+- Verification: Read the rule block in `max-effort-temporary.mdc`.
+- Notes: Catch-up — the Sep 10 ITEMS-wrap row listed this file only for HUD-measure notes. The file is under `.cursor/` (often gitignored). Chat: [Ask before Other Models](804d2d4d-aa80-4009-9a69-3566994f6219).
+
+## 2026-09-17
+
+### Docs catch-up — unlogged week + stale canon
+
+- Request: Check what updates from the past ~week were not in the changelog, then update docs.
+- Implementation: Logged the three missed Sep 10 items above. Pointed canon at live paths: HTML prototype is archive-only; music stems are `.ogg`; 1.1 playtest skip is Inspector / `AXEL_SKIP_INTRO=1` (inherited playtest scene archived); icon on-screen QA is `item_icon_draw_size_check.gd`; combat implementation tree no longer names `goal_hud.tscn` or "RunState not built"; README autoload / `scenes/world/` lists match disk.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+- Behavior impact: Docs only. Gameplay already matched.
+- Verification: Compared git history since `01a3160` (2026-09-10), uncommitted diffs, and Sep 10–17 chats against existing changelog rows. Read live `axel_music.gd` preloads, archive `html/` + `goal_hud.tscn`, and `run_state.gd`.
+- Notes: Already logged this week (do not repeat): Sep 10 ITEMS / board-swap / win-lines / Space-E spin / wrap / catalog / DVD mill / 1024 files / mute / item_lines / saves-menu; Sep 17 leftover archive, pointing-hand `ItemMarker`, no-`##` rule, leftover archive finish, ring delete + 48/1024 draw sizes, mass `#` strip. Did not log: file-by-file cleanup inventory, C9–C12 read-only audits, discussion chats, or `2.1_Cafeteria.tscn` `TopDialogueOverlay.visible = false` (looks like an editor save; 4.1 already had the same flag).
+
+

@@ -11,7 +11,6 @@ const STUB_DOOR_LINES := {
 }
 const DOOR_ZONE_GRACE_SEC := 0.15
 
-## Extra size at the bottom of the vertical-leg ramp (1.5 = 150%).
 @export var vertical_far_scale: float = 1.5
 
 @onready var _top_dialogue: Node = $TopDialogueOverlay
@@ -36,7 +35,6 @@ var _cafeteria_zone_armed := true
 var _lounge_zone_armed := true
 var _classroom_zone_armed := true
 var _player_cover_sync := PlayerCoverSync.new()
-## Walk-Y size multiplier on top of PlayerCoverSync (1.0 at cafeteria, far at corner).
 var _depth_factor: float = 1.0
 var _last_cover_scale: float = 0.0
 var _last_bg_position: Vector2 = Vector2.ZERO
@@ -90,12 +88,12 @@ func _restore_player_position_if_needed() -> void:
 	if _pending_spawn_side in ["cafeteria_door", "lounge_door", "classroom_door"]:
 		_spawn_placement_pending = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
-		# 2.1↔2.4 cafeteria door: always dest-box long-axis center (ignore leave t).
-		# Consume t so it cannot leak to another door.
+
+
 		if _pending_spawn_side == "cafeteria_door":
 			_arrival_t = InteractArrival.DEFAULT_T
-		# Only place via after_wake (physics registered). If layout already ran,
-		# kick that path now; else _sync_world_space will.
+
+
 		if _cover_layout_ready:
 			call_deferred("_apply_spawn_peek_after_wake")
 
@@ -105,7 +103,7 @@ func _seed_depth_from_spawn_side(spawn_side: String) -> void:
 		"lounge_door", "classroom_door":
 			_depth_factor = vertical_far_scale
 		_:
-			# Fresh Play, cafeteria_door, or empty → 100%.
+
 			_depth_factor = 1.0
 
 
@@ -178,7 +176,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 
@@ -246,7 +244,7 @@ func _stub_dialogue_busy() -> bool:
 
 
 func _begin_stub_door(zone_id: String) -> void:
-	# Line-only doors. Future_1_2 stays stub until a legacy corridor link is approved.
+
 	if not STUB_DOOR_LINES.has(zone_id):
 		return
 	if _stub_dialogue_busy():
@@ -261,7 +259,7 @@ func _begin_stub_door(zone_id: String) -> void:
 
 
 func _begin_go_to_cafeteria() -> void:
-	# Always land at 2.1 ClassroomsInteractArea center — do not save leave t.
+
 	GameManager.set_cafeteria_spawn_side("classrooms_bottom")
 	_begin_scene_change(CAFETERIA_SCENE)
 
@@ -276,7 +274,7 @@ func _begin_go_to_lounge() -> void:
 
 
 func _begin_go_to_classroom() -> void:
-	# Always land at 5.1 DoorInteractArea center — do not save leave t.
+
 	GameManager.set_classroom_spawn_side("corridor_door")
 	_begin_scene_change(CLASSROOM_SCENE)
 
@@ -316,13 +314,13 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	_apply_player_cover_and_depth(player_node)
 	call_deferred("_wake_static_colliders")
 	if _pending_spawn_side in ["cafeteria_door", "lounge_door", "classroom_door"]:
-		# Wake colliders first, then place on the next idle so physics queries work.
+
 		call_deferred("_apply_spawn_peek_after_wake")
 
 
 func _apply_spawn_peek_after_wake() -> void:
 	_wake_static_colliders()
-	# Let physics register wall shapes before sprite/hitbox clearance queries.
+
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_reassert_seeded_depth_if_pending()
@@ -333,18 +331,17 @@ func _apply_spawn_peek_if_pending() -> void:
 	if not is_instance_valid(_player):
 		return
 	if not _cover_layout_ready:
-		# Keep pending; _sync_world_space will defer again after cover-fit.
+
 		return
 	var side := _pending_spawn_side
 	if side not in ["cafeteria_door", "lounge_door", "classroom_door"]:
 		return
-	# Cover/depth already applied in _sync_world_space (seeded depth). Place last
-	# so a post-place scale change cannot move the Front circle off the land point.
+
+
 	match side:
 		"cafeteria_door":
-			# Live CafeteriaInteractArea center this Play. Stand the Player
-			# node (the model) on that box — Front-on-center shoves the tall
-			# walk drawing out the top of the PNG.
+
+
 			_player.global_position = InteractArrival.place_node_on_area_center(
 				_player, _cafeteria_area
 			)
@@ -364,7 +361,7 @@ func _apply_spawn_peek_if_pending() -> void:
 			)
 			_arrival_latched_zone = "classroom"
 			_arm_zone_grace("classroom")
-	# Place last — do not re-apply cover/depth after (that moves Front).
+
 	_pending_spawn_side = ""
 	_spawn_placement_pending = false
 
@@ -381,7 +378,7 @@ func _apply_player_cover_and_depth(player_node: CharacterBody2D) -> void:
 	if not is_instance_valid(player_node) or _last_cover_scale <= 0.0:
 		return
 	_player_cover_sync.apply(player_node, _last_cover_scale, _last_bg_position)
-	# Extra walk-Y factor on top of cover-sync; do not touch authored_*.
+
 	player_node.scale *= _depth_factor
 	player_node.speed *= _depth_factor
 
@@ -396,7 +393,7 @@ func _update_depth_factor_from_player() -> void:
 	var local_pos := _size_ramp_area.to_local(_player.global_position) - shape.position
 	var half := rect_shape.size * 0.5
 	if absf(local_pos.x) > half.x or absf(local_pos.y) > half.y:
-		# Outside: keep last size (100% top exit / 150% bottom exit).
+
 		return
 	var t := clampf((local_pos.y + half.y) / rect_shape.size.y, 0.0, 1.0)
 	_depth_factor = lerpf(1.0, vertical_far_scale, t)

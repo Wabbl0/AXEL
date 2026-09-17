@@ -1,6 +1,4 @@
 extends CanvasLayer
-## Event-driven Option 1 CRT TV distortion (distinct from glitch + baseline AxelPostFxStack).
-## Always-on ambient wave at BASELINE_ALPHA; surges rise to SURGE_ALPHA and settle back.
 
 @onready var _filter_rect: ColorRect = $FilterRect
 

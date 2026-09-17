@@ -1,42 +1,14 @@
 extends RefCounted
 class_name InteractArrival
-## Map standing position along the source leave box onto the dest box (t in 0..1).
-## LIVE DEST BOX (mandatory): place_on_area / place_in_area read the dest
-## InteractArea / ExitTrigger after cover-fit this Play. Never land on a Vector2
-## copied from chat, changelog, or an earlier .tscn grep. Do not replace a
-## live-box land with BOTTOM/TOP + resolve_inside_clearance unless the user asked.
-## Applies to 1.x, 2.1→2.3, 2.1↔2.4, 2.1→3.1, and every other door pair.
-## Hard spawns only: F6 Player node; hub/map Player node; memory restore;
-## 2.3→2.1 kitchen Y 90. See SCENE_BUILDING.md.
-## Frozen trips (1.2→1.4, 1.4→2.1, 2.1→2.3): place_on_area into-room peek past the
-## short edge of the LIVE dest box, then clamp_hitbox_to_walls. Approved peek:
-## 1.2↔1.4 ExitTrigger.
-## 2.1→2.4: Player node on live CafeteriaInteractArea center
-## (place_node_on_area_center); skip resolve_inside_clearance. Front-on-center
-## pushes the walk drawing out the top of the PNG.
-## 2.4→2.1: place_in_area at dest center; skip resolve_inside_clearance.
-## 2.4→5.1: Player node on live DoorInteractArea center; skip clearance.
-## Other non-frozen [E]: place_in_area + resolve_inside_clearance. Do not copy
-## world Y or floor-line offsets.
-##
-## Receive contract (match 1.2_Corridor — do not invent a new system):
-## 1. Cache t once (take_arrival_t_or_default). Missing t → 0.5.
-## 2. Every layout_applied: always PlayerSpawnSync + PlayerCoverSync.apply.
-## 3. If a door peek is pending: call_deferred place — do NOT place inside
-##    _sync_world_space, and do NOT clear pending before that defer.
-## 4. Frozen: place_on_area + clamp. 2.1→2.4: place_node_on_area_center last.
-##    2.4→2.1: place_in_area center last.
-##    Other non-frozen: apply_arrival_inside last (do not re-scale after place).
-## 5. Fresh Play / F6 uses the Player node. Memory stills keep exact restore.
 
 enum PeekEdge {
 	LEFT,
 	RIGHT,
 	TOP,
 	BOTTOM,
-	## Keep the area's horizontal center (margin ignored).
+
 	CENTER_X,
-	## Keep the area's vertical center (margin ignored).
+
 	CENTER_Y,
 }
 
@@ -44,7 +16,6 @@ const DEFAULT_T := 0.5
 const _CLAMP_STEP_PX := 8.0
 const _CLAMP_MAX_PX := 480.0
 const _OUTWARD_MAX_PX := 480.0
-## Extra padding so clearance stops a little past a bare touch.
 const _SPRITE_AABB_PAD_PX := 8.0
 const _DEFAULT_FRONT_RADIUS := 40.647236
 
@@ -56,8 +27,8 @@ static func fraction_along(player: Node2D, area: Area2D, along_axis: int) -> flo
 	var rect := _area_rect_in_env(area, env)
 	if rect.size.x <= 0.001 or rect.size.y <= 0.001:
 		return DEFAULT_T
-	# Hitbox center is what overlaps the [E] box — not the Player node origin
-	# (Front circle sits below the node). Env-local matches PlayerSpawnSync.
+
+
 	var sample := _hitbox_point(player)
 	var tex := env.to_local(sample) if is_instance_valid(env) else sample
 	if along_axis == Vector2.AXIS_X:
@@ -96,7 +67,7 @@ static func place_on_area(
 		return dest_area.global_position
 	var t_clamped := clampf(t, 0.0, 1.0)
 	var tex := rect.get_center()
-	# Peek margin is authored in texture pixels (same space as collider nodes).
+
 	match peek_edge:
 		PeekEdge.LEFT:
 			tex.x = rect.position.x + peek_margin
@@ -115,7 +86,7 @@ static func place_on_area(
 	else:
 		tex.y = rect.position.y + rect.size.y * t_clamped
 	var dest_global := env.to_global(tex) if is_instance_valid(env) else tex
-	# Land the Front hitbox on the mapped point, not the Player node origin.
+
 	return dest_global - _hitbox_offset_global(player)
 
 
@@ -135,8 +106,6 @@ static func apply_arrival(
 	clamp_hitbox_to_walls(player, along_axis)
 
 
-## Non-frozen [E]: land Front inside the live dest box (inset by Front radius),
-## slide t on the long axis, depth_frac inward from enter_edge on the short axis.
 static func place_in_area(
 	player: Node2D,
 	dest_area: Area2D,
@@ -157,7 +126,7 @@ static func place_in_area(
 	var t_clamped := clampf(t, 0.0, 1.0)
 	var d := clampf(depth_frac, 0.0, 1.0)
 	var tex := inner.get_center()
-	# Short axis: measured inward from enter_edge (never past the box).
+
 	match enter_edge:
 		PeekEdge.LEFT:
 			tex.x = lerpf(inner.position.x, inner.end.x, d)
@@ -171,7 +140,7 @@ static func place_in_area(
 			tex.x = inner.get_center().x
 		PeekEdge.CENTER_Y:
 			tex.y = inner.get_center().y
-	# Long axis: slide with t (center if the box is thinner than 2*inset).
+
 	if along_axis == Vector2.AXIS_X:
 		if rect.size.x <= 2.0 * inset:
 			tex.x = rect.get_center().x
@@ -186,8 +155,6 @@ static func place_in_area(
 	return dest_global - _hitbox_offset_global(player)
 
 
-## Put the Player node (the walk drawing) on the live dest box center.
-## Re-reads the dest InteractArea after cover-fit this Play — no stored Vector2.
 static func place_node_on_area_center(player: Node2D, dest_area: Area2D) -> Vector2:
 	if not is_instance_valid(dest_area):
 		return player.global_position if is_instance_valid(player) else Vector2.ZERO
@@ -219,8 +186,6 @@ static func apply_arrival_inside(
 	resolve_inside_clearance(player, dest_area, short_axis, enter_edge)
 
 
-## Option B: keep Front + walk drawing clear of walls; prefer staying inside the
-## live [E] box, then allow a short outward nudge, then fall back to hitbox clamp.
 static func resolve_inside_clearance(
 	player: CharacterBody2D,
 	dest_area: Area2D,
@@ -237,16 +202,16 @@ static func resolve_inside_clearance(
 	var inset := _front_radius_in_env(player, env)
 	var inner := _inset_rect(rect, inset)
 	var pref := _into_room_sign(enter_edge, short_axis)
-	# 1) Scan along short axis, stay inside inner.
+
 	if _scan_clearance(player, origin, short_axis, pref, inner, env, true, false):
 		return
 	player.global_position = origin
-	# 2) Outward past the box — into-room direction only (never escape the
-	# opposite way into empty space above/beside the room).
+
+
 	if _scan_clearance(player, origin, short_axis, pref, inner, env, false, true):
 		return
 	player.global_position = origin
-	# 3) Into-room nudge that clears BOTH hitbox and walk drawing.
+
 	if _try_nudge_axis_dir_clear(player, origin, short_axis, pref):
 		return
 	player.global_position = origin
@@ -288,7 +253,7 @@ static func clamp_hitbox_to_walls(
 	if _try_nudge_axis(player, origin, other_axis):
 		return
 	player.global_position = origin
-	# Combined: nudge prefer axis in steps, then other axis from each candidate.
+
 	var d := _CLAMP_STEP_PX
 	while d <= _CLAMP_MAX_PX:
 		for dir in [-1.0, 1.0]:
@@ -345,7 +310,6 @@ static func _hitbox_blocked(player: CharacterBody2D) -> bool:
 	return not hits.is_empty()
 
 
-## Arrival-only: walk drawing AABB vs StaticBody2D walls (not per-frame).
 static func _sprite_blocked(player: CharacterBody2D) -> bool:
 	var aabb := _sprite_aabb_global(player)
 	if aabb.size.x <= 0.001 or aabb.size.y <= 0.001:
@@ -399,7 +363,7 @@ static func _sprite_aabb_global(player: CharacterBody2D) -> Rect2:
 		min_v = min_v.min(corners[i])
 		max_v = max_v.max(corners[i])
 	var aabb := Rect2(min_v, max_v - min_v)
-	# Pad so we do not stop on a bare 1-px touch with TopWall.
+
 	return aabb.grow(_SPRITE_AABB_PAD_PX)
 
 
@@ -460,7 +424,7 @@ static func _scan_clearance(
 
 
 static func _rect_contains_point(rect: Rect2, point: Vector2) -> bool:
-	# Inclusive on both ends so a zero-thin inset axis still accepts the center.
+
 	return (
 		point.x >= rect.position.x
 		and point.y >= rect.position.y
@@ -476,7 +440,7 @@ static func _inset_rect(rect: Rect2, inset: float) -> Rect2:
 		pos.x += inset
 		size.x -= 2.0 * inset
 	else:
-		# Too thin to inset — pin to center with a 1px band for has-point checks.
+
 		pos.x = rect.get_center().x - 0.5
 		size.x = 1.0
 	if size.y > 2.0 * inset:
@@ -501,7 +465,7 @@ static func _front_radius_in_env(player: Node2D, env: Node2D) -> float:
 
 
 static func _into_room_sign(enter_edge: PeekEdge, short_axis: int) -> float:
-	# Match place_on_area: positive peek past BOTTOM/RIGHT goes +axis; TOP/LEFT go -axis.
+
 	match enter_edge:
 		PeekEdge.TOP:
 			return -1.0 if short_axis == Vector2.AXIS_Y else 0.0
@@ -526,7 +490,7 @@ static func _hitbox_point(player: Node2D) -> Vector2:
 	if player is CharacterBody2D:
 		var front := _front_collision(player as CharacterBody2D)
 		if front != null:
-			# Body transform, not CollisionShape2D.global_position (CanvasLayer).
+
 			return player.to_global(front.position)
 	return player.global_position
 
@@ -609,7 +573,7 @@ static func _area_global_rect(area: Area2D) -> Rect2:
 	var poly_node := area.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
 	if poly_node != null and not poly_node.polygon.is_empty():
 		return _polygon_global_rect(poly_node)
-	# Fallback: tiny rect at the Area2D origin.
+
 	return Rect2(area.global_position, Vector2(1.0, 1.0))
 
 
@@ -630,7 +594,7 @@ static func _shape_global_rect(shape_node: CollisionShape2D) -> Rect2:
 		var circle := shape as CircleShape2D
 		var r := circle.radius
 		var center := xf.origin
-		# Uniform-scale approximation from transform basis.
+
 		var scale_x := xf.basis_xform(Vector2.RIGHT).length()
 		var scale_y := xf.basis_xform(Vector2.DOWN).length()
 		var rx := r * scale_x

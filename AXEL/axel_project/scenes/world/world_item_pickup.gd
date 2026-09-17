@@ -1,17 +1,11 @@
 extends Area2D
-## A combat item lying on the floor. Every one of these shows the same pentacle
-## marker; walking near it reads out the item's real name, description and icon
-## on the info card. Press [E] to take it; taking it always starts a fight.
-## Spawned by AxelWorld under EnvironmentColliders so it shares the room's
-## cover-fit.
 
-const PentacleMarkerScene := preload("res://scenes/world/PentacleMarker.tscn")
+const ItemMarkerScene := preload("res://scenes/world/ItemMarker.tscn")
 
-## Texture-pixel sizes: the node lives under EnvironmentColliders, so these
-## scale with the room the same way the walls do.
 const RADIUS := 220.0
 const MARKER_PX := 180.0
 const REASON_ITEM := "item_pickup"
+const MARKER_NODE := "ItemMarker"
 
 var item_id: String = ""
 var room_path: String = ""
@@ -21,6 +15,7 @@ var _prompt: Node
 var _info_card: Node
 var _player_inside := false
 var _taken := false
+var _marker: Node2D = null
 
 
 func setup(
@@ -31,6 +26,10 @@ func setup(
 	slot_index = index
 	_prompt = prompt
 	_info_card = info_card
+
+
+func floor_marker() -> Node2D:
+	return _marker if is_instance_valid(_marker) else null
 
 
 func _ready() -> void:
@@ -47,16 +46,37 @@ func _ready() -> void:
 	set_process_unhandled_input(true)
 
 
-## One shared marker for every item. What is lying here is deliberately not
-## readable from across the room — you have to walk over and read the card.
 func _build_visual() -> void:
-	var marker := PentacleMarkerScene.instantiate() as Node2D
+	var marker := ItemMarkerScene.instantiate() as Node2D
 	if marker == null:
-		push_warning("WorldItemPickup: could not instantiate the pentacle marker")
+		push_warning("WorldItemPickup: could not instantiate the item marker")
 		return
-	marker.name = "Pentacle"
+	marker.name = MARKER_NODE
 	marker.set("marker_px", MARKER_PX)
-	add_child(marker)
+	if marker.has_method("bind_pickup"):
+		marker.call("bind_pickup", self)
+	var layer := _player_layer()
+	if layer != null:
+		layer.add_child(marker)
+	else:
+		add_child(marker)
+	_marker = marker
+
+
+func _player_layer() -> Node:
+	var scene := get_tree().current_scene if get_tree() != null else null
+	if scene == null:
+		return null
+	var layer := scene.get_node_or_null("PlayerLayer")
+	if layer == null:
+		layer = scene.find_child("PlayerLayer", true, false)
+	return layer
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(_marker):
+		_marker.queue_free()
+	_marker = null
 
 
 func _item_def() -> Resource:
@@ -122,6 +142,8 @@ func _take() -> void:
 	_hide_prompt_immediate()
 	visible = false
 	monitoring = false
+	if is_instance_valid(_marker):
+		_marker.visible = false
 	var world := get_node_or_null("/root/AxelWorld")
 	if world == null:
 		return

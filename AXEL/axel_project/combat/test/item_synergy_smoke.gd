@@ -1,10 +1,4 @@
 extends SceneTree
-## Deterministic synergy smoke test for multi-item stacking and inventory constraints.
-## Verifies payout scalar math, equip limits, slot-expander behavior, and loadout
-## determinism across identical seeds.
-##
-## Run:
-## tools/cmd/godot.cmd --path AXEL/axel_project --headless -s res://combat/test/item_synergy_smoke.gd
 
 const CombatRootScene := preload("res://combat/scenes/combat_root.tscn")
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")

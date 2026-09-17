@@ -1,7 +1,5 @@
 extends RefCounted
 class_name BackgroundLayout
-## Shared cover/contain math for PNG exploration backgrounds.
-## Returns scale, position, and world_rect so camera limits can be derived from art size.
 
 enum FitMode {
 	COVER,
@@ -11,8 +9,6 @@ enum FitMode {
 const DEFAULT_BACKGROUND_Y := 0.0
 const EDIT_LOCK_META := "_edit_lock_"
 const MAX_EDGE_REVEAL := 0.05
-## Project design size (3:2). Used when the viewport is missing or empty so
-## cover-fit never invents a third baseline (e.g. stale 1280x720).
 const DESIGN_VIEWPORT := Vector2(1920.0, 1280.0)
 
 
@@ -85,7 +81,6 @@ static func compute_world_rect(sprite: Sprite2D, position: Vector2, scale: Vecto
 	return Rect2(position, scaled_size)
 
 
-## Global AABB of the sprite's texture after its current transform (handles parent offsets).
 static func compute_global_world_rect(sprite: Sprite2D) -> Rect2:
 	var tex := sprite.texture
 	if tex == null:

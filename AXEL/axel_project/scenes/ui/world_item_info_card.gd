@@ -1,17 +1,10 @@
 extends CanvasLayer
-## Walk-near card for a floor combat item: its real name, description and real
-## catalog icon. Every pentacle on the floor looks the same on purpose, so this
-## card is the only place the player learns what they are standing on.
-##
-## Layer 109 sits above the CRT overlay (108) so the text stays readable, and
-## below the [E] chip (110) and dialogue (111) so it never covers either.
 
 const CARD_LAYER := 109
 const ICON_PX := 64.0
 const NAME_FONT := 26
 const DESC_FONT := 20
 const CARD_WIDTH := 520.0
-## Lift the card off the marker so it and the [E] chip do not share pixels.
 const LIFT_PX := 150.0
 
 var _root: Control
@@ -135,7 +128,7 @@ func _update_screen_position() -> void:
 		card_size = _panel.get_combined_minimum_size()
 	var lift := LIFT_PX * UiViewportScale.factor(self)
 	var pos := screen_pos - Vector2(card_size.x * 0.5, card_size.y + lift)
-	# Keep the whole card on screen even when the item sits near a room edge.
+
 	var view_size := Vector2(viewport.get_visible_rect().size)
 	pos.x = clampf(pos.x, 8.0, maxf(view_size.x - card_size.x - 8.0, 8.0))
 	pos.y = clampf(pos.y, 8.0, maxf(view_size.y - card_size.y - 8.0, 8.0))

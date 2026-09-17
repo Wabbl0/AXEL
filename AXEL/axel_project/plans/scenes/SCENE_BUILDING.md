@@ -99,6 +99,8 @@ Root (Node2D + scene script)
 
 **Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25` + shared white outer-glow `Halo` (`memory_outer_glow.gdshader`). Cover-fit scenes: capture editor position, remap on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked.
 
+**Floor item marker:** runtime `scenes/world/ItemMarker.tscn` on `PlayerLayer` (white pointing hand, drop shadow, faint red outline). The pickup `Area2D` stays under `EnvironmentColliders`. Do not put a catalog icon on the floor. Scatter must keep the 220 px interact circle off walls and furniture.
+
 ### Camera2D exports (`BackgroundCamera`)
 
 | Export | Default | Purpose |
@@ -156,7 +158,7 @@ Do not slice the raw `kävely_etu` / `kävely_sivu` drawings as a grid. Pack wit
 - Packer drops far-off specks (`FAR_BLOB_DIST`) and extra islands under 120 px (stray waist/head strokes).
 - `white_sprite.gdshader` keeps packed RGB and multiplies `COLOR.rgb` so `ShadowOutline` modulate can be black. Mike is **not** noir-inverted. CRT still runs on him. Play and the editor show `ShadowOutline` with the shared 1.2 fit (a slightly larger black copy behind the white figure) on every pose. Pose nudges must not shift that silhouette — `Player.gd` divides the shadow offset by the outline scale. Do not force `ShadowOutline.visible = false` in the editor tool.
 
-`Player.gd` animations: `walk_down` / `walk_up` / `walk_right` + `flip_h` for left; idle / idle_back / idle_side keep last facing. Walk loop FPS is **5** (`animation_fps`, same as 1.2). Assign `res://assets/sprites/mike_sprite_frames.tres` in the editor. Rollback: restore `mike_walking-Sheet_legacy13.png` over the live sheet and revert Player + scales.
+`Player.gd` animations: `walk_down` / `walk_up` / `walk_right` + `flip_h` for left; idle / idle_back / idle_side keep last facing. Walk loop FPS is **5** (`animation_fps`, same as 1.2). Assign `res://assets/sprites/mike_sprite_frames.tres` in the editor. The old 13-frame sheet lives under `archive/2026-09-17/assets/sprites/` (Godot ignores that folder). Copy it out of archive onto the live sheet only if you need that rollback, then revert Player + scales.
 
 ### Rule: optional walk-position size ramp (2.4 only today)
 
@@ -339,7 +341,7 @@ New walkable scenes must wire `PlayerCoverSync` (`bind_from_player` + `bind_desi
 
 ### Playtest variants (optional)
 
-Inherited child `.tscn` that instances the canonical scene and overrides only playtest flags (e.g. `skip_intro = true`). Do not duplicate the full tree. Example: `1.1_SchoolExterior_Playtest.tscn`.
+Do not duplicate a walkable room into a second `.tscn` just to skip the intro. On live `1.1_SchoolExterior`, set Inspector `skip_intro`, or run with `AXEL_SKIP_INTRO=1`. The old inherited `1.1_SchoolExterior_Playtest.tscn` was moved to `archive/2026-09-17/scenes/Arc_1/` (Godot ignores that folder).
 
 ## Window resolution (project-wide)
 

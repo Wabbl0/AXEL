@@ -1,13 +1,9 @@
 extends Node
-## Global event-tier overworld FX: scene-transition glitch, scripted glitch API,
-## and interface pulse cadence (random timer OR walking steps, shared cooldown).
-## Distinct from passive baseline stack in AxelPostFxStack.
 
 const GLITCH_SCENE := "res://scenes/fx/IntroGlitchOverlay.tscn"
 const PULSE_SCENE := "res://scenes/fx/InterfacePulseOverlay.tscn"
 const SCENE_1_1 := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const CombatWipeScript := preload("res://scenes/fx/combat_wipe_overlay.gd")
-## Safety net: a wipe never stays on screen longer than this.
 const COMBAT_WIPE_MAX_SEC := 4.0
 
 const ENTER_GLITCH_DURATION := 0.65
@@ -96,7 +92,7 @@ func _on_scene_changed() -> void:
 
 
 func _should_skip_event_fx(scene: Node) -> bool:
-	# Same combat gate as AxelPostFxStack.COMBAT_ROOM_FX_TEST (one flip for both).
+
 	if _is_combat_scene(scene) and not AxelPostFxStack.COMBAT_ROOM_FX_TEST:
 		return true
 	if OS.has_environment("AXEL_DISABLE_POST_FX") and OS.get_environment("AXEL_DISABLE_POST_FX") == "1":
@@ -167,9 +163,6 @@ func _run_cadence_pulse_async() -> void:
 	_pulse_in_progress = false
 
 
-## --- Public API ---
-
-
 func set_cadence_enabled(enabled: bool) -> void:
 	_cadence_enabled = enabled
 	if enabled and _cadence_active:
@@ -190,8 +183,6 @@ func register_walk_step() -> void:
 		_fire_cadence_pulse()
 
 
-## Pokemon-style cover before an overworld -> combat scene change.
-## Awaited by AxelRun.enter_world_encounter; cleared by combat_run.gd.
 func play_combat_wipe() -> void:
 	if _combat_wipe == null or not is_instance_valid(_combat_wipe):
 		return
@@ -261,7 +252,6 @@ func play_jumpscare(
 	await play_interface_pulse(pulse_duration_sec)
 
 
-## For headless tests that instantiate scenes without scene_changed.
 func apply_to_scene(scene: Node) -> void:
 	_active_scene = scene
 	_reset_cadence_state()

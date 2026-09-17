@@ -1,8 +1,4 @@
 extends SceneTree
-## Headless lock: static COVER rooms may reveal a thin edge strip, but never more
-## than the shared budget, and Mike must keep the same room-relative scale.
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://scenes/core/test/background_fit_check.gd
 
 const Layout := preload("res://scenes/core/background_layout.gd")
 const PlayerCoverSyncScript := preload("res://scenes/core/player_cover_sync.gd")

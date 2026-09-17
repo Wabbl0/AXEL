@@ -1,7 +1,4 @@
 extends SceneTree
-## One-shot bake for Mike's 12-frame walk strip (prefer the Python twin if available).
-## Run: tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://tools/pack_mike_walk_sheet.gd
-## Sources: exports/Drawings/kavely_etu.png + kavely_sivu.png (ASCII copies of kävely_*).
 
 const _ETU := "res://exports/Drawings/kavely_etu.png"
 const _SIVU := "res://exports/Drawings/kavely_sivu.png"
@@ -93,10 +90,14 @@ func _load_image(res_path: String) -> Image:
 
 
 func _backup_legacy_if_needed() -> void:
+
+
 	var out_abs := ProjectSettings.globalize_path(_OUT)
 	var legacy_abs := ProjectSettings.globalize_path(_LEGACY)
-	if FileAccess.file_exists(out_abs) and not FileAccess.file_exists(legacy_abs):
-		DirAccess.copy_absolute(out_abs, legacy_abs)
+	if FileAccess.file_exists(legacy_abs):
+		return
+	if FileAccess.file_exists(out_abs):
+		print("pack_mike_walk_sheet: skip live legacy13 backup (archived 2026-09-17)")
 
 
 func _extract_poses(src: Image, expect: int) -> Array[Image]:

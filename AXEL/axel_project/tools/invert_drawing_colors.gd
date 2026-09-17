@@ -1,7 +1,4 @@
 extends SceneTree
-## Invert combat piece PNGs to canon authoring (black ink on white fill).
-## Backs up originals once under exports/Drawings/backup_pre_invert/.
-## Safe to re-run: skips files whose opaque pixels are already mostly bright.
 
 const DRAWINGS_DIR := "res://exports/Drawings/"
 const BACKUP_DIR := "res://exports/Drawings/backup_pre_invert/"
@@ -17,9 +14,6 @@ const FILES: PackedStringArray = [
 	"axel_skull_2.png",
 	"axel_skull_3.png",
 ]
-## Mean opaque luminance above this => already black-ink-on-white (skip).
-## Frames after invert sit ~0.85; skulls after invert sit ~0.55–0.65.
-## Original white-on-black frames sit ~0.15; original white skulls sit ~0.35–0.46.
 const ALREADY_INVERTED_MEAN_LUM := 0.50
 const ALPHA_OPAQUE := 0.06
 
@@ -100,7 +94,7 @@ func _mean_opaque_luminance(img: Image) -> float:
 	var h := img.get_height()
 	var sum := 0.0
 	var count := 0
-	## Stride sample for speed; still representative on these sizes.
+
 	var step := maxi(1, mini(w, h) / 200)
 	for y in range(0, h, step):
 		for x in range(0, w, step):

@@ -1,84 +1,49 @@
-# Overworld narrative state autoload.
 
 extends Node
 
-# Signals
 signal memory_collected(count: int)
 signal inventory_changed(items: Array)
 signal state_changed()
 
-# Data
 var game_state: Dictionary = {}
 
 const SAVE_PATH := "user://axel_game_state.json"
 const INVALID_RETURN_POS := Vector2(1.0e20, 1.0e20)
-## Transient. Pause-menu Map returns here instead of the locker hub.
 var pause_map_return_path: String = ""
 
 var corridor_locker_line_seen: bool = false
 var corridor_spawn_line_seen: bool = false
 var basement_door_line_seen: bool = false
 var corridor_return_pos: Vector2 = INVALID_RETURN_POS
-## Transient (not persisted). Texture-pixel standing spot when leaving 2.1 for 2.2.
 var cafeteria_table_return_pos: Vector2 = INVALID_RETURN_POS
-## Transient (not persisted). Texture-pixel standing spot when leaving 5.1 for 5.2.
 var classroom_desk_return_pos: Vector2 = INVALID_RETURN_POS
-## Transient (not persisted). Texture-pixel standing spot when leaving 3.1 for 3.2.
 var backyard_memory_return_pos: Vector2 = INVALID_RETURN_POS
-## Transient (not persisted). Texture-pixel standing spot when leaving 4.1 for 4.2.
 var teachers_lounge_memory_return_pos: Vector2 = INVALID_RETURN_POS
-## Transient (not persisted). e.g. "basement_right" when leaving 1.4 for 1.2.
 var corridor_spawn_side: String = ""
-## Transient (not persisted). e.g. "corridor_door" when leaving 1.2 for 1.1.
 var exterior_spawn_side: String = ""
-## Transient (not persisted). e.g. "cafeteria_right" when leaving 2.1 for 1.4.
 var basement_spawn_side: String = ""
-## Transient (not persisted). e.g. "basement_left" when leaving 1.4 for 2.1.
 var cafeteria_spawn_side: String = ""
-## Transient (not persisted). e.g. "kitchen_door" when leaving 2.3 for 2.1.
 var kitchen_spawn_side: String = ""
-## Transient (not persisted). e.g. "cafeteria_door" when leaving 2.1 for 3.1.
 var backyard_spawn_side: String = ""
-## Transient (not persisted). e.g. "cafeteria_door" / "lounge_door" / "classroom_door".
 var classrooms_corridor_spawn_side: String = ""
-## Transient (not persisted). e.g. "corridor_door" when leaving 2.4 for 4.1.
 var teachers_lounge_spawn_side: String = ""
-## Transient (not persisted). e.g. "corridor_door" when leaving 2.4 for 5.1.
 var classroom_spawn_side: String = ""
-## Transient (not persisted). Player Y minus floor-marker Y when walking off 1.2 ↔ 1.4.
 var walkoff_floor_offset_y: float = NAN
-## Transient (not persisted). 0..1 along the source [E] InteractArea for arrival mapping.
 var interact_arrival_t: float = NAN
-## Once-ever cafeteria enter line (2.1).
 var cafeteria_enter_line_seen: bool = false
-## Once-ever kitchen enter line (2.3).
 var kitchen_enter_line_seen: bool = false
-## Once-ever backyard enter line (3.1).
 var backyard_enter_line_seen: bool = false
-## Once-ever teachers lounge enter line (4.1).
 var teachers_lounge_enter_line_seen: bool = false
-## Once-ever classroom enter line (5.1).
 var classroom_enter_line_seen: bool = false
-## Once-ever classroom desk still-scene (5.2). Not a 5/5 memory.
 var classroom_desk_seen: bool = false
-## Once-ever cafeteria memory lines (2.2).
 var cafeteria_memory_line_seen: bool = false
-## Once-ever backyard memory lines (3.2).
 var backyard_memory_line_seen: bool = false
-## Once-ever backyard cigarette lines (3.1 after leaving 3.2).
 var backyard_cigarette_line_seen: bool = false
-## Once-ever teachers lounge key-near lines (4.3).
 var teachers_key_line_seen: bool = false
-## Once-ever teachers lounge memory lines (4.2).
 var teachers_memory_line_seen: bool = false
-## Once-ever teachers lounge post-memory line (4.1 after leaving 4.2).
 var teachers_liar_line_seen: bool = false
-## Rooms the player has actually walked in. The school map only travels to these.
 var visited_rooms: Dictionary = {}
 
-# ============================================================
-# INITIALIZATION
-# ============================================================
 
 func _ready() -> void:
 	_load_persistent_state()
@@ -100,7 +65,7 @@ func _default_game_state() -> Dictionary:
 	}
 
 func _persistence_enabled() -> bool:
-	# Slots write only after New Game / Load / Continue. Editor F5 stays fresh.
+
 	var saves := get_node_or_null("/root/AxelSaves")
 	return saves != null and bool(saves.call("is_active"))
 
@@ -125,7 +90,7 @@ func _load_persistent_state() -> void:
 	var world := get_node_or_null("/root/AxelWorld")
 	if world != null and world.has_method("reset_world"):
 		world.call("reset_world")
-	# Slot files are owned by AxelSaves. This only installs defaults.
+
 
 func _merge_game_state(defaults: Dictionary, saved: Dictionary) -> Dictionary:
 	var merged := defaults.duplicate(true)
@@ -512,9 +477,6 @@ func add_memory():
 	memory_collected.emit(game_state["memories"])
 	print("→ Memory collected! (%d/5)" % game_state["memories"])
 
-# ============================================================
-# DEBUG / CHEAT FUNCTIONS
-# ============================================================
 
 func debug_show_state():
 	"""Print current game state to console"""

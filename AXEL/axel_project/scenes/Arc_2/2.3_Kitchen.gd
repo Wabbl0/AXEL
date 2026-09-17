@@ -1,7 +1,6 @@
 extends Node2D
 
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
-## Where a lore-pickup fight comes back to.
 const KITCHEN_SELF_SCENE := "res://scenes/Arc_2/2.3_Kitchen.tscn"
 const ENTER_LINES := [
 	"Everything is rotten here. Everything.",
@@ -176,7 +175,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 
@@ -246,7 +245,7 @@ func _pickup_flashlight_async() -> void:
 	if _active_zone == "flashlight":
 		_active_zone = ""
 	_hide_interact_prompt()
-	# Lore item: the school answers with a fight, once per item ever.
+
 	var world := get_node_or_null("/root/AxelWorld")
 	if world != null and bool(
 		world.call("start_lore_fight", "hasFlashlight", KITCHEN_SELF_SCENE, true)
@@ -306,7 +305,7 @@ func _apply_cafeteria_peek_if_pending() -> void:
 	if not _pending_cafeteria_peek or not is_instance_valid(_player):
 		return
 	_pending_cafeteria_peek = false
-	# Door sits on the kitchen bottom — peek just above the interact top.
+
 	_player.global_position = InteractArrival.place_on_area(
 		_player,
 		_door_interact_area,

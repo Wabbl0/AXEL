@@ -1,31 +1,4 @@
 extends SceneTree
-## Headless playthrough bot: dialogue + alternate interact-key fidelity.
-##
-## Plan step 4 originally targeted `scripts/GameController.gd`. Per
-## `AI_CHANGELOG.md` (2026-05-08 "Restore SchoolExterior Full Layout"),
-## `GameController.gd` was intentionally stripped from the active scene tree
-## (HUD/timer/key/inventory wiring removed). Per `AI_DOCS.md` canon hierarchy
-## ("no architecture-layer mixing without intent") we do NOT resurrect it via a
-## synthetic scene. Instead this bot exercises the *currently wired* dialogue
-## and interaction loop, which is the same spirit (advance/skip + interact +
-## final-state assertion) using:
-##
-##   - `scenes/ui/TopDialogueOverlay.gd`   - full-line skip via `_input` (Tab/E/Space/Enter/click)
-##   - `scenes/Arc_1/1.1_SchoolExterior.gd` - intro dialogue + door interaction
-##                                            via `_unhandled_input`
-##
-## Distinct from `playthrough_arc1_exterior.gd`:
-##   - synthesizes KEY_TAB to drive the dialogue skip `_input` handler
-##   - uses KEY_SPACE (not KEY_E) for the door interaction, validating the
-##     alternate-key branch of `_is_interaction_event` (E/SPACE/ENTER/KP_ENTER)
-##
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_dialogue_loop.gd
-##
-## Exit codes:
-##   0 = dialogue overlay accepted skip input, walk + Space interaction
-##       triggered transition to corridor.
-##   1 = any phase failed.
 
 const InputEventDriverScript := preload("res://tools/bots/input_event_driver.gd")
 const BotScenarioRunnerScript := preload("res://tools/bots/scenario_runner.gd")
@@ -34,13 +7,10 @@ const _SCENE_EXTERIOR := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const _SCENE_CORRIDOR := "res://scenes/Arc_1/1.2_Corridor.tscn"
 
 const _SCENE_READY_GRACE_FRAMES := 4
-## Intro line 1 fades in (~0.22s) before typewriter starts; ~14 frames safe wait.
 const _DIALOGUE_FADE_IN_FRAMES := 18
 const _TAB_SKIP_TAP_FRAMES := 2
 const _BETWEEN_LINES_WAIT_FRAMES := 60
-## Hold Tab during the second line as well to ensure skip propagates while typing.
 const _SECOND_TAB_HOLD_FRAMES := 6
-## Same traversal budget as primary exterior bot, plus extra buffer for dialogue overhead.
 const _WALK_FRAMES_RIGHT := 360
 const _SETTLE_FRAMES_AFTER_WALK := 8
 const _INTERACT_TAP_FRAMES := 3
@@ -171,11 +141,11 @@ func _assert_dialogue_visible() -> bool:
 func _find_dialogue_overlay() -> CanvasLayer:
 	if current_scene == null:
 		return null
-	# Exterior root has child `TopDialogueOverlay` per `1.1_SchoolExterior.tscn`.
+
 	var node := current_scene.get_node_or_null("TopDialogueOverlay")
 	if node is CanvasLayer:
 		return node as CanvasLayer
-	# Corridor root also embeds it; if scene already transitioned, look there.
+
 	for child in current_scene.get_children():
 		if child is CanvasLayer and String(child.name) == "TopDialogueOverlay":
 			return child as CanvasLayer

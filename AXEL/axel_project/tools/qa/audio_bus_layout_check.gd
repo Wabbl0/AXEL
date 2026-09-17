@@ -1,13 +1,4 @@
 extends SceneTree
-## Audio bus tree regression check (Phase 0.5).
-##
-## Asserts the shipped default_bus_layout.tres topology:
-##   Master(0) <- Music, Effects; Effects <- Typewriter, TypewriterOpen,
-##   CombatSfx, UiSfx. Also fails if Master ships muted (author work-mute must
-## never be committed — see Master Build Plan section 1.4), and verifies the
-## AxelSettings volume plumbing reaches the buses.
-##
-## Run: tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/audio_bus_layout_check.gd
 
 const EXPECTED_SENDS := {
 	"Music": "Master",
@@ -42,7 +33,7 @@ func _main() -> void:
 	elif AudioServer.is_bus_mute(master_idx):
 		failures.append("Master ships MUTED — un-mute it in the Audio panel before committing default_bus_layout.tres")
 
-	# AxelSettings -> AudioServer plumbing (set, assert, restore).
+
 	var settings := root.get_node_or_null("AxelSettings")
 	if settings == null:
 		failures.append("AxelSettings autoload not found")
@@ -54,8 +45,8 @@ func _main() -> void:
 			settings._apply_bus_volumes()
 			if not AudioServer.is_bus_mute(master_idx):
 				failures.append("AxelSettings volume apply unmuted Master (Audio panel work-mute must stick on boot)")
-			# Options slider must still mute/unmute after boot, even if the
-			# layout started muted (restore that mute when the slider test ends).
+
+
 			var original_master: float = settings.master_volume()
 			if original_master > 0.001:
 				AudioServer.set_bus_mute(master_idx, false)

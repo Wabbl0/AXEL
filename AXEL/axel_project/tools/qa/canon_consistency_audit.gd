@@ -1,9 +1,4 @@
 extends SceneTree
-## Headless canon/visual/gameplay consistency audit for combat test + movement scenes.
-## Warn+recommend mode: always exits 0; findings are printed as CANON_AUDIT_JSON.
-##
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/canon_consistency_audit.gd
 
 const ValidatorsScript := preload("res://tools/qa/qa_canon_validators.gd")
 

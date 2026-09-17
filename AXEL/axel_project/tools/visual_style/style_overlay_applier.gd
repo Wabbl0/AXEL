@@ -1,6 +1,5 @@
 extends RefCounted
 class_name StyleOverlayApplier
-## Applies test-only post overlays to a loaded 1.1 scene without mutating baseline assets.
 
 const _NOIR_SCENE := "res://scenes/fx/NoirPaletteOverlay.tscn"
 const _SCANLINE_SCENE := "res://scenes/fx/ScanlineOverlay.tscn"

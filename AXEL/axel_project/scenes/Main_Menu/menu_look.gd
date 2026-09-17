@@ -1,6 +1,5 @@
 class_name MenuLook
 extends RefCounted
-## Shared title-screen look: drifting 1.1 drawing, VT323, red-on-black buttons.
 
 const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const BACKDROP := preload("res://exports/Drawings/1.1_SchoolExterior.png")

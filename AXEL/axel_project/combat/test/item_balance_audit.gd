@@ -1,9 +1,4 @@
 extends SceneTree
-## Headless item balance audit: paired Monte Carlo runs (baseline vs equipped item).
-## Outputs ITEM_BALANCE_JSON with per-item deltas and classification.
-##
-## Run:
-## tools/cmd/godot.cmd --path AXEL/axel_project --headless -s res://combat/test/item_balance_audit.gd
 
 const CombatRootScene := preload("res://combat/scenes/combat_root.tscn")
 const FS_PICK: StringName = &"storm"
@@ -368,8 +363,6 @@ func _build_report(baseline: Dictionary, items: Array[Dictionary]) -> Dictionary
 		"item_metrics": items,
 	}
 
-
-# --- Statistics helpers ---
 
 func _ratio(num: int, den: int) -> float:
 	if den <= 0:

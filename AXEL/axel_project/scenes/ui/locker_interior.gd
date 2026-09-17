@@ -1,12 +1,11 @@
 class_name LockerInterior
 extends CanvasLayer
-## Locker loadout (D11). Owned items on a shelf grid; click to equip.
-## Equip only — fights start out in the school, never from here.
 
 signal closed
 
-const COLS := 6
-const ICON_PX := 72
+const COLS := 1
+const ICON_PX := 1024
+const CHROME_PAD := 24.0
 
 
 var _panel: Control
@@ -37,13 +36,14 @@ func open_locker() -> void:
 
 
 func _apply_scale() -> void:
+
 	if _panel == null:
 		return
-	var f := UiViewportScale.factor(self)
-	_panel.offset_left = -420.0 * f
-	_panel.offset_right = 420.0 * f
-	_panel.offset_top = -360.0 * f
-	_panel.offset_bottom = 360.0 * f
+	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_panel.offset_left = CHROME_PAD
+	_panel.offset_top = CHROME_PAD
+	_panel.offset_right = -CHROME_PAD
+	_panel.offset_bottom = -CHROME_PAD
 
 
 func close_locker() -> void:
@@ -73,11 +73,11 @@ func _build() -> void:
 	root.add_child(scrim)
 
 	_panel = VBoxContainer.new()
-	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.offset_left = -420
-	_panel.offset_right = 420
-	_panel.offset_top = -360
-	_panel.offset_bottom = 360
+	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_panel.offset_left = CHROME_PAD
+	_panel.offset_top = CHROME_PAD
+	_panel.offset_right = -CHROME_PAD
+	_panel.offset_bottom = -CHROME_PAD
 	_panel.add_theme_constant_override("separation", 10)
 	root.add_child(_panel)
 
@@ -92,11 +92,18 @@ func _build() -> void:
 	MenuLook.apply_label(_equip_label, 22, MenuLook.DIM)
 	_panel.add_child(_equip_label)
 
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_panel.add_child(scroll)
+
 	_grid = GridContainer.new()
 	_grid.columns = COLS
 	_grid.add_theme_constant_override("h_separation", 8)
 	_grid.add_theme_constant_override("v_separation", 8)
-	_panel.add_child(_grid)
+	scroll.add_child(_grid)
 
 	_hover = Label.new()
 	_hover.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -143,13 +150,14 @@ func _refresh() -> void:
 func _make_item_button(item: Resource, equipped: PackedStringArray) -> Button:
 	var item_id := String(item.get("id"))
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(ICON_PX + 16, ICON_PX + 28)
+	button.custom_minimum_size = Vector2(ICON_PX, ICON_PX + 36)
 	button.toggle_mode = true
 	button.button_pressed = equipped.has(item_id)
 	var icon := item.get("icon") as Texture2D
 	if icon != null:
 		button.icon = icon
-		button.expand_icon = true
+		button.expand_icon = false
+		button.add_theme_constant_override("icon_max_width", ICON_PX)
 	button.text = item_id
 	MenuLook.apply_button(button, 16)
 	if button.button_pressed:

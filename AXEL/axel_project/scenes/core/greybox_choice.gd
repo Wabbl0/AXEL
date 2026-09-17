@@ -1,6 +1,5 @@
 class_name GreyboxChoice
 extends Control
-## Playable grey-box stub (D18). White fill, black stamp. Viivi replaces later.
 
 @export var room_id: String = ""
 
@@ -87,9 +86,6 @@ func _play_and_offer() -> void:
 	_offer_choices(def)
 
 
-## Shovel (6.5) and name (5.4) are true-ending lore: each starts one fight.
-## The fight returns to this same screen, and the guard in AxelWorld keeps it
-## from firing again on the way back.
 func _start_lore_fight_if_needed(def: Dictionary) -> bool:
 	var flag := String(def.get("set_flag", ""))
 	if flag != "hasShovel" and flag != "hasName":

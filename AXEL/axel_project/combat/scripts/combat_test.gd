@@ -1,13 +1,9 @@
 @tool
-## Combat test UI — drawing-backed HUD (`HudCanvas` + white plate + piece nodes), free editor placement, integer economy.
-## `HudArtGuide` (`axel_ui.png`) is optional in the 2D editor (eye icon). Play always hides it.
-## Canonical entry: `res://combat/combat_test.tscn` (F6). See `README_COMBAT_TEST_VERSIONS.md`.
 extends Control
 
 const CombatRootScript := preload("res://combat/scripts/combat_root.gd")
 const QaCanonValidatorsScript := preload("res://tools/qa/qa_canon_validators.gd")
 const SCAFFOLD_BASELINE_SCENE := "res://combat/combat_test_scaffold_baseline.tscn"
-## Must not be re-added as local children under instanced %CombatRoot (see combat_root.tscn).
 const COMBAT_ROOT_INSTANCED_CHILDREN := [
 	"GridManager", "GridFrame", "GridUI", "GridFlashOverlay", "PowerIntroLayer",
 	"RoundWinningsLabel", "EncounterWonLabel", "MultiplierLabel",
@@ -19,11 +15,8 @@ const PRINCESS_STAR: StringName = &"star"
 const PRINCESS_STORM: StringName = &"storm"
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const GRID_COLUMN_GAP := 10.0
-const PREMIUM_BAR_HEIGHT := 10.0
-const PREMIUM_BAR_LAYOUT_PAD := 1.0
 const RESPONSIVE_NARROW_W := 900.0
 
-## Drawing canvas size (axel_ui.png). Widgets are authored in these pixels.
 const HUD_ART_SIZE := Vector2(3508.0, 2480.0)
 const CENTER_COLUMN_SEPARATION := 10
 const GRID_HOST_MIN_HEIGHT := 200.0
@@ -31,52 +24,38 @@ const WINNINGS_BAND_MIN_HEIGHT := 40.0
 const WINNINGS_ROW_SEPARATION := 8
 const CENTER_FOOTER_SEPARATION := 12
 const ECONOMICS_STACK_SEPARATION := 4
-## Fallback only. BALANCE and the bet strip normally auto-fit to their drawn bars.
 const BANKROLL_READOUT_FONT := 36
-## BALANCE + BETS share one size that almost fills the shorter of the two bars.
 const ECON_BAR_FONT_FILL := 0.9
 const ECON_BAR_FONT_MIN := 24
 const ECON_BAR_FONT_MAX := 200
-## Widest BALANCE string the bar has to hold without clipping.
 const ECON_BAR_FIT_SAMPLE := "BALANCE: 0000/0000"
-## The "|" dividers stay slightly shorter than the numbers, as drawn.
 const BET_STRIP_SEPARATOR_FONT_RATIO := 0.875
 const EXECUTE_BUTTON_MIN_HEIGHT := 72.0
 const BOTTOM_WINDOW_MARGIN := 18.0
 
 const LAYOUT_META_ICONS_SEPARATION := 4
 const META_ICON_GLYPH := "⬡"
-## Single knob for combat readout size (~2×). Balance / bet strip auto-fit their bars instead.
 const COMBAT_TEXT_SCALE := 2.0
 const META_ICON_FONT := int(round(31.0 * COMBAT_TEXT_SCALE))
 const SIDE_PANEL_HEADER_FONT := int(round(32.0 * COMBAT_TEXT_SCALE))
 const SIDE_PANEL_BODY_FONT := int(round(18.0 * COMBAT_TEXT_SCALE))
 const SIDE_PANEL_BODY_FONT_MIN := int(round(14.0 * COMBAT_TEXT_SCALE))
-## History fits the largest size its rectangle allows; this is only the ceiling.
 const HISTORY_BODY_FONT_SCALE := 3.0
-## Worst-case history row ("<bet> x <symbol value> x <cascade multiplier>").
 const HISTORY_FIT_SAMPLE := "1000 x 12.5 x 20"
-## ITEMS box names, chrome, and icons are 33% larger than the last playtest size.
 const ITEM_BOX_SIZE_MUL := 1.33
 const ITEMS_BODY_FONT_SCALE := 1.78 * ITEM_BOX_SIZE_MUL
 const ITEMS_BODY_FONT_MIN := int(round(20.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
-## Authored hover size (HudCanvas pixels). The card itself is unscaled, so live
-## font size is this fit × HudCanvas scale — the on-screen size from before the layer move.
-## Same 33% bump as ITEMS names/icons.
 const ITEM_DESC_BODY_FONT_SCALE := 1.25 * ITEM_BOX_SIZE_MUL
 const SIDE_PANEL_HINT_FONT := int(round(14.0 * COMBAT_TEXT_SCALE))
-## REROLLS / FAMILIES / rarity titles: at least 2× the old 28 px hint size.
 const SIDE_PANEL_CHROME_FONT_MIN := int(round(float(SIDE_PANEL_HINT_FONT * 2) * ITEM_BOX_SIZE_MUL))
 const ITEM_PICKER_ROW_H_SEP := 4
 const ITEM_PICKER_LIST_SEP := 10
 const ITEM_PICKER_CHECKBOX_ICON_MAX := int(round(18.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
-## Playtest Ignore/Limit check squares: at least 2× the old 36 px cap, then +33%.
 const ITEM_PICKER_PLAYTEST_CHECK_MIN := int(round(float(ITEM_PICKER_CHECKBOX_ICON_MAX * 2)))
 const ITEM_PICKER_CHECKBOX_COL_W := int(round(22.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
 const ITEM_PICKER_SPIN_MIN_W := int(round(176.0 * ITEM_BOX_SIZE_MUL))
-const ITEM_ICON_DRAW_SIZE := int(round(36.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
+const ITEM_ICON_DRAW_SIZE := 48
 const ITEM_RANK_BTN_W := int(round(88.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
-## Extra left gap so row icons sit inside the ink (applied after attach()).
 const ITEM_BOX_LEFT_INSET_PX := 12.0
 const ITEM_NAME_RIGHT_PAD := 8.0
 const ITEM_NAME_MAX_LINES := 2
@@ -88,13 +67,8 @@ const ITEM_DESC_CURSOR_GAP := 8.0
 const ITEM_DESC_PANEL_INSET := 8.0
 const ITEM_DESC_FADE_IN := 0.08
 const ITEM_DESC_BG_ALPHA := 1.0
-## Whole card (panel, border, text) renders at 90% so the rows read faintly through it.
 const ITEM_DESC_OPACITY := 0.9
-## Own CanvasLayer above WidgetLayer (106) and below the combat CRT (108) so the card
-## draws over the item rows instead of behind them.
 const ITEM_DESC_LAYER_INDEX := 107
-## GOAL, the spin-rewards bar and the cascade multiplier share one big size, so GOAL
-## and the multiplier number always match. ~2x the old multiplier size.
 const COMBAT_HUD_MAJOR_FONT := int(round(48.0 * COMBAT_TEXT_SCALE))
 const COMBAT_HUD_MAJOR_FONT_NARROW := int(round(37.5 * COMBAT_TEXT_SCALE))
 const WINNINGS_READOUT_FONT := COMBAT_HUD_MAJOR_FONT
@@ -134,14 +108,12 @@ var RARITY_COLORS: Dictionary = {
 }
 
 @export_group("Editor Preview")
-## Deprecated: editor now shows authored HudCanvas placement without percentage layout.
 @export var editor_preview_enabled: bool = false:
 	set(value):
 		if editor_preview_enabled == value:
 			return
 		editor_preview_enabled = value
 		_queue_editor_preview_refresh()
-## Deterministic seed for editor grid preview.
 @export var editor_preview_seed: int = 12345:
 	set(value):
 		if editor_preview_seed == value:
@@ -149,7 +121,6 @@ var RARITY_COLORS: Dictionary = {
 		editor_preview_seed = value
 		_queue_editor_preview_refresh()
 
-## Resolved lazily via `_cache_scene_refs()` — do not use @onready in this @tool script.
 var seed_spin: SpinBox
 var spin_btn: Button
 var bet_minus_btn: Button
@@ -180,12 +151,10 @@ var _center_footer: Control
 var _bottom_window_margin: Control
 var _winnings_center: CenterContainer
 var _grid_host: Control
-var _premium_progress: ProgressBar
 var _spin_history_panel: PanelContainer
 var _history_spin_list: VBoxContainer
 var _item_picker_panel: PanelContainer
 var _item_picker_title: Label
-## Row name strings per row kind, used to fit the item body font against real widths.
 var _item_row_texts: Dictionary = {
 	&"family": PackedStringArray(),
 	&"unique": PackedStringArray(),
@@ -223,13 +192,11 @@ var _editor_preview_refresh_queued: bool = false
 var _editor_tree_ready_attempts: int = 0
 var _runtime_tree_ready_attempts: int = 0
 
-## Layout-only editor fallbacks when %CombatRoot is a placeholder (no script instance).
 const EDITOR_FALLBACK_BANKROLL := 1000
 const EDITOR_FALLBACK_BANKROLL_CAP := 1000
 const EDITOR_FALLBACK_BET := 100
 const EDITOR_FALLBACK_MAX_ITEM_SLOTS := 7
 
-## Mirrors combat_root.fit_to_panel fill-panel math for editor placeholder fallback.
 const FALLBACK_GRID_COLS := 5
 const FALLBACK_GRID_ROWS := 5
 const FALLBACK_CELL_SIZE_MIN := 48.0
@@ -264,7 +231,7 @@ var _spin_request_frame: int = -1
 func _can_use_combat_api() -> bool:
 	if combat == null or not is_instance_valid(combat):
 		return false
-	# Instanced CombatRoot is a placeholder in @tool editor; never call gameplay API there.
+
 	if Engine.is_editor_hint():
 		return false
 	return combat.has_method("setup_new_grid") and combat.has_method("get_current_seed")
@@ -389,7 +356,7 @@ func _warn_duplicate_combat_root_children() -> void:
 				count += 1
 		if count > 1:
 			dupes.append("%s (%d×)" % [base_name, count])
-	# Catch numbered suffix drift like GridFrame2, GridFrame3, etc.
+
 	for child in combat.get_children():
 		var name_s := String(child.name)
 		for base_name in COMBAT_ROOT_INSTANCED_CHILDREN:
@@ -447,7 +414,7 @@ func _layout_combat_grid_fallback(host_w: float, host_h: float, bottom_reserve: 
 	var safe_h := maxf(host_h - bottom_reserve, 64.0)
 	var sep_h := float(grid_ui.get_theme_constant("h_separation"))
 	var sep_v := float(grid_ui.get_theme_constant("v_separation"))
-	## Mirrors combat_root.fit_to_panel: fill the host exactly with the drawing's cell aspect.
+
 	var cell := Vector2(
 		maxf((safe_w - float(FALLBACK_GRID_COLS - 1) * sep_h) / float(FALLBACK_GRID_COLS), FALLBACK_CELL_SIZE_MIN),
 		maxf((safe_h - float(FALLBACK_GRID_ROWS - 1) * sep_v) / float(FALLBACK_GRID_ROWS), FALLBACK_CELL_SIZE_MIN)
@@ -715,7 +682,7 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 		resized.connect(_on_size_changed)
 
 func _gate_local_scanline_for_room_fx_test() -> void:
-	## Hide combat's own scanline when room FX are attached (avoids double scanlines).
+
 	var scanline := get_node_or_null("ScanlineOverlay") as CanvasItem
 	if scanline == null:
 		return
@@ -765,7 +732,7 @@ func _apply_editor_combat_preview() -> void:
 	_suppress_combat_root_legacy_labels()
 	_set_seed_spin_value_no_signal(editor_preview_seed)
 	_queued_seed = editor_preview_seed
-	# Editor parity: layout shell only; do not populate symbol grid or numeric gameplay state.
+
 
 func _edited_scene_root() -> Node:
 	var tree := get_tree()
@@ -904,24 +871,10 @@ func _ensure_hud_canvas_parent(node: Control) -> void:
 	_reparent_for_layout(node, canvas)
 
 func _reparent_hud_to_root(node: Control) -> void:
-	## Legacy helper — keep widgets under HudCanvas when present.
+
 	_ensure_hud_canvas_parent(node)
 
 func _hide_legacy_meter_nodes() -> void:
-	var meter_stack := get_node_or_null("RightMeterStack")
-	if meter_stack != null:
-		meter_stack.visible = false
-	var meter_circle := get_node_or_null("RightMeterStack/PremiumMeterCircle")
-	if meter_circle == null:
-		meter_circle = get_node_or_null("%PremiumMeterCircle")
-	if meter_circle != null:
-		meter_circle.visible = false
-	if _premium_progress != null:
-		_premium_progress.visible = false
-	else:
-		var bar := find_child("PremiumProgressBar", true, false) as CanvasItem
-		if bar != null:
-			bar.visible = false
 	if _winnings_center != null:
 		_winnings_center.visible = false
 	else:
@@ -941,7 +894,7 @@ func _hide_legacy_meter_nodes() -> void:
 	_suppress_combat_root_legacy_labels()
 
 func _hide_hud_art_guide_in_game() -> void:
-	## Play / headless never draw the composite guide. Editor keeps the scene-tree eye (do not force it back on).
+
 	var guide := _resolve_scaffold_node("HudArtGuide") as CanvasItem
 	if guide == null:
 		guide = get_node_or_null("HudCanvas/HudArtGuide") as CanvasItem
@@ -979,10 +932,6 @@ func _restore_play_shell_from_scene() -> bool:
 	_winnings_center = _center_column.get_node_or_null("WinningsCenter") as CenterContainer
 	_center_footer = _center_column.get_node_or_null("CenterFooter") as Control
 	_bottom_window_margin = _center_column.get_node_or_null("BottomWindowMargin") as Control
-	if _grid_host != null:
-		_premium_progress = _grid_host.get_node_or_null("PremiumProgressBar") as ProgressBar
-		if _premium_progress == null:
-			_premium_progress = find_child("PremiumProgressBar", true, false) as ProgressBar
 	var winnings_row: HBoxContainer = null
 	if _winnings_center != null:
 		winnings_row = _winnings_center.get_node_or_null("WinningsRow") as HBoxContainer
@@ -1056,24 +1005,6 @@ func _build_play_shell() -> void:
 	combat.visible = true
 	_suppress_combat_root_legacy_labels()
 
-	_premium_progress = ProgressBar.new()
-	_premium_progress.name = "PremiumProgressBar"
-	_premium_progress.max_value = 3.0
-	_premium_progress.value = 0.0
-	_premium_progress.show_percentage = false
-	_premium_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var pb_bg := StyleBoxFlat.new()
-	pb_bg.bg_color = Color(0.12, 0.02, 0.02, 1.0)
-	pb_bg.border_color = Color(0.78, 0.03, 0.03, 0.95)
-	pb_bg.set_border_width_all(1)
-	_premium_progress.add_theme_stylebox_override("background", pb_bg)
-	var pb_fill := StyleBoxFlat.new()
-	pb_fill.bg_color = Color(0.95, 0.08, 0.08, 1.0)
-	_premium_progress.add_theme_stylebox_override("fill", pb_fill)
-	_grid_host.add_child(_premium_progress)
-	_reassert_node_ownership(_premium_progress)
-	_premium_progress.visible = false
-
 	_winnings_center = CenterContainer.new()
 	_winnings_center.name = "WinningsCenter"
 	_winnings_center.visible = false
@@ -1140,11 +1071,6 @@ func _build_play_shell() -> void:
 	_reassert_node_ownership(_bottom_window_margin)
 	_reassert_scaffold_ownership()
 
-## Stake-overlap ideas (grid/symbol size fixed; stake stays off bankroll):
-## - Top premium-bar mirror: thin frame-attached bar over grid top border only.
-## - Border notch: stake pill in centered top-border cutout.
-## - Bracket mount: frame brackets anchor floating stake pill to grid edges.
-## - Transparent frame lane: shallow top-frame lane for stake UI, max height capped.
 func _integrate_economics_into_center_hud() -> void:
 	if not _cache_scene_refs():
 		return
@@ -1364,7 +1290,7 @@ func _apply_item_picker_body_typography() -> void:
 		var cb := child as CheckBox
 		if cb == null:
 			continue
-		# Item rows use fixed checkbox columns; do not re-expand them.
+
 		if cb.get_meta("item_row_checkbox", false):
 			_style_item_row_checkbox(cb, body_font)
 		else:
@@ -1649,12 +1575,12 @@ func _stake_button_style() -> StyleBoxFlat:
 
 func _style_stake_buttons() -> void:
 	_cache_hud_pieces()
-	## The live buttons sit above the drawings and eat the hover, so they own the cursor.
+
 	for btn in [bet_minus_btn, bet_plus_btn]:
 		if btn == null:
 			continue
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	## Piece drawings own +/- look; do not paint the old computer boxes on top.
+
 	if _piece_bet_minus != null or _piece_bet_plus != null:
 		var empty := StyleBoxEmpty.new()
 		for btn in [bet_minus_btn, bet_plus_btn]:
@@ -1763,8 +1689,6 @@ func _refresh_readouts() -> void:
 		if _displayed_round_winnings == combat_total and _target_round_winnings == combat_total:
 			_apply_winnings_readout_text()
 	_refresh_cascade_multiplier_readout()
-	if _premium_progress != null:
-		_premium_progress.value = float(_safe_get_meter_sections_filled())
 	var cap_units := int(_safe_get_bankroll_cap())
 	var bankroll_units := int(_safe_get_bankroll())
 	if bankroll_label != null:
@@ -1790,8 +1714,6 @@ func _refresh_editor_placeholder_readouts() -> void:
 	if _cascade_mult_label != null:
 		_cascade_mult_label.text = "1X"
 	_last_displayed_cascade_mult = 1
-	if _premium_progress != null:
-		_premium_progress.value = 0.0
 	if bankroll_label != null:
 		bankroll_label.text = "BALANCE: %d/%d" % [EDITOR_FALLBACK_BANKROLL, EDITOR_FALLBACK_BANKROLL_CAP]
 	if goal_label != null:
@@ -1904,15 +1826,8 @@ func _run_winnings_counter_async() -> void:
 func _on_meter_full_transition_started() -> void:
 	if _piece_premium_bar != null:
 		_piece_premium_bar.pop()
-	elif _premium_progress != null:
-		var peak := create_tween()
-		peak.tween_property(_premium_progress, "modulate", Color(1.4, 1.1, 1.1, 1.0), 0.12)
-		peak.tween_property(_premium_progress, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.2)
 
 func _on_premium_meter_changed(_previous_sections: int, next_sections: int) -> void:
-	if _premium_progress != null and _piece_premium_bar == null:
-		var tween := create_tween()
-		tween.tween_property(_premium_progress, "value", float(next_sections), 0.2)
 	_sync_skull_meter(next_sections)
 	_sync_premium_bar_color(next_sections, true)
 
@@ -2080,7 +1995,7 @@ func _host_for_piece(piece: CombatHudPiece, id: String) -> Control:
 
 func _bind_widgets_to_pieces() -> void:
 	if Engine.is_editor_hint() and not editor_preview_enabled and not _is_editor_preview():
-		## Still bind in editor so TextBox previews look correct when opening the scene.
+
 		pass
 	_cache_hud_pieces()
 	_cache_scene_refs()
@@ -2106,7 +2021,7 @@ func _bind_widgets_to_pieces() -> void:
 		bankroll_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		bankroll_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	if _piece_bet_strip != null and bet_label != null:
-		## Keep %BetLabel for scaffold; hide it and show the sliding strip instead.
+
 		_piece_bet_strip.attach(bet_label, _host_for_piece(_piece_bet_strip, "bet_strip"))
 		bet_label.visible = false
 		_ensure_bet_strip_row()
@@ -2124,7 +2039,7 @@ func _bind_widgets_to_pieces() -> void:
 	if winnings_pill != null:
 		winnings_pill.visible = false
 	if _piece_execute != null and spin_btn != null:
-		## Authored under NEW_Execute; keep transparent and mouse-ignore (piece/polygon click).
+
 		if spin_btn.get_parent() != _piece_execute:
 			spin_btn.reparent(_piece_execute)
 		spin_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -2144,11 +2059,9 @@ func _bind_widgets_to_pieces() -> void:
 		meta_box.visible = false
 	if goal_box != null:
 		goal_box.visible = false
-	if _premium_progress != null:
-		_premium_progress.visible = false
 	_ensure_settings_panel()
 	_wire_piece_input_signals()
-	## Slide, not just recolour, so the strip opens with the current bet centred.
+
 	_animate_bet_strip()
 	_sync_skull_meter(_safe_get_meter_sections_filled())
 	_sync_premium_bar_color(_safe_get_meter_sections_filled())
@@ -2170,14 +2083,14 @@ func _bind_grid_host_to_piece() -> void:
 func _wire_piece_input_signals() -> void:
 	if _piece_execute != null and not _piece_execute.activated.is_connected(_on_piece_execute_activated):
 		_piece_execute.activated.connect(_on_piece_execute_activated)
-	## Skull polygon is display/editor only — Execute MOVE_TextBox owns the click.
+
 	if _skull_click_polygon != null:
 		if _skull_click_polygon is Control:
 			(_skull_click_polygon as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if _skull_click_polygon.has_signal("pressed"):
 			if _skull_click_polygon.pressed.is_connected(_on_piece_execute_activated):
 				_skull_click_polygon.pressed.disconnect(_on_piece_execute_activated)
-	## Skull art is display-only; disconnect any leftover pressed wiring.
+
 	if _premium_skull != null and _premium_skull.has_signal("pressed"):
 		if _premium_skull.pressed.is_connected(_on_piece_execute_activated):
 			_premium_skull.pressed.disconnect(_on_piece_execute_activated)
@@ -2219,8 +2132,8 @@ func _ensure_bet_strip_row() -> void:
 		return
 	if _bet_strip_row != null and is_instance_valid(_bet_strip_row):
 		if _bet_strip_row.get_parent() != container:
-			## reparent() keeps the global transform, which leaves the row far outside the
-			## new host; re-pin it the same way CombatHudPiece.attach() does.
+
+
 			_bet_strip_row.reparent(container)
 			_bet_strip_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		return
@@ -2390,75 +2303,34 @@ func _layout_combat() -> void:
 	var host_h := maxf(_grid_host.size.y, GRID_HOST_MIN_HEIGHT)
 	if host_w < 64.0 and _center_column != null:
 		host_w = maxf(_center_column.size.x, 260.0)
-	## The drawing-backed HUD owns its own premium bar (MOVE_PremiumBar), so the grid box
-	## is purely cells and nothing has to be reserved inside it.
+
 	var bottom_reserve := 0.0
-	if _piece_premium_bar == null:
-		bottom_reserve = PREMIUM_BAR_HEIGHT + PREMIUM_BAR_LAYOUT_PAD
 	_suppress_combat_root_legacy_labels()
 	var grid_w := 0.0
 	if _can_layout_combat_grid():
 		combat.fit_to_panel(Vector2(host_w, host_h), bottom_reserve, true, true)
 		grid_w = _safe_get_grid_ui_width()
 		_fallback_grid_width = grid_w
-		if _piece_premium_bar == null:
-			_layout_premium_bar()
 	elif combat != null:
 		grid_w = _layout_combat_grid_fallback(host_w, host_h, bottom_reserve)
 		_fallback_grid_width = grid_w
-		if _piece_premium_bar == null:
-			_layout_premium_bar_fallback_aligned(grid_w, host_h)
 	else:
 		grid_w = _get_center_column_interior_width(host_w)
 		_fallback_grid_width = grid_w
-		if _piece_premium_bar == null:
-			_layout_premium_bar_fallback(grid_w, host_h)
 	_layout_item_desc_overlay()
 	if _is_editor_preview():
 		_ensure_editor_grid_shell_visible()
 
-func _layout_premium_bar() -> void:
-	if _premium_progress == null or _grid_host == null or not _can_layout_combat_grid():
-		return
-	var grid_bottom := combat.position.y + combat.grid_ui.position.y + combat.grid_ui.size.y
-	var grid_left := combat.position.x + combat.grid_ui.position.x
-	_premium_progress.position = Vector2(grid_left, grid_bottom)
-	_premium_progress.size = Vector2(combat.grid_ui.size.x, PREMIUM_BAR_HEIGHT)
-	_premium_progress.z_index = 6
-
-func _layout_premium_bar_fallback(bar_width: float, host_h: float) -> void:
-	if _premium_progress == null or _grid_host == null:
-		return
-	var host_w := maxf(_grid_host.size.x, bar_width)
-	var bar_y := maxf(host_h - PREMIUM_BAR_HEIGHT - PREMIUM_BAR_LAYOUT_PAD, 0.0)
-	var bar_x := maxf((host_w - bar_width) * 0.5, 0.0)
-	_premium_progress.position = Vector2(bar_x, bar_y)
-	_premium_progress.size = Vector2(bar_width, PREMIUM_BAR_HEIGHT)
-	_premium_progress.z_index = 6
-
-func _layout_premium_bar_fallback_aligned(grid_w: float, host_h: float) -> void:
-	if _premium_progress == null or _grid_host == null or combat == null:
-		return
-	var grid_ui := combat.get_node_or_null("GridUI") as Control
-	if grid_ui != null:
-		var grid_bottom := combat.position.y + grid_ui.position.y + grid_ui.size.y
-		var grid_left := combat.position.x + grid_ui.position.x
-		_premium_progress.position = Vector2(grid_left, grid_bottom)
-		_premium_progress.size = Vector2(grid_ui.size.x, PREMIUM_BAR_HEIGHT)
-		_premium_progress.z_index = 6
-		return
-	_layout_premium_bar_fallback(grid_w, host_h)
-
 func _layout_execute_button_width() -> void:
-	## EXECUTE size is authored in the editor; do not overwrite.
+
 	pass
 
 func _layout_execute_button_to_grid_width(_grid_w: float) -> void:
-	## EXECUTE size is authored in the editor; do not overwrite.
+
 	pass
 
 func _apply_responsive_layout() -> void:
-	## Percentage layout retired — HudCanvas free placement + _fit_hud_canvas.
+
 	_apply_hud_chrome()
 
 func _get_center_column_footer_stack_height() -> float:
@@ -2472,15 +2344,14 @@ func _get_center_column_footer_stack_height() -> float:
 	return stack_h
 
 func _shrink_grid_host_to_content(_host_w: float) -> void:
-	## GridHost size is authored in the editor; do not overwrite.
+
 	pass
 
 func _side_panel_inner_width(panel: PanelContainer) -> float:
 	if panel == null:
 		return 200.0
-	## A PanelContainer grows to fit its content, so measuring the panel would feed the
-	## font fitters their own output and let a big font push the rows past the clipped
-	## host. Measure the fixed host (the piece's MOVE_TextBox follower) instead.
+
+
 	var panel_w := panel.size.x
 	var host := panel.get_parent() as Control
 	if host != null and host.size.x > 32.0:
@@ -2508,8 +2379,6 @@ func _fit_body_font_size(
 			return font_size
 	return min_size
 
-## Largest size that still fits the HISTORY rectangle. The mini-icon grows with the
-## font, so the icon column has to be re-measured for every candidate size.
 func _resolved_history_body_font() -> int:
 	var inner_w := _side_panel_inner_width(_spin_history_panel)
 	var max_size := maxi(
@@ -2532,13 +2401,9 @@ func _item_row_body_font() -> Font:
 		font = get_theme_font("font", "Label")
 	return font
 
-## Names wrap inside the ITEMS rectangle, so this is the target size — not a
-## one-line shrink-to-fit.
 func _resolved_items_body_font() -> int:
 	return maxi(int(round(float(SIDE_PANEL_BODY_FONT) * ITEMS_BODY_FONT_SCALE)), ITEMS_BODY_FONT_MIN)
 
-## Rank buttons keep their authored width, so their label grows only as far as the
-## widest rarity name fits.
 func _resolved_item_rank_font() -> int:
 	var max_size := _resolved_items_body_font()
 	var font := _item_row_body_font()
@@ -2592,9 +2457,6 @@ func _refresh_history_row_typography() -> void:
 			elif child is Label:
 				_apply_history_text_style(child as Label)
 
-## One size for BALANCE and the bet strip, sized off the drawn bars so the text almost
-## fills them. Height sets the ceiling; the widest BALANCE string caps it so the bar
-## (which clips its text) can never cut the readout off.
 func _fitted_balance_bet_font() -> int:
 	_cache_hud_pieces()
 	var bar_h := 0.0
@@ -2662,13 +2524,13 @@ func _apply_economics_typography() -> void:
 		_style_stake_buttons()
 
 func _place_control_rect(_control_node: Control, _x0: float, _y0: float, _x1: float, _y1: float) -> void:
-	## Percentage placement retired — keep authored HudCanvas offsets.
+
 	pass
 
 func _refresh_spin_button_state() -> void:
 	if spin_btn == null:
 		return
-	## Drawing paints EXECUTE; keep live button text empty so chrome stays see-through.
+
 	spin_btn.text = ""
 
 func _refresh_encounter_win_overlay() -> void:
@@ -2777,7 +2639,6 @@ func _build_item_picker() -> void:
 	_rebuild_item_picker_contents()
 
 
-## Scene-saved metadata Object() copies are not the live children. Rebind to the tree.
 func _bind_item_picker_live_nodes() -> void:
 	if _item_picker_panel == null:
 		return
@@ -2819,9 +2680,6 @@ func _item_desc_style() -> StyleBoxFlat:
 	return style
 
 
-## The card is hosted on its own CanvasLayer so it paints over the item rows, which
-## live on WidgetLayer (106). Transform stays identity, so the existing global-rect
-## layout math is unchanged.
 func _ensure_item_desc_layer() -> CanvasLayer:
 	if _item_desc_layer != null and is_instance_valid(_item_desc_layer):
 		return _item_desc_layer
@@ -3099,7 +2957,7 @@ func _ensure_playtest_tuning() -> void:
 	_reroll_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_reroll_hint_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
 	_playtest_tuning.add_child(_reroll_hint_label)
-	# GOAL SpinBoxes live in AxelCombatDevTools (debug wrench menu).
+
 	_goal_base_spin = null
 	_goal_progress_spin = null
 	_goal_effective_label = null
@@ -3120,7 +2978,7 @@ func _hide_playtest_goal_controls(tuning: VBoxContainer) -> void:
 		if name_str == "GoalBaseSpin" or name_str == "GoalProgressSpin" or name_str == "GoalEffectiveLabel":
 			n.visible = false
 			continue
-		# Parent rows that wrap the SpinBoxes
+
 		if n.find_child("GoalBaseSpin", true, false) != null or n.find_child("GoalProgressSpin", true, false) != null:
 			n.visible = false
 			continue
@@ -3249,8 +3107,6 @@ func _family_item_at_rank(by_id: Dictionary, letter: String, rank: int) -> Resou
 	return by_id.get(key, null)
 
 
-## Tags a row name for the typography refresh. Godot 4.7 wrap needs a max width,
-## not a 1px minimum. Long names wrap to a second line inside the ITEMS box.
 func _mark_item_row_name(name_lab: Label, kind: StringName) -> void:
 	name_lab.set_meta("item_row_name", true)
 	name_lab.add_theme_font_override("font", VT323_FONT)
@@ -3418,7 +3274,6 @@ func _make_unique_row(item: Resource) -> HBoxContainer:
 	return row
 
 
-## Baseline C1..C10 before C-A; digit order not string order (C10 after C9).
 func _item_id_sort_key(item_id: String) -> String:
 	var id := item_id.strip_edges()
 	if id.contains("-"):

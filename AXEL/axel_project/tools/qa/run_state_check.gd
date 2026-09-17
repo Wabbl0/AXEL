@@ -1,5 +1,4 @@
 extends SceneTree
-## Phase 2: RunState serialize, locker stash, lore bonus, acts, tombstone.
 
 func _init() -> void:
 	call_deferred("_main")
@@ -102,7 +101,7 @@ func _main() -> void:
 	if bool(saves.call("is_active")):
 		failures.append("tombstone should clear the active slot")
 
-	# Chip-bar lore math on a live CombatRoot (no RNG).
+
 	if not ResourceLoader.exists("res://combat/scenes/combat_root.tscn"):
 		failures.append("combat_root.tscn missing")
 	else:

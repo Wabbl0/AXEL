@@ -1,11 +1,4 @@
 extends SceneTree
-## Click targets on combat HUD pieces must match each MOVE_TextBox, even when
-## HudCanvas is scaled to the window. The old path mixed get_global_rect()
-## (already scaled) with local mouse points, so hits sat in the top-left and
-## looked too small.
-##
-## Run:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/hud_click_rect_check.gd
 
 const SCENE_PATH := "res://combat/combat_test.tscn"
 const WINDOW := Vector2i(1920, 1280)

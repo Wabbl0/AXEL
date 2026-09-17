@@ -2,18 +2,9 @@ extends CanvasLayer
 
 const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 
-## World-anchored interact key chip; CRT on/off uses compact opts (no white beam wash).
-##
-## `screen_offset` defaults to zero (chip centers exactly on the interact
-## anchor). Only nudge it away from zero when a scene explicitly needs the
-## chip clear of the anchor point (e.g. so it doesn't sit on top of a prop) —
-## never as a blanket default. Set the override on this node in the scene's
-## `.tscn`, not by changing this default.
 @export var key_label := "[E]"
 @export var screen_offset := Vector2.ZERO
 
-## Authored (1920x1280) chip text metrics; rescaled from the live viewport so
-## the chip stays readable at 4K (stretch stays disabled per D21).
 const _CHIP_FONT_BASE := 26
 const _CHIP_OUTLINE_BASE := 2
 
@@ -54,7 +45,7 @@ func _apply_chip_scale() -> void:
 
 func _on_tree_exiting() -> void:
 	_anim_token += 1
-	# Scene unload can race mid CRT await — cancel so power_on/off do not touch a null tree.
+
 	if is_instance_valid(_root) and is_instance_valid(_panel):
 		CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
 	_is_active = false
@@ -83,7 +74,7 @@ func show_prompt(world_pos: Vector2) -> void:
 	if _is_active and _crt_settled:
 		_update_screen_position()
 		return
-	# Mid open/close: jump to fully shown (no stacked CRT blink).
+
 	if _is_active and not _crt_settled:
 		_snap_shown()
 		return
@@ -93,14 +84,13 @@ func show_prompt(world_pos: Vector2) -> void:
 func hide_prompt() -> void:
 	if not _is_active:
 		return
-	# Mid open/close: snap off instead of reversing a half-open chip.
+
 	if not _crt_settled:
 		hide_prompt_immediate()
 		return
 	_run_hide_async()
 
 
-## Instant hide for scene transitions; skips CRT tweens so unload cannot race power_off.
 func hide_prompt_immediate() -> void:
 	_anim_token += 1
 	CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
@@ -111,7 +101,6 @@ func hide_prompt_immediate() -> void:
 	set_process(false)
 
 
-## Instant fully-shown state (cancels in-flight CRT open/close).
 func show_prompt_immediate(world_pos: Vector2) -> void:
 	_world_anchor = world_pos
 	_snap_shown()

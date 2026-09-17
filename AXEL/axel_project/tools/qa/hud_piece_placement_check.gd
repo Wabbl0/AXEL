@@ -1,13 +1,4 @@
 extends SceneTree
-## Regression: combat HUD pieces must stay on the plate, at native art size, on the mockup.
-##
-## Run:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/hud_piece_placement_check.gd
-##
-## Why this exists: every HUD piece is placed against `%HudArtGuide` (axel_ui.png). That guide
-## is 1:1 with the 3508x2480 white plate, so if it is ever nudged or resized, every piece
-## silently inherits the error - which is exactly how the whole HUD ended up ~105px left and
-## ~6% too wide. This check fails fast on that, and on any piece leaving the plate.
 
 const SCENE_PATH := "res://combat/combat_test.tscn"
 const PLATE := Vector2(3508.0, 2480.0)
@@ -15,7 +6,6 @@ const WINDOW := Vector2i(1920, 1280)
 const POS_TOLERANCE := 2.0
 const SIZE_TOLERANCE := 1.5
 
-## Rects measured by locating each piece drawing inside axel_ui.png at 1:1.
 const EXPECTED := {
 	"NEW_Settings": [5.0, 0.0, 162.0, 167.0],
 	"NEW_Goal": [76.0, 190.0, 775.0, 571.0],
@@ -85,7 +75,6 @@ func _check_plate_rect(scene: Node, path: String, label: String) -> void:
 	_expect(label, "size", r.size, PLATE, SIZE_TOLERANCE)
 
 
-## A piece stretched away from its texture's native size blurs the hand-drawn line work.
 func _check_native_art_size(piece: Control, name: String) -> void:
 	var art := piece as TextureRect
 	if art == null:
@@ -120,7 +109,6 @@ func _check_on_plate(canvas: Control) -> void:
 			_fail("%s leaves the plate: %s" % [ctrl.name, r])
 
 
-## The 5x5 must fill the cell area drawn on the grid piece, not sit in a corner of it.
 func _check_grid_fills_box(scene: Node) -> void:
 	var host := scene.find_child("GridHost", true, false) as Control
 	var combat := scene.find_child("CombatRoot", true, false) as Node2D

@@ -1,9 +1,4 @@
 extends SceneTree
-## Strip the 1px faint-white halo from premium grid icons (cigarette / booze / bloody_hand).
-## Halo color matches generate_placeholders.py FAINT_WHITE (96,96,96). Idempotent.
-##
-## Run:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/combat/strip_premium_halo.gd
 
 const SYMBOLS_DIR := "res://combat/art/grid_symbols/"
 const FILES: PackedStringArray = [

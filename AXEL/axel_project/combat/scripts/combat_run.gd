@@ -1,7 +1,4 @@
 extends Control
-## Player combat host. Instances the protected scaffold, hides playtest chrome,
-## and shows the drawn ITEMS box (empty DVD egg on the locker tutorial / F6
-## preview; read-only equipped icons on later world fights).
 
 const EmptyItemDvdScript := preload("res://combat/scripts/empty_item_dvd.gd")
 const PlayerItemPanelScript := preload("res://combat/scripts/player_item_panel.gd")
@@ -43,7 +40,7 @@ func _wire_empty_sfx() -> void:
 
 
 func _on_sfx_requested(_cue: StringName) -> void:
-	# D15: named hook only. The author is making the sounds.
+
 	pass
 
 

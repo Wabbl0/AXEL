@@ -8,10 +8,8 @@ const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
 const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const EXTERIOR_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const LOCKER_LINE := "This was your locker."
-## Just left of ExitTrigger so only a sliver of the scale-3 player peeks on the right.
 const BASEMENT_PEEK_MARGIN_PX := 12.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
-## Pre-migration hand-tuned Background scale (matches 1.2_Corridor.tscn WalkableWorld/Background).
 const _OLD_BG_SCALE := Vector2(0.546, 0.546)
 
 var _locker_interact_area: Area2D
@@ -37,7 +35,7 @@ var _player_cover_sync := PlayerCoverSync.new()
 func _ready() -> void:
 	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
 	_player_cover_sync.bind_from_player(_player)
-	# Legacy baseline already set; bind_design no-ops (do not switch to 1920x1280).
+
 	_player_cover_sync.bind_design_from_background(
 		get_node_or_null("WalkableWorld/Background") as Sprite2D,
 		$Camera2D.fit_mode,
@@ -63,7 +61,7 @@ func _ready() -> void:
 	set_process(true)
 	set_process_unhandled_input(true)
 	$Camera2D.layout_applied.connect(_on_background_layout_applied)
-	# Cache t in _ready so a second cover-fit cannot replace it with 0.5.
+
 	_latch_corridor_arrival()
 	call_deferred("_restore_player_position_if_needed")
 	_arm_exterior_zone_grace()
@@ -126,7 +124,7 @@ func _restore_player_position_if_needed() -> void:
 		call_deferred("_apply_basement_peek_if_pending")
 		return
 	if _pending_exterior_peek:
-		# Keep pending until cover-fit; _sync_environment_colliders re-queues.
+
 		if _cover_layout_ready:
 			call_deferred("_apply_exterior_peek_after_wake")
 		return
@@ -165,8 +163,8 @@ func _apply_exterior_peek_if_pending() -> void:
 	if not _cover_layout_ready:
 		return
 	_pending_exterior_peek = false
-	# Non-frozen [E]: Front inside live ExteriorInteractArea; t slides Y.
-	# RIGHT = into-corridor edge so clearance nudges off LeftWall, not out.
+
+
 	InteractArrival.apply_arrival_inside(
 		_player,
 		_exterior_interact_area,
@@ -217,7 +215,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _is_interaction_event(event):
 		return
-	# Busy (line / CRT / bar) → overlay skips/advances; never start hub trip mid-line.
+
 	if _enter_dialogue_pending or _locker_dialogue_busy():
 		return
 	_refresh_interact_zones()
@@ -230,7 +228,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 
@@ -308,7 +306,7 @@ func _handle_locker_zone_entered() -> void:
 	_locker_enter_token += 1
 	_try_show_locker_interact_prompt()
 	if not GameManager.corridor_locker_line_seen and not _locker_line_running:
-		# Mark seen immediately so leaving mid-line (or to locker hub) never re-triggers it.
+
 		GameManager.set_corridor_locker_line_seen(true)
 		_play_locker_line_async(_locker_enter_token)
 
@@ -342,7 +340,6 @@ func _play_locker_line_async(token: int) -> void:
 	_locker_line_running = false
 
 
-## Never leave the bar orphaned when the locker line aborts mid-way.
 func _close_locker_line_bar() -> void:
 	if not is_instance_valid(_top_dialogue):
 		return

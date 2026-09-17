@@ -1,6 +1,6 @@
 # Scene 1.1 Visual Style Sweep
 
-Deterministic screenshot pass for `1.1_SchoolExterior` — baseline production stack vs three scanline/glitch comparison options.
+Deterministic screenshot pass for `1.1_SchoolExterior` — baseline production stack vs scanline/glitch comparison options.
 
 ## Variants
 
@@ -9,7 +9,8 @@ Deterministic screenshot pass for `1.1_SchoolExterior` — baseline production s
 | `baseline` | `01_baseline.png` | Production 8-band inverted noir + scanline + CRT |
 | `option_1_crt_tv` | `02_option_1_crt_tv.png` | [Godot Asset Library CRT / nofacer](https://godotengine.org/asset-library/asset/4219) inspired |
 | `option_2_vhs_glitch` | `03_option_2_vhs_glitch.png` | [Retro VHS Glitch for Godot 4 (MIT)](https://godotshaders.com/shader/retro-vhs-glitch-for-godot-4/) inspired |
-| `option_3_terminal_crt` | `04_option_3_terminal_crt.png` | Luminance-preserving CRT + tracking glitches |
+
+`option_3_terminal_crt` was archived 2026-09-17 (look-dev only).
 
 Most shaders here are look-dev only and do not replace production `scenes/fx/` assets. Exception: `noir_palette_8band_test.gdshader` is **production canon** overworld noir (wired by `AxelPostFxStack`). The old 3-band `scenes/fx/noir_palette_filter.gdshader` is retired.
 

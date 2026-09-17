@@ -1,10 +1,4 @@
 extends Node
-## School side of the fight loop: which rooms belong to which area, what rank
-## their floor items roll at, when a walk step turns into a fight, and which
-## rooms the map is allowed to travel to.
-##
-## Layer rule (AI_DOCS): this is narrative state. Combat never reads it, and
-## AxelRun stays the only thing that actually starts an encounter.
 
 const PickupScript := preload("res://scenes/world/world_item_pickup.gd")
 const InfoCardScript := preload("res://scenes/ui/world_item_info_card.gd")
@@ -13,32 +7,28 @@ const PROMPT_SCENE := "res://scenes/ui/InteractPromptOverlay.tscn"
 const PROMPT_NODE_NAME := "WorldItemPromptOverlay"
 const INFO_CARD_NODE_NAME := "WorldItemInfoCard"
 const PICKUP_HOST_NAME := "WorldItemScatter"
+const INTERACT_PAD_PX := 8.0
+const ITEM_SEPARATION_PX := 220.0
 
-## Common -> Legendary. Item ids are `TIER-FAMILY` (`C-G`) or baseline lines (`C1`).
 const RANK_PREFIXES: PackedStringArray = ["C", "U", "R", "E", "L"]
 const RANK_NAMES: PackedStringArray = [
 	"Common", "Uncommon", "Rare", "Epic", "Legendary",
 ]
 const MAX_RANK := 4
 
-## Walk-fight tuning. Step = 8 px (Player._STEP_DISTANCE_PX).
 const STEP_CHANCE_BASE := 0.001
 const STEP_CHANCE_PER_CLEARED_AREA := 0.0015
 const STEP_CHANCE_MAX := 0.01
-## No step fight for this many steps after any fight.
 const STEP_GRACE_AFTER_FIGHT := 200
-## Farm cap: at most this many step fights per room visit.
 const MAX_STEP_FIGHTS_PER_VISIT := 2
 
-## Six written areas mapped onto the live rooms. `items` is how many floor
-## pickups that room gets; outdoor rooms are simply absent from this table.
 const AREAS := {
 	"halls": {
 		"label": "HALLS",
 		"families": ["F", "H", "M"],
 		"rooms": {
-			# The corridor is a gated walk-fight room and gets no floor items,
-			# so `halls` is cleared by 2.4's single item.
+
+
 			"res://scenes/Arc_1/1.2_Corridor.tscn": 0,
 			"res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn": 1,
 		},
@@ -80,23 +70,14 @@ const AREAS := {
 	},
 }
 
-## Reasons passed to AxelRun.enter_world_encounter (debug / future ambush split).
 const REASON_WALK := "walk"
 const REASON_ITEM := "item_pickup"
 const REASON_LORE := "lore_pickup"
 const REASON_MEMORY := "memory"
-## The tutorial needs its own reason so AxelRun can hand combat a low goal, an
-## empty loadout, and the last-spin assist without combat reading a story flag.
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
 
-## Where the locker tutorial fight happens: you open the locker, look around,
-## then leave the hub yourself and the corridor takes you.
 const TUTORIAL_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 
-## 1.1 and 1.2 get no floor items, ever, and stay completely quiet until the
-## locker tutorial is done AND some other room has hosted a fight. After that
-## they only ever fight from the random walk roll. 3.1 is in neither table, so
-## it never fights at all.
 const GATED_WALK_SCENES: PackedStringArray = [
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
 	"res://scenes/Arc_1/1.2_Corridor.tscn",
@@ -105,12 +86,8 @@ const GATED_WALK_SCENES: PackedStringArray = [
 var _rank: Dictionary = {}
 var _engaged: Dictionary = {}
 var _cleared: Dictionary = {}
-## Each area lifts the untouched areas once, whichever comes first: the first
-## pickup there or clearing it. Keeps the curve at +1 per area touched.
 var _upgrade_spent: Dictionary = {}
-## scene_path -> Array of {"id": String, "x": float, "y": float, "taken": bool}
 var _room_items: Dictionary = {}
-## Lore flags that already paid out their one guaranteed fight.
 var _lore_fights: Dictionary = {}
 
 var _steps_since_fight: int = STEP_GRACE_AFTER_FIGHT
@@ -128,9 +105,6 @@ func _ready() -> void:
 	var tree := get_tree()
 	if tree != null and not tree.scene_changed.is_connected(_on_scene_changed):
 		tree.scene_changed.connect(_on_scene_changed)
-
-
-## --- Enable / reset ---
 
 
 func is_enabled() -> bool:
@@ -158,9 +132,6 @@ func reset_world() -> void:
 	_starting_fight = false
 
 
-## --- Area lookup ---
-
-
 func area_for_scene(scene_path: String) -> String:
 	if scene_path.is_empty():
 		return ""
@@ -174,16 +145,12 @@ func is_indoor_scene(scene_path: String) -> bool:
 	return not area_for_scene(scene_path).is_empty()
 
 
-## Whether the walk-step roll is allowed to fire in this room at all. Indoor
-## rooms qualify by being in the area table; 1.1 and 1.2 have to earn it.
 func can_walk_fight(scene_path: String) -> bool:
 	if GATED_WALK_SCENES.has(scene_path):
 		return walk_fights_unlocked()
 	return is_indoor_scene(scene_path)
 
 
-## The 1.1 / 1.2 gate: the locker tutorial has happened and at least one other
-## room has already hosted a fight.
 func walk_fights_unlocked() -> bool:
 	var run := _run()
 	if run == null:
@@ -214,11 +181,6 @@ func step_chance() -> float:
 	return clampf(chance, STEP_CHANCE_BASE, STEP_CHANCE_MAX)
 
 
-## --- Walk fights ---
-
-
-## Called by Player.gd once per 8 px walked. Rolls a rare fight in any room
-## that `can_walk_fight` allows.
 func register_walk_step() -> void:
 	if not is_enabled() or _starting_fight:
 		return
@@ -242,10 +204,6 @@ func register_walk_step() -> void:
 	start_fight_here(REASON_WALK)
 
 
-## --- Fight entry points ---
-
-
-## Fight from inside a walkable room; returns to this room and this spot.
 func start_fight_here(reason: String) -> bool:
 	if not is_enabled() or _starting_fight:
 		return false
@@ -271,7 +229,6 @@ func start_fight_here(reason: String) -> bool:
 	return true
 
 
-## Fight from a still / greybox screen: no player spot, the room places itself.
 func start_fight_to_scene(reason: String, return_scene: String) -> bool:
 	if not is_enabled() or _starting_fight:
 		return false
@@ -285,15 +242,12 @@ func start_fight_to_scene(reason: String, return_scene: String) -> bool:
 	return true
 
 
-## Memory stills (2.2 / 3.2 / 4.2 / 5.2) leave through here instead of a plain
-## scene change. Falls back to a plain change when the loop is disabled.
 func start_memory_fight(return_scene: String) -> bool:
 	if not is_enabled():
 		return false
 	return start_fight_to_scene(REASON_MEMORY, return_scene)
 
 
-## Flashlight / key / shovel / name. Once per flag, ever.
 func start_lore_fight(flag_name: String, return_scene: String, use_player_spot: bool) -> bool:
 	if not is_enabled():
 		return false
@@ -315,9 +269,6 @@ func has_lore_fight_happened(flag_name: String) -> bool:
 	return bool(_lore_fights.get(flag_name, false))
 
 
-## The locker hub asks for the tutorial when the player leaves it on their own
-## after opening the locker. AxelWorld still owns *when* it happens: nothing
-## fires until the corridor is actually loaded and the player is standing.
 func queue_locker_tutorial_fight() -> bool:
 	if not is_enabled():
 		return false
@@ -350,16 +301,14 @@ func _start_locker_tutorial(scene: Node) -> void:
 	run.state.tutorial_fight_pending = false
 	run.state.tutorial_fight_done = true
 	if not start_fight_here(REASON_LOCKER_TUTORIAL):
-		# Nothing to fight from (loop off, no Player node): stay owed instead of
-		# quietly eating the tutorial.
+
+
 		run.state.tutorial_fight_pending = true
 		run.state.tutorial_fight_done = false
 		return
 	_save()
 
 
-## Gate bookkeeping for 1.1 / 1.2: which rooms have already hosted a fight. The
-## two gated rooms never count toward their own unlock.
 func _record_fight_room(scene_path: String) -> void:
 	if scene_path.is_empty() or GATED_WALK_SCENES.has(scene_path):
 		return
@@ -373,7 +322,6 @@ func _record_fight_room(scene_path: String) -> void:
 	run.state.fought_rooms = PackedStringArray(rooms)
 
 
-## Called by AxelRun after a world fight is won.
 func notify_fight_won(_reason: String, dest_scene: String, tex: Vector2, has_tex: bool) -> void:
 	_starting_fight = false
 	_steps_since_fight = 0
@@ -382,14 +330,10 @@ func notify_fight_won(_reason: String, dest_scene: String, tex: Vector2, has_tex
 	_pending_return_valid = has_tex
 
 
-## --- Floor items ---
-
-
 func item_rank_for_scene(scene_path: String) -> int:
 	return area_rank(area_for_scene(scene_path))
 
 
-## A floor pickup was taken: bank it, engage the area, upgrade untouched areas.
 func take_item(scene_path: String, index: int) -> void:
 	var entries: Array = _room_items.get(scene_path, [])
 	if index < 0 or index >= entries.size():
@@ -418,8 +362,6 @@ func _engage_area(area_id: String) -> void:
 	_upgrade_untouched_areas(area_id)
 
 
-## AXEL_notes §2.3: areas you have not entered or cleared move up one rank.
-## An area is only ever the source of one upgrade.
 func _upgrade_untouched_areas(source_area: String) -> void:
 	if source_area.is_empty() or bool(_upgrade_spent.get(source_area, false)):
 		return
@@ -445,9 +387,6 @@ func _refresh_cleared(area_id: String) -> void:
 				return
 	_cleared[area_id] = true
 	_upgrade_untouched_areas(area_id)
-
-
-## --- Save ---
 
 
 func to_dict() -> Dictionary:
@@ -490,9 +429,6 @@ func _save() -> void:
 	var saves := get_node_or_null("/root/AxelSaves")
 	if saves != null and bool(saves.call("is_active")):
 		saves.call("save_active")
-
-
-## --- Scene lifecycle ---
 
 
 func _on_scene_changed() -> void:
@@ -554,6 +490,8 @@ func _populate_room(scene: Node) -> void:
 	if not _room_items.has(path):
 		_room_items[path] = _decide_placements(scene, env, area_id, want, path)
 		_save()
+	else:
+		_repair_illegal_spots(scene, env, path)
 	_spawn_pickups(scene, env, path)
 
 
@@ -564,7 +502,7 @@ func _decide_placements(
 	rng.seed = hash(path)
 	var tex_size := _texture_size(scene)
 	var player := scene.find_child("Player", true, false) as Node2D
-	# The player is standing on walkable floor, so that spot is the safe fallback.
+
 	var player_tex := PlayerSpawnSync.capture_tex(env, player) if player != null else Vector2.ZERO
 	var floor_y: float = player_tex.y if player != null else tex_size.y * 0.72
 	var exclude: Array[RID] = []
@@ -572,6 +510,7 @@ func _decide_placements(
 		exclude.append((player as CollisionObject2D).get_rid())
 	var out: Array = []
 	var used_lanes: Array = []
+	var occupied: Array = []
 	for i in want:
 		var frac := (float(i) + 1.0) / (float(want) + 1.0)
 		frac = clampf(frac + rng.randf_range(-0.07, 0.07), 0.14, 0.86)
@@ -580,11 +519,15 @@ func _decide_placements(
 		var fallback := Vector2(
 			clampf(player_tex.x + away, tex_size.x * 0.08, tex_size.x * 0.92), player_tex.y
 		)
-		var spot := _find_free_spot(env, wanted, tex_size, fallback, exclude)
+		var spot := _find_free_spot(env, wanted, tex_size, fallback, exclude, occupied)
+		if not _is_finite_spot(spot):
+			push_warning("AxelWorld: no wall-clear floor for an item in %s" % path)
+			continue
 		var item_id := _roll_item(area_id, rng, used_lanes)
 		if item_id.is_empty():
 			continue
 		used_lanes.append(_lane_of(item_id))
+		occupied.append(spot)
 		out.append({"id": item_id, "x": spot.x, "y": spot.y, "taken": false})
 	return out
 
@@ -598,47 +541,174 @@ func _texture_size(scene: Node) -> Vector2:
 	return Vector2(1920.0, 1280.0)
 
 
-## Slide around until the spot is clear of walls, furniture, and interact
-## zones — an item sitting on a door box would steal that door's [E].
 func _find_free_spot(
 	env: Node2D,
 	wanted: Vector2,
 	tex_size: Vector2,
 	fallback: Vector2,
 	exclude: Array[RID],
+	occupied: Array = [],
 ) -> Vector2:
+	for avoid_zones in [true, false]:
+		for use_occupied in [true, false]:
+			var sep: Array = occupied if use_occupied else []
+			var near := _search_near(env, wanted, tex_size, exclude, avoid_zones, sep)
+			if _is_finite_spot(near):
+				return near
+			var fallback_spot := _clamp_spot(fallback, tex_size)
+			if not _circle_blocked(env, fallback_spot, exclude, avoid_zones, sep):
+				return fallback_spot
+			var grid := _search_grid(env, wanted, tex_size, exclude, avoid_zones, sep)
+			if _is_finite_spot(grid):
+				return grid
+	return Vector2.INF
+
+
+func _repair_illegal_spots(scene: Node, env: Node2D, path: String) -> void:
+	var entries: Array = _room_items.get(path, [])
+	if entries.is_empty():
+		return
+	var tex_size := _texture_size(scene)
+	var player := scene.find_child("Player", true, false) as Node2D
+	var player_tex := PlayerSpawnSync.capture_tex(env, player) if player != null else Vector2.ZERO
+	var exclude: Array[RID] = []
+	if player is CollisionObject2D:
+		exclude.append((player as CollisionObject2D).get_rid())
+	var occupied: Array = []
+	var changed := false
+	for i in entries.size():
+		var entry: Dictionary = entries[i]
+		if bool(entry.get("taken", false)):
+			continue
+		var spot := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
+
+		if _circle_blocked(env, spot, exclude, false, []):
+			var away := 260.0 * (1.0 if i % 2 == 0 else -1.0) * float(i + 1)
+			var fallback := Vector2(
+				clampf(player_tex.x + away, tex_size.x * 0.08, tex_size.x * 0.92), player_tex.y
+			)
+			var neu := _find_free_spot(env, spot, tex_size, fallback, exclude, occupied)
+			if _is_finite_spot(neu):
+				entry["x"] = neu.x
+				entry["y"] = neu.y
+				spot = neu
+				changed = true
+			else:
+				push_warning("AxelWorld: saved item %s in %s still overlaps a wall" % [
+					String(entry.get("id", "")), path,
+				])
+		occupied.append(spot)
+		entries[i] = entry
+	if changed:
+		_room_items[path] = entries
+		_save()
+
+
+func _search_near(
+	env: Node2D,
+	wanted: Vector2,
+	tex_size: Vector2,
+	exclude: Array[RID],
+	avoid_zones: bool,
+	occupied: Array,
+) -> Vector2:
+	var step := 40.0
+	for ring in 25:
+		if ring == 0:
+			var origin := _clamp_spot(wanted, tex_size)
+			if not _circle_blocked(env, origin, exclude, avoid_zones, occupied):
+				return origin
+			continue
+		var reach := float(ring) * step
+		for i in range(-ring, ring + 1):
+			var along := float(i) * step
+			var ring_spots: Array[Vector2] = [
+				Vector2(wanted.x + along, wanted.y - reach),
+				Vector2(wanted.x + along, wanted.y + reach),
+				Vector2(wanted.x - reach, wanted.y + along),
+				Vector2(wanted.x + reach, wanted.y + along),
+			]
+			for raw in ring_spots:
+				var candidate := _clamp_spot(raw, tex_size)
+				if not _circle_blocked(env, candidate, exclude, avoid_zones, occupied):
+					return candidate
+	return Vector2.INF
+
+
+func _search_grid(
+	env: Node2D,
+	wanted: Vector2,
+	tex_size: Vector2,
+	exclude: Array[RID],
+	avoid_zones: bool,
+	occupied: Array,
+) -> Vector2:
+	var bounds := _search_bounds(tex_size)
+	var step := 64.0
+	var y := bounds.position.y
+	var rows: Array[float] = []
+	while y <= bounds.end.y + 0.01:
+		rows.append(y)
+		y += step
+	rows.sort_custom(func(a: float, b: float) -> bool: return absf(a - wanted.y) < absf(b - wanted.y))
+	for row_y in rows:
+		var x := bounds.position.x
+		while x <= bounds.end.x + 0.01:
+			var candidate := Vector2(x, row_y)
+			if not _circle_blocked(env, candidate, exclude, avoid_zones, occupied):
+				return candidate
+			x += step
+	return Vector2.INF
+
+
+func _circle_blocked(
+	env: Node2D,
+	tex_pos: Vector2,
+	exclude: Array[RID],
+	avoid_zones: bool,
+	occupied: Array,
+) -> bool:
+	if not _is_finite_spot(tex_pos):
+		return true
+	for other in occupied:
+		if other is Vector2 and tex_pos.distance_to(other) < ITEM_SEPARATION_PX:
+			return true
 	var world := env.get_world_2d()
 	if world == null:
-		return wanted
+		return true
 	var space := world.direct_space_state
 	if space == null:
-		return wanted
-	var query := PhysicsPointQueryParameters2D.new()
-	query.collide_with_bodies = true
-	query.exclude = exclude
+		return true
+	var circle := CircleShape2D.new()
+	circle.radius = PickupScript.RADIUS + INTERACT_PAD_PX
+	var params := PhysicsShapeQueryParameters2D.new()
+	params.shape = circle
+	params.transform = env.global_transform * Transform2D(0.0, tex_pos)
+	params.collision_mask = 0xFFFFFFFF
+	params.exclude = exclude
+	params.collide_with_bodies = true
+	params.collide_with_areas = avoid_zones
+	return not space.intersect_shape(params, 8).is_empty()
+
+
+func _search_bounds(tex_size: Vector2) -> Rect2:
 	var min_x := tex_size.x * 0.08
 	var max_x := tex_size.x * 0.92
-	var x_offsets: Array[float] = [0.0]
-	for i in 12:
-		var step := float(i + 1) * 90.0
-		x_offsets.append(step)
-		x_offsets.append(-step)
-	var y_offsets: Array[float] = [0.0, -70.0, 70.0, -150.0, 150.0, -230.0, 230.0]
-	# Pass 1 also dodges interact zones; pass 2 only insists on open floor, so a
-	# corridor whose floor is all door boxes still gets a reachable item.
-	for avoid_zones in [true, false]:
-		query.collide_with_areas = avoid_zones
-		for dy in y_offsets:
-			for dx in x_offsets:
-				var candidate := Vector2(clampf(wanted.x + dx, min_x, max_x), wanted.y + dy)
-				query.position = env.to_global(candidate)
-				if space.intersect_point(query, 1).is_empty():
-					return candidate
-		# Nothing clear nearby: try beside the player, which is walkable floor.
-		query.position = env.to_global(fallback)
-		if space.intersect_point(query, 1).is_empty():
-			return fallback
-	return wanted
+	var min_y := tex_size.y * 0.10
+	var max_y := tex_size.y * 0.92
+	return Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))
+
+
+func _clamp_spot(spot: Vector2, tex_size: Vector2) -> Vector2:
+	var bounds := _search_bounds(tex_size)
+	return Vector2(
+		clampf(spot.x, bounds.position.x, bounds.end.x),
+		clampf(spot.y, bounds.position.y, bounds.end.y),
+	)
+
+
+func _is_finite_spot(spot: Vector2) -> bool:
+	return is_finite(spot.x) and is_finite(spot.y)
 
 
 func _roll_item(area_id: String, rng: RandomNumberGenerator, used_lanes: Array) -> String:
@@ -765,8 +835,6 @@ func _ensure_prompt_overlay(scene: Node) -> Node:
 	return overlay
 
 
-## One card per room, shared by every pickup in it — only one item can be
-## within reach at a time.
 func _ensure_info_card(scene: Node) -> Node:
 	var existing := scene.get_node_or_null(INFO_CARD_NODE_NAME)
 	if existing != null:
@@ -775,9 +843,6 @@ func _ensure_info_card(scene: Node) -> Node:
 	card.name = INFO_CARD_NODE_NAME
 	scene.add_child(card)
 	return card
-
-
-## --- Small helpers ---
 
 
 func _settle_frames(scene: Node, frames: int) -> void:

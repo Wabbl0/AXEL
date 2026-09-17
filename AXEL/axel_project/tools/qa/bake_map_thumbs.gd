@@ -1,5 +1,4 @@
 extends SceneTree
-## Downscale room drawings to 512×360 map thumbs (Phase 5 texture budget).
 
 const OUT_DIR := "res://assets/map_thumbs/"
 const THUMBS := {

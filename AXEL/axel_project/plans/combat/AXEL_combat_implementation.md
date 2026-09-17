@@ -19,23 +19,24 @@ Companion to `AXEL_combat_design.md`. This file is the engineering plan: project
 
 ```
 res://combat/
-├── combat_test.tscn            # standalone test scene, boots straight into a fight
+├── combat_test.tscn            # standalone F6 catalog tool
+├── combat_run.tscn             # player fight host (world / act)
 ├── scenes/
-│   ├── combat_root.tscn        # top-level combat scene (grid + HUD + princess UI)
-│   ├── symbol.tscn             # one cell's renderable symbol
-│   └── goal_hud.tscn           # encounter goal display
+│   ├── combat_root.tscn        # grid + HUD; center PowerIntroIcon names the acting princess
+│   └── symbol.tscn             # one cell's renderable symbol
 ├── scripts/
 │   ├── combat_root.gd          # orchestrates spin → resolve → cascade → powers
 │   ├── grid_manager.gd         # grid state, spawning, cascading
 │   ├── line_detector.gd        # row/column line win detection
 │   ├── princess_controller.gd  # rotation + power dispatch
 │   ├── multiplier.gd           # per-spin multiplier tracking
-│   ├── meter.gd                # Trinity meter state and logic
+│   ├── meter.gd                # Trinity meter state
+│   ├── premium_skull_meter.gd  # skull HUD widget (no ring)
 │   ├── free_spins.gd           # Free Spins state machine
 │   ├── goal_tracker.gd         # goal evaluation per encounter
 │   ├── item_inventory.gd       # held items + hook dispatch
 │   ├── encounter.gd            # one encounter: goal + budget + modifiers
-│   ├── run_state.gd            # PLANNED / NOT BUILT YET — cross-encounter saveable run data (see note below)
+│   ├── run_state.gd            # live Resource; AxelRun holds the instance
 │   └── rng.gd                  # seeded RNG wrapper (`CombatRNG`)
 ├── data/
 │   ├── symbols/                # SymbolDef resources (.tres)
@@ -45,7 +46,7 @@ res://combat/
 └── art/grid_symbols/
 ```
 
-> **RunState status:** `run_state.gd` / a `RunState` autoload are **planned but not yet built**. Combat currently keeps run data in memory on the live encounter/`CombatRoot` (no disk save between encounters, no pause/resume). Keep this section as the future saveable-run spec; do not assume the file exists today.
+> **RunState status:** `combat/scripts/run_state.gd` is live (`class_name RunState`). Autoload `AxelRun` owns the instance and serializes it through `AxelSaves` (three slots under `user://saves/`). There is no `RunState` autoload and no `user://run.save`. Goal text is `%GoalLabel` in `combat_test.tscn` / `combat_run.tscn`. `combat/scenes/goal_hud.tscn` was archived 2026-09-17. Do not restore `RightMeterStack` / `PremiumMeterCircle` / `premium_meter_circle.gd` (deleted, not archived) or the `FeelWinLines` overlay.
 
 Rule of thumb: if a thing is *content* (a symbol type, a goal type, an item), make it a `Resource`. If it's *behavior*, make it a script on a Node. Content should be editable in the Godot inspector without recompiling logic.
 
@@ -435,7 +436,7 @@ Ship those before filling out the full table from design doc §6.
 ## 10. UI / renderer
 
 - Grid: a `GridContainer` with 25 `TextureRect` children, each bound to a cell. Listen to `grid_populated`, `cells_cleared`, `symbols_fell`, `symbols_spawned` — animate from signal payloads. Keep animations short (≤200ms per step) so cascade chains don't drag. **One exception:** the ~1.9 s board swap on `grid_populated` (§5). It happens once per fresh board, never inside a cascade chain.
-- HUD: current goal text + progress, spin budget remaining, current multiplier, stake, Trinity meter (3 sections). The acting princess is named by the center power-intro flash, not by a portrait — the old dim corner icon row was removed.
+- HUD: current goal text + progress (`%GoalLabel`, not `goal_hud.tscn`), spin budget remaining, current multiplier, stake, Trinity **skull** meter (3 sections; `premium_skull_meter.gd` + `meter.gd`). No ring widget. No match win-line overlay (`FeelWinLines` / `show_win_lines` gone). Paid spin uses the `interact` action (E/Space/Enter + pad A) and the EXECUTE piece. The acting princess is named by the center power-intro flash, not by a portrait — the old dim corner icon row was removed.
 - Free Spins HUD: chosen princess, spins remaining, carry multiplier, total-spin-cap progress.
 - **Feel FX to ship early:** CRT scanline shader overlay (carry from prototype), glitch flash on big multipliers, screen shake scaled to multiplier value. Audio: muffled stab on princess trigger, a quiet tone on grid clear. Big wins should feel *wrong* — see design doc §7.
 
@@ -443,9 +444,10 @@ Ship those before filling out the full table from design doc §6.
 
 ## 11. Persistence & runs
 
-- Autoload `RunState` as a singleton. Serialize to `user://run.save` with `var_to_bytes`/`bytes_to_var` between encounters.
-- Keep `RunState` small — currency, items, act/encounter index, seed. Never store renderer state.
-- A new run creates a new `RunState` with `seed = Time.get_unix_time_from_system()` unless a daily-seed mode is active.
+Live wiring: `AxelRun` holds a `RunState` Resource and `AxelSaves` writes three slots under `user://saves/`. Do not add a `RunState` autoload or `user://run.save`.
+
+- Keep `RunState` small — currency, items, act/encounter index, seed, world-fight fields. Never store renderer state.
+- A new run creates a new `RunState`. Seed comes from the save/new-game path, not from an extra combat autoload.
 
 ---
 

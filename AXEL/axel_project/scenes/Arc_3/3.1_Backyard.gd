@@ -32,7 +32,6 @@ var _arrival_t := InteractArrival.DEFAULT_T
 var _cover_layout_ready := false
 var _door_zone_armed := true
 var _memory_zone_armed := true
-## Texture-pixel position captured from the MemoryIndicator node's editor position.
 var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
@@ -157,7 +156,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 
@@ -182,10 +181,6 @@ func _interact_anchor() -> Vector2:
 	return anchor
 
 
-## MemoryIndicator's editor position is texture-pixel space (same as colliders
-## and the player spawn); re-derive its world position from that captured
-## offset each time the background layout (re)applies, so dragging the node
-## in the editor is what actually moves it, not a hardcoded/computed anchor.
 func _sync_memory_indicator() -> void:
 	if not is_instance_valid(_memory_indicator) or not _memory_indicator.visible:
 		return
@@ -334,7 +329,7 @@ func _configure_behind_occlusion_masks() -> void:
 		return
 	var polys: Array[PackedVector2Array] = []
 	var feathers: Array[float] = []
-	## Slot 0 = wall (feet-Y so fade can cross TopWall). Slots 1–2 = bush/well (per-pixel).
+
 	for zone_name in ["Wall_Behind", "Bush_Behind", "Well_Behind"]:
 		var zone := get_node_or_null(
 			"WalkableWorld/EnvironmentColliders/%s" % zone_name

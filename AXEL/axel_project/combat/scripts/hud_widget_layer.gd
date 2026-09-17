@@ -1,6 +1,4 @@
 extends CanvasLayer
-## Live combat HUD widgets above noir, below CRT/pulse/glitch so they share the shake.
-## Hosts follow MOVE_TextBox global rects.
 
 const LAYER_INDEX := 106
 const TERMINAL_THEME := preload("res://combat/ui/terminal_theme.tres")
@@ -25,7 +23,7 @@ func _ensure_root() -> void:
 		add_child(_root)
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	## CanvasLayer breaks theme inheritance from CombatTest2 — re-apply here.
+
 	_root.theme = TERMINAL_THEME
 
 
@@ -34,8 +32,6 @@ func get_widget_root() -> Control:
 	return _root
 
 
-## Create or reuse a follower host under WidgetRoot that tracks `box`.
-## Pass `existing_host` to register an already-built Control (e.g. GridHost) as the follower.
 func register(box: Control, id: String, existing_host: Control = null) -> Control:
 	if box == null:
 		return null

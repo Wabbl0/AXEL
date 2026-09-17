@@ -1,6 +1,4 @@
 extends RefCounted
-## Shared baseline rarity lines for world scatter and the F6 ITEMS picker.
-## Pair by effect, never by digit: C1 is not L1.
 
 const LINE_DEFS := {
 	"reroll": {"name": "Reroll payout", "rungs": ["C1", "U1", "R1", "E4", ""]},

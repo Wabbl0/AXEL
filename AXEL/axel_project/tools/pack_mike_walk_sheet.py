@@ -2,7 +2,7 @@
 """One-shot: cut kävely plates into a 12-cell Mike walk strip.
 
 Reads ASCII copies (or Finnish names) under exports/Drawings/, writes
-assets/sprites/mike_walking-Sheet.png after backing up the live 13-frame sheet.
+assets/sprites/mike_walking-Sheet.png. The old 13-frame sheet lives in archive.
 
 Run from repo root:
   python AXEL/axel_project/tools/pack_mike_walk_sheet.py
@@ -11,7 +11,6 @@ Run from repo root:
 from __future__ import annotations
 
 import os
-import shutil
 from collections import deque
 from typing import List, Tuple
 
@@ -374,12 +373,11 @@ def main() -> None:
 	print(f"Sheet {sheet.size[0]}x{sheet.size[1]} cell {cell_w}x{cell_h}")
 
 	os.makedirs(SPRITES, exist_ok=True)
-	if os.path.isfile(OUT_SHEET) and not os.path.isfile(LEGACY_SHEET):
-		shutil.copy2(OUT_SHEET, LEGACY_SHEET)
-		print(f"Backed up legacy -> {LEGACY_SHEET}")
-	elif os.path.isfile(OUT_SHEET) and os.path.isfile(LEGACY_SHEET):
-		# Keep first legacy backup; still overwrite live sheet
+	if os.path.isfile(LEGACY_SHEET):
 		print(f"Legacy backup already exists: {LEGACY_SHEET}")
+	else:
+		# 13-frame sheet was archived 2026-09-17; do not recreate it on the live path.
+		print("pack_mike_walk_sheet: skip live legacy13 backup (archived 2026-09-17)")
 
 	sheet.save(OUT_SHEET, "PNG")
 	print(f"Wrote {OUT_SHEET}")

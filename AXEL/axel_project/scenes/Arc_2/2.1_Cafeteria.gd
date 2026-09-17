@@ -9,9 +9,7 @@ const BACKYARD_SCENE := "res://scenes/Arc_3/3.1_Backyard.tscn"
 const CLASSROOMS_CORRIDOR_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
-## Just right of ReturnInteractArea so Mike peeks inside the room from the left door.
 const BASEMENT_PEEK_MARGIN_PX := 12.0
-## Kitchen return: Player node texture Y (door is ~2040×90). X still follows leave t.
 const KITCHEN_STAND_TEX_Y := 90.0
 const RETURN_ZONE_GRACE_SEC := 0.15
 
@@ -39,10 +37,8 @@ var _kitchen_zone_armed := true
 var _backyard_zone_armed := true
 var _classrooms_zone_armed := true
 var _table_zone_armed := true
-## 0..1 along the source [E] box. Taken once in restore so layout cannot drop it.
 var _arrival_t := InteractArrival.DEFAULT_T
 var _cover_layout_ready := false
-## Texture-pixel position captured from the MemoryIndicator node's editor position.
 var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
@@ -101,7 +97,7 @@ func _restore_player_position_if_needed() -> void:
 		return
 	if cafeteria_side == "classrooms_bottom":
 		_pending_classrooms_peek = true
-		# Consume leftover t, then pin to dest-box center (2.1↔2.4 exception).
+
 		InteractArrival.take_arrival_t_or_default()
 		_arrival_t = InteractArrival.DEFAULT_T
 		if _cover_layout_ready:
@@ -201,7 +197,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 
@@ -232,10 +228,6 @@ func _interact_anchor() -> Vector2:
 	return anchor
 
 
-## MemoryIndicator's editor position is texture-pixel space (same as colliders
-## and the player spawn); re-derive its world position from that captured
-## offset each time the background layout (re)applies, so dragging the node
-## in the editor is what actually moves it, not a hardcoded/computed anchor.
 func _sync_memory_indicator() -> void:
 	if not is_instance_valid(_memory_indicator) or not _memory_indicator.visible:
 		return
@@ -289,7 +281,7 @@ func _begin_go_to_backyard() -> void:
 
 
 func _begin_go_to_classrooms() -> void:
-	# Always land at 2.4 CafeteriaInteractArea center — do not save leave t.
+
 	GameManager.set_classrooms_corridor_spawn_side("cafeteria_door")
 	_begin_scene_change(CLASSROOMS_CORRIDOR_SCENE)
 
@@ -343,7 +335,7 @@ func _sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 	var tex_pos := PlayerSpawnSync.capture_tex(env, player_node)
 	env.position = bg_position
 	env.scale = Vector2.ONE * cover_scale
-	# Always remap Player node (1.2 style). Door / memory overwrite runs deferred.
+
 	PlayerSpawnSync.apply_tex(env, player_node, tex_pos)
 	_player_cover_sync.apply(player_node, cover_scale, bg_position)
 	_sync_memory_indicator()
@@ -414,8 +406,8 @@ func _apply_kitchen_peek_if_pending() -> void:
 	if not _pending_kitchen_peek or not is_instance_valid(_player):
 		return
 	_pending_kitchen_peek = false
-	# Kitchen door: Player node at texture Y 90, X from leave t (~2040).
-	# Stand the node there (not the feet circle). Skip wall clamp.
+
+
 	var feet_landed := InteractArrival.place_on_area(
 		_player,
 		_kitchen_area,
@@ -462,7 +454,7 @@ func _apply_classrooms_peek_if_pending() -> void:
 	if not _cover_layout_ready:
 		return
 	_pending_classrooms_peek = false
-	# Live ClassroomsInteractArea center. Skip wall clearance so Y stays on the box.
+
 	_player.global_position = InteractArrival.place_in_area(
 		_player,
 		_classrooms_area,

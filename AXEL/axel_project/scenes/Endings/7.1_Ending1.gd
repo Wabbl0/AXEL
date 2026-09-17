@@ -1,5 +1,4 @@
 extends Node2D
-## Ending 1 — Fear: repeat "Coward." then return to the main menu.
 
 const MAIN_MENU_SCENE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
 const COWARD_LINE := "Coward."

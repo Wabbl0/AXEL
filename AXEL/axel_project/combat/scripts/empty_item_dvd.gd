@@ -1,6 +1,4 @@
 extends Control
-## First-fight empty ITEMS box: DVD-style mill + rare corner flame burst + ticker.
-## Visual only. Uses a time-seeded RNG — never the combat seed.
 
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const MILL_SHEET := "res://assets/sprites/combat/wind_mill_blades_48x48.png"

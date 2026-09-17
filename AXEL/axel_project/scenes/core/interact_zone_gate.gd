@@ -1,9 +1,5 @@
 extends RefCounted
 class_name InteractZoneGate
-## Shared door/[E] gate helpers for walkable rooms.
-## body_in_area: live overlap poll (not body_entered latch).
-## dialogue_busy: talk bar still doing something — hide chip, ignore door [E].
-## movement_pressed: first WASD / arrow press clears the arrival latch.
 
 
 static func body_in_area(area: Area2D, body: Node2D) -> bool:
@@ -13,9 +9,8 @@ static func body_in_area(area: Area2D, body: Node2D) -> bool:
 		return false
 	if area.get_overlapping_bodies().has(body):
 		return true
-	# Physics overlap can stay empty after a parent scale/move until the area
-	# is poked. Sample the Front circle against the live box (same point
-	# InteractArrival uses — not CollisionShape2D.global_position).
+
+
 	return _front_overlaps_rect_area(area, body)
 
 

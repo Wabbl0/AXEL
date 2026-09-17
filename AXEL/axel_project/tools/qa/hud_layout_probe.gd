@@ -1,12 +1,4 @@
 extends SceneTree
-## Diagnostic: dump live rects of every combat HUD piece in drawing-pixel space.
-##
-## Run:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/hud_layout_probe.gd
-##
-## Prints each NEW_/MOVE_ piece and its MOVE_TextBox as a rect inside the
-## 3508x2480 plate, flags anything that leaves the plate, and compares every
-## WidgetLayer host against the MOVE_TextBox it is supposed to follow.
 
 const SCENE_PATH := "res://combat/combat_test.tscn"
 const PLATE := Vector2(3508.0, 2480.0)
@@ -21,7 +13,7 @@ func _initialize() -> void:
 		push_error("Could not load %s" % SCENE_PATH)
 		quit(1)
 		return
-	## Headless forces a 64x64 window, so host the scene in a real-sized SubViewport.
+
 	var vp := SubViewport.new()
 	vp.size = WINDOW
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -136,7 +128,7 @@ func _dump_grid(scene: Node) -> void:
 	if grid_host != null:
 		print("GridHost      gpos=%s size=%s scale=%s" % [
 			_fmt_v(grid_host.global_position), _fmt_v(grid_host.size), _fmt_v(grid_host.scale)])
-	## CombatRoot is a Node2D, not a Control - do not cast it.
+
 	var combat := scene.find_child("CombatRoot", true, false) as Node2D
 	if combat == null:
 		print("(no CombatRoot)")

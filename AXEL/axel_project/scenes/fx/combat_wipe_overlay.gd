@@ -1,9 +1,4 @@
 extends CanvasLayer
-## Overworld -> combat wipe. Red bars close over the screen, the scene changes
-## underneath, then the bars open again on the combat board.
-##
-## Lives on AxelEventFx (autoload) so it survives change_scene_to_file.
-## D15: no sound. Palette stays 8-band noir red / black.
 
 const BAR_COUNT := 12
 const CLOSE_SEC := 0.34
@@ -66,7 +61,7 @@ func _layout_bars(progress: float = -1.0) -> void:
 		var bar := _bars[i]
 		var width := size.x * clampf(fill, 0.0, 1.0)
 		bar.size = Vector2(width, ceilf(bar_h) + 1.0)
-		# Alternate the side each bar closes from.
+
 		bar.position = Vector2(0.0 if i % 2 == 0 else size.x - width, float(i) * bar_h)
 
 
@@ -78,7 +73,6 @@ func _set_hidden() -> void:
 		_flash.color.a = 0.0
 
 
-## Cover the screen. Awaited by AxelRun before the scene change.
 func close_wipe() -> void:
 	if _busy:
 		return
@@ -91,7 +85,6 @@ func close_wipe() -> void:
 	_busy = false
 
 
-## Uncover once the combat board is up.
 func open_wipe() -> void:
 	if not _covered and not _root.visible:
 		return
@@ -102,7 +95,6 @@ func open_wipe() -> void:
 	_busy = false
 
 
-## Emergency clear (aborted scene change, headless, disabled FX).
 func clear_now() -> void:
 	_busy = false
 	_set_hidden()

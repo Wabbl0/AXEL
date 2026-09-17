@@ -1,6 +1,4 @@
 extends Node
-## Global soundtrack controller for menu/overworld + combat casino layers.
-## Matching stems start together and stay sample-locked; only their volumes change.
 
 const MENU_SCENE_PATH := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
 const MENU_STEM: AudioStream = preload("res://assets/audio/music/B_Goes_Down_p2.ogg")
@@ -29,7 +27,6 @@ const MENU_FADE_IN_SEC := 10.0
 const NEW_GAME_CROSSFADE_SEC := 10.0
 const COMBAT_FADE_OUT_SEC := 2.0
 const LOOP_WRAP_DETECT_SEC := 0.25
-## Audible end of like_that (+ small air) before unmuting drums+p1 mid-loop.
 const LIKE_THAT_AUDIBLE_SEC := 2.0
 
 enum MusicState {
@@ -119,7 +116,6 @@ func to_overworld() -> void:
 	_transition_to_overworld()
 
 
-## Fade out room music, then start casino from the top. Safe to call before a future scene swap.
 func to_combat() -> void:
 	if not _music_enabled:
 		return
@@ -148,7 +144,6 @@ func notify_trinity() -> void:
 	_apply_combat_mix(CombatMix.TRINITY)
 
 
-## Restart casino from drums_p1 only (new playtest encounter in the same scene).
 func reset_combat_encounter() -> void:
 	if not _music_enabled:
 		return
@@ -173,7 +168,7 @@ func _process(_delta: float) -> void:
 		return
 
 	if _combat_mix == CombatMix.LIKE_THAT and pos >= LIKE_THAT_AUDIBLE_SEC:
-		## Stems stay sample-locked; unmute drums+p1 mid-loop to keep the beat without long silence.
+
 		_apply_combat_mix(CombatMix.REGULAR)
 		_combat_last_pos = pos
 		return
@@ -204,7 +199,7 @@ func _apply_scene_music() -> void:
 
 	if path == MENU_SCENE_PATH or path.begins_with("res://scenes/Main_Menu/"):
 		_stop_combat_music()
-		## New Game starts the crossfade while the menu is still current.
+
 		if _state == MusicState.OVERWORLD:
 			return
 		if resumed and _state == MusicState.MENU:
@@ -370,7 +365,7 @@ func _fade_layers(menu_db: float, overworld_db: float, duration: float) -> void:
 	if is_equal_approx(from_menu_lin, to_menu_lin) and is_equal_approx(from_overworld_lin, to_overworld_lin):
 		return
 
-	## One clock, both stems: linear amplitude so they overlap instead of dipping to silence.
+
 	_fade_tween = get_tree().create_tween().bind_node(self)
 	_fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	_fade_tween.tween_method(

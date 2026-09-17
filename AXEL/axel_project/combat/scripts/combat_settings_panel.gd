@@ -1,5 +1,4 @@
 extends CanvasLayer
-## See-through combat settings window. Only DEV TOOLS is wired (opens AxelCombatDevTools).
 
 signal closed
 
@@ -162,7 +161,7 @@ func _dev_tools() -> Node:
 func _unhandled_input(event: InputEvent) -> void:
 	if not _open:
 		return
-	# Named InputMap action (Esc/Backspace/Delete + gamepad B). Excludes echo presses.
+
 	if event.is_action_pressed("back"):
 		close_panel()
 		get_viewport().set_input_as_handled()

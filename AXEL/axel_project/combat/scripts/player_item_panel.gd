@@ -1,8 +1,7 @@
 extends PanelContainer
-## Read-only equipped loadout for overworld fights. Not the F6 catalog picker.
 
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
-const ICON_PX := 96
+const ICON_PX := 48
 const BODY_FONT := 32
 const HINT_FONT := 29
 const ROW_SEP := 8

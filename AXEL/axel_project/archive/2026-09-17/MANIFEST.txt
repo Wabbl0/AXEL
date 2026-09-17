@@ -1,0 +1,9 @@
+﻿AXEL first-pass leftover archive 2026-09-17
+
+Source: approved list from first-pass cleanup chat.
+Method: copy + verify + remove live path. Files stay on disk here.
+Godot: empty .gdignore in archive/ and this folder (official ignore-folder rule).
+Skipped: option_2_vhs_glitch.gdshader (live IntroGlitchOverlay).
+Kept: music, logs, Master mute, comments, item bakers, ScenePlaceholder.gd, GameManager.gd, live room drawings.
+
+308 files under this dated folder (includes mike_look preview PNGs moved after the first copy).

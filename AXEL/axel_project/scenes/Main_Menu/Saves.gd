@@ -1,6 +1,5 @@
 class_name SavesScreen
 extends Control
-## Three-slot picker (D2 / D9). open_mode is "new" or "load".
 
 static var open_mode := "load"
 

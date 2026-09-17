@@ -1,7 +1,4 @@
 extends SceneTree
-## Headless lock: PlayerSpawnSync remaps the Player node through env cover-fit.
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://scenes/core/test/player_spawn_sync_check.gd
 
 const PlayerSpawnSyncScript := preload("res://scenes/core/player_spawn_sync.gd")
 
@@ -36,7 +33,7 @@ func _main() -> void:
 		quit(1)
 		return
 
-	# Hardcoded spawn constants are forbidden in walkable scene scripts.
+
 	var forbidden := [
 		"res://scenes/Arc_1/1.2_Corridor.gd",
 		"res://scenes/Arc_1/1.4_BasementDoor.gd",

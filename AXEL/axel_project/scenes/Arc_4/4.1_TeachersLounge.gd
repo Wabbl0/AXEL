@@ -1,7 +1,6 @@
 extends Node2D
 
 const CORRIDOR_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
-## Where a lore-pickup fight comes back to.
 const LOUNGE_SELF_SCENE := "res://scenes/Arc_4/4.1_TeachersLounge.tscn"
 const MEMORY_SCENE := "res://scenes/Arc_4/4.2_TeachersMemory.tscn"
 const MEMORY_KEY := "teachers_memory"
@@ -48,7 +47,6 @@ var _arrival_t := InteractArrival.DEFAULT_T
 var _cover_layout_ready := false
 var _door_zone_armed := true
 var _memory_zone_armed := true
-## Texture-pixel position captured from the MemoryIndicator node's editor position.
 var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
@@ -239,7 +237,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 
@@ -331,7 +329,7 @@ func _pickup_key_async() -> void:
 	_key_line_running = false
 	if _active_zone == "key":
 		_active_zone = ""
-	# Lore item: the school answers with a fight, once per item ever.
+
 	var world := get_node_or_null("/root/AxelWorld")
 	if world != null and bool(
 		world.call("start_lore_fight", "hasKey", LOUNGE_SELF_SCENE, true)

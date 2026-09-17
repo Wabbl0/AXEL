@@ -1,7 +1,4 @@
 extends Node2D
-## Looping white/gray memory-marker sprite. Place under PlayerLayer (above Noir)
-## so the global CRT pass keeps it bright white like the player.
-## Halo child draws a soft white outer glow behind the sharp pixel blob.
 
 const _DEFAULT_SHEET := "res://assets/sprites/memory_glow-Sheet.png"
 const _FRAME_COUNT := 5
@@ -11,8 +8,6 @@ const _ANIM := &"glow"
 @export var frame_size: int = 48
 @export var animation_fps: float = 8.0
 @export var indicator_scale: float = 2.25
-## Opt-in only: keep ZERO unless asked. Fine-tune the glow in on-screen
-## pixels without moving the node's editor/anchor position.
 @export var visual_offset: Vector2 = Vector2.ZERO
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite

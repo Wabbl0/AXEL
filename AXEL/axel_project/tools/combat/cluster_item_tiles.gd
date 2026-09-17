@@ -1,10 +1,4 @@
 extends SceneTree
-## Group LimeZu interior singles that are the same object in different colors.
-## Groups by opaque silhouette + brightness buckets (ignores hue and filename numbers).
-## Usage (from repo root):
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/combat/cluster_item_tiles.gd -- "<Theme_Sorter_Singles_48x48>" [room_subdir]
-## If room_subdir is omitted, processes every child folder under the singles root.
-## Output (gitignored): res://tools/combat/.icon_scan/
 
 const OUT_RES := "res://tools/combat/.icon_scan"
 const TILE := 48
@@ -15,18 +9,18 @@ const ALPHA_CUT := 0.15
 
 
 func _digit_glyphs() -> Array:
-	# 3x5 digit glyphs (bits top→bottom, MSB left). Used to stamp cell indices on sheets.
+
 	return [
-		PackedByteArray([0b111, 0b101, 0b101, 0b101, 0b111]), # 0
-		PackedByteArray([0b010, 0b110, 0b010, 0b010, 0b111]), # 1
-		PackedByteArray([0b111, 0b001, 0b111, 0b100, 0b111]), # 2
-		PackedByteArray([0b111, 0b001, 0b111, 0b001, 0b111]), # 3
-		PackedByteArray([0b101, 0b101, 0b111, 0b001, 0b001]), # 4
-		PackedByteArray([0b111, 0b100, 0b111, 0b001, 0b111]), # 5
-		PackedByteArray([0b111, 0b100, 0b111, 0b101, 0b111]), # 6
-		PackedByteArray([0b111, 0b001, 0b010, 0b010, 0b010]), # 7
-		PackedByteArray([0b111, 0b101, 0b111, 0b101, 0b111]), # 8
-		PackedByteArray([0b111, 0b101, 0b111, 0b001, 0b111]), # 9
+		PackedByteArray([0b111, 0b101, 0b101, 0b101, 0b111]),
+		PackedByteArray([0b010, 0b110, 0b010, 0b010, 0b111]),
+		PackedByteArray([0b111, 0b001, 0b111, 0b100, 0b111]),
+		PackedByteArray([0b111, 0b001, 0b111, 0b001, 0b111]),
+		PackedByteArray([0b101, 0b101, 0b111, 0b001, 0b001]),
+		PackedByteArray([0b111, 0b100, 0b111, 0b001, 0b111]),
+		PackedByteArray([0b111, 0b100, 0b111, 0b101, 0b111]),
+		PackedByteArray([0b111, 0b001, 0b010, 0b010, 0b010]),
+		PackedByteArray([0b111, 0b101, 0b111, 0b101, 0b111]),
+		PackedByteArray([0b111, 0b101, 0b111, 0b001, 0b111]),
 	]
 
 
@@ -107,7 +101,7 @@ func _cluster_room(room_path: String, room_name: String) -> Dictionary:
 	d.list_dir_end()
 	files.sort()
 
-	# fingerprint hex -> {files: [], scores: [], images: []}
+
 	var buckets: Dictionary = {}
 	for file_name in files:
 		var full := room_path.path_join(file_name)
@@ -191,7 +185,7 @@ func _build_sheet(cluster_list: Array, items_out: Array) -> Image:
 
 
 func _fingerprint_hex(img: Image) -> String:
-	# Opaque silhouette only — LimeZu recolors change which regions are light/dark.
+
 	var w := img.get_width()
 	var h := img.get_height()
 	var bytes := PackedByteArray()

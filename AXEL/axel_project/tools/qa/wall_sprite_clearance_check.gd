@@ -1,10 +1,4 @@
 extends SceneTree
-## Computes how far Mike's walk drawing sticks past the feet circle, then checks
-## each room-edge wall's inner-face inset against that per-scene required amount.
-## Skip 2.4 (already fixed), 1.1 LeftWall (exit to Ending 1), and walk-off walls.
-## Run from repo root:
-##   Godot_v4.7.2-stable_win64_console.exe --headless --path AXEL/axel_project \
-##     -s res://tools/qa/wall_sprite_clearance_check.gd
 
 const PoseNudge := preload("res://scenes/player/pose_nudge.tres")
 const HitboxFront := preload("res://scenes/player/hitbox_front.tres")
@@ -114,23 +108,23 @@ func _local_overhangs() -> Dictionary:
 	var back: Vector2 = PoseNudge.back
 	var side: Vector2 = PoseNudge.side
 
-	# Walking left: side pose, flip_h, circle X mirrored.
+
 	var left_nudge := Vector2(-side.x, side.y)
 	var circle_left_edge := -HITBOX_POS.x - radius
 	var left_over := minf(_sprite_left(left_nudge), _shadow_left(left_nudge))
 	var left_px := circle_left_edge - left_over
 
-	# Walking right: side pose, circle at authored Front.
+
 	var circle_right_edge := HITBOX_POS.x + radius
 	var right_over := maxf(_sprite_right(side), _shadow_right(side))
 	var right_px := right_over - circle_right_edge
 
-	# Walking up: back pose.
+
 	var circle_top_edge := HITBOX_POS.y - radius
 	var top_over := minf(_sprite_top(back), _shadow_top(back))
 	var top_px := circle_top_edge - top_over
 
-	# Walking down: front pose.
+
 	var circle_bot_edge := HITBOX_POS.y + radius
 	var bot_over := maxf(_sprite_bottom(front), _shadow_bottom(front))
 	var bottom_px := bot_over - circle_bot_edge
@@ -198,8 +192,7 @@ func _check_scene(entry: Dictionary, local_overhang: Dictionary) -> int:
 		await process_frame
 		return 1
 
-	# Live player scale already includes authored * (cover / baseline).
-	# Overhang in world px = local_overhang * live_player_scale.
+
 	var live_scale: float = player.scale.x
 	var required_world := {
 		"left": local_overhang["left"] * live_scale,
@@ -210,23 +203,22 @@ func _check_scene(entry: Dictionary, local_overhang: Dictionary) -> int:
 
 	var tex_size := bg.texture.get_size()
 	var bg_origin := bg.global_position
-	# Background is centered=false; scale is uniform cover factor.
+
 	var bg_scale := bg.scale.x
 	var png_left := bg_origin.x
 	var png_right := bg_origin.x + tex_size.x * bg_scale
 	var png_top := bg_origin.y
 	var png_bottom := bg_origin.y + tex_size.y * bg_scale
 
-	# Also report texture-pixel required for editing convenience.
+
 	var authored_scale := live_scale
 	if player.has_meta("axel_authored_scale"):
 		var meta_scale: Variant = player.get_meta("axel_authored_scale")
 		if meta_scale is Vector2:
 			authored_scale = (meta_scale as Vector2).x
 	var env_unit := bg_scale
-	# Prefer authored cover baseline ratio: tex_required = local * authored / design_cover
-	# At 1920x1280, live_scale ≈ authored and bg_scale ≈ design cover, so
-	# required_world / bg_scale ≈ tex pixels.
+
+
 	var required_tex := {
 		"left": ceili(required_world["left"] / bg_scale),
 		"right": ceili(required_world["right"] / bg_scale),

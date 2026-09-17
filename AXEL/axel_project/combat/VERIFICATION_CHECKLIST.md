@@ -19,7 +19,7 @@
 | 13 | `combat/scripts/line_detector.gd` |
 | 14 | `combat/scripts/meter.gd` |
 | 15 | `combat/scripts/multiplier.gd` |
-| 16 | `combat/scripts/premium_meter_circle.gd` |
+| 16 | `combat/scripts/premium_skull_meter.gd` |
 | 17 | `combat/scripts/princess_controller.gd` |
 | 18 | `combat/scripts/rng.gd` |
 | 19 | `combat/scripts/symbol_def.gd` |

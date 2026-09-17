@@ -1,10 +1,4 @@
 extends SceneTree
-## AxelSettings persistence regression check (Phase 0.4).
-##
-## Round-trips a setting through the ConfigFile on disk and verifies the
-## default table, change signal, and that saves are debounced to one write.
-##
-## Run: tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/settings_persistence_check.gd
 
 const PROBE_KEY := "text_speed_cps"
 
@@ -22,12 +16,12 @@ func _main() -> void:
 		quit(1)
 		return
 
-	# Defaults resolve without a stored value.
+
 	var default_speed: float = settings.get_value("gameplay", PROBE_KEY)
 	if default_speed <= 0.0:
 		failures.append("default for gameplay/%s should be positive, got %s" % [PROBE_KEY, default_speed])
 
-	# Signal fires on change.
+
 	var signal_hits: Array = []
 	settings.setting_changed.connect(func(section: String, key: String) -> void:
 		signal_hits.append("%s/%s" % [section, key])
@@ -39,7 +33,7 @@ func _main() -> void:
 	if not signal_hits.has("gameplay/%s" % PROBE_KEY):
 		failures.append("setting_changed did not fire for gameplay/%s" % PROBE_KEY)
 
-	# Deferred save flush, then read the file back cold.
+
 	await process_frame
 	await process_frame
 	var cold := ConfigFile.new()
@@ -49,7 +43,7 @@ func _main() -> void:
 	elif float(cold.get_value("gameplay", PROBE_KEY, -1.0)) != probe_value:
 		failures.append("cold read expected %s, got %s" % [probe_value, cold.get_value("gameplay", PROBE_KEY, -1.0)])
 
-	# Restore the original value (keep the dev machine's settings intact).
+
 	settings.set_value("gameplay", PROBE_KEY, original)
 	await process_frame
 	await process_frame

@@ -1,7 +1,5 @@
 extends RefCounted
 class_name QaCanonValidators
-## Shared canon/consistency assertions for combat test and movement scenes.
-## Used by combat_test_scaffold_check, scene_smoke_check, and canon_consistency_audit.
 
 const BackgroundLayoutScript := preload("res://scenes/core/background_layout.gd")
 const BackgroundCameraScript := preload("res://scenes/core/background_camera_controller.gd")
@@ -33,9 +31,6 @@ const REQUIRED_COMBAT_TEST_UNIQUE: Array[String] = [
 	"ChooseStormButton",
 ]
 
-## Direct CombatRoot children that must exist exactly once (duplicate-grid guard).
-## combat_test.tscn must instance combat_root.tscn — do not add these as sibling inline nodes.
-## Pre-commit: tools/qa/check_combat_test_scaffold.py (sanitize_duplicate_combat_root_grid).
 const COMBAT_ROOT_GRID_UNIQUE: Array[String] = [
 	"GridManager",
 	"GridFrame",
@@ -105,7 +100,7 @@ static func check_combat_root_grid_uniqueness(combat: Node) -> PackedStringArray
 		elif count > 1:
 			violations.append("CombatRoot has %d× %s (expected 1)" % [count, base_name])
 	for base_name in COMBAT_ROOT_NO_SUFFIX2:
-		# Catch numbered suffix drift like GridFrame2, GridFrame3, etc.
+
 		for child in combat.get_children():
 			var name_s := String(child.name)
 			if not name_s.begins_with(base_name):
@@ -267,7 +262,7 @@ static func collect_combat_test_findings(
 
 
 static func expected_economics_hud_x(_viewport_w: float) -> Vector2:
-	## Legacy percentage helper — unused after HudCanvas free placement.
+
 	return Vector2.ZERO
 
 
@@ -284,7 +279,7 @@ static func check_combat_hud_anchors(root_ui: Node, viewport_size: Vector2 = Vec
 	const HUD_H := 2480.0
 	const EPS := 1.0
 
-	# Authored canvas is drawing-pixel sized; runtime scale/position may differ.
+
 	var canvas_size := canvas.size
 	if canvas_size.x <= 1.0 or canvas_size.y <= 1.0:
 		canvas_size = Vector2(
@@ -308,7 +303,7 @@ static func check_combat_hud_anchors(root_ui: Node, viewport_size: Vector2 = Vec
 		if node == null:
 			violations.append("%s missing" % unique_name)
 			continue
-		## Live widgets / grid may reparent under WidgetLayer (above room FX).
+
 		var widget_layer := root_ui.find_child("WidgetLayer", true, false)
 		var under_widget_layer := widget_layer != null and widget_layer.is_ancestor_of(node)
 		if not under_widget_layer and not canvas.is_ancestor_of(node) and node != canvas:
@@ -319,7 +314,7 @@ static func check_combat_hud_anchors(root_ui: Node, viewport_size: Vector2 = Vec
 		if node is Control:
 			var control := node as Control
 			var rect := control.get_rect()
-			# Allow slight overflow for click targets / overlays that fill the canvas.
+
 			if rect.position.x < -EPS or rect.position.y < -EPS:
 				violations.append(
 					"%s origin outside HudCanvas (%.1f, %.1f)"
@@ -350,7 +345,7 @@ static func _append_anchor_violations(
 	_spec: Dictionary,
 	_viewport_size: Vector2
 ) -> void:
-	## Legacy percentage-anchor helper — no longer used.
+
 	pass
 
 
@@ -404,7 +399,7 @@ static func collect_movement_scene_findings(scene_path: String, root: Node) -> A
 	if player == null:
 		return findings
 
-	# Prefer authored (pre-cover-sync) values — live scale/speed track the Game window.
+
 	var speed := float(player.get("speed"))
 	if player.has_meta("axel_authored_speed"):
 		speed = float(player.get_meta("axel_authored_speed"))

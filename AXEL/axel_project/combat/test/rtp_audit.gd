@@ -1,6 +1,4 @@
 extends SceneTree
-## Run:
-## tools/cmd/godot.cmd --path AXEL/axel_project --headless -s res://combat/test/rtp_audit.gd
 
 const CombatRootScene := preload("res://combat/scenes/combat_root.tscn")
 const FS_PICK: StringName = &"storm"
@@ -61,8 +59,8 @@ func _run_baseline_no_item() -> Dictionary:
 			var payout_cents := int(summary.get("payout", 0))
 			var line_payout_cents := int(summary.get("line_payout", 0))
 			var clear_bonus_cents := int(summary.get("clear_bonus_payout", 0))
-			## Use explicit stake for paid spins so bankroll-cap clamping does not
-			## inflate wager and distort RTP when the bar stays full.
+
+
 			var wager_cents := 0
 			if not was_free_spin and bankroll_before_cents >= bet_cents:
 				wager_cents = bet_cents

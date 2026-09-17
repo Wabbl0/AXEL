@@ -1,5 +1,4 @@
 extends SceneTree
-## Phase 7: graphics_quality changes diorama size and is a real setting.
 
 func _init() -> void:
 	call_deferred("_main")

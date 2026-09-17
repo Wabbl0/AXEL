@@ -1,29 +1,8 @@
 extends Node
-## AxelSettings — player settings persistence + boot-time apply (Phase 0.4).
-##
-## - Stored in `user://axel_settings.cfg` (ConfigFile), fully separate from save
-##   slots: deleting a save (D8 permadeath) never touches player settings.
-## - Loaded in _enter_tree so values apply before the first frame paints.
-## - Consumers read via get_value/typed helpers and listen to `setting_changed`.
-## - Custom input bindings are stored under [controls] as serialized InputEvents
-##   and applied over the project InputMap at boot (rebinding UI lands with the
-##   Options screen; the storage contract lives here).
-##
-## Sections/keys in use (D4). Only add keys that a real feature reads:
-##   audio/master_volume, audio/music_volume, audio/effects_volume  (linear 0..1)
-##   video/window_mode ("windowed"|"borderless"|"fullscreen")
-##   video/vsync (bool), video/fps_cap (int, 0 = uncapped)
-##   video/crt_enabled (bool), video/graphics_quality ("low"|"medium"|"high")
-##   video/ui_scale (float 0.75..1.5)
-##   gameplay/text_speed_cps (float), gameplay/auto_advance (bool)
-##   access/reduce_flashing (bool), access/screen_shake (float 0..1),
-##   access/glitch_intensity (float 0..1)
-##   controls/<action> (Array[InputEvent])
 
 signal setting_changed(section: String, key: String)
 
 const SETTINGS_PATH := "user://axel_settings.cfg"
-## Actions the player may rebind. ui_* engine actions stay engine-owned.
 const REBINDABLE_ACTIONS: PackedStringArray = [
 	"move_up", "move_down", "move_left", "move_right",
 	"interact", "dialogue_advance", "back", "pause",
@@ -57,9 +36,6 @@ const DEFAULTS := {
 
 var _config := ConfigFile.new()
 var _save_queued := false
-## True after the first volume apply. First apply must not unmute a bus that
-## the Audio panel / bus layout already muted (author work-mute). Later Options
-## slider moves may unmute when the saved volume is above zero.
 var _bus_volumes_applied := false
 
 
@@ -84,9 +60,6 @@ func set_value(section: String, key: String, value: Variant) -> void:
 	_queue_save()
 	_apply_one(section, key)
 	setting_changed.emit(section, key)
-
-
-## --- Typed conveniences (only for values with live consumers) ---
 
 
 func master_volume() -> float:
@@ -119,9 +92,6 @@ func diorama_size() -> Vector2i:
 			return Vector2i(1920, 1280)
 
 
-## --- Input rebinding storage ---
-
-
 func store_action_binding(action: String, events: Array) -> void:
 	if not REBINDABLE_ACTIONS.has(action):
 		push_warning("AxelSettings: '%s' is not rebindable." % action)
@@ -136,13 +106,10 @@ func clear_action_binding(action: String) -> void:
 	if _config.has_section_key("controls", action):
 		_config.erase_section_key("controls", action)
 		_queue_save()
-	# Restore project defaults for this action.
+
 	InputMap.load_from_project_settings()
 	_apply_input_overrides()
 	setting_changed.emit("controls", action)
-
-
-## --- Apply ---
 
 
 func _apply_all() -> void:
@@ -169,13 +136,13 @@ func _apply_one(section: String, key: String) -> void:
 		["video", "graphics_quality"], ["video", "crt_enabled"]:
 			pass
 		_:
-			pass  # Read-side consumers (dialogue speed, CRT, shake…) poll or listen.
+			pass
 
 
 func _apply_window_mode() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	# Only override the project default when the player chose something.
+
 	if not _config.has_section_key("video", "window_mode"):
 		return
 	match String(get_value("video", "window_mode")):
@@ -241,7 +208,7 @@ func _apply_bus_volumes() -> void:
 func _set_bus_linear(bus_name: String, linear: float, respect_existing_mute: bool = false) -> void:
 	var idx := AudioServer.get_bus_index(bus_name)
 	if idx < 0:
-		return  # Bus tree may not have this bus yet (Effects lands in Phase 0.5).
+		return
 	AudioServer.set_bus_volume_db(idx, linear_to_db(maxf(linear, 0.0001)))
 	if linear <= 0.001:
 		AudioServer.set_bus_mute(idx, true)
@@ -268,9 +235,6 @@ func _apply_action_binding(action: String, events: Array) -> void:
 	for ev in events:
 		if ev is InputEvent:
 			InputMap.action_add_event(action, ev)
-
-
-## --- Save (debounced so slider drags do not hammer the disk) ---
 
 
 func _queue_save() -> void:

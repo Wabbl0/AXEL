@@ -1,11 +1,7 @@
 extends SceneTree
-## Headless lock: InteractArrival maps t along door boxes; 1.4 cafeteria peek Y
-## must change with t. Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://scenes/core/test/interact_arrival_check.gd
 
 const EPS := 0.02
 const MIN_Y_GAP := 40.0
-## Camera layout + deferred restore + deferred peek + 2 physics frames need settle.
 const ARRIVAL_SETTLE_FRAMES := 10
 
 
@@ -84,11 +80,11 @@ func _test_synthetic_fraction_and_place() -> bool:
 	player.add_child(front)
 	root.add_child(player)
 
-	# Top vs bottom of the box in env/texture space (hitbox sample).
+
 	var top_tex := Vector2(130.5, 1058.0 + 8.0)
 	var bot_tex := Vector2(130.5, 1809.0 - 8.0)
 	player.global_position = env.to_global(top_tex) - (front.global_position - player.global_position)
-	# Recompute after first assign so offset is stable.
+
 	player.global_position = env.to_global(top_tex) - (player.to_global(front.position) - player.global_position)
 	var t_top := InteractArrival.fraction_along(player, area, Vector2.AXIS_Y)
 	player.global_position = env.to_global(bot_tex) - (player.to_global(front.position) - player.global_position)
@@ -225,7 +221,6 @@ func _spawn_14_tex_y(t: float, spawn_side: String) -> float:
 	return tex.y
 
 
-## Real leave→arrive: measure t on 2.1 ReturnInteractArea, then load 1.4.
 func _test_cafeteria_to_basement_handoff() -> bool:
 	var y_top := await _handoff_21_to_14_tex_y(true)
 	var y_bot := await _handoff_21_to_14_tex_y(false)
@@ -275,7 +270,6 @@ func _handoff_21_to_14_tex_y(stand_near_top: bool) -> float:
 	return tex.y
 
 
-## Reverse [E]: measure t on 1.4 CafeteriaInteractArea, then load 2.1.
 func _test_basement_to_cafeteria_handoff() -> bool:
 	var y_top := await _handoff_14_to_21_tex_y(true)
 	var y_bot := await _handoff_14_to_21_tex_y(false)
@@ -325,9 +319,8 @@ func _handoff_14_to_21_tex_y(stand_near_top: bool) -> float:
 	return tex.y
 
 
-## 2.3 → 2.1: Player node lands on KitchenInteractArea X at texture Y 90 (~2040×90).
 func _test_kitchen_return_at_door() -> bool:
-	# Let any leftover deferred restore from earlier 2.1 loads finish first.
+
 	await _await_frames(2)
 	for t in [0.0, 0.5, 1.0]:
 		if not await _assert_kitchen_return_at_door(t):
@@ -394,8 +387,6 @@ func _assert_kitchen_return_at_door(t: float) -> bool:
 	return true
 
 
-## 2.1 → 2.4: Player node (the model) always on live CafeteriaInteractArea
-## center (ignore leave t). Front-on-center pushed the drawing out the PNG.
 func _test_cafeteria_to_classrooms_inside_box() -> bool:
 	var xs: Array[float] = []
 	var center := Vector2.INF
@@ -475,8 +466,6 @@ func _spawn_24_from_cafeteria(t: float) -> Dictionary:
 	return out
 
 
-## 2.4 → 5.1: Player node always on live DoorInteractArea center (ignore leave t).
-## t-slide on Y used to park Front in DoorWall at the top-right.
 func _test_corridor_to_classroom_on_door_box() -> bool:
 	var xs: Array[float] = []
 	var center := Vector2.INF
@@ -574,8 +563,6 @@ func _spawn_51_from_corridor(t: float) -> Dictionary:
 	return out
 
 
-## 2.4 → 2.1: Front on live ClassroomsInteractArea (X = center; Y stays in the box).
-## BottomWall may nudge Y a little after place; do not require exact center Y.
 func _test_classrooms_to_cafeteria_inside_box() -> bool:
 	var xs: Array[float] = []
 	var center := Vector2.INF
@@ -645,7 +632,6 @@ func _spawn_21_from_classrooms(t: float) -> Dictionary:
 	return out
 
 
-## 1.1 DoorInteractArea: standing higher vs lower must change t (AXIS_Y).
 func _test_exterior_door_fraction() -> bool:
 	var ps: PackedScene = load("res://scenes/Arc_1/1.1_SchoolExterior.tscn")
 	if ps == null:
@@ -702,7 +688,6 @@ func _test_exterior_door_fraction() -> bool:
 	return true
 
 
-## 1.1 → 1.2: Front on/near live ExteriorInteractArea; t slides Y.
 func _test_exterior_to_corridor_inside_box() -> bool:
 	var ys: Array[float] = []
 	for t in [0.1, 0.5, 0.9]:
@@ -750,8 +735,8 @@ func _spawn_12_from_exterior(t: float) -> Dictionary:
 	var front_global := player.to_global(front.position)
 	var front_tex := env.to_local(front_global)
 	var box := InteractArrival._area_rect_in_env(area, env)
-	# Y must stay on the box; X may sit a little into-room past the right
-	# (Option B) when the walk drawing needs to clear LeftWall.
+
+
 	var y_ok := front_tex.y >= box.position.y and front_tex.y <= box.end.y
 	var x_ok := (
 		front_tex.x >= box.position.x
@@ -767,7 +752,6 @@ func _spawn_12_from_exterior(t: float) -> Dictionary:
 	return out
 
 
-## Real leave→arrive: measure t on 1.1 DoorInteractArea, then load 1.2.
 func _test_exterior_to_corridor_handoff() -> bool:
 	var y_top := await _handoff_11_to_12_tex_y(true)
 	var y_bot := await _handoff_11_to_12_tex_y(false)

@@ -1,22 +1,14 @@
 extends Node
-## Global noir + scanline + CRT stack for all non-combat scenes.
-## Combat scenes under res://combat/ are excluded unless COMBAT_ROOM_FX_TEST is on.
 
 const NOIR_SCENE := "res://scenes/fx/NoirPaletteOverlay.tscn"
 const SCANLINE_SCENE := "res://scenes/fx/ScanlineOverlay.tscn"
 const CRT_SCENE := "res://scenes/fx/CrtPluginOverlay.tscn"
-## Flat CRT for combat (same shader, zero curve/vignette/rim) — edge-fringe fix without TV glass.
 const CRT_COMBAT_SCENE := "res://scenes/fx/CrtCombatOverlay.tscn"
 const MANAGED_GROUP := "axel_post_fx_managed"
-## Test-only 8-band palette. Production overlay scene stays on the 3-band shader.
 const NOIR_8BAND_SHADER := "res://tools/visual_style/shaders/noir_palette_8band_test.gdshader"
 
-## Flip to true, save, then F5/F6 any non-combat scene to preview 8-band noir.
-## Or launch with env AXEL_NOIR_8BAND=1 (same effect; no file edit). Keep false for production 3-band.
 const DEBUG_USE_NOIR_8BAND_TEST := true
 
-## Temporary test: attach room noir/scanline/CRT on res://combat/* (not AI_DOCS canon).
-## Flip false to restore combat's own ScanlineOverlay-only look.
 const COMBAT_ROOM_FX_TEST := true
 
 const _OVERLAY_NAME_NOIR := "NoirPaletteOverlay"
@@ -114,7 +106,6 @@ func _on_setting_changed(section: String, key: String) -> void:
 		_on_scene_changed()
 
 
-## Re-attach when scene_changed aborted or overlays were detached without a successful attach.
 func ensure_attached_to_current_scene() -> void:
 	var tree := get_tree()
 	if tree == null:
@@ -232,7 +223,6 @@ func _instantiate_overlay(packed_path: String) -> Node:
 	return packed.instantiate()
 
 
-## For headless tests that instantiate scenes without scene_changed.
 func apply_to_scene(scene: Node) -> void:
 	if scene == null:
 		return

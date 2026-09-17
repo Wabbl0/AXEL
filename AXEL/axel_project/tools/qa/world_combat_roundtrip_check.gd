@@ -1,14 +1,4 @@
 extends SceneTree
-## Room -> fight -> same room round trip.
-##
-## Asserts:
-## 1. Entering an indoor room scatters that area's floor items.
-## 2. A world fight loads combat/combat_run.tscn through the wipe.
-## 3. Winning returns to the room the fight started in.
-## 4. The player lands back on the spot they left.
-## 5. The act pointer never moves for a world fight.
-##
-## Run: tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/world_combat_roundtrip_check.gd
 
 const ROOM := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const COMBAT_PREFIX := "res://combat/"
@@ -52,7 +42,7 @@ func _main() -> void:
 		quit(1)
 		return
 
-	# 1. Floor items scattered for this area.
+
 	var host := env.get_node_or_null("WorldItemScatter")
 	if host == null:
 		_fail("no WorldItemScatter host under EnvironmentColliders")
@@ -70,7 +60,7 @@ func _main() -> void:
 	var index_before := int(run.state.encounter_index)
 	var spot_before := env.to_local(player.global_position)
 
-	# 2. A world fight reaches the combat scene.
+
 	if not bool(world.call("start_fight_here", "walk")):
 		push_error("world_combat_roundtrip_check: start_fight_here refused")
 		quit(1)
@@ -84,12 +74,12 @@ func _main() -> void:
 	if not bool(run.state.world_encounter):
 		_fail("world_encounter flag should be set")
 
-	# The wipe covers the scene change, then combat_run.gd opens it again.
+
 	var fx := root.get_node_or_null("AxelEventFx")
 	if not await _wait_for_wipe_open(fx, 3.0):
 		_fail("combat wipe never opened on the combat board")
 
-	# 3 + 4. Win and land back on the same spot.
+
 	run.call("on_encounter_finished", true)
 	if not await _wait_for_scene_path(ROOM, 400):
 		push_error("world_combat_roundtrip_check: never returned to %s" % ROOM)
@@ -108,7 +98,7 @@ func _main() -> void:
 		if drift > SPOT_TOLERANCE_TEX:
 			_fail("player drifted %.1f texture px on return (limit %.1f)" % [drift, SPOT_TOLERANCE_TEX])
 
-	# 5. World fights leave the act pointer alone.
+
 	if int(run.state.act) != act_before or int(run.state.encounter_index) != index_before:
 		_fail("world fight moved the act pointer (%d/%d -> %d/%d)" % [
 			act_before, index_before, int(run.state.act), int(run.state.encounter_index),
@@ -116,7 +106,7 @@ func _main() -> void:
 	if bool(run.state.world_encounter):
 		_fail("world_encounter flag should be cleared after the win")
 
-	# The wipe must not be left covering the screen.
+
 	if fx != null and fx.has_method("is_combat_wipe_covered"):
 		if bool(fx.call("is_combat_wipe_covered")):
 			_fail("combat wipe still covering the screen after the fight")
@@ -132,8 +122,6 @@ func _main() -> void:
 		quit(1)
 
 
-## 6. Standing on a floor item is detected, 7. taking it banks the item and
-## starts a fight, 8. the item is gone from the floor after the win.
 func _check_floor_pickup(world: Node, run: Node, fx: Node) -> void:
 	var env := current_scene.get_node_or_null("WalkableWorld/EnvironmentColliders") as Node2D
 	var player := current_scene.get_node_or_null("PlayerLayer/Player") as Node2D
@@ -145,14 +133,14 @@ func _check_floor_pickup(world: Node, run: Node, fx: Node) -> void:
 	var item_id := String(pickup.get("item_id"))
 	var count_before := host.get_child_count()
 
-	# 6. The pickup Area2D must see the player body (collision layers line up).
+
 	player.global_position = (pickup as Node2D).global_position
 	for _i in 20:
 		await physics_frame
 	if not bool(pickup.get("_player_inside")):
 		_fail("standing on the floor item did not register the player")
 
-	# 7. Taking it banks the item and starts a fight.
+
 	pickup.call("_take")
 	if not Array(run.state.owned_item_ids).has(item_id):
 		_fail("floor item %s did not reach the locker" % item_id)
@@ -168,7 +156,7 @@ func _check_floor_pickup(world: Node, run: Node, fx: Node) -> void:
 	await _seconds(1.0)
 	await _frames(30)
 
-	# 8. The taken item is no longer on the floor.
+
 	var env_back := current_scene.get_node_or_null("WalkableWorld/EnvironmentColliders") as Node2D
 	var host_back := env_back.get_node_or_null("WorldItemScatter") if env_back != null else null
 	if host_back == null:
@@ -188,12 +176,10 @@ func _frames(count: int) -> void:
 		await process_frame
 
 
-## Headless frames run far faster than real time; wipe tweens need wall clock.
 func _seconds(amount: float) -> void:
 	await create_timer(amount, true, false, true).timeout
 
 
-## The wipe opens on its own clock, so poll instead of sampling once.
 func _wait_for_wipe_open(fx: Node, timeout_sec: float) -> bool:
 	if fx == null or not fx.has_method("is_combat_wipe_covered"):
 		return true

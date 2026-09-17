@@ -1,15 +1,9 @@
 extends Node
-## 4.2-only: top-crop to 1.85:1, then fit as large as possible above the dialogue bar
-## with a little side margin and some black at the top and above the bar.
 
 const TARGET_ASPECT := 1.85
-## A little black on the left/right (~48px at 1920).
 const SIDE_MARGIN_FRACTION := 0.025
-## Some black above the still (~58px at 1280).
 const TOP_MARGIN_FRACTION := 0.045
-## Small gap so the still sits just above the dialogue bar.
 const GAP_ABOVE_BAR_FRACTION := 0.02
-## Must match TopDialogueOverlay BAR_MIN_HEIGHT + bottom_gap_viewport_fraction.
 const DIALOGUE_BAR_MIN_PX := 136.0
 const DIALOGUE_BOTTOM_GAP_FRACTION := 0.03
 

@@ -20,7 +20,6 @@ const _ENDING_1_SCENE_PATH := "res://scenes/Endings/7.1_Ending1.tscn"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 const _LEAF_Y_CUTOFF_MARGIN := 0.0
-## Behind-zone names in shader slot order. Empty gate body = no Y-gate (polygon only).
 const _BEHIND_ZONE_NAMES: PackedStringArray = [
 	"TreeLine_Bottom_Behind",
 	"TreeLine_Top_Behind",
@@ -45,13 +44,9 @@ const _SECOND_DIALOGUE_DISTANCE := 50.0
 const _FIRST_DIALOGUE_LINE := "You promised, you'd never come back."
 const _SECOND_DIALOGUE_LINE := "Yet, here we are."
 const _THIRD_DIALOGUE_LINE := "Pathetic."
-## Hold before camera tilt + walk-in (replaces the long off-screen approach wait).
 const INTRO_START_WAIT_SEC := 1.0
-## How far above the stand target the camera starts so the intro can tilt down onto the road.
 const INTRO_CAMERA_START_LIFT_PX := 320.0
-## Controlled vertical tilt duration (follow stays off so the camera never races to off-screen Mike).
 const INTRO_CAMERA_TILT_DURATION_SEC := 3.4
-## Extra world px beyond the left view edge so Mike starts fully off-screen.
 const INTRO_OFFSCREEN_PAD_PX := 96.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
 
@@ -66,11 +61,6 @@ var _arrival_t := InteractArrival.DEFAULT_T
 var _arrival_latched_door := false
 var _enter_dialogue_pending := false
 
-## Background_1_1's hand-tuned position/scale before the camera migration to
-## background_camera_controller.gd. EnvironmentColliders (walls/trees/rocks/doors)
-## were hand-placed to match this exact old placement, so they are re-mapped
-## into the camera's live cover-fit placement using this as the baseline —
-## this keeps colliders correct at any window size, not just today's.
 const _OLD_BG_POSITION := Vector2(32.0, -297.0)
 const _OLD_BG_SCALE := Vector2(0.33494318, 0.32130682)
 
@@ -81,7 +71,7 @@ func _ready() -> void:
 	_player_cover_sync.authored_bg_baseline = _OLD_BG_SCALE.x
 	_player_cover_sync.authored_bg_baseline_position = _OLD_BG_POSITION
 	_player_cover_sync.bind_from_player(_player)
-	# Legacy baseline already set; bind_design no-ops (do not switch to 1920x1280).
+
 	_player_cover_sync.bind_design_from_background(
 		get_node_or_null("Background_1_1") as Sprite2D,
 		$Camera2D.fit_mode,
@@ -107,18 +97,18 @@ func _ready() -> void:
 	_configure_leaf_occlusion_masks()
 	if _pending_corridor_door_spawn or _should_skip_intro():
 		_intro_state = IntroState.PLAYER_FREE
-		# Leave left road open so walking off still reaches Ending 1.
+
 		if is_instance_valid(_left_wall_collision):
 			_left_wall_collision.set_deferred("disabled", true)
 		if _pending_corridor_door_spawn:
-			# Match 1.2: place after layout settles; re-queue from sync while pending.
+
 			call_deferred("_apply_corridor_door_peek_if_pending")
 			_arm_exit_trigger_grace()
 		_enable_player_control()
 		_refresh_door_interact_prompt()
 		return
-	# Defer one frame so deferred camera layout + collider remap settle before
-	# computing the off-screen spawn / Rocks_Left walk targets.
+
+
 	call_deferred("_begin_forced_intro_after_layout")
 
 
@@ -172,12 +162,11 @@ func _run_forced_intro_sequence() -> void:
 
 	AxelEventFx.start_interface_distortion()
 
-	# Walk to the Player node's remapped spawn — never a hardcoded stand target.
+
 	var spawn_target_tex := _capture_intro_target_tex()
 	var cam := $Camera2D as BackgroundCamera
-	# Camera starts above the road, then tilts down onto the stand point with
-	# follow off. Enabling follow while Mike is still off-screen left used to
-	# race the camera toward him (sudden fast tilt/pan). Mike walks in after.
+
+
 	var saved_smoothing := false
 	if cam != null:
 		var spawn_target := _resolve_intro_target_from_tex(spawn_target_tex)
@@ -204,7 +193,7 @@ func _run_forced_intro_sequence() -> void:
 		cam.position_smoothing_enabled = saved_smoothing
 		cam.set_follow_enabled(true)
 
-	# Keep LeftWall disabled so the player can walk back left into Ending 1.
+
 	if is_instance_valid(_left_wall_collision):
 		_left_wall_collision.set_deferred("disabled", true)
 
@@ -260,7 +249,7 @@ func _intro_camera_tilt_to(cam: BackgroundCamera, target_tex: Vector2) -> void:
 		elapsed += get_process_delta_time()
 		var t := clampf(elapsed / duration, 0.0, 1.0)
 		var end_center := _resolve_intro_target_from_tex(target_tex)
-		# Smoothstep: ease in/out so the tilt never spikes in speed.
+
 		var s := t * t * (3.0 - 2.0 * t)
 		cam.place_center_clamped(start.lerp(end_center, s))
 		await get_tree().process_frame
@@ -276,7 +265,7 @@ func _intro_offscreen_left_spawn(stones_target: Vector2) -> Vector2:
 	if vp.x <= 0.0 or vp.y <= 0.0:
 		vp = Vector2(1920.0, 1280.0)
 	var half := vp / (2.0 * cam.zoom)
-	# Left of the current (lifted) camera view; Y locked to the rocks stand height.
+
 	var spawn_x := cam.global_position.x - half.x - _scaled_intro_distance(INTRO_OFFSCREEN_PAD_PX)
 	return Vector2(spawn_x, stones_target.y)
 
@@ -329,7 +318,7 @@ func _scripted_walk_horizontal_to(target_tex: Vector2) -> void:
 	while is_instance_valid(_player):
 		frames += 1
 		var target := _resolve_intro_target_from_tex(target_tex)
-		# Keep a fixed road Y so collisions cannot turn this into a diagonal path.
+
 		var road_y := target.y
 		_player.global_position.y = road_y
 		var dx := target.x - _player.global_position.x
@@ -373,7 +362,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 

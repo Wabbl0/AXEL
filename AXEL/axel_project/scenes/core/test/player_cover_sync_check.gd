@@ -1,8 +1,4 @@
 extends SceneTree
-## Headless lock: PlayerCoverSync keeps player.scale / cover_scale constant across
-## two cover sizes, including the first apply (not only later resizes).
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://scenes/core/test/player_cover_sync_check.gd
 
 const PlayerCoverSyncScript := preload("res://scenes/core/player_cover_sync.gd")
 const PlayerWalkSpeedScript := preload("res://scenes/core/player_walk_speed.gd")
@@ -21,7 +17,7 @@ func _init() -> void:
 
 func _make_player() -> CharacterBody2D:
 	var player: CharacterBody2D = MockPlayerScript.new()
-	player.speed = 1.0 # stale; bind_from_player overwrites from scale
+	player.speed = 1.0
 	player.locked_feet_y = -1.0
 	player.scale = Vector2(AUTHORED_SCALE, AUTHORED_SCALE)
 	return player
@@ -37,7 +33,7 @@ func _main() -> void:
 	sync.authored_bg_baseline = BASELINE
 	sync.authored_bg_baseline_position = Vector2.ZERO
 
-	# First apply must already scale (not wait until resize).
+
 	sync.apply(player, COVER_A, Vector2(10.0, 20.0))
 	var ratio_a := player.scale.x / COVER_A
 	var expected_a := AUTHORED_SCALE / BASELINE
@@ -58,7 +54,7 @@ func _main() -> void:
 		quit(1)
 		return
 
-	# Second cover (different computer / Game tab) must keep the same scale/cover.
+
 	sync.apply(player, COVER_B, Vector2(40.0, 60.0))
 	var ratio_b := player.scale.x / COVER_B
 	if absf(ratio_b - ratio_a) > EPS:
@@ -76,7 +72,7 @@ func _main() -> void:
 		quit(1)
 		return
 
-	# Authored meta must stay at design values for QA validators.
+
 	const META_SCALE := "axel_authored_scale"
 	if not player.has_meta(META_SCALE):
 		push_error("PlayerCoverSync FAIL: missing authored scale meta")
@@ -91,7 +87,7 @@ func _main() -> void:
 		quit(1)
 		return
 
-	# Extra PlayerLayer node (memory glow) tracks the same ratio.
+
 	var glow := Node2D.new()
 	glow.scale = Vector2(1.5, 1.5)
 	root.add_child(glow)
@@ -111,7 +107,7 @@ func _main() -> void:
 		quit(1)
 		return
 
-	# bind_design_from_background must no-op when baseline already set.
+
 	sync2.authored_bg_baseline = BASELINE
 	sync2.bind_design_from_background(null)
 	if absf(sync2.authored_bg_baseline - BASELINE) > EPS:

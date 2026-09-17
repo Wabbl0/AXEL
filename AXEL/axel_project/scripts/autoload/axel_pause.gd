@@ -1,8 +1,4 @@
 extends Node
-## AxelPause — global pause owner (D6).
-##
-## Only writer of `get_tree().paused`. Refuses while dialogue is busy and on
-## main-menu screens. Music stays ALWAYS; event FX stay pausable.
 
 signal pause_state_changed(paused: bool)
 

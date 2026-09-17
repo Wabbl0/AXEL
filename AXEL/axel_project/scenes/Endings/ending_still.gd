@@ -1,5 +1,4 @@
 extends Control
-## Grey-box ending still. Plays locked lines, then returns to title.
 
 @export var ending_id: String = ""
 

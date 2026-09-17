@@ -1,7 +1,4 @@
 extends Node
-## Three save slots (D2 / D3 / D9). Separate from AxelSettings — deleting a
-## run must not reset volume. A slot is active only after New Game / Load /
-## Continue, so editor F5 of a room still starts fresh.
 
 const SAVE_VERSION := 1
 const SLOT_COUNT := 3
@@ -14,7 +11,6 @@ signal slots_changed
 signal active_slot_changed(slot: int)
 
 var active_slot: int = -1
-## Tests may point this at a throwaway folder so real slots stay untouched.
 var dir_override := ""
 var _playtime_sec: float = 0.0
 var _save_queued := false

@@ -269,5 +269,6 @@ metadata/authored_pos = Vector2(-37.812428, 126.04143)
 position = Vector2(2653, 220)
 
 [node name="TopDialogueOverlay" parent="." unique_id=672473847 instance=ExtResource("5_top_dialogue")]
+visible = false
 
 [node name="InteractPromptOverlay" parent="." unique_id=1053911013 instance=ExtResource("6_interact_prompt")]

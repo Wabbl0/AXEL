@@ -12,8 +12,6 @@ const DESTINATIONS: Array[Dictionary] = [
 ]
 
 const _UI_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
-## Authored (1920x1280) chrome sizes; _apply_chrome_scale multiplies by the
-## live UiViewportScale factor so 4K does not shrink the travel list.
 const _BUTTON_MIN_SIZE := Vector2(320.0, 42.0)
 const _BUTTON_FONT_BASE := 22
 const _PANEL_OFFSETS_BASE := Vector4(24.0, -460.0, 400.0, -24.0)
@@ -59,7 +57,7 @@ func _build_destination_buttons() -> void:
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.add_theme_font_override("font", _UI_FONT)
 		var scene_path: String = destination["path"]
-		# The map only travels to rooms you have actually walked in.
+
 		if ResourceLoader.exists(scene_path) and _is_unlocked(scene_path):
 			button.text = destination["label"]
 			button.pressed.connect(func() -> void:
@@ -87,7 +85,6 @@ func _build_destination_buttons() -> void:
 	_choices_panel.add_child(basement)
 
 
-## A room card / travel button works only after the player walked there once.
 func _is_unlocked(scene_path: String) -> bool:
 	if scene_path.is_empty():
 		return false
@@ -209,7 +206,7 @@ func _make_room_card(room: Dictionary) -> Node3D:
 	var tex_path := String(room.get("tex", ""))
 	var room_path := String(room.get("path", ""))
 	var is_locked_basement := bool(room.get("locked", false))
-	# Unvisited rooms stay blank on the map: you can see the shape, not the room.
+
 	var thumb: Texture2D = null
 	if not is_locked_basement and _is_unlocked(room_path):
 		thumb = _thumb(String(room.get("id", "")), tex_path)
@@ -290,7 +287,7 @@ func _try_pick_room(screen: Vector2) -> void:
 
 
 func _is_exit_key(event: InputEvent) -> bool:
-	# Named InputMap action (Esc/Backspace/Delete + gamepad B). Excludes echo presses.
+
 	return event.is_action_pressed("back")
 
 

@@ -1,5 +1,4 @@
 extends SceneTree
-## Run: godot --path AXEL/axel_project --headless -s res://combat/test/princess_check.gd
 
 const CombatRootScene := preload("res://combat/scenes/combat_root.tscn")
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
@@ -44,7 +43,6 @@ func _spawn_root() -> CombatRoot:
 	return cr
 
 
-## Godot 4: awaiting `ready` after the node is already ready never resumes.
 func _await_combat_ready(cr: Node) -> void:
 	if not cr.is_node_ready():
 		await cr.ready
@@ -138,7 +136,7 @@ func _assert_rotation_only_advances_on_activation() -> void:
 	await _await_combat_ready(cr)
 	cr.setup_new_grid(1001)
 	cr.princesses.set_current_id(&"love")
-	# Rotation should be stable unless explicitly advanced by gameplay.
+
 	cr.girl_power_chance = 0.0
 	cr.spin_sync()
 	if cr.get_princess_current_id() != &"love":
@@ -181,7 +179,7 @@ func _assert_love_changes_full_symbol_set() -> void:
 				continue
 			var sid2: StringName = sym2.id
 			counts_after[sid2] = int(counts_after.get(sid2, 0)) + 1
-	# Love picks a random present symbol id and replaces every cell of that id (full-set conversion).
+
 	var cleared_a_type := false
 	for sid in counts_before.keys():
 		var before_n: int = int(counts_before[sid])
@@ -205,7 +203,7 @@ func _assert_wild_spawn_only_on_3_line() -> void:
 	cr.setup_new_grid(1005)
 	_set_checkerboard_no_clusters(cr)
 	var a := _symbol_by_id(cr, &"sym_green_circle")
-	# Exactly three in a row => one line of length 3 => wild at middle cell.
+
 	cr.grid.set_cell(Vector2i(0, 0), a)
 	cr.grid.set_cell(Vector2i(1, 0), a)
 	cr.grid.set_cell(Vector2i(2, 0), a)
@@ -256,7 +254,7 @@ func _assert_star_adds_one_or_two_wilds() -> void:
 func _assert_premium_meter_signal_timing_and_sections() -> void:
 	var booze_id := &"booze"
 
-	# x3 premium line: signal should fire at resolve clear-time and add 1 section.
+
 	var cr3 := _spawn_root()
 	await _await_combat_ready(cr3)
 	cr3.setup_new_grid(2100)
@@ -296,7 +294,7 @@ func _assert_premium_meter_signal_timing_and_sections() -> void:
 		quit(1)
 		return
 
-	# x4 premium line should fill 2 sections.
+
 	var cr4 := _spawn_root()
 	await _await_combat_ready(cr4)
 	cr4.setup_new_grid(2101)
@@ -313,7 +311,7 @@ func _assert_premium_meter_signal_timing_and_sections() -> void:
 		quit(1)
 		return
 
-	# x5 premium line should fill 3 sections (cap/full).
+
 	var cr5 := _spawn_root()
 	await _await_combat_ready(cr5)
 	cr5.setup_new_grid(2102)
@@ -436,7 +434,7 @@ func _assert_paid_spin_cascade_has_gravity_but_no_spawned_symbols() -> void:
 		push_error("Missing symbol for paid-spin gravity/no-spawn test.")
 		quit(1)
 		return
-	# Seed one 3-line with empty cells below; after clear, gravity must run but no top spawns.
+
 	cr.grid.set_cell(Vector2i(0, 2), a)
 	cr.grid.set_cell(Vector2i(1, 2), a)
 	cr.grid.set_cell(Vector2i(2, 2), a)
@@ -486,8 +484,8 @@ func _assert_trinity_round_has_gravity_but_no_spawned_symbols() -> void:
 		push_error("Missing symbol for trinity gravity/no-spawn test.")
 		quit(1)
 		return
-	# Seed one 3-line in the middle with symbols above and empty space below.
-	# After clear, upper symbols must fall down (gravity) but no spawns are allowed.
+
+
 	cr.grid.set_cell(Vector2i(0, 2), a)
 	cr.grid.set_cell(Vector2i(1, 2), a)
 	cr.grid.set_cell(Vector2i(2, 2), a)
@@ -526,7 +524,7 @@ func _assert_trinity_cascade_settles_floating_without_wins() -> void:
 		push_error("Trinity floating-symbol test setup should not contain winning lines.")
 		quit(1)
 		return
-	# Leave a symbol in row 0 and empty cells below so gravity must collapse it.
+
 	cr.grid.set_cell(Vector2i(0, 0), _symbol_by_id(cr, &"sym_green_circle"))
 	for y in range(1, GridManagerScript.ROWS):
 		cr.grid.set_cell(Vector2i(0, y), null)

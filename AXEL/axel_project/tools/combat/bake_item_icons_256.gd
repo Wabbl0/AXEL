@@ -1,5 +1,4 @@
 extends SceneTree
-## DO NOT RUN — overwrites live 1024 AI icons with 256 glyphs. L-A stays absent.
 
 const SIZE := 256
 const OUT_DIR := "res://combat/art/item_icons/"

@@ -1,19 +1,5 @@
 extends SceneTree
-## Floor items appear in every room the area table gives a non-zero count, and
-## nowhere else.
-##
-## Asserts, for each room in the AxelWorld area table:
-## 1. A WorldItemScatter host appears with the room's item count — or no host at
-##    all when that count is zero (1.2 is in `halls` but scatters nothing).
-## 2. Every rolled item id resolves to a real .tres.
-## 3. No floor item sits inside a wall, a table, or an interact zone.
-## 4. Every pickup draws the shared pentacle marker, never a catalog icon.
-## And for the no-item rooms (1.1 / 1.2 / 3.1): no scatter host at all.
-##
-## Run: tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/qa/world_item_scatter_check.gd
 
-## Rooms that must never hold a floor item. 1.1 and 1.2 are gated walk-fight
-## rooms; 3.1 is outdoors and never fights at all.
 const NO_FLOOR_ITEMS := [
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
 	"res://scenes/Arc_1/1.2_Corridor.tscn",
@@ -74,7 +60,7 @@ func _check_room(run: Node, room_path: String, want: int) -> void:
 			"null" if current_scene == null else current_scene.scene_file_path,
 		])
 		return
-	# Match the lookup AxelWorld uses, including its find_child fallback.
+
 	var env := current_scene.get_node_or_null("WalkableWorld/EnvironmentColliders") as Node2D
 	if env == null:
 		env = current_scene.find_child("EnvironmentColliders", true, false) as Node2D
@@ -92,20 +78,29 @@ func _check_room(run: Node, room_path: String, want: int) -> void:
 		return
 	if host.get_child_count() != want:
 		_fail("%s wanted %d floor items, got %d" % [room_path, want, host.get_child_count()])
+	var player_layer := current_scene.get_node_or_null("PlayerLayer")
 	for child in host.get_children():
 		var item_id := String(child.get("item_id"))
 		if item_id.is_empty() or run.call("load_item", item_id) == null:
 			_fail("%s rolled an unusable item id '%s'" % [room_path, item_id])
-		# Every marker is the shared pentacle: no per-item icon on the floor.
-		if child.get_node_or_null("Pentacle") == null:
-			_fail("%s %s is missing the shared pentacle marker" % [room_path, item_id])
+		var marker: Node2D = null
+		if child.has_method("floor_marker"):
+			marker = child.call("floor_marker") as Node2D
+		if marker == null:
+			marker = child.get_node_or_null("ItemMarker") as Node2D
+		if marker == null:
+			_fail("%s %s is missing the shared item marker" % [room_path, item_id])
+		elif player_layer != null and marker.get_parent() != player_layer:
+			_fail("%s %s marker is not on PlayerLayer" % [room_path, item_id])
 		if child.get_node_or_null("Icon") != null or child.get_node_or_null("Blob") != null:
 			_fail("%s %s still draws its own catalog icon" % [room_path, item_id])
-		# Hard rule: never inside a wall or furniture (unreachable item).
-		if _is_blocked(env, child as Node2D, player, false):
-			_fail("%s put %s inside a wall or furniture" % [room_path, item_id])
-		# Soft rule: sharing a door box makes two [E] prompts compete.
-		elif _is_blocked(env, child as Node2D, player, true):
+
+		if _circle_blocked(env, child as Node2D, player, host, false):
+			_fail("%s put %s so its interact circle hits a wall or furniture" % [
+				room_path, item_id,
+			])
+
+		elif _circle_blocked(env, child as Node2D, player, host, true):
 			print("world_item_scatter_check: note - %s %s shares an interact zone" % [
 				room_path, item_id,
 			])
@@ -121,25 +116,42 @@ func _check_no_floor_items(room_path: String) -> void:
 		_fail("%s must have no floor items" % room_path)
 
 
-func _is_blocked(env: Node2D, item: Node2D, player: Node2D, include_zones: bool) -> bool:
+func _circle_blocked(
+	env: Node2D, item: Node2D, player: Node2D, host: Node, include_zones: bool
+) -> bool:
 	var world_2d := env.get_world_2d()
 	if world_2d == null or item == null:
 		return false
 	var space := world_2d.direct_space_state
 	if space == null:
 		return false
-	var query := PhysicsPointQueryParameters2D.new()
-	query.collide_with_areas = include_zones
-	query.collide_with_bodies = not include_zones
-	query.position = item.global_position
-	# The item's own Area2D and the player standing there are not obstacles.
+	var shape_node := _first_collision_shape(item)
+	if shape_node == null or shape_node.shape == null:
+		return false
+	var params := PhysicsShapeQueryParameters2D.new()
+	params.shape = shape_node.shape
+	params.transform = shape_node.global_transform
+	params.collision_mask = 0xFFFFFFFF
+	params.collide_with_areas = include_zones
+	params.collide_with_bodies = not include_zones
 	var exclude: Array[RID] = []
 	if item is CollisionObject2D:
 		exclude.append((item as CollisionObject2D).get_rid())
 	if player is CollisionObject2D:
 		exclude.append((player as CollisionObject2D).get_rid())
-	query.exclude = exclude
-	return not space.intersect_point(query, 4).is_empty()
+	if host != null:
+		for sibling in host.get_children():
+			if sibling is CollisionObject2D:
+				exclude.append((sibling as CollisionObject2D).get_rid())
+	params.exclude = exclude
+	return not space.intersect_shape(params, 8).is_empty()
+
+
+func _first_collision_shape(item: Node) -> CollisionShape2D:
+	for child in item.get_children():
+		if child is CollisionShape2D:
+			return child as CollisionShape2D
+	return null
 
 
 func _frames(count: int) -> void:

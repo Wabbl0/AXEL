@@ -97,12 +97,18 @@ draw lands after every spin draw so it cannot shift the reels.
 
 ### Floor marker and info card
 
-Every floor pickup draws the same animated pentacle
-(`scenes/world/PentacleMarker.tscn`, `assets/sprites/animated_pentacle_48x48.png`
-— 12 frames of 48x96, disc in the lower half). It is hosted under
-`EnvironmentColliders`, so it takes the room's cover-fit and the live
-`AxelPostFxStack` noir + scanline + CRT pass. Do **not** move it to
-`PlayerLayer`; that skip is the MemoryIndicator exception.
+Every floor pickup draws the same white pointing-hand
+(`scenes/world/ItemMarker.tscn`, `assets/sprites/item_hand-Sheet.png` — 5
+frames of 48×48). The pickup `Area2D` stays under `EnvironmentColliders` so
+the 220 px interact circle takes the room's cover-fit. The picture reparents
+to `PlayerLayer` (above noir) so CRT keeps it bright white like the memory
+glow. A drop shadow and a faint red outline (`memory_outer_glow.gdshader`)
+tell it apart from a memory marker.
+
+Scatter only accepts a spot whose **full** interact circle misses walls and
+furniture (shape query, not a point). Pass 1 still tries to dodge door
+`Area2D`s; pass 2 may share a door box in a corridor whose floor is all
+zones (`2.4`) rather than skip the item.
 
 What the item actually is only shows up when you walk into the existing
 220 px radius: `scenes/ui/world_item_info_card.gd` (one per room, layer 109 —
@@ -184,8 +190,8 @@ ids the player already owns and ids already placed on a floor.
   arrival in `1.2`: 3x goal, empty loadout, ~99% winnable.
 - Flashlight / key / shovel / name each start exactly one fight, ever.
 - Every memory still ends in a fight. The locker map paper (`scene_3`) does not.
-- Every floor item looks like the same pentacle from across the room; walking
-  near one shows its real name, description and icon.
+- Every floor item looks like the same white pointing hand from across the
+  room; walking near one shows its real name, description and icon.
 - Floor items show `[E]`, join the locker on pickup, and start a fight.
 - `1.1` and `1.2` never hold a floor item.
 - Fight goals climb 3x, 5x, 7.5x, 10x, 15x, 20x, 30x of the chip bar.
@@ -197,10 +203,10 @@ ids the player already owns and ids already placed on a floor.
 
 ## Manual test checklist
 
-1. New game → walk `1.1` and `1.2` for a while: no pentacles and no fights.
+1. New game → walk `1.1` and `1.2` for a while: no floor-item hands and no fights.
 2. Locker → close → red `X`: a fight starts as you land in `1.2`, with a 3x
    goal and an empty item panel. Win → back in `1.2` where you stood.
-3. Walk to `1.4`, walk near the pentacle: its real name, description and icon
+3. Walk to `1.4`, walk near the hand: its real name, description and icon
    show before you press `[E]`. Take it → fight (5x goal) → win.
 4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot.
 5. Open the map before visiting `2.3`: kitchen is dark and dead. Walk there,
@@ -216,9 +222,11 @@ ids the player already owns and ids already placed on a floor.
 - One area only ever grants one rank upgrade to the untouched areas — the first
   pickup there *or* clearing it, whichever comes first. Counting both would have
   doubled the curve.
-- Floor spots are searched on both axes and dodge interact zones as well as
-  walls; if a room's whole floor is door boxes (`2.4`), the second pass settles
-  for open floor that shares a zone rather than putting the item in a wall.
+- Floor spots are searched on both axes with the **full 220 px interact
+  circle**; they dodge walls/furniture for sure, and interact zones when a
+  hole exists. If a room's whole floor is door boxes (`2.4`), the second pass
+  settles for open floor that shares a zone rather than putting the item in a
+  wall.
 
 ## Risks and rollback
 

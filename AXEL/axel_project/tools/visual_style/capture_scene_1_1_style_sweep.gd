@@ -1,15 +1,4 @@
 extends SceneTree
-## Scene 1.1 visual style sweep: baseline + 3 scanline/glitch comparison options.
-##
-## Run from repo root:
-##   tools\cmd\godot.cmd --path AXEL/axel_project -s res://tools/visual_style/capture_scene_1_1_style_sweep.gd
-##
-## Optional env:
-##   AXEL_STYLE_VARIANT=baseline   (single variant; default = all)
-##   AXEL_STYLE_THEME=axel|green|white  (override theme_mode for option shaders)
-##   AXEL_STYLE_OUTPUT=user://style_sweep_1_1  (override output dir)
-##
-## Exit 0 when all requested PNGs are written; 1 on failure.
 
 const _INTRO_WAIT_SEC := 0.15
 const _WALK_FRAMES := 120

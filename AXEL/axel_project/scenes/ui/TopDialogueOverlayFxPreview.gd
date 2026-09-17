@@ -1,7 +1,5 @@
 extends Control
 
-## Dev-only preview for TopDialogueOverlay FX toggles.
-## Play this scene directly: keys 1-7 toggle effects, Space replays the sample sequence.
 
 @onready var _overlay: CanvasLayer = $TopDialogueOverlay
 @onready var _status: Label = $StatusLabel

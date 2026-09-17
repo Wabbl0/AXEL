@@ -115,7 +115,7 @@ func _on_exit_pressed() -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (Tab/E/Space/Enter + gamepad A). Excludes echo presses.
+
 	if event.is_action_pressed("dialogue_advance"):
 		return true
 	if event is InputEventMouseButton:
@@ -135,7 +135,7 @@ func _begin_return_to_classroom() -> void:
 	_stop_local_shake()
 	if is_instance_valid(_top_dialogue) and _top_dialogue.has_method("interrupt_line"):
 		_top_dialogue.interrupt_line()
-	# Still not a 5/5 memory (no add_memory_once) — but it still starts a fight.
+
 	var world := get_node_or_null("/root/AxelWorld")
 	if world != null and bool(world.call("start_memory_fight", CLASSROOM_SCENE)):
 		return

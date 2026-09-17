@@ -7,9 +7,7 @@ const CombatRNGScript := preload("res://combat/scripts/rng.gd")
 const COLS := 5
 const ROWS := 5
 
-## cells[row][col] : SymbolDef or null
 var cells: Array = []
-## flags[row][col] : Dictionary (reserved for hazards / locks later)
 var flags: Array = []
 
 signal grid_populated
@@ -88,7 +86,6 @@ func _weight_for(sym: SymbolDefScript, weights: Dictionary) -> float:
 	return sym.base_weight
 
 
-## Clears listed coords to null. Does not emit.
 func clear_cells(coords: Array) -> void:
 	for p in coords:
 		var v := p as Vector2i
@@ -100,7 +97,6 @@ func clear_cells_and_emit(coords: Array) -> void:
 	cells_cleared.emit(coords)
 
 
-## Returns moves: Array of { "from": Vector2i, "to": Vector2i }
 func apply_gravity() -> Array:
 	var moves: Array = []
 	for c in COLS:
@@ -119,7 +115,6 @@ func apply_gravity() -> Array:
 	return moves
 
 
-## Fills null cells from top with weighted random from pool.
 func refill(rng: CombatRNGScript, pool: Array, weights: Dictionary) -> void:
 	var spawns: Array = []
 	for c in COLS:
@@ -133,7 +128,6 @@ func refill(rng: CombatRNGScript, pool: Array, weights: Dictionary) -> void:
 		symbols_spawned.emit(spawns)
 
 
-## Nearest empty cell (Manhattan, then lower y, then lower x). Returns (-1,-1) if none.
 func nearest_empty(from: Vector2i) -> Vector2i:
 	var best := Vector2i(-1, -1)
 	var best_d := 999

@@ -1,7 +1,4 @@
 extends SceneTree
-## Headless: F6 playtest keeps the catalog picker; combat_run shows the player item box.
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/combat_player_item_box_check.gd
 
 const PLAYTEST := "res://combat/combat_test.tscn"
 const PLAYER := "res://combat/combat_run.tscn"

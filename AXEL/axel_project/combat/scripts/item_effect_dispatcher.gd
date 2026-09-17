@@ -1,6 +1,5 @@
 class_name ItemEffectDispatcher
 extends RefCounted
-## Walks ItemInventory in equip order. Number bonuses add; rule rewrites use last writer.
 
 const ALL_POWERS: Array[StringName] = [&"love", &"star", &"storm"]
 

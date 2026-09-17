@@ -73,4 +73,3 @@ func all_powers_used_once() -> bool:
 func ensure_end_guard_spin() -> void:
 	if active and spins_remaining <= 0:
 		spins_remaining = 1
-

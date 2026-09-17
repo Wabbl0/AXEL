@@ -1,6 +1,4 @@
 extends SceneTree
-## Save-slot regression (Phase 1.2). Three independent slots, header-only
-## picker read, tombstone, and settings surviving slot delete (D8 / D9).
 
 func _init() -> void:
 	call_deferred("_main")

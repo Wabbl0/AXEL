@@ -1,5 +1,4 @@
 extends CanvasLayer
-## Real pause menu (D6). AxelPause owns tree.paused; this only draws.
 
 const MAP_SCENE := "res://scenes/Arc_1/1.3_SchoolMap.tscn"
 const TITLE_SCENE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"

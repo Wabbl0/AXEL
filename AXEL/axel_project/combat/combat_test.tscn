@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
 [ext_resource type="Theme" path="res://combat/ui/terminal_theme.tres" id="3_theme"]
-[ext_resource type="Script" uid="uid://c0ok3xo41wror" path="res://combat/scripts/premium_meter_circle.gd" id="4_meter"]
 [ext_resource type="Shader" uid="uid://c0q3vq1cvevaa" path="res://combat/shaders/scanline_overlay.gdshader" id="5_scanline"]
 [ext_resource type="Texture2D" uid="uid://dd8pcjqbpqluq" path="res://exports/Drawings/axel_combat_plate_white.png" id="6_hud_art"]
 [ext_resource type="Texture2D" uid="uid://slqx2ygoy3f4" path="res://exports/Drawings/axel_combat_grid.png" id="7_art_grid"]
@@ -248,17 +247,6 @@ shader = ExtResource("5_scanline")
 shader_parameter/line_color = Color(1, 0, 0, 0.08)
 shader_parameter/line_density = 420.0
 shader_parameter/chroma_strength = 0.025
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3smro"]
-bg_color = Color(0.12, 0.02, 0.02, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.78, 0.03, 0.03, 0.95)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jim0v"]
-bg_color = Color(0.95, 0.08, 0.08, 1)
 
 [node name="CombatTest2" type="Control" unique_id=161757197]
 layout_mode = 3
@@ -1279,16 +1267,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="RightMeterStack" type="VBoxContainer" parent="." unique_id=133420764]
-visible = false
-layout_mode = 0
-
-[node name="PremiumMeterCircle" type="Control" parent="RightMeterStack" unique_id=856376828]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-script = ExtResource("4_meter")
-
 [node name="BudgetLabel" type="Label" parent="." unique_id=11483691]
 unique_name_in_owner = true
 z_index = 20
@@ -1346,16 +1324,3 @@ mouse_filter = 2
 
 [node name="CombatRoot" parent="WidgetLayer/WidgetRoot/GridHost" unique_id=952603979 instance=ExtResource("2_combat_root")]
 unique_name_in_owner = true
-
-[node name="PremiumProgressBar" type="ProgressBar" parent="WidgetLayer/WidgetRoot/GridHost" unique_id=1152686182]
-z_index = 6
-layout_mode = 0
-offset_left = 62.00006
-offset_top = 2127.375
-offset_right = 1627.5002
-offset_bottom = 2259.125
-mouse_filter = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_3smro")
-theme_override_styles/fill = SubResource("StyleBoxFlat_jim0v")
-max_value = 3.0
-show_percentage = false

@@ -1,7 +1,5 @@
 class_name RunState
 extends Resource
-## Saveable combat run (Phase 2.1). No renderer state.
-## Serialises into the slot body, not a separate user://run.save.
 
 @export var schema_version: int = 1
 @export var seed: int = 0
@@ -18,25 +16,16 @@ extends Resource
 @export var first_encounter_warned: bool = false
 @export var locker_stash_granted: bool = false
 @export var in_encounter: bool = false
-## World fights (walk / pickup / memory) are single encounters that return to
-## the room they started in. Acts stay untouched while one is running.
 @export var world_encounter: bool = false
 @export var world_reason: String = ""
 @export var world_return_scene: String = ""
 @export var world_return_tex_x: float = 0.0
 @export var world_return_tex_y: float = 0.0
 @export var world_return_tex_valid: bool = false
-## Cycles 0..2 to pick the encounter .tres and shuffle the seed.
 @export var world_encounter_index: int = 0
-## Monotonic count of world fights started. Drives the goal ladder, so it must
-## never wrap the way `world_encounter_index` does.
 @export var world_fight_count: int = 0
-## Locker tutorial: owed once the locker has been opened, spent when the player
-## leaves the hub on their own and lands in the corridor.
 @export var tutorial_fight_pending: bool = false
 @export var tutorial_fight_done: bool = false
-## Rooms that have already hosted a fight (never 1.1 / 1.2). Walk fights in
-## 1.1 and 1.2 stay locked until the tutorial is done and this is non-empty.
 @export var fought_rooms: PackedStringArray = PackedStringArray()
 
 

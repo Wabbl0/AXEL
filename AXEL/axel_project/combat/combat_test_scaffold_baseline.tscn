@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
 [ext_resource type="Theme" path="res://combat/ui/terminal_theme.tres" id="3_theme"]
-[ext_resource type="Script" uid="uid://c0ok3xo41wror" path="res://combat/scripts/premium_meter_circle.gd" id="4_meter"]
 [ext_resource type="Shader" uid="uid://c0q3vq1cvevaa" path="res://combat/shaders/scanline_overlay.gdshader" id="5_scanline"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_box"]
@@ -256,16 +255,6 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 text = "+"
-
-[node name="RightMeterStack" type="VBoxContainer" parent="." unique_id=133420764]
-visible = false
-layout_mode = 0
-
-[node name="PremiumMeterCircle" type="Control" parent="RightMeterStack" unique_id=856376828]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-script = ExtResource("4_meter")
 
 [node name="MultiplierReadout" type="Label" parent="." unique_id=1004755644]
 unique_name_in_owner = true

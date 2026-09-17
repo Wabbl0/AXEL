@@ -1,5 +1,4 @@
 extends CanvasLayer
-## Brief full-screen VHS glitch burst for scripted intro beats (distinct from baseline post-FX).
 
 @onready var _filter_rect: ColorRect = $FilterRect
 

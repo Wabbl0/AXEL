@@ -1,6 +1,5 @@
 class_name CombatFeel
 extends Node
-## Visual-only combat juice (Phase 3). Never touches CombatRNG.
 
 const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 
@@ -86,8 +85,6 @@ func set_goal_progress(ratio: float) -> void:
 		_grime_band.color.a = t * 0.45
 
 
-## No-op. The dim corner icon row is gone; the center PowerIntroIcon already shows
-## which princess is acting. Kept so Trinity call sites stay valid.
 func highlight_princess(_id_name: StringName) -> void:
 	pass
 

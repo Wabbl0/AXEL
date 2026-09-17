@@ -1,7 +1,5 @@
 class_name OptionsPanel
 extends Control
-## D4 options. Persists through AxelSettings. Used on the title Options
-## scene and as a pause-menu overlay.
 
 signal closed
 
@@ -259,5 +257,5 @@ func _binding_label(action: String) -> String:
 
 
 func _apply_scale() -> void:
-	# Rebuild is overkill; font sizes on children follow next open.
+
 	pass

@@ -1,5 +1,4 @@
 extends Control
-## Premium meter skull: stage art + hover/press feel. Fill is driven by combat meter sections.
 
 signal pressed
 
@@ -29,7 +28,7 @@ var _press_tween: Tween
 
 
 func _ready() -> void:
-	## Clicks live on Execute MOVE_TextBox + SkullClickPolygon — skull art is display-only.
+
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_base_scale = scale
 	pivot_offset = size * 0.5

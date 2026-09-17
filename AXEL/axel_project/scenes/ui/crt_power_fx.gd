@@ -1,6 +1,5 @@
 extends RefCounted
 
-## Shared CRT TV power-on/off tweens for dialogue bar and interact prompt overlays.
 
 const CRT_DOT_SCALE := 0.02
 const CRT_LINE_SCALE_Y := 0.03
@@ -12,7 +11,6 @@ const CRT_BEAM_ALPHA := 0.95
 const CRT_BLOOM_ALPHA := 0.85
 
 static var _crt_tokens: Dictionary = {}
-## Per-host CRT tweens we create (avoids Tween.get_bound_node, not in all Godot 4.x bindings).
 static var _crt_tweens: Dictionary = {}
 
 
@@ -35,7 +33,7 @@ static func compact_chip_options() -> Options:
 
 
 static func _host_valid(host: Variant) -> bool:
-	# Typed `Node` args error on a previously-freed instance (not a Node anymore).
+
 	if host == null or not is_instance_valid(host):
 		return false
 	if not (host is Node):
@@ -60,7 +58,6 @@ static func _token_valid(host: Variant, session: int) -> bool:
 	return _host_valid(host) and int(_crt_tokens.get(_host_key(host), 0)) == session
 
 
-## Awaits one process frame if host is still in a tree. Returns false if host/tree is gone.
 static func _await_process_frame(host: Variant) -> bool:
 	if not _host_valid(host):
 		return false
@@ -104,7 +101,6 @@ static func _await_tween(host: Variant, session: int, tween: Tween) -> void:
 			return
 
 
-## Kills in-flight CRT tweens, invalidates awaiting power_on/power_off, and resets visuals off.
 static func cancel(
 	host: Node,
 	fade_root: Control,
@@ -222,7 +218,6 @@ static func power_on(
 	reset_visual(fade_root, panel, beam, bloom)
 
 
-## Exact reverse of power_on from the settled post-on state (no upfront beam/bloom spike).
 static func power_off(
 	host: Node,
 	fade_root: Control,

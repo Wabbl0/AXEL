@@ -1,5 +1,4 @@
 extends SceneTree
-## Posterize staged AI icons to the 8-band noir palette. Keep 1024×1024. Never downscale.
 
 const SIZE := 1024
 const SRC_DIR := "res://tools/combat/ai_icon_src/"

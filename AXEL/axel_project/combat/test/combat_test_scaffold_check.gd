@@ -1,7 +1,4 @@
 extends SceneTree
-## Headless guardrail: verify combat_test.tscn contains required scaffold nodes.
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd
 
 const ValidatorsScript := preload("res://tools/qa/qa_canon_validators.gd")
 

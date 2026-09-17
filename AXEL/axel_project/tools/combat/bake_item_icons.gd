@@ -1,11 +1,4 @@
 extends SceneTree
-## Bake 48x48 8-band+white item icons from LimeZu singles (optional).
-## Usage (from repo root):
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/combat/bake_item_icons.gd -- [interiors_singles_root] [exteriors_singles_root]
-## Paths are CLI-only. Never hardcode machine-absolute paths in shipped game code.
-## Mapping: res://tools/combat/item_icon_sources.json
-##   "L2": "interiors/4_Bedroom_Singles_48x48/Bedroom_Singles_48x48_387.png"
-## Missing mapping or missing file → keep 8-band placeholder for that id.
 
 const OUT_DIR := "res://combat/art/item_icons"
 const MAP_PATH := "res://tools/combat/item_icon_sources.json"
@@ -90,7 +83,7 @@ func _source_for(item_id: String) -> String:
 		if _exteriors_root == "":
 			return ""
 		return _exteriors_root.path_join(rel.substr("exteriors/".length()))
-	# Bare relative path: try interiors root first, then exteriors.
+
 	if _interiors_root != "":
 		var cand := _interiors_root.path_join(rel)
 		if FileAccess.file_exists(cand):

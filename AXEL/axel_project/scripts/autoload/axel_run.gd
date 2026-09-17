@@ -1,6 +1,4 @@
 extends Node
-## Combat run owner + narrow overworld/combat bridge (Phase 2).
-## Combat never reads story flags; lore goal bonus is a number passed in.
 
 const RunStateScript := preload("res://combat/scripts/run_state.gd")
 const ItemInventoryScript := preload("res://combat/scripts/item_inventory.gd")
@@ -11,24 +9,15 @@ const TITLE_SCENE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
 const ITEM_DIR := "res://combat/data/items/"
 const LORE_FLAGS: PackedStringArray = ["hasFlashlight", "hasKey", "hasShovel", "hasName"]
 const LORE_GOAL_BONUS := 0.15
-## World-fight difficulty curve, in chip-bar multiples of 1000 cents:
-## 3x, 5x, 7.5x, 10x, 15x, 20x, 30x. Fed to combat as a plain number through
-## `set_goal_base_target_cents`; lore bonus and family-H percents multiply on
-## top of it. Act fights keep combat's own 10x default.
 const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
 	3000, 5000, 7500, 10000, 15000, 20000, 30000,
 ]
-## Past the last rung the curve keeps climbing by this factor per fight.
 const WORLD_GOAL_LADDER_GROWTH := 1.5
 const WORLD_GOAL_LADDER_ROUNDING := 100
-## Locker tutorial: no items, the lowest rung, and one last-spin nudge that
-## still leaves roughly a 1-in-100 loss. Deliberately not a 100% lock.
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
 const TUTORIAL_FINAL_SPIN_ASSIST := 0.99
-## Act I locker, Act II cafeteria/classrooms, Act III basement. No Act IV.
 const MAX_PLAYABLE_ACT := 3
 const WIN_RETURN_SEC := 1.6
-## World fights (walk / pickup / memory). One encounter, then back to the room.
 const WORLD_ENCOUNTER_PATHS: PackedStringArray = [
 	"res://combat/data/encounters/encounter_payout.tres",
 	"res://combat/data/encounters/encounter_wild_count.tres",
@@ -97,7 +86,6 @@ func mark_first_encounter_warned() -> void:
 	_persist()
 
 
-## Marks the locker as opened so the corridor tutorial can fire. Adds no items.
 func grant_locker_stash_once() -> void:
 	if state.locker_stash_granted:
 		return
@@ -147,8 +135,6 @@ func can_start_encounter() -> bool:
 	return current_encounter() != null
 
 
-## Goal for the world fight that is starting / running now. `world_fight_count`
-## is 1 on the very first fight, so it maps onto rung 0 (3x).
 func world_goal_base_cents() -> int:
 	var rung := maxi(int(state.world_fight_count) - 1, 0)
 	var last := WORLD_GOAL_LADDER_CENTS.size() - 1
@@ -171,9 +157,6 @@ func encounter_seed() -> int:
 	return state.seed + state.act * 10007 + state.encounter_index * 97
 
 
-## Narrative-side door: one encounter, then back to `return_scene`.
-## `return_tex` is an EnvironmentColliders-local (texture pixel) standing spot;
-## pass `has_tex = false` to let the room place the player its own way.
 func enter_world_encounter(
 	reason: String,
 	return_scene: String,
@@ -327,7 +310,7 @@ func _wire_combat_root() -> void:
 	var encounter := current_encounter()
 	if encounter != null:
 		root.set("encounter_def", encounter)
-	# Combat gets numbers only — never the reason string, never a story flag.
+
 	var tutorial := is_tutorial_encounter()
 	if root.has_method("set_lore_goal_bonus"):
 		root.call("set_lore_goal_bonus", 0.0 if tutorial else lore_goal_bonus())
@@ -372,7 +355,7 @@ func max_equip_slots() -> int:
 func _apply_win_progress() -> void:
 	state.in_encounter = false
 	if state.world_encounter:
-		# World fights are one-offs: they never move the act pointer.
+
 		_persist_now()
 		return
 	state.encounter_index += 1
@@ -381,8 +364,8 @@ func _apply_win_progress() -> void:
 		if int(state.act) < MAX_PLAYABLE_ACT:
 			state.act += 1
 			state.encounter_index = 0
-		# Last act is finished: keep act at MAX and leave index past the list
-		# so can_start_encounter() is false. Do not invent Act IV.
+
+
 	_persist_now()
 
 
@@ -399,7 +382,6 @@ func _return_after_win() -> void:
 	_finish_busy = false
 
 
-## Win after a walk / pickup / memory fight: back to the room, same spot.
 func _return_to_world_room() -> void:
 	var dest := String(state.world_return_scene)
 	var tex := Vector2(float(state.world_return_tex_x), float(state.world_return_tex_y))

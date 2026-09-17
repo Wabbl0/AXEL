@@ -1,8 +1,4 @@
 extends SceneTree
-## Headless lock: 2.4 corridor preserves the seeded 150% depth on lounge/classroom
-## arrivals until the player is placed, and fresh start stays at 100%.
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://scenes/core/test/corridor_depth_seed_check.gd
 
 const SETTLE_FRAMES := 16
 const EPS := 0.02

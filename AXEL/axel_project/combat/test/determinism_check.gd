@@ -1,5 +1,4 @@
 extends SceneTree
-## Run: godot --path AXEL/axel_project --headless -s res://combat/test/determinism_check.gd
 
 
 func _init() -> void:
@@ -26,8 +25,8 @@ func _run_determinism_pass() -> Dictionary:
 	root.add_child(cr)
 	if not cr.is_node_ready():
 		await cr.ready
-	# Scene ships an encounter with a spin budget; early completion would make remaining
-	# spin_sync() calls no-ops and repeat the last snapshot. Disable encounter for 100 real spins.
+
+
 	cr.encounter_def = null
 	cr.setup_new_grid(12345)
 	var snapshots: PackedStringArray = PackedStringArray()

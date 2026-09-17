@@ -1,14 +1,7 @@
 extends SceneTree
-## Fail if a .gdshader helper function reads a fragment/vertex built-in.
-## Godot only exposes TIME / PI / TAU / E globally; other built-ins must be
-## passed in from fragment() / vertex() / light() / start() / process().
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project \
-##     -s res://tools/qa/shader_builtin_scope_check.gd
 
 const SCAN_ROOTS := ["res://scenes", "res://tools", "res://combat", "res://scripts"]
 
-## Built-ins that are NOT legal inside custom helper functions.
 const FORBIDDEN := [
 	"SCREEN_UV",
 	"SCREEN_PIXEL_SIZE",
@@ -34,7 +27,6 @@ const FORBIDDEN := [
 	"SHADOW_MODULATE",
 ]
 
-## Processor functions where built-ins are legal.
 const PROCESSORS := ["fragment", "vertex", "light", "start", "process"]
 
 
@@ -90,20 +82,20 @@ func _scan_shader(shader_path: String) -> Array:
 	var depth := 0
 	var current_fn := ""
 	var in_processor := false
-	# Strip // comments so they do not false-positive.
+
 	var cleaned := _strip_line_comments(src)
 	for line in cleaned.split("\n"):
 		var trimmed := line.strip_edges()
 		if trimmed.is_empty():
 			continue
-		# Detect function open: "rettype name(...)" then "{" maybe on same/next line.
+
 		var fn_name := _function_name(trimmed)
 		if not fn_name.is_empty() and depth == 0:
 			current_fn = fn_name
 			in_processor = fn_name in PROCESSORS
 		var open_count := trimmed.count("{")
 		var close_count := trimmed.count("}")
-		# Scan while inside a non-processor helper (includes one-line bodies).
+
 		if not in_processor and not current_fn.is_empty():
 			if depth > 0 or open_count > 0:
 				for builtin in FORBIDDEN:
@@ -130,7 +122,7 @@ func _strip_line_comments(src: String) -> String:
 
 
 func _function_name(line: String) -> String:
-	# Match: type name( ... )  — skip preprocessor / structural keywords.
+
 	if line.begins_with("#") or line.begins_with("shader_type") or line.begins_with("render_mode"):
 		return ""
 	if line.begins_with("uniform") or line.begins_with("varying") or line.begins_with("const"):
@@ -140,7 +132,7 @@ func _function_name(line: String) -> String:
 	var paren := line.find("(")
 	if paren < 0:
 		return ""
-	# Require a closing paren or "...)" start before any brace for a prototype.
+
 	var before := line.substr(0, paren).strip_edges()
 	if before.is_empty():
 		return ""
@@ -148,10 +140,10 @@ func _function_name(line: String) -> String:
 	if parts.is_empty():
 		return ""
 	var name: String = parts[parts.size() - 1]
-	# Reject operators / assignments that happen to have "(".
+
 	if name.contains("=") or name.contains(".") or name.contains("["):
 		return ""
-	# Must look like an identifier.
+
 	if not _is_identifier(name):
 		return ""
 	return name

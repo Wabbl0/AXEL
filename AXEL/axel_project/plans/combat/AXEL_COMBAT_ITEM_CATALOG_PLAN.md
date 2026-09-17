@@ -311,7 +311,7 @@ do get walking encounters once the locker tutorial is done and some other room
 has already hosted a fight — so `Halls` is cleared by 2.4's single item.
 Details: `plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`.
 
-Every floor item shows the same animated pentacle marker rather than its own
+Every floor item shows the same white pointing-hand marker rather than its own
 picture; the item's name, description and real icon appear on a walk-near card.
 
 Rough shape over a playthrough:
@@ -330,7 +330,7 @@ Rough shape over a playthrough:
 - Effect math: [../../combat/scripts/item_effect_dispatcher.gd](../../combat/scripts/item_effect_dispatcher.gd)
 - Hooks: [../../combat/scripts/combat_root.gd](../../combat/scripts/combat_root.gd)
 - World floor ranks / families: [../../scripts/autoload/axel_world.gd](../../scripts/autoload/axel_world.gd)
-- Icon QA: [../../tools/qa/item_icons_check.gd](../../tools/qa/item_icons_check.gd) — **75 × 1024**, no `L-A`
+- Icon QA: [../../tools/qa/item_icons_check.gd](../../tools/qa/item_icons_check.gd) — **75 × 1024**, no `L-A`. Draw-size QA: [../../tools/qa/item_icon_draw_size_check.gd](../../tools/qa/item_icon_draw_size_check.gd) — combat ITEMS/equipped **48px**, locker shelf buttons **1024px**.
 
 ## Still future
 
@@ -366,10 +366,11 @@ Not player-final. Right-hand ITEMS list:
 ## Icons (live)
 
 - Game path: `res://combat/art/item_icons/{id}.png` on `ItemDef.icon`.
-- Size: **1024×1024**. Gate: `tools/qa/item_icons_check.gd`.
-- Floor pickups never show this picture — shared pentacle only. Name / description / icon appear on the walk-near card, locker buttons, and the playtest ITEMS list.
+- Size: **1024×1024** files. File gate: `tools/qa/item_icons_check.gd`. On-screen gate: `tools/qa/item_icon_draw_size_check.gd` (combat 48px / locker 1024px).
+- Draw size: combat ITEMS list and equipped panel **48px**; locker shelf buttons **1024px** on screen (one column, scroll). Walk-near card stays 64px. Do not re-run the old 48×48 baker (`bake_item_icons.gd`) or `bake_item_icons_256.gd` — those sizes overwrite the 1024 set.
+- Floor pickups never show this picture — shared white pointing hand only. Name / description / icon appear on the walk-near card, locker buttons, and the playtest ITEMS list.
 - All **75** live icons are detailed 8-band noir remaps. Stage originals in `tools/combat/ai_icon_src/{id}.png`. Skip `L-A`.
-- Bake-time LimeZu map still lives in `tools/combat/item_icon_sources.json` (CLI folder args only — no machine-absolute paths in gameplay). Family A (C-A…E-A) must **not** reuse the L2 clock. Do not re-run the old 48×48 baker (`bake_item_icons.gd`) or `bake_item_icons_256.gd` — those sizes overwrite the 1024 set.
+- Bake-time LimeZu map still lives in `tools/combat/item_icon_sources.json` (CLI folder args only — no machine-absolute paths in gameplay). Family A (C-A…E-A) must **not** reuse the L2 clock.
 
 ---
 

@@ -7,7 +7,6 @@ enum SheetLayoutMode {
 	GRID,
 }
 
-## Last facing for idle: front / back / side. Side also tracks flip via _last_side_is_right.
 enum Facing { FRONT, BACK, SIDE }
 
 const _MIKE_FRAME_INDICES := {
@@ -21,37 +20,31 @@ const _MIKE_FRAME_INDICES := {
 
 const _MIKE_FRAME_COUNT := 12
 const _HITBOX_FRONT := preload("res://scenes/player/hitbox_front.tres")
-## Shared ShadowOutline fit authored in 1.2; applied on every room so the silhouette stays aligned.
 const SHADOW_OUTLINE_POS := Vector2(-5.0416956, -5.041732)
 const SHADOW_OUTLINE_SCALE := Vector2(1.0335996, 0.9969109)
-## Shared Front circle placement authored in 1.1; applied on every room. Back/Side retired.
 const HITBOX_FRONT_POS := Vector2(-37.812428, 126.04143)
 const _POSE_NUDGE_PATH := "res://scenes/player/pose_nudge.tres"
 
 @export var speed: float = 220.0
 @export_group("Pose Nudge")
-## Editor only: which idle pose is solid. The other two stay faded on top. Does not change Play.
 @export_enum("Front", "Back", "Side") var editor_pose_preview: int = 0:
 	get:
 		return _editor_pose_preview
 	set(value):
 		_editor_pose_preview = value
 		_on_pose_nudge_edited()
-## Moves the front drawing (S / idle). Sprite pixels — try 80 to 200 if you see no move.
 @export var pose_nudge_front: Vector2 = Vector2.ZERO:
 	get:
 		return _pose_nudge_front
 	set(value):
 		_pose_nudge_front = value
 		_on_pose_nudge_edited()
-## Moves the back drawing (W / idle_back). Sprite pixels — try 80 to 200 if you see no move.
 @export var pose_nudge_back: Vector2 = Vector2.ZERO:
 	get:
 		return _pose_nudge_back
 	set(value):
 		_pose_nudge_back = value
 		_on_pose_nudge_edited()
-## Moves the side drawing (A/D / idle_side). Sprite pixels — try 80 to 200 if you see no move.
 @export var pose_nudge_side: Vector2 = Vector2.ZERO:
 	get:
 		return _pose_nudge_side
@@ -60,37 +53,22 @@ const _POSE_NUDGE_PATH := "res://scenes/player/pose_nudge.tres"
 		_on_pose_nudge_edited()
 @export_group("")
 @export var overworld_tint: Color = Color(1.0, 1.0, 1.0, 1.0)
-## When empty, tries common paths under res://assets/sprites/ (including mike walking exports).
 @export var sprite_sheet: Texture2D
-## AUTO: wide strip if width divisible by frame count; else if width and height divisible by sheet_columns / sheet_rows, use GRID.
 @export var sheet_layout_mode: SheetLayoutMode = SheetLayoutMode.AUTO
-## For GRID / AUTO grid: optional multi-row sheet layout.
 @export var sheet_columns: int = 4
 @export var sheet_rows: int = 4
-## Forced cell size; if 0, derived from texture and layout (recommended).
 @export var frame_width: int = 0
 @export var frame_height: int = 0
 @export var animation_fps: float = 5.0
-## If true, traces collision from sprite alpha. Default is the shared Front hitbox
-## (`res://scenes/player/hitbox_front.tres`). CollisionBack / CollisionSide are retired.
 @export var use_alpha_collision: bool = false
-## Frame index on the Mike sheet when `collision_use_all_frames_union` is false.
 @export_range(0, 11) var collision_frame_index: int = 0
-## Union all walk frames so walk cycles do not poke past the collider.
 @export var collision_use_all_frames_union: bool = true
 @export_range(0.0, 1.0) var collision_alpha_threshold: float = 0.1
-## Higher values simplify the traced outline (fewer sharp corners).
 @export var collision_polygon_epsilon: float = 3.0
-## Shrinks the alpha mask before tracing; removes thin protrusions that snag on walls.
 @export_range(0, 8) var collision_alpha_shrink_pixels: int = 2
-## Chaikin smoothing passes on the traced polygon (0 = off).
 @export_range(0, 4) var collision_smooth_iterations: int = 2
-## Pulls the final polygon slightly inward from its center so edges slide instead of catch.
 @export var collision_inward_margin: float = 1.5
-## Fraction of frame height kept for collision, measured from the feet up (0.5 = lower half / waist cut).
 @export_range(0.2, 1.0) var collision_lower_body_ratio: float = 0.5
-## When >= 0, snaps this player's feet to a fixed world Y every physics frame (walk left/right
-## along a road at a constant height). Horizontal movement is unaffected. -1 = disabled.
 @export var locked_feet_y: float = -1.0
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite
@@ -98,7 +76,6 @@ const _POSE_NUDGE_PATH := "res://scenes/player/pose_nudge.tres"
 @onready var fallback_body: Polygon2D = $FallbackBody
 
 var _last_facing: Facing = Facing.FRONT
-## Right-facing side walks vs left (flip_h); used for side idle and A/D.
 var _last_side_is_right: bool = true
 var _pose_nudge_res: Resource
 var _editor_pose_preview: int = 0
@@ -110,13 +87,9 @@ var _input_enabled: bool = true
 var _scripted_velocity: Vector2 = Vector2.ZERO
 var _step_distance_accumulator: float = 0.0
 var _last_step_position: Vector2 = Vector2.ZERO
-## AxelWorld autoload, resolved once. Rolls the rare indoor walking fight.
 var _world_loop: Node = null
 
 const _STEP_DISTANCE_PX := 8.0
-## Walking moves ~5 px per physics frame at most. Anything bigger is a
-## reposition (spawn placement, cover-fit, post-fight return, room arrival) and
-## must not count as steps, or entering a room would bank hundreds of them.
 const _TELEPORT_JUMP_PX := 64.0
 const _EDITOR_HITBOX_FILL := Color(0.0, 0.92, 0.95, 0.22)
 const _EDITOR_HITBOX_LINE := Color(0.0, 0.92, 0.95, 0.95)
@@ -682,8 +655,8 @@ func _set_leaf_poly_slot(
 
 
 func set_leaf_occlusion_active(_active: bool) -> void:
-	# Kept for scene compatibility; occlusion is now spatial-only and always evaluated.
-	# Parameter intentionally unused.
+
+
 	pass
 
 
@@ -826,14 +799,13 @@ func _sync_editor_sprite_visibility() -> void:
 	var sprite := _pose_sprite()
 	var has_frames := sprite != null and sprite.sprite_frames != null
 	if sprite != null:
-		# Pose stack draws the white figure; hide the node so it does not double.
+
 		sprite.visible = not has_frames
-	# Do not overwrite ShadowOutline.visible every frame — that locked the Inspector eye off.
 
 
 func _shadow_offset_for_nudge(nudge: Vector2) -> Vector2:
-	# Scale is applied to offset. Divide so the silhouette stays around the figure
-	# the same way for Front / Back / Side (pose nudges must not shift the outline).
+
+
 	return Vector2(
 		nudge.x / SHADOW_OUTLINE_SCALE.x,
 		nudge.y / SHADOW_OUTLINE_SCALE.y
@@ -881,7 +853,7 @@ func _draw_editor_pose_stack() -> void:
 	var front_tint := Color(1.0, 1.0, 1.0, 0.42)
 	var back_tint := Color(1.0, 0.4, 0.4, 0.42)
 	var side_tint := Color(0.4, 0.75, 1.0, 0.42)
-	# Faded poses draw their own silhouette. The solid pose uses the ShadowOutline node.
+
 	if editor_pose_preview != 0:
 		_draw_one_editor_pose(frames, &"idle", pose_nudge_front, front_tint, true)
 	if editor_pose_preview != 1:
@@ -1059,8 +1031,7 @@ func _physics_process(_delta: float) -> void:
 			_update_animation(Vector2.ZERO)
 		return
 
-	# Named actions (project.godot [input]): WASD + arrows + gamepad stick/d-pad.
-	# get_vector is normalized like the old manual sum, and analog tilt scales speed.
+
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 
 	velocity = direction * speed
@@ -1114,7 +1085,7 @@ func _update_animation(direction: Vector2) -> void:
 	var flip := false
 
 	if up and (left or right):
-		# Up + side diagonal keeps the up (back) cycle.
+
 		anim = &"walk_up"
 		_last_facing = Facing.BACK
 		if right:
@@ -1127,7 +1098,7 @@ func _update_animation(direction: Vector2) -> void:
 		_last_facing = Facing.BACK
 		flip = false
 	elif down and (left or right):
-		# Down + side diagonal uses the side cycle.
+
 		anim = &"walk_right"
 		_last_facing = Facing.SIDE
 		if right:

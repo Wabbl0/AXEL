@@ -1,7 +1,4 @@
 extends CanvasLayer
-## Debug-only combat overlay: Settings → DEV TOOLS opens this AXEL-styled dropdown.
-## Visible only when OS.is_debug_build() and the current scene is under res://combat/.
-## No standalone wrench button — Settings is the only entry point.
 
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const LAYER := 2100
@@ -254,7 +251,7 @@ func _set_economy_text(key: String, title: String, value: int) -> void:
 
 
 func open_dev_menu() -> void:
-	## Public entry for the combat Settings → DEV TOOLS row.
+
 	if not OS.is_debug_build():
 		return
 	_open_menu()

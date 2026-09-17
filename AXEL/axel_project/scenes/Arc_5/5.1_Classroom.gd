@@ -48,7 +48,6 @@ var _pending_door_peek := false
 var _arrival_t := InteractArrival.DEFAULT_T
 var _cover_layout_ready := false
 var _door_zone_armed := true
-## Texture-pixel position captured from the MemoryIndicator node's editor position.
 var _memory_indicator_tex := Vector2.ZERO
 var _player_cover_sync := PlayerCoverSync.new()
 
@@ -93,8 +92,8 @@ func _restore_player_position_if_needed() -> void:
 		return
 	if GameManager.take_classroom_spawn_side() == "corridor_door":
 		_pending_door_peek = true
-		# Consume leftover t, then pin to dest-box center (same as 2.1→2.4).
-		# Sliding t on Y parked Front in DoorWall at the top-right.
+
+
 		InteractArrival.take_arrival_t_or_default()
 		_arrival_t = InteractArrival.DEFAULT_T
 		if _cover_layout_ready:
@@ -184,7 +183,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interaction_event(event: InputEvent) -> bool:
-	# Named InputMap action (E/Space/Enter + gamepad A). Excludes echo presses.
+
 	return event.is_action_pressed("interact")
 
 
@@ -328,10 +327,6 @@ func _apply_desk_seen_state() -> void:
 		shape.disabled = true
 
 
-## MemoryIndicator's editor position is texture-pixel space (same as colliders
-## and the player spawn); re-derive its world position from that captured
-## offset each time the background layout (re)applies, so dragging the node
-## in the editor is what actually moves it, not a hardcoded/computed anchor.
 func _sync_memory_indicator() -> void:
 	if not is_instance_valid(_memory_indicator) or not _memory_indicator.visible:
 		return
@@ -406,8 +401,8 @@ func _apply_door_peek_if_pending() -> void:
 	if not _cover_layout_ready:
 		return
 	_pending_door_peek = false
-	# Live DoorInteractArea center this Play. Stand the Player node (the model)
-	# on that box — t-slide + clearance put Front in DoorWall (top-right).
+
+
 	_player.global_position = InteractArrival.place_node_on_area_center(
 		_player, _door_interact_area
 	)

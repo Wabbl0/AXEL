@@ -4,10 +4,6 @@ const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 const OPEN_STREAM: AudioStreamWAV = preload("res://assets/audio/axel_typewriter_open.wav")
 const TYPE_STREAM: AudioStreamWAV = preload("res://assets/audio/axel_typewriter_v4.wav")
 
-## Non-blocking bottom-centered dialogue bar; does not pause physics or capture input.
-## While typing: Tab / E / Space / Enter / click → instantly reveal the full line.
-## When fully shown: same inputs advance immediately; otherwise auto-advance after a
-## word-count reading timer, or ~2s after an instant skip reveal.
 
 enum LinePhase {
 	NONE,
@@ -17,20 +13,15 @@ enum LinePhase {
 
 const FADE_IN_SEC := 0.22
 const FADE_OUT_SEC := 0.22
-## ~25% faster than the old 28 CPS baseline (char-scramble flashes add perceived delay).
 const DEFAULT_CHARS_PER_SEC := 35.0
 const AUTO_ADVANCE_READING_BASE_SEC := 3.0
 const AUTO_ADVANCE_READING_SQRT_COEFFICIENT := 0.5774
 const AUTO_ADVANCE_SKIP_GRACE_SEC := 2.0
 const AUTO_ADVANCE_READING_MAX_SEC := 20.0
 const SLIDE_OFFSET := 12.0
-## Baseline side padding for the full-width bar (fraction 1.0).
 const SIDE_INSET_PX := 28.0
-## Pre-test full-width look: set `bar_width_fraction` back to this.
 const BAR_WIDTH_FRACTION_FULL := 1.0
-## Midpoint between full (1.0) and the first 2/3 playtest, then +5% width.
 const BAR_WIDTH_FRACTION_PLAYTEST := (BAR_WIDTH_FRACTION_FULL + 2.0 / 3.0) * 0.5 + 0.05
-## Pre-test bottom gap in pixels (used when `bottom_gap_viewport_fraction` is 0).
 const BOTTOM_GAP_PX_FULL := 12.0
 const CURSOR_GLYPH := "\u2588"
 const GLITCH_SEC := 0.12
@@ -45,21 +36,15 @@ const DESIGN_VIEWPORT_H := 1280.0
 const BASE_FONT_SIZE := 32
 const BASE_OUTLINE_SIZE := 4
 const TEXT_BOOST := 1.5
-## Player / narration. Other speakers (`AXEL: ...`) use bright red.
-## Opt-in `|grey|` (never shown) types light grey — wins over red when both apply.
 const PLAYER_LINE_COLOR := Color(1, 1, 1, 1)
 const OTHER_SPEAKER_COLOR := Color(1, 0, 0, 1)
 const GREY_SPEAKER_COLOR := Color(0.72, 0.72, 0.72, 1)
 
-## Shared typewriter tape position across rooms (seconds into v4).
 static var _type_loop_pos_sec := 0.0
 static var _reversed_open_stream: AudioStreamWAV = null
 
-## Legacy fixed gap; ignored when `bottom_gap_viewport_fraction` > 0.
 @export var bottom_gap_px := BOTTOM_GAP_PX_FULL
-## Playtest: lift bar by this fraction of window height above the bottom edge. 0 = use `bottom_gap_px`.
 @export_range(0.0, 0.4, 0.01) var bottom_gap_viewport_fraction := 0.03
-## Playtest: bar width as a fraction of the old nearly-full bar. 1.0 = rollback to full width.
 @export_range(0.2, 1.0, 0.01) var bar_width_fraction := BAR_WIDTH_FRACTION_PLAYTEST
 @export var fx_cursor := false
 @export var fx_slide_up := false
@@ -67,7 +52,6 @@ static var _reversed_open_stream: AudioStreamWAV = null
 @export var fx_line_swap_glitch := true
 @export var fx_border_pulse := false
 @export var fx_crt_power := true
-## Per-letter cryptic flash while typing (letters/digits only).
 @export var fx_char_scramble := true
 
 @onready var _fade_root: Control = $ViewportRoot/RootMargin
@@ -86,7 +70,6 @@ var _skip_input_enabled := true
 var _active_line_text := ""
 var _active_line_start_ms := 0
 var _line_token := 0
-## True for the whole show_lines / hide_line await (covers CRT gaps where bar alpha is ~0).
 var _sequence_active := false
 var _panel_style: StyleBoxFlat
 var _inner_style: StyleBoxFlat
@@ -96,13 +79,12 @@ var _cursor_active := false
 var _cursor_text := ""
 var _rest_offset_bottom := 0.0
 var _rest_offset_top := 0.0
-## True while type loop should keep wrapping (letters appearing).
 var _type_loop_wanted := false
 
 
 func _ready() -> void:
-	# Scene instances sometimes hide this CanvasLayer with the editor eye.
-	# Only the inner bar (_fade_root) should start hidden.
+
+
 	visible = true
 	layer = 111
 	_fade_root.visible = false
@@ -170,8 +152,8 @@ func _lock_bottom_layout() -> void:
 
 
 func _dialogue_window_scale(viewport_size: Vector2) -> float:
-	# ui_scale (D4 setting) composes multiplicatively with the viewport-height
-	# scale so the player slider and fullscreen scaling never fight each other.
+
+
 	var user_scale := UiViewportScale.settings_ui_scale(self)
 	if viewport_size.y <= 0.0:
 		return TEXT_BOOST * user_scale
@@ -232,7 +214,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _is_advance_event(event: InputEvent) -> bool:
-	# Named InputMap action (Tab/E/Space/Enter + gamepad A). Excludes echo presses.
+
 	if event.is_action_pressed("dialogue_advance"):
 		return true
 	if event is InputEventMouseButton:
@@ -244,7 +226,6 @@ func _is_advance_event(event: InputEvent) -> bool:
 	return false
 
 
-## Returns false when input should not be consumed (e.g. bar visible but idle).
 func _handle_line_input() -> bool:
 	match _line_phase:
 		LinePhase.TYPING:
@@ -260,7 +241,6 @@ func is_line_ready() -> bool:
 	return _line_phase == LinePhase.READY
 
 
-## Waits until the player presses advance or the auto-advance deadline is reached.
 func await_line_advance() -> void:
 	var token := _line_token
 	await _wait_for_advance(token, _compute_advance_deadline_ms())
@@ -357,7 +337,7 @@ static func _make_reversed_wav(src: AudioStreamWAV) -> AudioStreamWAV:
 		AudioStreamWAV.FORMAT_16_BITS:
 			bytes_per_frame = 2
 		_:
-			# Compressed formats cannot be frame-reversed safely; fall back to original.
+
 			out.data = data
 			return out
 	if src.stereo:
@@ -535,9 +515,6 @@ func _scramble_glitch(length: int) -> void:
 			return
 
 
-## Splits `|beat:<seconds>|`, `|other|`, and `|grey|` markers from display text.
-## Malformed tokens stay literal.
-## Returns { "display": String, "segments": Array of {kind:text|beat, ...} }.
 func _parse_dialogue_segments(raw: String) -> Dictionary:
 	var segments: Array = []
 	var display := ""
@@ -579,7 +556,6 @@ func _dialogue_display_text(raw: String) -> String:
 	return str(_parse_dialogue_segments(raw)["display"])
 
 
-## True when the line is tagged `|other|` or starts with an ALL-CAPS speaker tag (`AXEL: ...`).
 func _is_other_speaker_line(text: String) -> bool:
 	if text.contains("|other|"):
 		return true
@@ -638,7 +614,6 @@ func _set_typing_label(visible_text: String) -> void:
 		_label.text = visible_text
 
 
-## Instantly cuts the current line so a higher-priority line can take over.
 func interrupt_line() -> void:
 	_line_token += 1
 	_line_phase = LinePhase.NONE
@@ -659,7 +634,6 @@ func interrupt_line() -> void:
 	_reset_crt_visual()
 
 
-## Stops the current show_line sequence without hiding the bar (for in-bar line swaps).
 func cancel_pending_line() -> void:
 	_line_token += 1
 	_line_phase = LinePhase.NONE
@@ -675,7 +649,6 @@ func is_bar_visible() -> bool:
 	return is_instance_valid(_fade_root) and _fade_root.visible and _fade_root.modulate.a > 0.01
 
 
-## True while a line sequence or CRT show/hide is in flight (including alpha~0 CRT gaps).
 func is_sequence_busy() -> bool:
 	return _sequence_active or _line_phase != LinePhase.NONE or is_bar_visible()
 
@@ -684,8 +657,6 @@ func _line_alive(token: int) -> bool:
 	return is_instance_valid(self) and token == _line_token
 
 
-## Snapshot for callers running their own fire-and-forget line (e.g. a scripted
-## intro line that must not stomp on a newer, movement-triggered sequence).
 func current_line_token() -> int:
 	return _line_token
 
@@ -698,7 +669,6 @@ func _cancel_crt_power() -> void:
 	CrtPowerFx.cancel(self, _fade_root, _panel, _beam, _bloom)
 
 
-## Type, wait for player advance, CRT off. `hold_duration` is kept for call-site compat (unused).
 func _settings_cps(chars_per_sec: float) -> float:
 	if not is_equal_approx(chars_per_sec, DEFAULT_CHARS_PER_SEC):
 		return chars_per_sec
@@ -724,7 +694,6 @@ func show_line(
 	await show_lines([text], _settings_cps(chars_per_sec), allow_skip)
 
 
-## Multi-line sequence: advance on press scrambles to the next line; last line CRT powers off.
 func show_lines(
 	texts: Array,
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
@@ -770,7 +739,6 @@ func show_lines(
 	await hide_line()
 
 
-## Shows a line without blocking the caller; player movement continues during reveal/hold.
 func show_line_nonblocking(
 	text: String,
 	hold_duration: float = 2.5,
@@ -789,13 +757,12 @@ func _run_line_async(
 	await show_line(text, hold_duration, chars_per_sec, allow_skip)
 
 
-## Fade in (if needed) + typewriter, then return with the line still visible and awaiting advance.
 func type_line(
 	text: String,
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
 ) -> void:
-	## Mark busy for the whole fade+type so callers' dialogue_busy gates cover CRT alpha~0 gaps.
+
 	_sequence_active = true
 	_advance_requested = false
 	_skip_requested = false
@@ -831,7 +798,7 @@ func _run_typewriter(
 	_active_line_text = display_text
 	_skip_requested = false
 	if display_text.is_empty() and segments.is_empty():
-		# Reading timer starts when the line is fully shown, not when typing begins.
+
 		_active_line_start_ms = Time.get_ticks_msec()
 		_line_phase = LinePhase.READY
 		_pause_type_loop()
@@ -866,7 +833,7 @@ func _run_typewriter(
 					_line_phase = LinePhase.NONE
 					return
 				if allow_skip and _skip_requested:
-					# Advance during beat ends pause only; typing continues.
+
 					_skip_requested = false
 					break
 				if not await _await_process_frame():
@@ -920,7 +887,7 @@ func _run_typewriter(
 	_cursor_active = false
 	_label.text = display_text
 	_stop_border_pulse()
-	# Start auto-advance clock after the last letter (beats/scramble no longer eat the hold).
+
 	_active_line_start_ms = Time.get_ticks_msec()
 	_line_phase = LinePhase.READY
 

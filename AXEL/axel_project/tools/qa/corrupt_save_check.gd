@@ -1,5 +1,4 @@
 extends SceneTree
-## Phase 7: a corrupt slot body must not crash and must refuse Load.
 
 func _init() -> void:
 	call_deferred("_main")

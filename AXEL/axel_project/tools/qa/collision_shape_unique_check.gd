@@ -1,10 +1,4 @@
 extends SceneTree
-## SCENE_BUILDING: each CollisionShape2D must own its Shape2D.
-## Sharing a SubResource makes two colliders resize/scale together in the editor.
-## Exception: res://scenes/player/hitbox_front.tres (Mike CollisionFront).
-## Run from repo root:
-##   tools\cmd\godot.cmd --headless --path AXEL/axel_project \
-##     -s res://tools/qa/collision_shape_unique_check.gd
 
 const SCAN_ROOT := "res://scenes"
 const ALLOWED_SHARED_SHAPE := "res://scenes/player/hitbox_front.tres"

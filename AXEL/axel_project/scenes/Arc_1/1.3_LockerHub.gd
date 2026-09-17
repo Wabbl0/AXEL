@@ -47,7 +47,6 @@ func _qa_open_locker() -> void:
 		_locker.call("open_locker")
 
 
-
 func _play_first_visit_dialogue() -> void:
 	if GameManager.has_memory_scene(MEMORY_KEY):
 		return
@@ -82,9 +81,8 @@ func _on_locker_pressed() -> void:
 		_locker.call("open_locker")
 
 
-
 func _is_exit_key(event: InputEvent) -> bool:
-	# Named InputMap action (Esc/Backspace/Delete + gamepad B). Excludes echo presses.
+
 	return event.is_action_pressed("back")
 
 
@@ -108,15 +106,11 @@ func _apply_chrome_scale() -> void:
 	_locker_button.offset_bottom = -margin
 
 
-
 func _on_exit_pressed() -> void:
 	_queue_locker_tutorial_fight()
 	_go_to_scene(CORRIDOR_SCENE)
 
 
-## Leaving the hub on your own after opening the locker is what earns the first
-## fight. This only asks — AxelWorld decides and starts it in the corridor, so
-## no fight logic lives in an exploration scene.
 func _queue_locker_tutorial_fight() -> void:
 	var world := get_node_or_null("/root/AxelWorld")
 	if world != null and world.has_method("queue_locker_tutorial_fight"):
