@@ -39,6 +39,7 @@ func _ready() -> void:
 	_player_cover_sync.bind_design_from_background(
 		_bg, _cam.fit_mode, _cam.background_y
 	)
+	GameManager.set_corridor_right_hint_done(true)
 	_door_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/DoorInteractArea"
 	) as Area2D
@@ -82,11 +83,6 @@ func _process(_delta: float) -> void:
 func _refresh_active_zones() -> void:
 	if _is_transitioning:
 		return
-	if _door_dialogue_busy():
-		_door_zone_active = false
-		_cafeteria_zone_active = false
-		_hide_interact_prompt_immediate()
-		return
 	if not _arrival_latched_zone.is_empty():
 		_cafeteria_zone_active = _arrival_latched_zone == "cafeteria"
 		_door_zone_active = _arrival_latched_zone == "door"
@@ -106,7 +102,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	_refresh_active_zones()
 
 	if _door_dialogue_busy():
-		_hide_interact_prompt_immediate()
 		return
 	if _cafeteria_zone_active and _cafeteria_zone_armed:
 		_begin_cafeteria_transition()
@@ -148,8 +143,6 @@ func _begin_basement_entry() -> void:
 
 func _play_door_line_async() -> void:
 	_door_line_running = true
-
-	_hide_interact_prompt_immediate()
 	await _top_dialogue.show_line(DOOR_LINE, 3.0)
 	_door_line_running = false
 	GameManager.set_basement_door_line_seen(true)
@@ -178,9 +171,6 @@ func _show_active_interact_prompt() -> void:
 	if _is_transitioning:
 		return
 	if not is_instance_valid(_interact_prompt):
-		return
-	if _door_dialogue_busy():
-		_interact_prompt.hide_prompt()
 		return
 	if _cafeteria_zone_active:
 		_interact_prompt.show_prompt(_cafeteria_interact_anchor())

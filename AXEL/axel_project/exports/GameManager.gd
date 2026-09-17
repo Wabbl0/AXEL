@@ -42,6 +42,8 @@ var backyard_cigarette_line_seen: bool = false
 var teachers_key_line_seen: bool = false
 var teachers_memory_line_seen: bool = false
 var teachers_liar_line_seen: bool = false
+var corridor_from_locker: bool = false
+var corridor_right_hint_done: bool = false
 var visited_rooms: Dictionary = {}
 
 
@@ -86,6 +88,8 @@ func _load_persistent_state() -> void:
 	teachers_key_line_seen = false
 	teachers_memory_line_seen = false
 	teachers_liar_line_seen = false
+	corridor_from_locker = false
+	corridor_right_hint_done = false
 	visited_rooms = {}
 	var world := get_node_or_null("/root/AxelWorld")
 	if world != null and world.has_method("reset_world"):
@@ -147,6 +151,8 @@ func export_save_body() -> Dictionary:
 		"teachers_key_line_seen": teachers_key_line_seen,
 		"teachers_memory_line_seen": teachers_memory_line_seen,
 		"teachers_liar_line_seen": teachers_liar_line_seen,
+		"corridor_from_locker": corridor_from_locker,
+		"corridor_right_hint_done": corridor_right_hint_done,
 		"pause_map_return_path": pause_map_return_path,
 		"visited_rooms": visited_rooms.keys(),
 	}
@@ -176,6 +182,8 @@ func import_save_body(data: Dictionary) -> void:
 	teachers_key_line_seen = bool(data.get("teachers_key_line_seen", false))
 	teachers_memory_line_seen = bool(data.get("teachers_memory_line_seen", false))
 	teachers_liar_line_seen = bool(data.get("teachers_liar_line_seen", false))
+	corridor_from_locker = bool(data.get("corridor_from_locker", false))
+	corridor_right_hint_done = bool(data.get("corridor_right_hint_done", false))
 	pause_map_return_path = String(data.get("pause_map_return_path", ""))
 	visited_rooms = {}
 	for room_path in data.get("visited_rooms", []):
@@ -213,6 +221,8 @@ func _save_persistent_state() -> void:
 		"teachers_key_line_seen": teachers_key_line_seen,
 		"teachers_memory_line_seen": teachers_memory_line_seen,
 		"teachers_liar_line_seen": teachers_liar_line_seen,
+		"corridor_from_locker": corridor_from_locker,
+		"corridor_right_hint_done": corridor_right_hint_done,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -235,6 +245,16 @@ func has_visited(scene_path: String) -> bool:
 
 func set_corridor_locker_line_seen(value: bool = true) -> void:
 	corridor_locker_line_seen = value
+	_save_persistent_state()
+
+
+func set_corridor_from_locker(value: bool = true) -> void:
+	corridor_from_locker = value
+	_save_persistent_state()
+
+
+func set_corridor_right_hint_done(value: bool = true) -> void:
+	corridor_right_hint_done = value
 	_save_persistent_state()
 
 func set_corridor_spawn_line_seen(value: bool = true) -> void:

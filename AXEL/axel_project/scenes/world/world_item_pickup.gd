@@ -131,6 +131,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not event.is_action_pressed("interact"):
 		return
+	var scene := get_tree().current_scene if get_tree() != null else null
+	var dialogue := scene.get_node_or_null("TopDialogueOverlay") if scene != null else null
+	if InteractZoneGate.blocks_interact(dialogue):
+		return
 	get_viewport().set_input_as_handled()
 	_take()
 

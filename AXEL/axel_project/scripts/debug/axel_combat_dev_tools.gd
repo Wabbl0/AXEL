@@ -158,7 +158,7 @@ func _build_ui() -> void:
 	_menu.add_child(vbox)
 
 	_add_section_label(vbox, "GUARANTEES")
-	_add_toggle_row(vbox, "trinity", "Guarantee Trinity")
+	_add_toggle_row(vbox, "trinity", "Guarantee Vice Round")
 	_add_toggle_row(vbox, "fs_clear", "Guarantee Free Spins")
 	_add_toggle_row(vbox, "payout_1000x", "Guarantee 1000x Payout")
 	vbox.add_child(HSeparator.new())
@@ -339,7 +339,7 @@ func _refresh_toggle_labels() -> void:
 			fs_clear = bool(_combat.call("debug_get_guarantee_fs_clear"))
 		if _combat.has_method("debug_get_guarantee_payout_1000x"):
 			payout = bool(_combat.call("debug_get_guarantee_payout_1000x"))
-	_set_toggle_text("trinity", "Guarantee Trinity", trinity)
+	_set_toggle_text("trinity", "Guarantee Vice Round", trinity)
 	_set_toggle_text("fs_clear", "Guarantee Free Spins", fs_clear)
 	_set_toggle_text("payout_1000x", "Guarantee 1000x Payout", payout)
 

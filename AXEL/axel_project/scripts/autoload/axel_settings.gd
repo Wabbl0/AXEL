@@ -7,6 +7,14 @@ const REBINDABLE_ACTIONS: PackedStringArray = [
 	"move_up", "move_down", "move_left", "move_right",
 	"interact", "dialogue_advance", "back", "pause",
 ]
+const _UI_MIRROR := {
+	"move_up": "ui_up",
+	"move_down": "ui_down",
+	"move_left": "ui_left",
+	"move_right": "ui_right",
+	"interact": "ui_accept",
+	"back": "ui_cancel",
+}
 
 const DEFAULTS := {
 	"audio": {
@@ -99,6 +107,7 @@ func store_action_binding(action: String, events: Array) -> void:
 	_config.set_value("controls", action, events)
 	_queue_save()
 	_apply_action_binding(action, events)
+	_mirror_ui_actions_from_gameplay()
 	setting_changed.emit("controls", action)
 
 
@@ -219,12 +228,27 @@ func _set_bus_linear(bus_name: String, linear: float, respect_existing_mute: boo
 
 
 func _apply_input_overrides() -> void:
-	if not _config.has_section("controls"):
-		return
-	for action in _config.get_section_keys("controls"):
-		var events: Variant = _config.get_value("controls", action, [])
-		if events is Array:
-			_apply_action_binding(String(action), events)
+	if _config.has_section("controls"):
+		for action in _config.get_section_keys("controls"):
+			var events: Variant = _config.get_value("controls", action, [])
+			if events is Array:
+				_apply_action_binding(String(action), events)
+	_mirror_ui_actions_from_gameplay()
+
+
+func _mirror_ui_actions_from_gameplay() -> void:
+	# Godot Control focus still reads ui_*; keep those in sync with live gameplay binds.
+	for src_var in _UI_MIRROR.keys():
+		var src := String(src_var)
+		var dst := String(_UI_MIRROR[src])
+		if not InputMap.has_action(src) or not InputMap.has_action(dst):
+			continue
+		InputMap.action_erase_events(dst)
+		for ev in InputMap.action_get_events(src):
+			if ev is InputEvent:
+				var copy := (ev as InputEvent).duplicate() as InputEvent
+				if copy != null:
+					InputMap.action_add_event(dst, copy)
 
 
 func _apply_action_binding(action: String, events: Array) -> void:

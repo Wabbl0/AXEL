@@ -68,6 +68,9 @@ func _on_map_hotspot_activated() -> void:
 func _input(event: InputEvent) -> void:
 	if not _is_exit_key(event):
 		return
+	if _first_visit_dialogue_running:
+		get_viewport().set_input_as_handled()
+		return
 	if _locker != null and _locker.has_method("is_open") and bool(_locker.call("is_open")):
 		return
 	get_viewport().set_input_as_handled()
@@ -107,14 +110,24 @@ func _apply_chrome_scale() -> void:
 
 
 func _on_exit_pressed() -> void:
+	if _first_visit_dialogue_running or _is_transitioning:
+		return
+	GameManager.set_corridor_from_locker(true)
 	_queue_locker_tutorial_fight()
 	_go_to_scene(CORRIDOR_SCENE)
 
 
 func _queue_locker_tutorial_fight() -> void:
 	var world := get_node_or_null("/root/AxelWorld")
-	if world != null and world.has_method("queue_locker_tutorial_fight"):
-		world.call("queue_locker_tutorial_fight")
+	var run := get_node_or_null("/root/AxelRun")
+	if world == null or not world.has_method("queue_locker_tutorial_fight"):
+		return
+	if run != null and (
+		bool(run.state.tutorial_fight_done) or bool(run.state.tutorial_fight_pending)
+	):
+		return
+	if not bool(world.call("queue_locker_tutorial_fight")):
+		push_warning("1.3_LockerHub: tutorial fight did not queue on locker exit")
 
 
 func _go_to_scene(scene_path: String) -> void:

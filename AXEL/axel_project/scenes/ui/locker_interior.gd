@@ -30,6 +30,9 @@ func open_locker() -> void:
 	var run := get_node_or_null("/root/AxelRun")
 	if run != null and run.has_method("grant_locker_stash_once"):
 		run.call("grant_locker_stash_once")
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("queue_locker_tutorial_fight"):
+		world.call("queue_locker_tutorial_fight")
 	visible = true
 	_apply_scale()
 	_refresh()

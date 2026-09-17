@@ -275,8 +275,6 @@ func queue_locker_tutorial_fight() -> bool:
 	var run := _run()
 	if run == null:
 		return false
-	if not bool(run.state.locker_stash_granted):
-		return false
 	if bool(run.state.tutorial_fight_done) or bool(run.state.tutorial_fight_pending):
 		return false
 	run.state.tutorial_fight_pending = true
@@ -298,14 +296,13 @@ func _start_locker_tutorial(scene: Node) -> void:
 		return
 	if not bool(run.state.tutorial_fight_pending):
 		return
-	run.state.tutorial_fight_pending = false
-	run.state.tutorial_fight_done = true
 	if not start_fight_here(REASON_LOCKER_TUTORIAL):
-
-
-		run.state.tutorial_fight_pending = true
-		run.state.tutorial_fight_done = false
 		return
+	run.state.tutorial_fight_pending = false
+	if bool(run.call("is_in_encounter")):
+		run.state.tutorial_fight_done = true
+	else:
+		run.state.tutorial_fight_pending = true
 	_save()
 
 
@@ -323,11 +320,15 @@ func _record_fight_room(scene_path: String) -> void:
 
 
 func notify_fight_won(_reason: String, dest_scene: String, tex: Vector2, has_tex: bool) -> void:
-	_starting_fight = false
-	_steps_since_fight = 0
+	notify_fight_ended()
 	_pending_return_scene = dest_scene
 	_pending_return_tex = tex
 	_pending_return_valid = has_tex
+
+
+func notify_fight_ended() -> void:
+	_starting_fight = false
+	_steps_since_fight = 0
 
 
 func item_rank_for_scene(scene_path: String) -> int:
@@ -349,6 +350,8 @@ func take_item(scene_path: String, index: int) -> void:
 		if not item_id.is_empty() and not owned.has(item_id):
 			owned.append(item_id)
 			run.state.owned_item_ids = PackedStringArray(owned)
+		if not item_id.is_empty() and run.has_method("equip_owned_if_free"):
+			run.call("equip_owned_if_free", item_id)
 	var area_id := area_for_scene(scene_path)
 	_engage_area(area_id)
 	_refresh_cleared(area_id)
@@ -809,6 +812,8 @@ func _spawn_pickups(scene: Node, env: Node2D, path: String) -> void:
 		child.queue_free()
 	var prompt := _ensure_prompt_overlay(scene)
 	var info_card := _ensure_info_card(scene)
+	if info_card != null and info_card.has_method("bind_chip_host"):
+		info_card.call("bind_chip_host", prompt)
 	for i in entries.size():
 		var entry: Dictionary = entries[i]
 		if bool(entry.get("taken", false)):
@@ -831,6 +836,7 @@ func _ensure_prompt_overlay(scene: Node) -> Node:
 		return null
 	var overlay := packed.instantiate()
 	overlay.name = PROMPT_NODE_NAME
+	overlay.set("screen_offset", Vector2(3, 0))
 	scene.add_child(overlay)
 	return overlay
 

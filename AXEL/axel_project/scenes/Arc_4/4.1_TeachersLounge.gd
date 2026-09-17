@@ -176,15 +176,6 @@ func _refresh_active_zone() -> void:
 	if _is_transitioning:
 		return
 	var prev := _active_zone
-	if (
-		_enter_dialogue_pending
-		or _key_line_running
-		or InteractZoneGate.dialogue_busy(_top_dialogue)
-	):
-		_active_zone = ""
-		if not prev.is_empty():
-			_hide_interact_prompt()
-		return
 	if not _arrival_latched_zone.is_empty():
 		_active_zone = _arrival_latched_zone
 	else:
@@ -272,12 +263,6 @@ func _sync_memory_indicator() -> void:
 
 func _show_interact_prompt() -> void:
 	if _is_transitioning or _active_zone.is_empty():
-		return
-	if (
-		_enter_dialogue_pending
-		or _key_line_running
-		or InteractZoneGate.dialogue_busy(_top_dialogue)
-	):
 		return
 	if _active_zone == "key" and GameManager.get_flag("hasKey"):
 		return

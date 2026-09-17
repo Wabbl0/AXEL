@@ -2,7 +2,7 @@ extends SceneTree
 
 const PLAYTEST := "res://combat/combat_test.tscn"
 const PLAYER := "res://combat/combat_run.tscn"
-const STARTER := "res://combat/data/items/C1_ash_reroll_token.tres"
+const STARTER := "res://combat/data/items/C1_ash_spin_token.tres"
 const HOST_PAD_PX := 1.0
 const ICON_INSET_MIN_PX := 8.0
 const NAME_MIN_W := 40.0

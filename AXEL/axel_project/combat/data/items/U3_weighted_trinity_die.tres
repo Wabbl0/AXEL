@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"U3"
-display_name = "Weighted Trinity Die"
+display_name = "Weighted Vice Die"
 rarity = 1
 family = "pwrwgt"
 description = "Makes power symbols 10% more likely to appear"

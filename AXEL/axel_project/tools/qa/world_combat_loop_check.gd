@@ -47,6 +47,7 @@ func _main() -> void:
 	_check_visited_gate(gm)
 	_check_walk_gate(world, run)
 	_check_goal_ladder(run)
+	_check_tutorial_queue_without_stash(world, run)
 
 	if _failures.is_empty():
 		print("World combat loop check OK.")
@@ -225,6 +226,8 @@ func _check_take_item(world: Node, run: Node) -> void:
 	world.call("take_item", room, 0)
 	if not Array(run.state.owned_item_ids).has("C-A"):
 		_fail("taking a floor item did not add it to the locker")
+	if not Array(run.state.equipped_item_ids).has("C-A"):
+		_fail("taking a floor item did not auto-equip it")
 	if int(world.call("area_rank", "cafeteria")) != 0:
 		_fail("the area you picked from must keep its rank")
 	if int(world.call("area_rank", "kitchen")) != 1:
@@ -344,7 +347,7 @@ func _check_walk_gate(world: Node, run: Node) -> void:
 
 func _check_goal_ladder(run: Node) -> void:
 	run.call("reset_run")
-	var want := [3000, 5000, 7500, 10000, 15000, 20000, 30000]
+	var want := [500, 750, 1000, 1500, 2000, 3000, 5000]
 	for i in want.size():
 		run.state.world_fight_count = i + 1
 		var got := int(run.call("world_goal_base_cents"))
@@ -358,6 +361,21 @@ func _check_goal_ladder(run: Node) -> void:
 		if got <= previous:
 			_fail("world fight %d goal did not grow past %d (got %d)" % [extra, previous, got])
 		previous = got
+	run.call("reset_run")
+
+
+func _check_tutorial_queue_without_stash(world: Node, run: Node) -> void:
+	world.call("reset_world")
+	run.call("reset_run")
+	if bool(run.state.locker_stash_granted):
+		_fail("fresh run must not already have the locker stash")
+	if not bool(world.call("queue_locker_tutorial_fight")):
+		_fail("tutorial should queue without opening the locker")
+	if not bool(run.state.tutorial_fight_pending):
+		_fail("queue without stash did not set tutorial_fight_pending")
+	if bool(world.call("queue_locker_tutorial_fight")):
+		_fail("a second tutorial queue should do nothing")
+	world.call("reset_world")
 	run.call("reset_run")
 
 

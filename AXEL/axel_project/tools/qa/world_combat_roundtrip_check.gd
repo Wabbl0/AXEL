@@ -144,6 +144,8 @@ func _check_floor_pickup(world: Node, run: Node, fx: Node) -> void:
 	pickup.call("_take")
 	if not Array(run.state.owned_item_ids).has(item_id):
 		_fail("floor item %s did not reach the locker" % item_id)
+	if not Array(run.state.equipped_item_ids).has(item_id):
+		_fail("floor item %s was owned but not equipped" % item_id)
 	if not await _wait_for_scene_prefix(COMBAT_PREFIX, 400):
 		_fail("floor item pickup did not start a fight")
 		return

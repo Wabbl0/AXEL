@@ -68,13 +68,13 @@ func goal_percent(items: Array) -> float:
 	return total
 
 
-func reroll_payout_scalar(items: Array, spins_used: int) -> float:
+func paid_spin_payout_scalar(items: Array, spins_used: int) -> float:
 	var total := 0.0
 	for item in items:
-		if _eff(item) != &"reroll_payout_scalar":
+		if _eff(item) != &"paid_spin_payout_scalar":
 			continue
 		var p := _params(item)
-		var per := float(p.get("per_reroll", 0.0))
+		var per := float(p.get("per_paid_spin", 0.0))
 		var cap := float(p.get("cap", 99.0))
 		total += minf(float(spins_used) * per, cap)
 	return total
@@ -104,17 +104,17 @@ func should_skip_refill(items: Array, in_trinity: bool, in_free_spins: bool) -> 
 	return has_sealed_grid(items)
 
 
-func first_reroll_free(items: Array) -> bool:
+func first_paid_spin_free(items: Array) -> bool:
 	for item in items:
-		if _eff(item) == &"reroll_payout_scalar" and bool(_params(item).get("first_free", false)):
+		if _eff(item) == &"paid_spin_payout_scalar" and bool(_params(item).get("first_free", false)):
 			return true
 	return false
 
 
-func first_reroll_refund(items: Array) -> float:
+func first_paid_spin_refund(items: Array) -> float:
 	var total := 0.0
 	for item in items:
-		if _eff(item) == &"first_reroll_refund":
+		if _eff(item) == &"first_paid_spin_refund":
 			total += float(_params(item).get("amount", 0.0))
 	return total
 
@@ -148,7 +148,7 @@ func apply_weights(items: Array, base_weights: Dictionary, symbols_by_id: Dictio
 				normal_add += float(p.get("weight", 0.0))
 			&"power_symbol_weight":
 				power_add += float(p.get("amount", 0.0))
-			&"reroll_payout_scalar":
+			&"paid_spin_payout_scalar":
 				power_chance_add += float(p.get("power_symbol_chance", 0.0))
 			&"princess_charm":
 				var pid := StringName(str(p.get("princess", "")))
@@ -294,7 +294,7 @@ func meter_mods(items: Array) -> Dictionary:
 
 func trinity_mods(items: Array) -> Dictionary:
 	var mods := {
-		"extra_start_spins": 0,
+		"first_miss_extra_spins": 0,
 		"win_scalar": 0.0,
 		"first_dead_chosen": false,
 		"chosen_plus_random": 0.0,
@@ -303,7 +303,7 @@ func trinity_mods(items: Array) -> Dictionary:
 		if _eff(item) != &"trinity_run":
 			continue
 		var p := _params(item)
-		mods["extra_start_spins"] = int(mods["extra_start_spins"]) + int(p.get("extra_start_spins", 0))
+		mods["first_miss_extra_spins"] = int(mods["first_miss_extra_spins"]) + int(p.get("first_miss_extra_spins", 0))
 		mods["win_scalar"] = float(mods["win_scalar"]) + float(p.get("win_scalar", 0.0))
 		if p.has("first_dead_chosen"):
 			mods["first_dead_chosen"] = bool(p.get("first_dead_chosen", false))
@@ -491,18 +491,18 @@ func other_powers(except_id: StringName) -> Array[StringName]:
 	return out
 
 
-func reroll_hint(items: Array, spins_used: int) -> String:
+func paid_spin_hint(items: Array, spins_used: int) -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	for item in items:
-		if _eff(item) != &"reroll_payout_scalar":
+		if _eff(item) != &"paid_spin_payout_scalar":
 			continue
 		var p := _params(item)
-		var per := float(p.get("per_reroll", 0.0))
+		var per := float(p.get("per_paid_spin", 0.0))
 		var cap := float(p.get("cap", 99.0))
 		var cur := minf(float(spins_used) * per, cap)
 		parts.append("%s +%.2fx at %d used, cap %.2f" % [String(item.get("id")), cur, spins_used, cap])
 	for item in items:
-		if _eff(item) == &"first_reroll_refund":
+		if _eff(item) == &"first_paid_spin_refund":
 			if spins_used <= 0:
 				parts.append("C10 refund pending")
 			else:

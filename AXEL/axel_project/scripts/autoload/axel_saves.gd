@@ -58,6 +58,13 @@ func has_living_slot() -> bool:
 	return last_living_slot() >= 0
 
 
+func has_any_slot() -> bool:
+	for i in SLOT_COUNT:
+		if not is_empty(i):
+			return true
+	return false
+
+
 func has_map() -> bool:
 	return GameManager.has_memory_scene(MAP_MEMORY_KEY)
 
@@ -160,6 +167,17 @@ func save_active_now() -> void:
 	if scene != null:
 		path = scene.scene_file_path
 	_flush_save(path)
+
+
+func delete_slot(slot: int) -> bool:
+	if not _valid_slot(slot) or is_empty(slot):
+		return false
+	_delete_slot_files(slot)
+	if active_slot == slot:
+		active_slot = -1
+		active_slot_changed.emit(-1)
+	slots_changed.emit()
+	return true
 
 
 func write_tombstone(slot: int) -> void:

@@ -154,6 +154,12 @@ func _run_hide_async() -> void:
 	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
 
 
+func chip_screen_rect() -> Rect2:
+	if _panel == null or not is_instance_valid(_panel):
+		return Rect2()
+	return _panel.get_global_rect()
+
+
 func _update_screen_position() -> void:
 	var viewport := get_viewport()
 	if viewport == null:

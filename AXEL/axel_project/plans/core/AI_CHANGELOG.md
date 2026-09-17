@@ -6742,4 +6742,123 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared git history since `01a3160` (2026-09-10), uncommitted diffs, and Sep 10–17 chats against existing changelog rows. Read live `axel_music.gd` preloads, archive `html/` + `goal_hud.tscn`, and `run_state.gd`.
 - Notes: Already logged this week (do not repeat): Sep 10 ITEMS / board-swap / win-lines / Space-E spin / wrap / catalog / DVD mill / 1024 files / mute / item_lines / saves-menu; Sep 17 leftover archive, pointing-hand `ItemMarker`, no-`##` rule, leftover archive finish, ring delete + 48/1024 draw sizes, mass `#` strip. Did not log: file-by-file cleanup inventory, C9–C12 read-only audits, discussion chats, or `2.1_Cafeteria.tscn` `TopDialogueOverlay.visible = false` (looks like an editor save; 4.1 already had the same flag).
 
+### Title menu WASD / interact / back
+
+- Request: WASD should navigate the main menu, E/Enter/Space should confirm, Esc/Backspace should go back a page.
+- Implementation: `AxelSettings` copies live `move_*` / `interact` / `back` binds onto Godot’s `ui_up/down/left/right` / `ui_accept` / `ui_cancel` so Control focus uses the same keys as the rest of the game (and follows rebinds). Title, saves, options, credits, and pause now grab a real control on open; disabled Continue/Load/slot/Delete buttons are taken out of the focus chain. Options scroll follows focus and no longer eats WASD.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_settings.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Credits.gd`
+  - `AXEL/axel_project/scenes/ui/options_panel.gd`
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/tools/qa/menu_nav_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AGENTS.md`
+- Behavior impact: W/S move up and down the title list, A/D move sideways on Load Game rows, E/Enter/Space press the highlighted button, Esc/Backspace leave Saves/Options/Credits (title Esc still quits). Pause uses the same keys.
+- Verification: `menu_nav_check.gd` OK (exit 0). Also OK: determinism, princess, combat scaffold, scene smoke, settings persistence, pause contract, save slots. `audio_bus_layout_check.gd` still fails on the existing Master mute — unrelated.
+- Notes: Gameplay code still must not *check* `ui_*`; Godot’s Control widgets are what read those built-ins. Source: Godot 4.7 keyboard/controller focus docs.
+
+### Menu focus outline hugs the label
+
+- Request: The keyboard highlight on main-menu / pause buttons should wrap the words, not stretch across the whole row.
+- Implementation: `MenuLook.apply_button` now shrinks each button to its text and draws a tight 1px focus box around that label. Load Game keeps Slot on the left and Delete on the right with a spacer, so those outlines stay on the words too.
+- Files changed:
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Credits.gd`
+  - `AXEL/axel_project/scenes/ui/options_panel.gd`
+  - `AXEL/axel_project/tools/qa/menu_nav_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Focused Continue / Back / pause Resume (and the other menu buttons) show a small box around the text instead of a full-width bar.
+- Verification: `menu_nav_check.gd` OK (exit 0). `save_slots_check.gd` OK.
+- Notes: Options checkboxes stay left-aligned so the settings list does not jump to the center.
+
+### Paid spin wording for C1 line
+
+- Request: Use only **Paid Spin** or **Spin** in names, descriptions, and HUD. C1 is Ash Spin Token; descriptions say "each paid spin."
+- Implementation: Player-facing names and descriptions now use **paid spin**. Playtest HUD header is **PAID SPINS**. Effect ids are `paid_spin_payout_scalar` / `first_paid_spin_refund`. Baseline line key is `spinpay`. Renamed `C1_ash_spin_token.tres` and `U1_filtered_spinner.tres`. U1 display name is Filtered Spinner. C10 refunds 25% of the bet on the first paid spin. Older changelog rows stay as written (append-only).
+- Files changed:
+  - `AXEL/axel_project/combat/data/items/C1_ash_spin_token.tres`
+  - `AXEL/axel_project/combat/data/items/U1_filtered_spinner.tres`
+  - `AXEL/axel_project/combat/data/items/C10_tarnished_coin.tres`
+  - `AXEL/axel_project/combat/data/items/R1_fractured_reel.tres`
+  - `AXEL/axel_project/combat/data/items/E4_overflow_ledger.tres`
+  - `AXEL/axel_project/combat/scripts/item_lines.gd`
+  - `AXEL/axel_project/combat/scripts/item_effect_dispatcher.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/test/item_synergy_smoke.gd`
+  - `AXEL/axel_project/combat/test/combat_player_item_box_check.gd`
+  - `AXEL/axel_project/tools/qa/item_icon_draw_size_check.gd`
+  - `AXEL/axel_project/tools/combat/generate_item_resources.py`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/references/AXEL_notes.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Math is the same. Players and the ITEMS list now read paid spin instead of the old word. Shop floor-item redraw tickets in notes are still not live.
+- Verification: determinism OK (exit 0); princess OK; scaffold OK; scene smoke OK (21 scenes); item_synergy_smoke 44/44; combat_player_item_box_check OK; item_icon_draw_size_check OK; world_combat_loop_check OK.
+- Notes: Catalog is the item source of truth. Internal `spinpay` key is not shown as player text.
+
+### Menu focus padding and key-only outline
+
+- Request: Leave space between the button text and the focus box, and only show that box after using keys to navigate.
+- Implementation: Padding now lives on the button’s empty style (16×10 px) so the outline sits off the letters. Opening a menu uses `grab_focus(true)` (hidden focus); WASD / arrows reveal the box the same way Godot does after keyboard navigation.
+- Files changed:
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Credits.gd`
+  - `AXEL/axel_project/tools/qa/menu_nav_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Title / saves / pause start with no white box. After W/S the box appears around the selected label with a gap. Mouse clicks still do not show it.
+- Verification: `menu_nav_check.gd` OK (exit 0).
+- Notes: Godot 4.7 `Control.grab_focus(hide_focus)` / `has_focus(ignore_hidden_focus)`.
+
+### Red pixel menu focus box
+
+- Request: Make the focus indicator the same red as the font, pixelated like the letters, and a handful of pixels thicker.
+- Implementation: Focus StyleBox is now `MenuLook.ACCENT` red, 4 px thick (scales with UI), sharp corners, antialiasing off, nearest filtering — same red block look as VT323.
+- Files changed:
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/tools/qa/menu_nav_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: The keyboard box matches the selected red label instead of a thin white line.
+- Verification: `menu_nav_check.gd` OK (exit 0).
+- Notes: Godot 4.7 StyleBoxFlat `anti_aliasing` off + `corner_detail` 1 for crisp edges.
+
+## 2026-09-17
+
+### Playtest loop: fights, tutorial, chips, arrow, skull, HUD
+
+- Request: Build all six playtest plans together (loss exit, world loop, overworld [E], 1.2 arrow, skull UX, HUD feel).
+- Implementation: Live fights no longer turn on Limit spins. Finalize skips Vice Round / Free Spins choice. GONE waits `WIN_RETURN_SEC` then title, and `_starting_fight` clears on loss. First hub→1.2 leave queues the tutorial without opening LOCKER; floor pickups auto-equip; GOAL ladder is 500 / 750 / 1000 / 1500 / 2000 / 3000 / 5000. Door `[E]` stays up during lines. Item chip is +3px X with the card under it. 1.2 shows a right-arrow after locker or 10s. Keyboard Execute squashes like the mouse; first idle glows the skull; PremiumSkull is 85%. Grid scores are 70px, cascade waits are shorter, multiplier bounces in-circle.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/hud_piece.gd`
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/ui/terminal_theme.tres`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`
+  - `AXEL/axel_project/scenes/ui/locker_interior.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/fx/DirectionHint.tscn`
+  - `AXEL/axel_project/scenes/fx/direction_hint.gd`
+  - `AXEL/axel_project/assets/sprites/direction_arrow.png`
+  - `AXEL/axel_project/tools/qa/corridor_right_hint_check.gd`
+  - `AXEL/axel_project/tools/qa/playtest_hud_interact_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: First fight is `GOAL: 0 / 500`. Vice Round with chips left stays in combat. Real broke loss shows GONE, then title. Standing in a door during a line still shows `[E]`. After the locker, a white arrow points right in 1.2.
+- Verification: determinism OK (exit 0); princess OK; scaffold OK; scene smoke OK (21 scenes); pause contract OK; menu nav OK; world_combat_loop_check OK; world_combat_roundtrip_check OK; run_state_check OK; hud_piece_placement_check OK; hud_click_rect_check OK; combat_player_item_box_check OK; corridor_right_hint_check OK; playtest_hud_interact_check OK. Replaced the invalid `direction_arrow.png` (escaped-text bytes) with a real 48×48 PNG and reimported. Settings `MOVE_TextBox` now matches the 162×167 click plate so the HUD checks pass.
+- Notes: Do not scale `NEW_Execute`. `corridor_from_locker` survives the tutorial fight; `corridor_return_pos` does not.
+
 

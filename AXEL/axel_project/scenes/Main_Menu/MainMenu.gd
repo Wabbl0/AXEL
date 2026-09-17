@@ -34,10 +34,7 @@ func _ready() -> void:
 	)
 	_quit_button.pressed.connect(func() -> void: get_tree().quit())
 	get_viewport().size_changed.connect(_style_buttons)
-	if AxelSaves.has_living_slot():
-		_continue_button.grab_focus()
-	else:
-		_new_button.grab_focus()
+	_focus_start.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -47,8 +44,8 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("back"):
-		get_tree().quit()
 		get_viewport().set_input_as_handled()
+		get_tree().quit()
 
 
 func _on_continue() -> void:
@@ -57,9 +54,17 @@ func _on_continue() -> void:
 
 
 func _refresh_continue() -> void:
-	var living := AxelSaves.has_living_slot()
-	_continue_button.disabled = not living
-	_load_button.disabled = not living
+	MenuLook.set_button_disabled(_continue_button, not AxelSaves.has_living_slot())
+	MenuLook.set_button_disabled(_load_button, not AxelSaves.has_any_slot())
+
+
+func _focus_start() -> void:
+	if AxelSaves.has_living_slot():
+		MenuLook.grab_silent(_continue_button)
+	elif AxelSaves.has_any_slot():
+		MenuLook.grab_silent(_load_button)
+	else:
+		MenuLook.grab_silent(_new_button)
 
 
 func _style_buttons() -> void:

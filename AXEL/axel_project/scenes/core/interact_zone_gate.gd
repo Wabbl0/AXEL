@@ -47,6 +47,10 @@ static func dialogue_busy(overlay: Node) -> bool:
 	return false
 
 
+static func blocks_interact(overlay: Node) -> bool:
+	return dialogue_busy(overlay)
+
+
 static func movement_pressed() -> bool:
 	return (
 		Input.is_action_pressed("move_left")

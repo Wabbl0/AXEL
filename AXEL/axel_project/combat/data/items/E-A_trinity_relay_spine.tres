@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"E-A"
-display_name = "Trinity Relay Spine"
+display_name = "Vice Relay Spine"
 rarity = 3
 family = "A"
 description = "Each power activation triggers both other powers at 50% potency"

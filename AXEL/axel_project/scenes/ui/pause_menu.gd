@@ -21,6 +21,7 @@ func show_menu() -> void:
 	_show_main()
 	visible = true
 	_refresh_map()
+	MenuLook.grab_first_focus(_menu)
 
 
 func hide_menu() -> void:
@@ -105,12 +106,15 @@ func _show_main() -> void:
 	if _inventory != null:
 		_inventory.visible = false
 	_refresh_map()
+	if visible:
+		MenuLook.grab_first_focus(_menu)
 
 
 func _open_options() -> void:
 	_menu.visible = false
 	_inventory.visible = false
 	_options.visible = true
+	MenuLook.grab_first_focus(_options)
 
 
 func _open_inventory() -> void:
@@ -118,6 +122,7 @@ func _open_inventory() -> void:
 	_options.visible = false
 	_fill_inventory()
 	_inventory.visible = true
+	MenuLook.grab_first_focus(_inventory)
 
 
 func _fill_inventory() -> void:

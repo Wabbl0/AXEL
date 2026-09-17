@@ -121,9 +121,9 @@ Combat phase is triggered by specific actions in exploration. There is no fixed 
 
 - Sold items return to their original area's pool and may reappear in later areas via the random 1–3 draw.
 
-### 4.5 Item example: reroll-multiplier
+### 4.5 Item example: paid-spin payout
 
-A specific passive item: while equipped, every reroll ticket currently held in inventory grants **+0.1× to the spin multiplier**. This makes hoarding tickets a viable build axis (instead of always spending them).
+Live example: **C1 Ash Spin Token**. While equipped, **each paid spin** adds encounter payout scalar (cap after several paid spins). Free Spins do not count. There is no ticket resource in combat.
 
 ---
 
@@ -162,7 +162,7 @@ A specific passive item: while equipped, every reroll ticket currently held in i
 Surplus currency above 10 can be spent on:
 
 - **Raising default starting bet** (e.g., 10 → 20). **Does not survive restarts.** Resets to 10 on death.
-- **Reroll tickets** (§6.4).
+- **Item redraw tickets** (§6.4). Not live.
 - Other shop purchases (§6).
 - Saved for higher antes in later encounters.
 
@@ -174,7 +174,7 @@ Pricing for these upgrades should be calculated against the system's RTP (§8).
 
 ### 6.1 Identity
 
-"The Hole" is the shop scene. It is the only place where the player can sell items, buy reroll tickets, and use overflow winnings on upgrades.
+"The Hole" is the shop scene. It is the only place where the player can sell items, buy item redraw tickets, and use overflow winnings on upgrades. **Not live.**
 
 ### 6.2 When The Hole is available
 
@@ -184,17 +184,19 @@ Pricing for these upgrades should be calculated against the system's RTP (§8).
 ### 6.3 What The Hole sells / does
 
 - **Buys back unwanted items** from the player (sell value scales with rarity).
-- **Sells reroll tickets** (currency-priced, see Question 4 about pricing vs RTP).
+- **Sells item redraw tickets** (currency-priced, see Question 4 about pricing vs RTP). **Not live.**
 - **Sells default-bet upgrades** (10 → 20, etc., resets on death).
 - **Does not affect the combat encounter chance.** Visiting The Hole is not a safety valve to reset step-encounter risk.
 
-### 6.4 Reroll tickets
+### 6.4 Item redraw tickets
+
+**Not live.** Combat copy uses **paid spin** for EXECUTE spins. Shop tickets redraw floor-item offers only.
 
 - Granted: **1 ticket per area** the player progresses through.
 - **Carry over across areas** — a ticket can be saved for a later area.
-- Used to **reroll the active 1–3 item draw inside a specific area**, hunting for synergy items in that area's pool of ~10.
-- Currency and reroll tickets are **separate, non-interchangeable** resources. The player cannot convert currency to tickets at any 1:1 ratio — they're bought as a discrete shop product, not a currency conversion.
-- Some items (passive or active) can convert held reroll tickets into combat bonuses (e.g., the +0.1× multiplier passive in §4.5). Tickets converted this way are **not consumed permanently** — they remain in inventory and continue providing the bonus until spent normally on a reroll.
+- Used to **redraw the active 1–3 item draw inside a specific area**, hunting for synergy items in that area's pool of ~10.
+- Currency and redraw tickets are **separate, non-interchangeable** resources. The player cannot convert currency to tickets at any 1:1 ratio — they're bought as a discrete shop product, not a currency conversion.
+- Combat items (C1 / U1 / R1 / E4 / C10) count **paid spins**, not held tickets.
 
 ---
 
@@ -228,10 +230,10 @@ Pricing for these upgrades should be calculated against the system's RTP (§8).
 
 ### 8.2 What this implies for shop pricing
 
-- Reroll tickets, default-bet upgrades, and any other purchasable advantage must be priced against the low RTP so that:
+- Item redraw tickets, default-bet upgrades, and any other purchasable advantage must be priced against the low RTP so that:
   - A player who plays well and collects items can earn enough surplus to afford meaningful upgrades.
   - A player who plays without items cannot reach significant surplus.
-- Concrete numbers (cost of raising default bet 10→20, cost of one reroll ticket) are not yet set — must come from RTP simulation.
+- Concrete numbers (cost of raising default bet 10→20, cost of one redraw ticket) are not yet set — must come from RTP simulation.
 
 ### 8.3 No mercy mechanic
 
@@ -274,13 +276,13 @@ All three required, no exceptions:
 
 A typical run plays out as:
 
-1. Player starts at the **locker hub** with **10 currency** and **0 reroll tickets**.
+1. Player starts at the **locker hub** with **10 currency** and **0 item redraw tickets**.
 2. Player chooses an area to enter. Each area contains 1–3 active items, possibly a passive item, and possibly memories.
 3. Player navigates the area's exploration scenes (existing dialogue/scene system from the prototype).
 4. Player picks up items → each pickup triggers a combat encounter immediately, with the new item available.
 5. Player may pick up memories freely (no encounter), accepting the +5% payout penalty for future encounters.
 6. Random step-encounters fire at low chance, scaling with areas cleared.
-7. After each encounter, surplus currency carries over. Reroll tickets earned. Optional 50/50 available.
+7. After each encounter, surplus currency carries over. Item redraw tickets earned (not live). Optional 50/50 available.
 8. Returning to the locker hub gives access to The Hole (shop).
 9. Clearing an area upgrades remaining areas' item rarities and raises base difficulty.
 10. Player progresses through all 6 areas. Final encounter occurs in the final area (likely Basement, per existing scene structure).
@@ -300,7 +302,7 @@ These questions have not yet been answered and are required before full implemen
   - Total steps taken since the last encounter?
   - A flat cooldown timer after each encounter?
   - Combination?
-4. **The reroll-ticket multiplier interaction (item from §4.5).** When a player spends a ticket mid-run for a reroll, the multiplier bonus drops by 0.1× immediately. Is this loss permanent for the ongoing encounter, or does picking up another ticket later restore the bonus? Also: does the ticket count check happen at encounter start (snapshot) or every spin (live)?
+4. **Paid-spin item scalar (live C1 line).** C1 / U1 / R1 / E4 add payout from `_spins_used` (paid EXECUTE spins). C10 refunds 25% of the bet on the first paid spin. Ticket-count combat bonuses are not in the live game.
 5. **RTP target number.** "Much lower than average net casino slots" needs a concrete percentage to target during economy simulation. Suggested starting range: **75–85%**, but needs decision before tuning shop prices.
 6. **Total memory penalty across all 6 areas.** With ~5% payout requirement increase per memory and an unknown total memory count across the 6 areas, what is the ceiling? Has it been stress-tested whether a fully synergized item build can clear the final encounter at maximum penalty, or is the final fight intentionally out of reach without ideal RNG on top of items?
 7. **Persistent stat upgrades (future feature).** A future idea was floated: stat upgrades that persist between runs based on high single-run scores. This must be designed carefully because it interacts with:
@@ -327,18 +329,18 @@ When adding or replacing symbols, add/update the PNG in `grid_symbols` and wire 
 
 ---
 
-## 13. Terminology Lock (Trinity vs Free Spins)
+## 13. Terminology Lock (Vice Round vs Free Spins)
 
-**Canon naming (see `plans/core/AI_DOCS.md`):** normal spins → Trinity round → Free Spins. Never call Trinity “Free Spins.” Prefer **Free Spins** over the old label “SUPER Free Spins.”
+**Canon naming (see `plans/core/AI_DOCS.md`):** normal spins → Vice Round → Free Spins. Never call Vice Round “Free Spins.” Prefer **Free Spins** over the old label “SUPER Free Spins.”
 
 To avoid future confusion in chats, reviews, and implementation notes, use these exact terms:
 
-- **Regular Free Spins** = **Trinity Run** (the sequence immediately after the premium meter fills).
-- **SUPER Free Spins** = the later bonus feature previously referred to in code/docs as Free Spins.
+- **Vice Round** (was Trinity Run) = the sequence immediately after the premium meter fills. All three powers fire in order.
+- **Free Spins** (was SUPER Free Spins) = the later bonus feature after Vice Round clears the grid.
 
 Gameplay rules tied to those names:
 
-- During **Regular Free Spins (Trinity Run)**, there should be **no cascading symbols** (no new symbol drops/refill behavior).
-- During **SUPER Free Spins**, there should be **no cascading symbols** (no new symbol drops BUT new grid after no more matches are done)
+- During **Vice Round**, there should be **no cascading symbols** (no new symbol drops/refill behavior).
+- During **Free Spins**, there should be **no cascading symbols** (no new symbol drops BUT new grid after no more matches are done)
 
 If any doc or task says only "Free Spins" without qualifier, treat it as ambiguous and restate which mode is intended before implementation.

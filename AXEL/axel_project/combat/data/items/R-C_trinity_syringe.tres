@@ -6,10 +6,10 @@
 [resource]
 script = ExtResource("1_script")
 id = &"R-C"
-display_name = "Trinity Syringe"
+display_name = "Vice Syringe"
 rarity = 2
 family = "C"
-description = "Each Trinity Run spin that wins grants +0.2x temporary run scalar"
+description = "Each Vice Round spin that wins grants +0.2x temporary run scalar"
 effect_id = &"trinity_run"
 effect_params = {"win_scalar": 0.2}
 icon = ExtResource("2_icon")

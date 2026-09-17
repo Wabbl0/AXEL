@@ -6,10 +6,10 @@
 [resource]
 script = ExtResource("1_script")
 id = &"L-C"
-display_name = "Trinity Crucible"
+display_name = "Vice Crucible"
 rarity = 4
 family = "C"
-description = "During Trinity Run, every spin applies chosen power + one extra random power at 60% potency"
+description = "During Vice Round, every spin applies chosen power + one extra random power at 60% potency"
 effect_id = &"trinity_run"
 effect_params = {"chosen_plus_random": 0.6}
 icon = ExtResource("2_icon")

@@ -1,6 +1,8 @@
 class_name SavesScreen
 extends Control
 
+const _COL_HALF_W := 500.0
+
 static var open_mode := "load"
 
 var _backdrop: TextureRect
@@ -8,6 +10,8 @@ var _chrome: CanvasLayer
 var _time := 0.0
 var _status: Label
 var _confirm_slot := -1
+var _confirm_delete_slot := -1
+var _status_hold := ""
 
 
 func _ready() -> void:
@@ -24,23 +28,26 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("back"):
-		MenuLook.go(get_tree(), MenuLook.TITLE_SCENE)
 		get_viewport().set_input_as_handled()
+		MenuLook.go(get_tree(), MenuLook.TITLE_SCENE)
 
 
 func _build() -> void:
 	for child in _chrome.get_children():
 		child.queue_free()
 	var host := Control.new()
+	host.name = "SavesHost"
 	host.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_chrome.add_child(host)
 	var col := VBoxContainer.new()
 	col.set_anchors_preset(Control.PRESET_CENTER)
-	col.offset_left = -420
-	col.offset_right = 420
+	col.offset_left = -_COL_HALF_W
+	col.offset_right = _COL_HALF_W
 	col.offset_top = -360
 	col.offset_bottom = 360
 	col.add_theme_constant_override("separation", 16)
+	col.propagate_maximum_size = true
+	col.custom_maximum_size = Vector2(_COL_HALF_W * 2.0, -1.0)
 	host.add_child(col)
 
 	var title := Label.new()
@@ -50,28 +57,59 @@ func _build() -> void:
 	col.add_child(title)
 
 	for i in AxelSaves.SLOT_COUNT:
-		col.add_child(_make_slot_button(i))
+		col.add_child(_make_slot_row(i))
 
 	_status = Label.new()
+	_status.name = "SavesStatus"
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status.custom_maximum_size = Vector2(_COL_HALF_W * 2.0, -1.0)
 	MenuLook.apply_label(_status, MenuLook.scaled_font(self, 22), MenuLook.DIM)
 	col.add_child(_status)
+	if not _status_hold.is_empty():
+		_status.text = _status_hold
+		_status_hold = ""
 
 	var back := Button.new()
+	back.name = "BackButton"
 	back.text = "Back"
 	MenuLook.apply_button(back, MenuLook.scaled_font(self, 32))
 	back.pressed.connect(func() -> void: MenuLook.go(get_tree(), MenuLook.TITLE_SCENE))
 	col.add_child(back)
+	MenuLook.grab_first_focus(host)
+
+
+func _make_slot_row(slot: int) -> Control:
+	if open_mode != "load":
+		return _make_slot_button(slot)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	var button := _make_slot_button(slot)
+	row.add_child(button)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(spacer)
+	var delete_btn := Button.new()
+	delete_btn.name = "DeleteSlot%d" % (slot + 1)
+	delete_btn.text = "Delete"
+	MenuLook.apply_button(delete_btn, MenuLook.scaled_font(self, 28), Control.SIZE_SHRINK_END)
+	MenuLook.set_button_disabled(delete_btn, AxelSaves.is_empty(slot))
+	delete_btn.pressed.connect(func() -> void: _on_delete_pressed(slot))
+	row.add_child(delete_btn)
+	return row
 
 
 func _make_slot_button(slot: int) -> Button:
 	var button := Button.new()
+	button.name = "Slot%d" % (slot + 1)
 	button.text = _slot_label(slot)
-	MenuLook.apply_button(button, MenuLook.scaled_font(self, 28))
+	MenuLook.apply_button(button, MenuLook.scaled_font(self, 28), Control.SIZE_SHRINK_BEGIN)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if open_mode == "load":
-		button.disabled = AxelSaves.is_empty(slot) or AxelSaves.is_dead(slot)
+		MenuLook.set_button_disabled(
+			button, AxelSaves.is_empty(slot) or AxelSaves.is_dead(slot)
+		)
 	button.pressed.connect(func() -> void: _on_slot_pressed(slot))
 	return button
 
@@ -106,6 +144,7 @@ func _slot_label(slot: int) -> String:
 
 func _on_slot_pressed(slot: int) -> void:
 	if open_mode == "load":
+		_confirm_delete_slot = -1
 		if not AxelSaves.load_slot(slot):
 			_status.text = "Could not load that slot."
 		return
@@ -120,6 +159,23 @@ func _on_slot_pressed(slot: int) -> void:
 		_status.text = "That slot died. Press again to overwrite."
 	else:
 		_status.text = "Slot has a run. Press again to overwrite."
+
+
+func _on_delete_pressed(slot: int) -> void:
+	if AxelSaves.is_empty(slot):
+		_status.text = "That slot is already empty."
+		return
+	if _confirm_delete_slot == slot:
+		if not AxelSaves.delete_slot(slot):
+			_status.text = "Could not delete that slot."
+			_confirm_delete_slot = -1
+			return
+		_confirm_delete_slot = -1
+		_status_hold = "Slot deleted."
+		_build()
+		return
+	_confirm_delete_slot = slot
+	_status.text = "Press again to delete this slot."
 
 
 func _start_new(slot: int) -> void:

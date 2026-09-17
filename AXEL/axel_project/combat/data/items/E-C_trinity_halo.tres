@@ -6,10 +6,10 @@
 [resource]
 script = ExtResource("1_script")
 id = &"E-C"
-display_name = "Trinity Halo"
+display_name = "Vice Halo"
 rarity = 3
 family = "C"
-description = "During Trinity Run, first non-winning spin triggers guaranteed chosen power"
+description = "During Vice Round, first non-winning spin triggers guaranteed chosen power"
 effect_id = &"trinity_run"
 effect_params = {"first_dead_chosen": true}
 icon = ExtResource("2_icon")

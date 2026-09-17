@@ -124,11 +124,6 @@ func _refresh_active_zone() -> void:
 	if _is_transitioning:
 		return
 	var prev := _active_zone
-	if _stub_dialogue_busy():
-		_active_zone = ""
-		if not prev.is_empty():
-			_hide_interact_prompt()
-		return
 	if not _arrival_latched_zone.is_empty():
 		_active_zone = _arrival_latched_zone
 	else:
@@ -213,8 +208,6 @@ func _interact_anchor() -> Vector2:
 func _show_interact_prompt() -> void:
 	if _is_transitioning or _active_zone.is_empty():
 		return
-	if _stub_dialogue_busy():
-		return
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.show_prompt(_interact_anchor())
@@ -248,10 +241,8 @@ func _begin_stub_door(zone_id: String) -> void:
 	if not STUB_DOOR_LINES.has(zone_id):
 		return
 	if _stub_dialogue_busy():
-		_hide_interact_prompt_immediate()
 		return
 	_stub_line_running = true
-	_hide_interact_prompt_immediate()
 	await _top_dialogue.show_line(str(STUB_DOOR_LINES[zone_id]), 3.0)
 	_stub_line_running = false
 	if _active_zone == zone_id:

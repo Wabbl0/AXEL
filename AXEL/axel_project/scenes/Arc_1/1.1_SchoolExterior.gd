@@ -419,8 +419,6 @@ func _on_door_interact_body_exited(body: Node) -> void:
 func _try_show_door_interact_prompt() -> void:
 	if _intro_state != IntroState.PLAYER_FREE or _is_transitioning:
 		return
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
-		return
 	if not is_instance_valid(_interact_prompt):
 		return
 	_interact_prompt.show_prompt(_door_interact_anchor())
@@ -435,9 +433,7 @@ func _hide_door_interact_prompt() -> void:
 
 
 func _refresh_door_interact_prompt() -> void:
-	if _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue):
-		_hide_door_interact_prompt()
-	elif _is_player_near_door():
+	if _is_player_near_door():
 		_try_show_door_interact_prompt()
 	else:
 		_hide_door_interact_prompt()

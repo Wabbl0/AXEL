@@ -6,10 +6,10 @@
 [resource]
 script = ExtResource("1_script")
 id = &"U7"
-display_name = "Star Charm"
+display_name = "Alcohol Charm"
 rarity = 1
 family = "star"
-description = "Star symbol chance +12%; Star power has 30% chance to add +1 extra wild"
+description = "Alcohol symbol chance +12%; Alcohol power has 30% chance to add +1 extra wild"
 effect_id = &"princess_charm"
 effect_params = {"princess": "star", "spawn_chance": 0.12, "extra_wild_chance": 0.3}
 icon = ExtResource("2_icon")

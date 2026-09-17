@@ -30,6 +30,7 @@ Run from the repo root:
 - Audio bus layout: `godot --headless --path AXEL/axel_project -s res://tools/qa/audio_bus_layout_check.gd`
 - Settings persistence: `godot --headless --path AXEL/axel_project -s res://tools/qa/settings_persistence_check.gd`
 - Pause contract: `godot --headless --path AXEL/axel_project -s res://tools/qa/pause_contract_check.gd`
+- Menu keyboard nav: `godot --headless --path AXEL/axel_project -s res://tools/qa/menu_nav_check.gd`
 
 Headless SceneTree checks must force `root.size = Vector2i(1920, 1280)` before
 loading scenes — the dummy display can report a 64×64 viewport (seen on Windows),

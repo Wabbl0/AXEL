@@ -5,7 +5,8 @@ const ICON_PX := 64.0
 const NAME_FONT := 26
 const DESC_FONT := 20
 const CARD_WIDTH := 520.0
-const LIFT_PX := 150.0
+const CHIP_GAP_PX := 6.0
+const BAR_TOP_FRACTION := 0.82
 
 var _root: Control
 var _panel: PanelContainer
@@ -14,6 +15,7 @@ var _name_label: Label
 var _desc_label: Label
 var _world_anchor := Vector2.ZERO
 var _shown := false
+var _chip_host: Node
 
 
 func _ready() -> void:
@@ -24,6 +26,10 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_apply_scale)
 	_root.visible = false
 	set_process(false)
+
+
+func bind_chip_host(host: Node) -> void:
+	_chip_host = host
 
 
 func _build() -> void:
@@ -118,18 +124,33 @@ func _process(_delta: float) -> void:
 		_update_screen_position()
 
 
+func _chip_rect() -> Rect2:
+	if is_instance_valid(_chip_host) and _chip_host.has_method("chip_screen_rect"):
+		var rect: Variant = _chip_host.call("chip_screen_rect")
+		if rect is Rect2 and (rect as Rect2).size.x > 1.0:
+			return rect as Rect2
+	var viewport := get_viewport()
+	if viewport == null:
+		return Rect2()
+	var screen_pos := viewport.get_canvas_transform() * _world_anchor
+	return Rect2(screen_pos - Vector2(18.0, 18.0), Vector2(36.0, 36.0))
+
+
 func _update_screen_position() -> void:
 	var viewport := get_viewport()
 	if viewport == null or _panel == null:
 		return
-	var screen_pos := viewport.get_canvas_transform() * _world_anchor
+	var chip := _chip_rect()
 	var card_size := _panel.size
 	if card_size.x <= 0.0 or card_size.y <= 0.0:
 		card_size = _panel.get_combined_minimum_size()
-	var lift := LIFT_PX * UiViewportScale.factor(self)
-	var pos := screen_pos - Vector2(card_size.x * 0.5, card_size.y + lift)
-
+	var gap := CHIP_GAP_PX * UiViewportScale.factor(self)
+	var pos := Vector2(chip.get_center().x - card_size.x * 0.5, chip.end.y + gap)
 	var view_size := Vector2(viewport.get_visible_rect().size)
+	var bar_top := view_size.y * BAR_TOP_FRACTION
+	if pos.y + card_size.y > bar_top - 8.0:
+		pos.y = maxf(8.0, bar_top - 8.0 - card_size.y)
+	pos.x = chip.get_center().x - card_size.x * 0.5
 	pos.x = clampf(pos.x, 8.0, maxf(view_size.x - card_size.x - 8.0, 8.0))
 	pos.y = clampf(pos.y, 8.0, maxf(view_size.y - card_size.y - 8.0, 8.0))
 	_root.position = pos

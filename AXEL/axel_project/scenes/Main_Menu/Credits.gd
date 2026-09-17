@@ -38,11 +38,12 @@ func _ready() -> void:
 		MenuLook.apply_label(label, MenuLook.scaled_font(self, size), color)
 		col.add_child(label)
 	var back := Button.new()
+	back.name = "BackButton"
 	back.text = "Back"
 	MenuLook.apply_button(back, MenuLook.scaled_font(self, 32))
 	back.pressed.connect(func() -> void: MenuLook.go(get_tree(), MenuLook.TITLE_SCENE))
 	col.add_child(back)
-	back.grab_focus()
+	back.call_deferred("grab_focus", true)
 
 
 func _process(delta: float) -> void:
@@ -52,5 +53,5 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("back"):
-		MenuLook.go(get_tree(), MenuLook.TITLE_SCENE)
 		get_viewport().set_input_as_handled()
+		MenuLook.go(get_tree(), MenuLook.TITLE_SCENE)

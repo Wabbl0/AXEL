@@ -437,8 +437,7 @@ custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
-text = "BLOODY HANDS
-LOVE POWER
+text = "BLOODY HAND
 
 4 SPINS
 +4 on meter fill"
@@ -450,7 +449,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "ALCOHOL
-STAR POWER
 
 5 SPINS
 +3 on meter fill"
@@ -461,8 +459,7 @@ custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
-text = "CIGARETTES
-STORM POWER
+text = "CIGARETTE
 
 8 SPINS
 +2 on meter fill"

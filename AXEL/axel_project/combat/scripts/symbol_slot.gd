@@ -5,7 +5,7 @@ signal win_popup_border_touched(payout_cents: int)
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
 const WIN_POPUP_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 
-const WIN_POPUP_FONT_SIZE := 40
+const WIN_POPUP_FONT_SIZE := 70
 const WIN_POPUP_SCALE_START := 0.72
 const WIN_POPUP_SCALE_PEAK := 1.45
 const WIN_POPUP_SCALE_LOB_END := 0.92
@@ -376,7 +376,7 @@ func _ensure_win_glow_label() -> void:
 	_apply_win_popup_font(_win_glow_label)
 	_win_glow_label.add_theme_color_override("font_color", Color(1.0, 0.28, 0.28, 0.9))
 	_win_glow_label.add_theme_color_override("font_outline_color", Color(0.55, 0.0, 0.0, 0.85))
-	_win_glow_label.add_theme_constant_override("outline_size", 3)
+	_win_glow_label.add_theme_constant_override("outline_size", 5)
 	_win_glow_label.visible = false
 	_win_glow_label.modulate.a = 0.0
 	add_child(_win_glow_label)

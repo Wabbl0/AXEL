@@ -33,6 +33,7 @@ func _ready() -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(scroll)
 	_list = VBoxContainer.new()
 	_list.name = "List"

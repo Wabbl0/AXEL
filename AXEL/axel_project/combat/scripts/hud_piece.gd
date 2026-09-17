@@ -140,6 +140,25 @@ func pop() -> void:
 	_pop_tween.tween_property(self, "scale", _base_scale, 0.06)
 
 
+func play_press() -> void:
+	if not clickable:
+		return
+	_pressing = true
+	_apply_feel()
+	var tree := get_tree()
+	if tree == null:
+		_pressing = false
+		_apply_feel()
+		return
+	var timer := tree.create_timer(0.08)
+	timer.timeout.connect(_release_press_feel, CONNECT_ONE_SHOT)
+
+
+func _release_press_feel() -> void:
+	_pressing = false
+	_apply_feel()
+
+
 func set_clickable(enabled: bool) -> void:
 	clickable = enabled
 	_sync_mouse_filter()

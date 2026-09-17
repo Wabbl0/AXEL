@@ -28,11 +28,15 @@ func _main() -> void:
 	await _assert_begin_next_encounter_applies_seed()
 	await _assert_free_spins_does_not_refill_from_top()
 	await _assert_trinity_entry_repopulates_grid()
+	await _assert_uc_grants_extra_trinity_spin_only_on_first_miss()
 	await _assert_super_fs_entry_repopulates_grid()
 	await _assert_super_fs_spin_does_not_repopulate_at_start()
 	await _assert_free_spins_non_wild_clear_counts_as_grid_clear()
 	await _assert_free_spins_forces_all_three_powers_once()
 	await _assert_bankroll_empty_encounter_fail()
+	await _assert_live_spin_budget_does_not_end_fight()
+	await _assert_trinity_with_chips_does_not_end()
+	await _assert_free_spin_choice_does_not_end()
 	print("Princess check OK.")
 	quit(0)
 
@@ -124,7 +128,7 @@ func _assert_regular_start_girl_power_advances_rotation() -> void:
 	cr.girl_power_chance = 1.0
 	cr.spin_sync()
 	if cr.get_princess_current_id() != &"star":
-		push_error("Start-of-spin Girl Power at 100%% should advance love -> star.")
+		push_error("Start-of-spin Girl Power at 100%% should advance bloody hand -> alcohol.")
 		quit(1)
 		return
 	cr.queue_free()
@@ -190,7 +194,7 @@ func _assert_love_changes_full_symbol_set() -> void:
 			cleared_a_type = true
 			break
 	if not cleared_a_type:
-		push_error("Love should fully remove one present symbol type from the grid (full-set conversion).")
+		push_error("Bloody hand should fully remove one present symbol type from the grid (full-set conversion).")
 		quit(1)
 		return
 	cr.queue_free()
@@ -244,7 +248,7 @@ func _assert_star_adds_one_or_two_wilds() -> void:
 	var after := _count_wilds(cr)
 	var gained := after - before
 	if gained < 1 or gained > 2:
-		push_error("Star expected wild gain in [1,2], got %d." % gained)
+		push_error("Alcohol expected wild gain in [1,2], got %d." % gained)
 		quit(1)
 		return
 	cr.queue_free()
@@ -408,7 +412,7 @@ func _assert_trinity_transition_completes_without_freeze() -> void:
 		max_frames -= 1
 		await process_frame
 	if not bool(spin_done["value"]):
-		push_error("Trinity transition appears frozen: spin did not complete in allotted frames.")
+		push_error("Vice Round transition appears frozen: spin did not complete in allotted frames.")
 		quit(1)
 		return
 	if not cr.is_waiting_for_free_spin_choice():
@@ -503,11 +507,11 @@ func _assert_trinity_round_has_gravity_but_no_spawned_symbols() -> void:
 	)
 	cr._resolve_trinity_cascade_loop_sync()
 	if int(fell_events["count"]) <= 0:
-		push_error("Regular Free Spins (Trinity Run) should allow symbols to fall via gravity.")
+		push_error("Vice Round should allow symbols to fall via gravity.")
 		quit(1)
 		return
 	if int(spawn_events["count"]) != 0:
-		push_error("Trinity Run cascade should not spawn new symbols from the top.")
+		push_error("Vice Round cascade should not spawn new symbols from the top.")
 		quit(1)
 		return
 	cr.queue_free()
@@ -521,7 +525,7 @@ func _assert_trinity_cascade_settles_floating_without_wins() -> void:
 	_set_checkerboard_no_clusters(cr)
 	var lines: Array = LineDetectorScript.find_lines(cr.grid.cells)
 	if not lines.is_empty():
-		push_error("Trinity floating-symbol test setup should not contain winning lines.")
+		push_error("Vice Round floating-symbol test setup should not contain winning lines.")
 		quit(1)
 		return
 
@@ -529,7 +533,7 @@ func _assert_trinity_cascade_settles_floating_without_wins() -> void:
 	for y in range(1, GridManagerScript.ROWS):
 		cr.grid.set_cell(Vector2i(0, y), null)
 	if not cr._grid_has_floating_symbols():
-		push_error("Trinity floating-symbol test setup should contain floating symbols.")
+		push_error("Vice Round floating-symbol test setup should contain floating symbols.")
 		quit(1)
 		return
 	var fell_events := {"count": 0}
@@ -542,15 +546,15 @@ func _assert_trinity_cascade_settles_floating_without_wins() -> void:
 	)
 	cr._resolve_trinity_cascade_loop_sync()
 	if int(fell_events["count"]) <= 0:
-		push_error("Trinity cascade should settle floating symbols even without winning lines.")
+		push_error("Vice Round cascade should settle floating symbols even without winning lines.")
 		quit(1)
 		return
 	if int(spawn_events["count"]) != 0:
-		push_error("Trinity cascade gravity-only settle should not spawn symbols from the top.")
+		push_error("Vice Round cascade gravity-only settle should not spawn symbols from the top.")
 		quit(1)
 		return
 	if cr._grid_has_floating_symbols():
-		push_error("Trinity cascade should leave no floating symbols after gravity settle.")
+		push_error("Vice Round cascade should leave no floating symbols after gravity settle.")
 		quit(1)
 		return
 	cr.queue_free()
@@ -596,6 +600,63 @@ func _assert_bankroll_empty_encounter_fail() -> void:
 		return
 	if cr.did_win_encounter():
 		push_error("Encounter incorrectly marked as win.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_live_spin_budget_does_not_end_fight() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(4101)
+	cr.restore_run_bankroll(1000)
+	cr.set_limit_spins(false)
+	cr.set_spin_budget(10)
+	cr.set_spins_used(10)
+	cr.set_goal_base_target_cents(50000)
+	cr.set_goal_progress_cents(0)
+	if cr.is_encounter_complete():
+		push_error("Live fight must not end at spin_budget when Limit spins is off.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_trinity_with_chips_does_not_end() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(4102)
+	cr.restore_run_bankroll(500)
+	cr._in_trinity_round = true
+	cr.set_limit_spins(true)
+	cr.set_spin_budget(10)
+	cr.set_spins_used(10)
+	cr.set_goal_base_target_cents(50000)
+	cr._finalize_encounter_if_needed()
+	if cr.is_encounter_complete():
+		push_error("Vice Round with chips left must not dump the fight.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_free_spin_choice_does_not_end() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(4103)
+	cr.restore_run_bankroll(0)
+	cr._awaiting_free_spin_choice = true
+	cr._state = CombatRoot.State.FREE_SPINS_CHOOSE
+	cr._finalize_encounter_if_needed()
+	if cr.is_encounter_complete():
+		push_error("Free Spins choice must not finalize the fight.")
+		quit(1)
+		return
+	if cr.get_state() != CombatRoot.State.FREE_SPINS_CHOOSE:
+		push_error("Free Spins choice state was lost.")
 		quit(1)
 		return
 	cr.queue_free()
@@ -668,7 +729,49 @@ func _assert_trinity_entry_repopulates_grid() -> void:
 	cr._run_trinity_round_sync()
 	var after_trinity := _snapshot_ids(cr)
 	if before_trinity == after_trinity:
-		push_error("Trinity entry should repopulate a fresh grid after meter-full handoff.")
+		push_error("Vice Round entry should repopulate a fresh grid after meter-full handoff.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_uc_grants_extra_trinity_spin_only_on_first_miss() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(1)
+	var uc: Resource = load("res://combat/data/items/U-C_trinity_matchbook.tres")
+	if uc == null:
+		push_error("U-C_trinity_matchbook.tres missing.")
+		quit(1)
+		return
+	if not cr.equip_item(uc):
+		push_error("Failed to equip U-C.")
+		quit(1)
+		return
+	_set_checkerboard_no_clusters(cr)
+	if cr._trinity_first_miss_extra_spin_count() != 1:
+		push_error("U-C should grant +1 extra Vice Round spin when the opening board has no matches.")
+		quit(1)
+		return
+	var before_extra := _snapshot_ids(cr)
+	var extra_out: Dictionary = cr._empty_spin_summary()
+	cr._grant_trinity_first_miss_extra_spins_sync(extra_out, cr.princesses.current_id())
+	if before_extra == _snapshot_ids(cr):
+		push_error("U-C extra Vice Round spin should fill a new board when the first spin misses.")
+		quit(1)
+		return
+	var green := _symbol_by_id(cr, &"sym_green_circle")
+	for x in GridManagerScript.COLS:
+		cr.grid.set_cell(Vector2i(x, 0), green)
+	if cr._trinity_first_miss_extra_spin_count() != 0:
+		push_error("U-C should not grant an extra Vice Round spin when the opening board already matches.")
+		quit(1)
+		return
+	cr.unequip_item(uc)
+	_set_checkerboard_no_clusters(cr)
+	if cr._trinity_first_miss_extra_spin_count() != 0:
+		push_error("Opening Vice Round miss should not grant an extra spin without U-C.")
 		quit(1)
 		return
 	cr.queue_free()

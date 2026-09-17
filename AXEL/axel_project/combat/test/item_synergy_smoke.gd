@@ -55,7 +55,7 @@ func _test_single_item_equip() -> void:
 	if not cr.is_node_ready():
 		await cr.ready
 
-	var item := _make_mock_item(&"test_c1", "Test C1", 0, &"reroll_payout_scalar", {"per_reroll": 0.06, "cap": 0.36})
+	var item := _make_mock_item(&"test_c1", "Test C1", 0, &"paid_spin_payout_scalar", {"per_paid_spin": 0.06, "cap": 0.36})
 	var success: bool = cr.equip_item(item)
 	_assert(success, "equip single item succeeds")
 	_assert(cr.inventory.size() == 1, "inventory size is 1 after equip")
@@ -72,8 +72,8 @@ func _test_duplicate_id_rejected() -> void:
 	if not cr.is_node_ready():
 		await cr.ready
 
-	var item1 := _make_mock_item(&"dup_test", "Dup A", 0, &"reroll_payout_scalar", {"per_reroll": 0.05, "cap": 0.3})
-	var item2 := _make_mock_item(&"dup_test", "Dup B", 0, &"reroll_payout_scalar", {"per_reroll": 0.05, "cap": 0.3})
+	var item1 := _make_mock_item(&"dup_test", "Dup A", 0, &"paid_spin_payout_scalar", {"per_paid_spin": 0.05, "cap": 0.3})
+	var item2 := _make_mock_item(&"dup_test", "Dup B", 0, &"paid_spin_payout_scalar", {"per_paid_spin": 0.05, "cap": 0.3})
 
 	cr.equip_item(item1)
 	var second: bool = cr.equip_item(item2)
@@ -170,7 +170,7 @@ func _test_deterministic_scalar_across_runs() -> void:
 		if not cr.is_node_ready():
 			await cr.ready
 
-		var item := _make_mock_item(&"det_c1", "Det C1", 0, &"reroll_payout_scalar", {"per_reroll": 0.06, "cap": 0.36})
+		var item := _make_mock_item(&"det_c1", "Det C1", 0, &"paid_spin_payout_scalar", {"per_paid_spin": 0.06, "cap": 0.36})
 		cr.equip_item(item)
 		cr.encounter_def = null
 		cr.setup_new_grid(FIXED_SEED)
@@ -230,7 +230,7 @@ func _test_coexistence_c1_and_l3() -> void:
 	if not cr.is_node_ready():
 		await cr.ready
 
-	var c1 := _make_mock_item(&"C1", "Ash Reroll Token", 0, &"reroll_payout_scalar", {"per_reroll": 0.06, "cap": 0.36})
+	var c1 := _make_mock_item(&"C1", "Ash Spin Token", 0, &"paid_spin_payout_scalar", {"per_paid_spin": 0.06, "cap": 0.36})
 	var l3 := _make_mock_item(&"L3", "Void Satchel", 4, &"extra_inventory_slots", {"bonus_slots": 2})
 
 	cr.equip_item(c1)
@@ -263,7 +263,7 @@ func _test_family_rank_swap_keeps_index() -> void:
 	ca.family = "A"
 	var ua := _make_mock_item(&"U-A", "Echo Fuse", 1, &"power_chain", {"chance": 0.35, "potency": 0.35, "other_count": 1})
 	ua.family = "A"
-	var c1 := _make_mock_item(&"C1", "Ash Reroll Token", 0, &"reroll_payout_scalar", {"per_reroll": 0.06, "cap": 0.36})
+	var c1 := _make_mock_item(&"C1", "Ash Spin Token", 0, &"paid_spin_payout_scalar", {"per_paid_spin": 0.06, "cap": 0.36})
 	cr.equip_item(ca)
 	cr.equip_item(c1)
 	_assert(String(cr.inventory.items[0].id) == "C-A", "family item is index 0")
@@ -317,7 +317,7 @@ func _test_g_bonus_zero_in_trinity_and_fs() -> void:
 	cr.equip_item(g)
 	_assert(cr.get_sealed_grid_payout_bonus() > 0.0, "G bonus on regular spins")
 	cr._in_trinity_round = true
-	_assert(is_zero_approx(cr.get_sealed_grid_payout_bonus()), "G bonus 0 in Trinity")
+	_assert(is_zero_approx(cr.get_sealed_grid_payout_bonus()), "G bonus 0 in Vice Round")
 	cr._in_trinity_round = false
 	cr.free_spins.active = true
 	_assert(is_zero_approx(cr.get_sealed_grid_payout_bonus()), "G bonus 0 in Free Spins")
@@ -367,7 +367,7 @@ func _test_set_spins_used_changes_c1_scalar() -> void:
 	root.add_child(cr)
 	if not cr.is_node_ready():
 		await cr.ready
-	var c1 := _make_mock_item(&"C1", "Ash Reroll Token", 0, &"reroll_payout_scalar", {"per_reroll": 0.06, "cap": 0.36})
+	var c1 := _make_mock_item(&"C1", "Ash Spin Token", 0, &"paid_spin_payout_scalar", {"per_paid_spin": 0.06, "cap": 0.36})
 	cr.equip_item(c1)
 	cr.set_spins_used(6)
 	_assert(is_equal_approx(cr.get_item_payout_scalar(), 0.36), "C1 at cap 0.36 without spinning")

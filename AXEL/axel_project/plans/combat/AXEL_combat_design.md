@@ -38,16 +38,16 @@ Kept verbatim as the mechanical spine so we know what we're reskinning.
 
 - **Grid:** 5 columns × 5 rows.
 - **Win rule:** line pays — 3+ matching symbols connected horizontally or vertically in a single row/column, with no gaps. A symbol may contribute to one horizontal and one vertical win at the same time.
-- **Cascade:** winning symbols are removed and remaining symbols fall (gravity-only). No new symbols spawn from the top during a spin round (normal, Trinity, or Free Spins).
+- **Cascade:** winning symbols are removed and remaining symbols fall (gravity-only). No new symbols spawn from the top during a spin round (normal, Vice Round, or Free Spins).
 - **Wild drop:** when a winning line of exactly 3 symbols resolves, a **wild** appears in the middle cell of that line. 4-symbol and 5-symbol wins do not create a wild.
 - **Multiplier:** starts at x1 and increases by +1 for each new drop (each cascade step). During Free Spins, the multiplier can grow up to **100×**.
-- **Three princesses (rotating):** exactly one princess is active on-screen. Girl Power triggers at random on non-winning spins. The active princess changes only after a Girl Power activation, in fixed order **Love → Star → Storm**. The opening active princess is random.
-  - **Love:** converts one set of symbols into another symbol type.
-  - **Star:** adds 1–2 wilds with intelligent placement.
-  - **Storm:** removes two sets of symbols from the grid.
-- **Trinity meter:** princess-symbol wins fill a 3-section meter (x3 fills 1 section, x4 fills 2 sections, x5 fills 3 sections). Wilds can contribute to princess wins. When the meter is full and no further wins are achieved, a Trinity round starts: meter-full transition, then a **fresh 5×5 grid**, then multiplier resets and Love/Star/Storm Girl Powers are performed in fixed order on non-winning drops.
-- **Clear the Grid:** fully emptying the grid pays `50 × total bet × active multiplier` (except during Trinity, where grid clear triggers Free Spins instead of paying the instant prize).
-- **Free Spins (Super Free Spins):** triggered by clearing the grid during Trinity (non-wild symbols gone). Player chooses Love (4 spins), Star (5), or Storm (8), then receives a **fresh 5×5 grid** before the first Super Free Spin round. Chosen Girl Power triggers on every non-winning spin. Each subsequent Super Free Spin continues from the depleted entry grid (no per-spin repopulate). Winning symbols are removed and gravity collapses remaining symbols, but no new symbols are spawned from the top (depletion mode). The progression target is to clear all non-wild symbols from the grid; wild-only leftovers still count as cleared for this purpose. Trinity cannot retrigger. Meter fills grant extra spins (Love +4, Star +3, Storm +2), up to 100 total.
+- **Three princesses (rotating):** exactly one princess is active on-screen. Girl Power triggers at random on non-winning spins. The active princess changes only after a Girl Power activation, in fixed order **bloody hand → alcohol → cigarette**. The opening active princess is random.
+  - **Bloody hand:** converts one set of symbols into another symbol type.
+  - **Alcohol:** adds 1–2 wilds with intelligent placement.
+  - **Cigarette:** removes two sets of symbols from the grid.
+- **Vice meter:** princess-symbol wins fill a 3-section meter (x3 fills 1 section, x4 fills 2 sections, x5 fills 3 sections). Wilds can contribute to princess wins. When the meter is full and no further wins are achieved, a Vice Round starts: meter-full transition, then a **fresh 5×5 grid**, then multiplier resets and bloody hand / alcohol / cigarette Girl Powers are performed in fixed order on non-winning drops.
+- **Clear the Grid:** fully emptying the grid pays `50 × total bet × active multiplier` (except during Vice Round, where grid clear triggers Free Spins instead of paying the instant prize).
+- **Free Spins (Super Free Spins):** triggered by clearing the grid during Vice Round (non-wild symbols gone). Player chooses bloody hand (4 spins), alcohol (5), or cigarette (8), then receives a **fresh 5×5 grid** before the first Super Free Spin round. Chosen Girl Power triggers on every non-winning spin. Each subsequent Super Free Spin continues from the depleted entry grid (no per-spin repopulate). Winning symbols are removed and gravity collapses remaining symbols, but no new symbols are spawned from the top (depletion mode). The progression target is to clear all non-wild symbols from the grid; wild-only leftovers still count as cleared for this purpose. Vice Round cannot retrigger. Meter fills grant extra spins (bloody hand +4, alcohol +3, cigarette +2), up to 100 total.
 - **RTP:** 94.20%, high volatility. **Max win:** 15,000× stake.
 
 Source references are listed at the bottom of this doc.
@@ -69,10 +69,10 @@ Suit symbols are generated hollow red outlines (no fill, same stroke). Premium /
 
 ### Premium symbols (Princess Power aliases)
 
-Power-symbol alias map used across this project:
-- `cigarette` means **Storm**
-- `alcohol` means **Star** (prefer this name; older code may still use id `booze`)
-- `bloody hand` means **Love**
+Power-symbol names used across this project (MP100 princess names in parentheses; code ids stay `storm` / `star` / `love`):
+- `cigarette` (MP100 Storm)
+- `alcohol` (MP100 Star; prefer this name; older code may still use id `booze`)
+- `bloody hand` (MP100 Love)
 
 | MP100 princess | AXEL premium | Power role |
 |---|---|---|
@@ -86,19 +86,19 @@ Power-symbol alias map used across this project:
 |---|---|
 | Moon | **Satanic symbol (red)** — placeholder |
 
-Princess-symbol wins (including AXEL alias symbols cigarette/booze/bloody hand) are the only wins that feed the Trinity meter; low-pay suit symbols do not charge it.
+Princess-symbol wins (including AXEL alias symbols cigarette/booze/bloody hand) are the only wins that feed the Vice meter; low-pay suit symbols do not charge it.
 
 ### MP100 paytable snapshot (from provided info screens)
 
 | Symbol group | X5 | X4 | X3 |
 |---|---:|---:|---:|
-| Princess (Love / Star / Storm) | 16.00 | 1.60 | 0.48 |
+| Princess (bloody hand / alcohol / cigarette) | 16.00 | 1.60 | 0.48 |
 | Any princess (mixed princess line) | 8.00 | 0.80 | 0.32 |
 | Bell / Heart | 4.80 | 0.48 | 0.24 |
 | Star / Green coin | 3.20 | 0.32 | 0.16 |
 | Wild | 80.00 | 3.20 | 1.60 |
 
-Reading the combat language: the three premium symbols are simply the visual aliases for the same Princess Power trio (Storm/Star/Love). The wild remains the high-impact catalyst symbol.
+Reading the combat language: the three premium symbols *are* the princess power names (cigarette / alcohol / bloody hand). The wild remains the high-impact catalyst symbol.
 
 ---
 
@@ -114,8 +114,8 @@ A run is a sequence of encounters. Each encounter has **one goal**, a **spin bud
 4. **Grid clear** — fully clear the grid at least once within N spins.
 5. **Multiplier ceiling** — reach a spin multiplier of at least `X`.
 6. **Symbol purge** — clear every instance of a specific low-pay symbol from the grid.
-7. **Trinity** — trigger a real Trinity round (meter fills, then Love/Star/Storm sequence) at least once in a single encounter.
-8. **Free Spins trigger** — clear the grid during Trinity to enter Free Spins at least once.
+7. **Vice Round** — trigger a real Vice Round (meter fills, then bloody hand / alcohol / cigarette sequence) at least once in a single encounter.
+8. **Free Spins trigger** — clear the grid during Vice Round to enter Free Spins at least once.
 9. **Abstinence** — reach payout `X ×` *without* any princess power triggering. (Thematically: remember without crutches.)
 10. **Burn a memory** — force-destroy a specific pre-placed "memory symbol" on the grid (these are intro-ed later in the run).
 
@@ -130,7 +130,7 @@ A run is a sequence of encounters. Each encounter has **one goal**, a **spin bud
 ### Suggested run shape (first pass)
 
 - **Act I — The Locker (easy, 3 encounters):** Payout targets, one wild-count goal. Teaches the loop.
-- **Act II — The Halls (medium, 4 encounters):** Adds symbol-purge, multiplier ceiling, one Trinity encounter. Introduces the Corruption hazard.
+- **Act II — The Halls (medium, 4 encounters):** Adds symbol-purge, multiplier ceiling, one Vice Round encounter. Introduces the Corruption hazard.
 - **Act III — The Basement (hard, 3 encounters + 1 boss):** Abstinence encounter, burn-a-memory encounter, final encounter is a multi-goal fight against a manifestation of Axel / the rot.
 
 ### Betting / gambling layer
@@ -156,11 +156,11 @@ Items are passive modifiers (think Slay the Spire relics / Balatro jokers), coll
 | Item | Hook | Effect |
 |---|---|---|
 | **Half-smoked cigarette** | On encounter start | Start with 1 wild pre-placed at a random center. |
-| **Empty bottle** | On princess power (Star) | Star adds +1 extra wild. |
+| **Empty bottle** | On princess power (alcohol) | Alcohol adds +1 extra wild. |
 | **Nicotine patch** | On encounter start | First spin auto-purges the two lowest-pay symbol types. |
-| **Shaky hands** | On cluster resolve | Every multiplier gain is +2 instead of +1, but Love has a 25% chance to misfire (no effect). |
+| **Shaky hands** | On cluster resolve | Every multiplier gain is +2 instead of +1, but bloody hand has a 25% chance to misfire (no effect). |
 | **Torn photo** | On encounter end | If you cleared the grid at least once, reveal a memory fragment in the overworld. |
-| **Lighter ("AXEL")** | On spin start | Once per encounter: reroll the current grid. (Diegetic — the prototype's hint lighter.) |
+| **Lighter ("AXEL")** | On spin start | Once per encounter: spin a new grid. (Diegetic — the prototype's hint lighter.) |
 | **Rotted notebook** | On spin start | Preview the next 3 symbols in the drop queue. |
 | **Dog tag** | On cluster resolve | Low-pay symbols adjacent to a wild count toward that wild's cluster. |
 | **Loose tooth** | On spin start | Replace all yellow triangles with wilds for one spin, then lose this item. |
@@ -174,7 +174,7 @@ Items should be **theme-coded**, not just mechanically driven: each one tied to 
 
 ## 7. Thematic ties — keep these honest
 
-- The three premium symbols (cigarette, bottle/alcohol, bloody hand) are visual aliases for Storm/Star/Love and should be communicated as equivalent power channels in UI and tuning docs.
+- The three premium symbols (cigarette, alcohol, bloody hand) *are* the princess power names and should be used that way in UI and tuning docs. Code ids stay `storm` / `star` / `love`. Prefer “alcohol” (not “booze”).
 - Every time a princess power triggers and *helps* the player, something in the overworld should subtly worsen — more mold on a wall, a flickering bulb, a new stain. This makes the combat-exploration loop bidirectional: combat rewards come at exploration cost.
 - **Winning loudly is suspicious.** Big payouts should trigger glitch/shake FX not as celebration but as intrusion. Consider a "you went too far" flag when the player hits max multiplier too early in an encounter — it unlocks harder variants for the rest of the run.
 - **Grid clear = clarity.** The one "clean" feeling in the combat layer should be reserved for full grid clears, where the screen briefly goes still and quiet before the next spin. This is the mechanical equivalent of a recovered memory.

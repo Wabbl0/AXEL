@@ -36,19 +36,15 @@ func _ready() -> void:
 	_build()
 	get_viewport().size_changed.connect(_apply_scale)
 	set_process_unhandled_input(true)
+	set_process_input(true)
 
 
 func _process(delta: float) -> void:
 	_time += delta
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if not visible:
-		return
-	if _listening_action.is_empty():
-		if event.is_action_pressed("back"):
-			closed.emit()
-			get_viewport().set_input_as_handled()
+func _input(event: InputEvent) -> void:
+	if not visible or _listening_action.is_empty():
 		return
 	if event.is_echo():
 		return
@@ -64,6 +60,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if not _listening_action.is_empty():
+		return
+	if event.is_action_pressed("back"):
+		get_viewport().set_input_as_handled()
+		closed.emit()
+
+
 func _build() -> void:
 	for child in get_children():
 		child.queue_free()
@@ -73,6 +79,8 @@ func _build() -> void:
 	scroll.offset_top = 48
 	scroll.offset_right = -48
 	scroll.offset_bottom = -48
+	scroll.focus_mode = Control.FOCUS_NONE
+	scroll.follow_focus = true
 	add_child(scroll)
 
 	var col := VBoxContainer.new()
@@ -113,11 +121,13 @@ func _build() -> void:
 		_rebind_row(col, action)
 
 	var back := Button.new()
+	back.name = "BackButton"
 	back.text = "Back"
-	MenuLook.apply_button(back, 32)
+	MenuLook.apply_button(back, 32, Control.SIZE_SHRINK_BEGIN)
 	back.pressed.connect(func() -> void: closed.emit())
 	col.add_child(back)
 	_apply_scale()
+	MenuLook.grab_first_focus(self)
 
 
 func _section(col: VBoxContainer, text: String) -> void:
@@ -171,7 +181,7 @@ func _int_slider(col: VBoxContainer, caption: String, section: String, key: Stri
 func _toggle(col: VBoxContainer, caption: String, section: String, key: String) -> void:
 	var box := CheckBox.new()
 	box.text = caption
-	MenuLook.apply_button(box, 24)
+	MenuLook.apply_button(box, 24, Control.SIZE_SHRINK_BEGIN)
 	box.button_pressed = bool(AxelSettings.get_value(section, key))
 	box.toggled.connect(func(on: bool) -> void:
 		AxelSettings.set_value(section, key, on)
@@ -186,7 +196,7 @@ func _option(col: VBoxContainer, caption: String, section: String, key: String, 
 	name.custom_minimum_size.x = 280
 	MenuLook.apply_label(name, 24)
 	var opt := OptionButton.new()
-	MenuLook.apply_button(opt, 24)
+	MenuLook.apply_button(opt, 24, Control.SIZE_SHRINK_BEGIN)
 	var current := String(AxelSettings.get_value(section, key))
 	for i in values.size():
 		opt.add_item(values[i], i)
@@ -226,7 +236,7 @@ func _rebind_row(col: VBoxContainer, action: String) -> void:
 	MenuLook.apply_label(name, 24)
 	var button := Button.new()
 	button.text = _binding_label(action)
-	MenuLook.apply_button(button, 24)
+	MenuLook.apply_button(button, 24, Control.SIZE_SHRINK_BEGIN)
 	button.pressed.connect(func() -> void:
 		_listening_action = action
 		button.text = "Press a key…"

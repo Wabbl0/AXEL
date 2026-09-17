@@ -6,10 +6,10 @@
 [resource]
 script = ExtResource("1_script")
 id = &"U-C"
-display_name = "Trinity Matchbook"
+display_name = "Vice Matchbook"
 rarity = 1
 family = "C"
-description = "At Trinity Run start, gain +1 starting spin"
+description = "If Vice Round's first spin has no matches, gain +1 extra spin"
 effect_id = &"trinity_run"
-effect_params = {"extra_start_spins": 1}
+effect_params = {"first_miss_extra_spins": 1}
 icon = ExtResource("2_icon")

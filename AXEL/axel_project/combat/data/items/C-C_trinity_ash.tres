@@ -6,10 +6,10 @@
 [resource]
 script = ExtResource("1_script")
 id = &"C-C"
-display_name = "Trinity Ash"
+display_name = "Vice Ash"
 rarity = 0
 family = "C"
-description = "During Trinity Run, normal-symbol payout value +15%"
+description = "During Vice Round, normal-symbol payout value +15%"
 effect_id = &"trinity_run"
 effect_params = {"normal_payout": 0.15}
 icon = ExtResource("2_icon")

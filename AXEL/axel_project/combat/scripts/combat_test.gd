@@ -168,10 +168,10 @@ var _item_desc_fade: Tween
 var _item_entries: Array = []
 var _family_rank: Dictionary = {}
 var _ignore_cap_checkbox: CheckBox
-var _reroll_used_spin: SpinBox
-var _reroll_budget_spin: SpinBox
+var _paid_spin_used_spin: SpinBox
+var _paid_spin_budget_spin: SpinBox
 var _limit_spins_checkbox: CheckBox
-var _reroll_hint_label: Label
+var _paid_spin_hint_label: Label
 var _goal_base_spin: SpinBox
 var _goal_progress_spin: SpinBox
 var _goal_effective_label: Label
@@ -182,6 +182,9 @@ var _economics_center: CenterContainer
 var _economics_stack: VBoxContainer
 var _cascade_mult_label: Label
 var _cascade_mult_pill: PanelContainer
+var _cascade_mult_rest_pos := Vector2.ZERO
+var _cascade_mult_pop_tween: Tween
+var _cascade_mult_font: FontVariation
 var _last_displayed_cascade_mult: int = 1
 var _displayed_round_winnings: int = 0
 var _target_round_winnings: int = 0
@@ -1204,10 +1207,19 @@ func _configure_winnings_readout() -> void:
 func _configure_cascade_multiplier_readout() -> void:
 	if _cascade_mult_label == null:
 		return
+	if _cascade_mult_font == null:
+		_cascade_mult_font = FontVariation.new()
+		_cascade_mult_font.base_font = VT323_FONT
+		_cascade_mult_font.variation_embolden = 0.8
+	_cascade_mult_label.add_theme_font_override("font", _cascade_mult_font)
 	_cascade_mult_label.add_theme_font_size_override("font_size", CASCADE_MULT_READOUT_FONT)
 	_cascade_mult_label.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
 	_cascade_mult_label.remove_theme_color_override("font_outline_color")
 	_cascade_mult_label.add_theme_constant_override("outline_size", CASCADE_MULT_READOUT_OUTLINE)
+	_cascade_mult_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_cascade_mult_label.clip_text = false
+	_cascade_mult_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cascade_mult_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 func _build_history_placeholder() -> PanelContainer:
 	var panel := _make_side_panel("HISTORY", true)
@@ -1314,7 +1326,7 @@ func _apply_item_picker_body_typography() -> void:
 		var spin := child as SpinBox
 		if spin == null:
 			continue
-		if spin.name == "RerollUsedSpin" or spin.name == "RerollBudgetSpin":
+		if spin.name == "PaidSpinUsedSpin" or spin.name == "PaidSpinBudgetSpin":
 			_style_playtest_spin(spin, chrome_font)
 	var rank_font := _resolved_item_rank_font()
 	for child in _item_picker_panel.find_children("*", "Button", true, false):
@@ -1351,10 +1363,10 @@ func _resolved_items_chrome_font() -> int:
 
 
 func _is_item_chrome_label(label: Label) -> bool:
-	if label == null or label.name == "RerollHint":
+	if label == null or label.name == "PaidSpinHint":
 		return false
 	var t := label.text.strip_edges()
-	if t == "FAMILIES" or t == "REROLLS" or t == "Used" or t == "Budget":
+	if t == "FAMILIES" or t == "PAID SPINS" or t == "Used" or t == "Budget":
 		return true
 	return t in RARITY_NAMES
 
@@ -1511,6 +1523,7 @@ func _make_side_panel(header_text: String, with_scroll_list: bool = true) -> Pan
 		var scroll := ScrollContainer.new()
 		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		vbox.add_child(scroll)
 
 		var list := VBoxContainer.new()
@@ -1608,6 +1621,8 @@ func _input(event: InputEvent) -> void:
 	if not _spin_hotkey_allowed():
 		return
 	get_viewport().set_input_as_handled()
+	if _piece_execute != null:
+		_piece_execute.play_press()
 	await _request_spin()
 
 
@@ -1619,6 +1634,8 @@ func _wants_spin_hotkey(event: InputEvent) -> bool:
 
 func _spin_hotkey_allowed() -> bool:
 	if _spin_busy or not _can_use_combat_api():
+		return false
+	if _can_use_combat_api() and combat != null and combat.is_encounter_complete() and _is_live_axel_run():
 		return false
 	if _safe_is_waiting_for_free_spin_choice():
 		return false
@@ -1632,6 +1649,11 @@ func _spin_hotkey_allowed() -> bool:
 	if focus != null and focus.is_visible_in_tree() and _focus_uses_interact(focus):
 		return false
 	return true
+
+
+func _is_live_axel_run() -> bool:
+	var run := get_node_or_null("/root/AxelRun")
+	return run != null and run.has_method("is_in_encounter") and bool(run.call("is_in_encounter"))
 
 
 func _focus_uses_interact(focus: Control) -> bool:
@@ -1658,6 +1680,10 @@ func _request_spin() -> void:
 	_spin_request_frame = frame
 	_spin_busy = true
 	if combat.is_encounter_complete():
+		if _is_live_axel_run():
+			_spin_busy = false
+			_refresh_spin_button_state()
+			return
 		combat.begin_next_playtest_encounter(_queued_seed)
 	if _can_apply_queued_seed_on_execute():
 		combat.setup_new_grid(_queued_seed)
@@ -1702,6 +1728,7 @@ func _refresh_readouts() -> void:
 	_refresh_playtest_readouts()
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
+	_refresh_skull_first_spin_hint()
 
 func _refresh_editor_placeholder_readouts() -> void:
 	if not _cache_scene_refs():
@@ -1732,26 +1759,32 @@ func _refresh_cascade_multiplier_readout() -> void:
 	if mult > _last_displayed_cascade_mult:
 		_pulse_cascade_multiplier()
 	_last_displayed_cascade_mult = mult
+	if _cascade_mult_rest_pos == Vector2.ZERO:
+		_cascade_mult_rest_pos = _cascade_mult_label.position
+
 
 func _format_cascade_multiplier_text(mult: int) -> String:
 	return "%dX" % mult
 
 func _pulse_cascade_multiplier() -> void:
-	if _piece_multiplier != null:
-		_piece_multiplier.pop()
+	if _cascade_mult_label == null:
 		return
-	if _cascade_mult_pill == null:
-		return
-	_cascade_mult_pill.scale = Vector2.ONE
-	_cascade_mult_pill.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	var peak := create_tween()
-	peak.set_parallel(true)
-	peak.tween_property(_cascade_mult_pill, "modulate", Color(1.25, 0.35, 0.35, 1.0), 0.1)
-	peak.tween_property(_cascade_mult_pill, "scale", Vector2(1.06, 1.06), 0.1)
-	var settle := peak.chain()
-	settle.set_parallel(true)
-	settle.tween_property(_cascade_mult_pill, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.18)
-	settle.tween_property(_cascade_mult_pill, "scale", Vector2.ONE, 0.18)
+	if _cascade_mult_pop_tween != null and _cascade_mult_pop_tween.is_valid():
+		_cascade_mult_pop_tween.kill()
+	var rest := _cascade_mult_rest_pos
+	if rest == Vector2.ZERO:
+		rest = _cascade_mult_label.position
+		_cascade_mult_rest_pos = rest
+	_cascade_mult_label.scale = Vector2.ONE
+	_cascade_mult_label.position = rest
+	_cascade_mult_pop_tween = create_tween()
+	_cascade_mult_pop_tween.tween_property(_cascade_mult_label, "scale", Vector2(1.08, 1.08), 0.07)
+	_cascade_mult_pop_tween.parallel().tween_property(
+		_cascade_mult_label, "position", rest + Vector2(0.0, -3.0), 0.07
+	)
+	var settle := _cascade_mult_pop_tween.chain()
+	settle.tween_property(_cascade_mult_label, "scale", Vector2.ONE, 0.1)
+	settle.parallel().tween_property(_cascade_mult_label, "position", rest, 0.1)
 
 func _on_spin_started(seed_value: int) -> void:
 	_queued_seed = seed_value
@@ -1759,6 +1792,7 @@ func _on_spin_started(seed_value: int) -> void:
 	_clear_history_spin_list()
 	_last_displayed_cascade_mult = int(combat.get_multiplier_value())
 	_reset_winnings_counter_display()
+	_refresh_skull_first_spin_hint()
 
 func _on_spin_finished() -> void:
 	_sync_winnings_counter_to_combat_truth()
@@ -2014,6 +2048,11 @@ func _bind_widgets_to_pieces() -> void:
 		_piece_history.attach(_spin_history_panel, _host_for_piece(_piece_history, "history"))
 	if _piece_multiplier != null and _cascade_mult_label != null:
 		_piece_multiplier.attach(_cascade_mult_label, _host_for_piece(_piece_multiplier, "multiplier"))
+		_cascade_mult_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_cascade_mult_label.clip_text = false
+		_cascade_mult_label.pivot_offset = _cascade_mult_label.size * 0.5
+		_cascade_mult_rest_pos = _cascade_mult_label.position
+		_configure_cascade_multiplier_readout()
 	if _cascade_mult_pill != null:
 		_cascade_mult_pill.visible = false
 	if _piece_balance != null and bankroll_label != null:
@@ -2222,6 +2261,22 @@ func _sync_skull_meter(sections: int) -> void:
 	var filled := clampi(sections, 0, 3)
 	if _premium_skull != null and _premium_skull.has_method("set_fill"):
 		_premium_skull.set_fill(float(filled) / 3.0)
+	_refresh_skull_first_spin_hint()
+
+
+func _refresh_skull_first_spin_hint() -> void:
+	if _premium_skull == null or not _premium_skull.has_method("set_first_spin_hint"):
+		return
+	var on := false
+	if _can_use_combat_api() and combat != null:
+		var state := combat.get_state()
+		on = (
+			not combat.is_encounter_complete()
+			and combat.get_spins_used() == 0
+			and state == CombatRoot.State.IDLE
+			and not combat.is_waiting_for_free_spin_choice()
+		)
+	_premium_skull.call("set_first_spin_hint", on)
 
 
 func _sync_premium_bar_color(sections: int, animate: bool = false) -> void:
@@ -2851,11 +2906,42 @@ func _stop_item_desc_fade() -> void:
 
 
 func _process(_delta: float) -> void:
+	_tick_cascade_multiplier_idle()
 	if Engine.is_editor_hint() and not editor_preview_enabled:
 		return
 	if _item_desc_panel == null or not _item_desc_panel.visible:
 		return
 	_layout_item_desc_overlay()
+
+
+func _tick_cascade_multiplier_idle() -> void:
+	if _cascade_mult_label == null:
+		return
+	if _cascade_mult_pop_tween != null and _cascade_mult_pop_tween.is_valid():
+		return
+	if _cascade_mult_rest_pos == Vector2.ZERO:
+		_cascade_mult_rest_pos = _cascade_mult_label.position
+	if _multiplier_idle_blocked():
+		_cascade_mult_label.position = _cascade_mult_rest_pos
+		return
+	var mult := _last_displayed_cascade_mult
+	if mult < 5:
+		_cascade_mult_label.position = _cascade_mult_rest_pos
+		return
+	var amp := clampf(2.0 + float(mult - 5) * 0.35, 2.0, 5.0)
+	var t := float(Time.get_ticks_msec()) * 0.001
+	_cascade_mult_label.position = _cascade_mult_rest_pos + Vector2(
+		sin(t * 7.3) * amp, cos(t * 6.1) * amp
+	)
+
+
+func _multiplier_idle_blocked() -> bool:
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings == null or not settings.has_method("get_value"):
+		return false
+	if bool(settings.call("get_value", "access", "reduce_flashing", false)):
+		return true
+	return float(settings.call("get_value", "access", "screen_shake", 1.0)) <= 0.05
 
 
 func _layout_item_desc_overlay() -> void:
@@ -2913,12 +2999,15 @@ func _ensure_playtest_tuning() -> void:
 	if vbox == null:
 		return
 	var existing := vbox.get_node_or_null("PlaytestTuning") as VBoxContainer
+	if existing != null and existing.find_child("PaidSpinUsedSpin", true, false) == null:
+		existing.free()
+		existing = null
 	if existing != null:
 		_playtest_tuning = existing
-		_reroll_used_spin = existing.find_child("RerollUsedSpin", true, false) as SpinBox
-		_reroll_budget_spin = existing.find_child("RerollBudgetSpin", true, false) as SpinBox
+		_paid_spin_used_spin = existing.find_child("PaidSpinUsedSpin", true, false) as SpinBox
+		_paid_spin_budget_spin = existing.find_child("PaidSpinBudgetSpin", true, false) as SpinBox
 		_limit_spins_checkbox = existing.find_child("LimitSpinsCheck", true, false) as CheckBox
-		_reroll_hint_label = existing.find_child("RerollHint", true, false) as Label
+		_paid_spin_hint_label = existing.find_child("PaidSpinHint", true, false) as Label
 		_goal_base_spin = existing.find_child("GoalBaseSpin", true, false) as SpinBox
 		_goal_progress_spin = existing.find_child("GoalProgressSpin", true, false) as SpinBox
 		_goal_effective_label = existing.find_child("GoalEffectiveLabel", true, false) as Label
@@ -2937,14 +3026,14 @@ func _ensure_playtest_tuning() -> void:
 	_style_item_picker_checkbox(_ignore_cap_checkbox, SIDE_PANEL_HINT_FONT)
 	_ignore_cap_checkbox.toggled.connect(_on_ignore_cap_toggled)
 	_playtest_tuning.add_child(_ignore_cap_checkbox)
-	_playtest_tuning.add_child(_make_playtest_label("REROLLS"))
-	var used_row := _make_spin_row("Used", 0, 99, "RerollUsedSpin")
-	_reroll_used_spin = used_row.get_node("RerollUsedSpin") as SpinBox
-	_reroll_used_spin.value_changed.connect(_on_reroll_used_changed)
+	_playtest_tuning.add_child(_make_playtest_label("PAID SPINS"))
+	var used_row := _make_spin_row("Used", 0, 99, "PaidSpinUsedSpin")
+	_paid_spin_used_spin = used_row.get_node("PaidSpinUsedSpin") as SpinBox
+	_paid_spin_used_spin.value_changed.connect(_on_paid_spin_used_changed)
 	_playtest_tuning.add_child(used_row)
-	var budget_row := _make_spin_row("Budget", 0, 99, "RerollBudgetSpin")
-	_reroll_budget_spin = budget_row.get_node("RerollBudgetSpin") as SpinBox
-	_reroll_budget_spin.value_changed.connect(_on_reroll_budget_changed)
+	var budget_row := _make_spin_row("Budget", 0, 99, "PaidSpinBudgetSpin")
+	_paid_spin_budget_spin = budget_row.get_node("PaidSpinBudgetSpin") as SpinBox
+	_paid_spin_budget_spin.value_changed.connect(_on_paid_spin_budget_changed)
 	_playtest_tuning.add_child(budget_row)
 	_limit_spins_checkbox = CheckBox.new()
 	_limit_spins_checkbox.name = "LimitSpinsCheck"
@@ -2952,11 +3041,11 @@ func _ensure_playtest_tuning() -> void:
 	_style_item_picker_checkbox(_limit_spins_checkbox, SIDE_PANEL_HINT_FONT)
 	_limit_spins_checkbox.toggled.connect(_on_limit_spins_toggled)
 	_playtest_tuning.add_child(_limit_spins_checkbox)
-	_reroll_hint_label = Label.new()
-	_reroll_hint_label.name = "RerollHint"
-	_reroll_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_reroll_hint_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
-	_playtest_tuning.add_child(_reroll_hint_label)
+	_paid_spin_hint_label = Label.new()
+	_paid_spin_hint_label.name = "PaidSpinHint"
+	_paid_spin_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_paid_spin_hint_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
+	_playtest_tuning.add_child(_paid_spin_hint_label)
 
 	_goal_base_spin = null
 	_goal_progress_spin = null
@@ -2964,7 +3053,7 @@ func _ensure_playtest_tuning() -> void:
 	vbox.add_child(_playtest_tuning)
 	vbox.move_child(_playtest_tuning, 1)
 	if _can_use_combat_api() and combat.has_method("get_playtest_spin_budget"):
-		_reroll_budget_spin.set_value_no_signal(float(combat.get_playtest_spin_budget()))
+		_paid_spin_budget_spin.set_value_no_signal(float(combat.get_playtest_spin_budget()))
 
 
 func _hide_playtest_goal_controls(tuning: VBoxContainer) -> void:
@@ -3034,7 +3123,7 @@ func _rebuild_item_picker_contents() -> void:
 	var family_defs := [
 		{"letter": "A", "name": "Power Chain"},
 		{"letter": "B", "name": "Premium Meter"},
-		{"letter": "C", "name": "Trinity"},
+		{"letter": "C", "name": "Vice Round"},
 		{"letter": "D", "name": "Free Spins"},
 		{"letter": "E", "name": "Diagonal"},
 		{"letter": "F", "name": "Board-count"},
@@ -3402,13 +3491,13 @@ func _on_ignore_cap_toggled(on: bool) -> void:
 	_refresh_item_picker_title()
 
 
-func _on_reroll_used_changed(value: float) -> void:
+func _on_paid_spin_used_changed(value: float) -> void:
 	if _can_use_combat_api() and combat.has_method("set_spins_used"):
 		combat.set_spins_used(int(value))
 	_refresh_playtest_readouts()
 
 
-func _on_reroll_budget_changed(value: float) -> void:
+func _on_paid_spin_budget_changed(value: float) -> void:
 	if _can_use_combat_api() and combat.has_method("set_spin_budget"):
 		combat.set_spin_budget(int(value))
 
@@ -3431,14 +3520,14 @@ func _on_goal_progress_changed(value: float) -> void:
 
 
 func _refresh_playtest_readouts() -> void:
-	if _reroll_hint_label != null and _can_use_combat_api() and combat.has_method("get_reroll_item_hint"):
-		_reroll_hint_label.text = combat.get_reroll_item_hint()
+	if _paid_spin_hint_label != null and _can_use_combat_api() and combat.has_method("get_paid_spin_item_hint"):
+		_paid_spin_hint_label.text = combat.get_paid_spin_item_hint()
 	if _goal_effective_label != null and _can_use_combat_api() and combat.has_method("get_effective_goal_target_cents"):
 		var eff: int = combat.get_effective_goal_target_cents()
 		var base: int = combat.get_goal_base_target_cents() if combat.has_method("get_goal_base_target_cents") else 10000
 		_goal_effective_label.text = "Effective %d (base %d)" % [eff, base]
-	if _reroll_used_spin != null and _can_use_combat_api():
-		_reroll_used_spin.set_value_no_signal(float(_safe_get_spins_used()))
+	if _paid_spin_used_spin != null and _can_use_combat_api():
+		_paid_spin_used_spin.set_value_no_signal(float(_safe_get_spins_used()))
 	if _goal_progress_spin != null and _can_use_combat_api():
 		_goal_progress_spin.set_value_no_signal(float(combat.get_chip_bar_goal_progress_cents()))
 

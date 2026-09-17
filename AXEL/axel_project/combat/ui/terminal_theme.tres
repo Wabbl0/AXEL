@@ -1,26 +1,73 @@
-[gd_resource type="Theme" load_steps=2 format=3]
+[gd_resource type="Theme" format=3 uid="uid://cuoe1vvdwp5bf"]
 
-[ext_resource type="FontFile" path="res://combat/ui/fonts/VT323-Regular.ttf" id="1_font"]
+[ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="1_font"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grabber"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(1, 1, 1, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grabber_hi"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(1, 0.82, 0.82, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grabber_press"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.92, 0.55, 0.55, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.35)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.85)
+anti_aliasing = false
 
 [resource]
 default_font = ExtResource("1_font")
 default_font_size = 32
-Label/font_sizes/font_size = 34
-Label/colors/font_color = Color(1, 0.45, 0.45, 1)
-Button/font_sizes/font_size = 36
 Button/colors/font_color = Color(1, 0.55, 0.55, 1)
-Button/colors/font_pressed_color = Color(0, 0, 0, 1)
+Button/colors/font_disabled_color = Color(0.45, 0.12, 0.12, 1)
 Button/colors/font_hover_color = Color(0, 0, 0, 1)
 Button/colors/font_hover_pressed_color = Color(0, 0, 0, 1)
-Button/colors/font_disabled_color = Color(0.45, 0.12, 0.12, 1)
+Button/colors/font_pressed_color = Color(0, 0, 0, 1)
 Button/constants/h_separation = 8
-SpinBox/font_sizes/font_size = 32
-SpinBox/colors/font_color = Color(1, 0.5, 0.5, 1)
-LineEdit/font_sizes/font_size = 30
-LineEdit/colors/font_color = Color(1, 0.5, 0.5, 1)
+Button/font_sizes/font_size = 36
 CheckBox/colors/font_color = Color(1, 0.55, 0.55, 1)
-CheckBox/colors/font_hover_color = Color(1, 0.72, 0.72, 1)
-CheckBox/colors/font_pressed_color = Color(1, 0.55, 0.55, 1)
-CheckBox/colors/font_hover_pressed_color = Color(1, 0.72, 0.72, 1)
-CheckBox/colors/font_focus_color = Color(1, 0.72, 0.72, 1)
 CheckBox/colors/font_disabled_color = Color(0.45, 0.12, 0.12, 1)
+CheckBox/colors/font_focus_color = Color(1, 0.72, 0.72, 1)
+CheckBox/colors/font_hover_color = Color(1, 0.72, 0.72, 1)
+CheckBox/colors/font_hover_pressed_color = Color(1, 0.72, 0.72, 1)
+CheckBox/colors/font_pressed_color = Color(1, 0.55, 0.55, 1)
+HScrollBar/styles/grabber = SubResource("StyleBoxFlat_grabber")
+HScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hi")
+HScrollBar/styles/grabber_pressed = SubResource("StyleBoxFlat_grabber_press")
+HScrollBar/styles/scroll = SubResource("StyleBoxFlat_scroll")
+HScrollBar/styles/scroll_focus = SubResource("StyleBoxFlat_scroll")
+Label/colors/font_color = Color(1, 0.45, 0.45, 1)
+Label/font_sizes/font_size = 34
+LineEdit/colors/font_color = Color(1, 0.5, 0.5, 1)
+LineEdit/font_sizes/font_size = 30
+SpinBox/colors/font_color = Color(1, 0.5, 0.5, 1)
+SpinBox/font_sizes/font_size = 32
+VScrollBar/styles/grabber = SubResource("StyleBoxFlat_grabber")
+VScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_grabber_hi")
+VScrollBar/styles/grabber_pressed = SubResource("StyleBoxFlat_grabber_press")
+VScrollBar/styles/scroll = SubResource("StyleBoxFlat_scroll")
+VScrollBar/styles/scroll_focus = SubResource("StyleBoxFlat_scroll")

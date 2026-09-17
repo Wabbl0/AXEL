@@ -17,8 +17,8 @@ signal sfx_requested(cue: StringName)
 
 @export_group("Visual pacing (async spin() only)")
 @export var pause_at_spin_start_sec: float = 1.275
-@export var pause_after_cluster_resolve_sec: float = 0.6
-@export var pause_after_gravity_refill_sec: float = 1.0
+@export var pause_after_cluster_resolve_sec: float = 0.15
+@export var pause_after_gravity_refill_sec: float = 0.2
 @export var pause_after_power_sec: float = 1.8
 @export_group("Symbol FX")
 @export var enable_symbol_fx: bool = true
@@ -26,7 +26,7 @@ signal sfx_requested(cue: StringName)
 @export var spawn_drop_duration_sec: float = 0.24
 @export var count_flash_duration_sec: float = 0.2
 @export var fx_stagger_sec: float = 0.01
-@export var cascade_column_step_sec: float = 0.33
+@export var cascade_column_step_sec: float = 0.05
 @export_group("Board swap FX (populate only)")
 @export var board_swap_fall_cell_sec: float = 0.08
 @export var board_swap_fall_column_step_sec: float = 0.08
@@ -384,8 +384,8 @@ func get_item_payout_scalar() -> float:
 func get_sealed_grid_payout_bonus() -> float:
 	return _item_fx.sealed_payout(inventory.items, _is_regular_spin_mode())
 
-func get_reroll_item_hint() -> String:
-	return _item_fx.reroll_hint(inventory.items, _spins_used)
+func get_paid_spin_item_hint() -> String:
+	return _item_fx.paid_spin_hint(inventory.items, _spins_used)
 
 func set_ignore_slot_cap(on: bool) -> void:
 	inventory.ignore_slot_cap = on
@@ -413,7 +413,7 @@ func get_spin_win_bet_ratio() -> float:
 func get_chip_bar_goal_label() -> String:
 	var target_units := get_chip_bar_goal_target_cents()
 	var current_units := _encounter_goal_winnings_cents
-	return "GOAL: WIN 10x CHIP-BAR  (%d / %d)" % [current_units, target_units]
+	return "GOAL: (%d / %d)" % [current_units, target_units]
 
 func is_chip_bar_goal_complete() -> bool:
 	return _encounter_goal_winnings_cents >= get_chip_bar_goal_target_cents()
@@ -734,6 +734,9 @@ func set_equipped_items(items: Array) -> void:
 	_on_loadout_or_goal_changed()
 
 func begin_next_playtest_encounter(seed_value: int) -> void:
+	var run := get_node_or_null("/root/AxelRun")
+	if run != null and run.has_method("is_in_encounter") and bool(run.call("is_in_encounter")):
+		return
 	var preserved_bankroll := _bankroll_cents
 	_current_seed = seed_value
 	rng.seed(seed_value)
@@ -1428,10 +1431,10 @@ func _start_spin_with_new_grid() -> void:
 	_item_fx.reset_spin()
 	_refresh_spin_weights()
 	var used_before := _spins_used
-	var r1_free: bool = _item_fx.first_reroll_free(inventory.items) and used_before == 0
+	var r1_free: bool = _item_fx.first_paid_spin_free(inventory.items) and used_before == 0
 	if not r1_free:
 		_bankroll_cents -= _to_cents(total_bet)
-		var refund := _item_fx.first_reroll_refund(inventory.items)
+		var refund := _item_fx.first_paid_spin_refund(inventory.items)
 		if refund > 0.0 and used_before == 0:
 			_bankroll_cents += _to_cents(total_bet * refund)
 			_clamp_bankroll()
@@ -1644,7 +1647,7 @@ func _apply_dev_payout_override(spin_summary: Dictionary) -> void:
 	_refresh_round_winnings_label()
 
 func _get_item_payout_scalar() -> float:
-	var total := _item_fx.reroll_payout_scalar(inventory.items, _spins_used)
+	var total := _item_fx.paid_spin_payout_scalar(inventory.items, _spins_used)
 	total += _item_fx.sealed_payout(inventory.items, _is_regular_spin_mode())
 	return total
 
@@ -1928,6 +1931,49 @@ func _kill_tween(tween: Tween) -> void:
 	if tween != null and is_instance_valid(tween):
 		tween.kill()
 
+func _trinity_first_miss_extra_spin_count() -> int:
+	var extra_n := int(_item_fx.trinity_mods(inventory.items).get("first_miss_extra_spins", 0))
+	if extra_n <= 0:
+		return 0
+	if not _find_lines().is_empty():
+		return 0
+	return extra_n
+
+
+func _grant_trinity_first_miss_extra_spins_sync(out: Dictionary, chosen: StringName) -> bool:
+	var extra_n := _trinity_first_miss_extra_spin_count()
+	if extra_n <= 0:
+		return false
+	for _i in extra_n:
+		_repopulate_grid_handoff("trinity_first_miss")
+		var extra := _resolve_trinity_cascade_loop_sync()
+		_merge_spin_summary(out, extra)
+		_apply_trinity_spin_followup_sync(out, extra, chosen)
+		_dev_clear_non_wild_for_fs_guarantee()
+		if _count_non_wild_symbols() == 0:
+			_pending_free_spins = true
+			_finish_trinity_round()
+			return true
+	return false
+
+
+func _grant_trinity_first_miss_extra_spins_async(out: Dictionary, chosen: StringName) -> bool:
+	var extra_n := _trinity_first_miss_extra_spin_count()
+	if extra_n <= 0:
+		return false
+	for _i in extra_n:
+		await _repopulate_grid_handoff_async("trinity_first_miss")
+		var extra := await _resolve_trinity_cascade_loop_async()
+		_merge_spin_summary(out, extra)
+		await _apply_trinity_spin_followup_async(out, extra, chosen)
+		_dev_clear_non_wild_for_fs_guarantee()
+		if _count_non_wild_symbols() == 0:
+			_pending_free_spins = true
+			_finish_trinity_round()
+			return true
+	return false
+
+
 func _run_trinity_round_async() -> Dictionary:
 	var out := _empty_spin_summary()
 	meter.saved_active_princess = princesses.current_id()
@@ -1941,15 +1987,8 @@ func _run_trinity_round_async() -> Dictionary:
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
 	await _play_meter_full_transition_async()
 	await _repopulate_grid_handoff_async("trinity_entry")
-	for _i in int(tmods.get("extra_start_spins", 0)):
-		var extra := await _resolve_trinity_cascade_loop_async()
-		_merge_spin_summary(out, extra)
-		await _apply_trinity_spin_followup_async(out, extra, chosen)
-		_dev_clear_non_wild_for_fs_guarantee()
-		if _count_non_wild_symbols() == 0:
-			_pending_free_spins = true
-			_finish_trinity_round()
-			return out
+	if await _grant_trinity_first_miss_extra_spins_async(out, chosen):
+		return out
 	var order: Array[StringName] = [&"love", &"star", &"storm"]
 	for id in order:
 		princesses.set_current_id(id)
@@ -1981,15 +2020,8 @@ func _run_trinity_round_sync() -> Dictionary:
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
 	_play_meter_full_transition_sync()
 	_repopulate_grid_handoff("trinity_entry")
-	for _i in int(tmods.get("extra_start_spins", 0)):
-		var extra := _resolve_trinity_cascade_loop_sync()
-		_merge_spin_summary(out, extra)
-		_apply_trinity_spin_followup_sync(out, extra, chosen)
-		_dev_clear_non_wild_for_fs_guarantee()
-		if _count_non_wild_symbols() == 0:
-			_pending_free_spins = true
-			_finish_trinity_round()
-			return out
+	if _grant_trinity_first_miss_extra_spins_sync(out, chosen):
+		return out
 	var order: Array[StringName] = [&"love", &"star", &"storm"]
 	for id in order:
 		princesses.set_current_id(id)
@@ -2049,14 +2081,27 @@ func _feel_on_line_wins(lines: Array) -> void:
 	_feel.highlight_princess(princesses.current_id())
 
 
+func _bonus_blocks_finalize() -> bool:
+	return (
+		_in_trinity_round
+		or _pending_free_spins
+		or _awaiting_free_spin_choice
+		or free_spins.active
+	)
+
+
 func _finalize_encounter_if_needed() -> void:
+	if _encounter_complete:
+		return
+	if _bonus_blocks_finalize():
+		return
 	if is_chip_bar_goal_complete():
 		end_encounter(true)
 		return
-	if not free_spins.active and not _can_afford_spin():
+	if not _can_afford_spin():
 		end_encounter(_try_final_spin_goal_assist())
 		return
-	if _playtest_limit_spins and not free_spins.active and not _in_trinity_round:
+	if _playtest_limit_spins:
 		if _playtest_spin_budget > 0 and _spins_used >= _playtest_spin_budget:
 			end_encounter(_try_final_spin_goal_assist())
 

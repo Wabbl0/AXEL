@@ -2,7 +2,7 @@ extends SceneTree
 
 const LockerInteriorScript := preload("res://scenes/ui/locker_interior.gd")
 const COMBAT_SCENE := "res://combat/combat_test.tscn"
-const ITEM_TRES := "res://combat/data/items/C1_ash_reroll_token.tres"
+const ITEM_TRES := "res://combat/data/items/C1_ash_spin_token.tres"
 const WINDOW := Vector2i(1920, 1280)
 const COMBAT_ICON := 48.0
 const LOCKER_ICON := 1024.0

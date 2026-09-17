@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://cnnga4avp6u0u" path="res://exports/Drawings/1.2_Corridor.png" id="4_corridor_bg"]
 [ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="10_top_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/InteractPromptOverlay.tscn" id="11_interact_prompt"]
+[ext_resource type="PackedScene" path="res://scenes/fx/DirectionHint.tscn" id="12_direction_hint"]
 [ext_resource type="Script" uid="uid://d0vrilka3pwoe" path="res://scenes/core/background_camera_controller.gd" id="14_camera_script"]
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="15_bg_lock"]
 [ext_resource type="Script" uid="uid://b2n2asvv47amu" path="res://scenes/core/exploration_viewport.gd" id="16_exploration_viewport"]
@@ -159,6 +160,9 @@ polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
 position = Vector2(-37.812428, 126.04143)
 shape = ExtResource("hb_front")
 metadata/authored_pos = Vector2(-37.812428, 126.04143)
+
+[node name="DirectionHint" parent="PlayerLayer" unique_id=160052137 instance=ExtResource("12_direction_hint")]
+position = Vector2(1680, 820)
 
 [node name="TopDialogueOverlay" parent="." unique_id=529892493 instance=ExtResource("10_top_dialogue")]
 

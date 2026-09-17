@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"L2"
-display_name = "Trinity Overclock"
+display_name = "Vice Overclock"
 rarity = 4
 family = ""
 description = "Each power activation activates all other powers afterward at full potency (once-per-spin cap)"

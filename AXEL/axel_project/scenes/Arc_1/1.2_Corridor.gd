@@ -7,6 +7,7 @@ extends Node2D
 const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
 const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const EXTERIOR_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
+const HINT_WAIT_SEC := 10.0
 const LOCKER_LINE := "This was your locker."
 const BASEMENT_PEEK_MARGIN_PX := 12.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
@@ -30,6 +31,11 @@ var _arrival_t := InteractArrival.DEFAULT_T
 var _exit_trigger_armed := true
 var _cover_layout_ready := false
 var _player_cover_sync := PlayerCoverSync.new()
+var _direction_hint: Node2D
+var _direction_hint_tex := Vector2.ZERO
+var _hint_elapsed := 0.0
+var _hint_hidden_this_visit := false
+var _arrival_spawn_side := ""
 
 
 func _ready() -> void:
@@ -41,6 +47,11 @@ func _ready() -> void:
 		$Camera2D.fit_mode,
 		$Camera2D.background_y,
 	)
+	_direction_hint = get_node_or_null("PlayerLayer/DirectionHint") as Node2D
+	if is_instance_valid(_direction_hint):
+		_direction_hint_tex = _direction_hint.position
+		_direction_hint.visible = false
+		_player_cover_sync.bind_extra_node(_direction_hint)
 	_locker_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/LockerInteractArea"
 	) as Area2D
@@ -70,18 +81,15 @@ func _ready() -> void:
 	_show_spawn_line()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _arrival_latched_exterior and InteractZoneGate.movement_pressed():
 		_arrival_latched_exterior = false
 	_refresh_interact_zones()
+	_update_direction_hint(delta)
 
 
 func _refresh_interact_zones() -> void:
 	if _is_transitioning:
-		return
-	if _enter_dialogue_pending or _locker_dialogue_busy():
-		if is_instance_valid(_interact_prompt):
-			_interact_prompt.hide_prompt()
 		return
 	_locker_zone_active = _is_player_near_locker()
 	if _arrival_latched_exterior:
@@ -104,6 +112,7 @@ func _locker_dialogue_busy() -> bool:
 
 func _latch_corridor_arrival() -> void:
 	var spawn_side := GameManager.take_corridor_spawn_side()
+	_arrival_spawn_side = spawn_side
 	if spawn_side == "basement_right":
 		_pending_basement_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
@@ -350,8 +359,6 @@ func _close_locker_line_bar() -> void:
 func _try_show_locker_interact_prompt() -> void:
 	if _is_transitioning or not _locker_zone_active:
 		return
-	if _enter_dialogue_pending or _locker_dialogue_busy():
-		return
 	if _exterior_zone_active:
 		return
 	if not is_instance_valid(_interact_prompt):
@@ -372,8 +379,6 @@ func _hide_locker_interact_prompt() -> void:
 
 func _try_show_exterior_interact_prompt() -> void:
 	if _is_transitioning or not _exterior_zone_active:
-		return
-	if _enter_dialogue_pending or _locker_dialogue_busy():
 		return
 	if not is_instance_valid(_interact_prompt):
 		return
@@ -429,6 +434,9 @@ func _begin_exterior_transition() -> void:
 func _on_exit_trigger_body_entered(body: Node) -> void:
 	if body != _player or _is_transitioning or not _exit_trigger_armed:
 		return
+	_hint_hidden_this_visit = true
+	if is_instance_valid(_direction_hint):
+		_direction_hint.visible = false
 	call_deferred("_begin_basement_transition")
 
 
@@ -474,6 +482,7 @@ func _sync_environment_colliders(cover_scale: float, bg_position: Vector2) -> vo
 	PlayerSpawnSync.apply_tex(env, _player, tex_pos)
 	if is_instance_valid(_player):
 		_player_cover_sync.apply(_player, cover_scale, bg_position)
+	_sync_direction_hint()
 	_cover_layout_ready = true
 	call_deferred("_wake_static_colliders")
 	if _pending_basement_peek:
@@ -486,3 +495,39 @@ func _wake_static_colliders() -> void:
 	for child in $WalkableWorld/EnvironmentColliders.get_children():
 		if child is StaticBody2D:
 			child.position = child.position
+
+
+func _sync_direction_hint() -> void:
+	if not is_instance_valid(_direction_hint):
+		return
+	var env := $WalkableWorld/EnvironmentColliders
+	_direction_hint.global_position = env.to_global(_direction_hint_tex)
+
+
+func _update_direction_hint(delta: float) -> void:
+	if not is_instance_valid(_direction_hint):
+		return
+	if _hint_should_stay_off():
+		_direction_hint.visible = false
+		return
+	if Input.is_action_pressed("move_right"):
+		_hint_hidden_this_visit = true
+		_direction_hint.visible = false
+		return
+	var dialogue_holds := _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue)
+	var pause_holds := get_tree() != null and get_tree().paused
+	if not dialogue_holds and not pause_holds:
+		_hint_elapsed += delta
+	_direction_hint.visible = bool(GameManager.corridor_from_locker) or _hint_elapsed >= HINT_WAIT_SEC
+
+
+func _hint_should_stay_off() -> bool:
+	if _hint_hidden_this_visit or _is_transitioning:
+		return true
+	if GameManager.corridor_right_hint_done:
+		return true
+	if GameManager.has_visited(BASEMENT_DOOR_SCENE):
+		return true
+	if _arrival_spawn_side == "basement_right":
+		return true
+	return false

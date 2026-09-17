@@ -25,6 +25,7 @@ var _pressing := false
 var _base_scale := Vector2.ONE
 var _shake_tween: Tween
 var _press_tween: Tween
+var _first_spin_hint := false
 
 
 func _ready() -> void:
@@ -52,7 +53,22 @@ func _process(_delta: float) -> void:
 	if _pressing:
 		return
 	var t := float(Time.get_ticks_msec()) * 0.001
-	rotation = sin(t * 0.65) * 0.035
+	var wobble := 0.035
+	if _first_spin_hint and not _reduce_flashing():
+		wobble = 0.07
+	rotation = sin(t * 0.65) * wobble
+
+
+func set_first_spin_hint(on: bool) -> void:
+	_first_spin_hint = on
+	_apply_fill_feel()
+
+
+func _reduce_flashing() -> bool:
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings == null or not settings.has_method("get_value"):
+		return false
+	return bool(settings.call("get_value", "access", "reduce_flashing", false))
 
 
 func set_fill(f: float) -> void:
@@ -109,6 +125,10 @@ func _apply_fill_feel() -> void:
 		glow_alpha = maxf(glow_alpha, GLOW_HOVER_ALPHA)
 	elif _pressing:
 		target_scale *= PRESS_SCALE
+
+	if _first_spin_hint and not _reduce_flashing():
+		glow_on = true
+		glow_alpha = maxf(glow_alpha, GLOW_HOVER_ALPHA)
 
 	scale = target_scale
 	_set_glow(glow_on, glow_alpha)

@@ -10,7 +10,7 @@ const ITEM_DIR := "res://combat/data/items/"
 const LORE_FLAGS: PackedStringArray = ["hasFlashlight", "hasKey", "hasShovel", "hasName"]
 const LORE_GOAL_BONUS := 0.15
 const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
-	3000, 5000, 7500, 10000, 15000, 20000, 30000,
+	500, 750, 1000, 1500, 2000, 3000, 5000,
 ]
 const WORLD_GOAL_LADDER_GROWTH := 1.5
 const WORLD_GOAL_LADDER_ROUNDING := 100
@@ -252,6 +252,14 @@ func owned_items() -> Array:
 	return out
 
 
+func equip_owned_if_free(item_id: String) -> bool:
+	if item_id.is_empty():
+		return false
+	if Array(state.equipped_item_ids).has(item_id):
+		return true
+	return toggle_equip(item_id)
+
+
 func toggle_equip(item_id: String) -> bool:
 	var ids: Array = []
 	for existing in state.equipped_item_ids:
@@ -320,8 +328,6 @@ func _wire_combat_root() -> void:
 		root.call("set_goal_base_target_cents", world_goal_base_cents())
 	if tutorial and root.has_method("set_final_spin_goal_assist"):
 		root.call("set_final_spin_goal_assist", TUTORIAL_FINAL_SPIN_ASSIST)
-	if root.has_method("set_limit_spins"):
-		root.call("set_limit_spins", true)
 	if encounter != null and root.has_method("set_spin_budget"):
 		root.call("set_spin_budget", int(encounter.get("spin_budget")))
 	root.call("setup_new_grid", encounter_seed())
@@ -343,7 +349,13 @@ func _on_root_finished(success: bool) -> void:
 		_apply_win_progress()
 		_return_after_win()
 		return
-	on_encounter_finished(false)
+	_finish_busy = true
+	if WIN_RETURN_SEC > 0.0 and get_tree() != null:
+		await get_tree().create_timer(WIN_RETURN_SEC).timeout
+	if get_tree() == null:
+		return
+	state.in_encounter = false
+	_permadeath_to_title()
 
 
 func max_equip_slots() -> int:
@@ -410,7 +422,11 @@ func _clear_world_encounter() -> void:
 
 
 func _permadeath_to_title() -> void:
+	state.in_encounter = false
 	_clear_world_encounter()
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("notify_fight_ended"):
+		world.call("notify_fight_ended")
 	_write_tombstone()
 	_to_overworld_music()
 	get_tree().change_scene_to_file(TITLE_SCENE)

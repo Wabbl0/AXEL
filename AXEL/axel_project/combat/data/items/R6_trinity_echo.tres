@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 id = &"R6"
-display_name = "Trinity Echo"
+display_name = "Vice Echo"
 rarity = 2
 family = ""
 description = "When a random power triggers, 30% chance to trigger a second at 50% potency"

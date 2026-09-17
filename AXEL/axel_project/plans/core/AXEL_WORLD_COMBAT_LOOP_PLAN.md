@@ -20,7 +20,7 @@ Canon still wins: `plans/core/AI_DOCS.md`. Catalog text changes only in
 - The school map shows unvisited rooms dark and refuses to travel there.
 - A full-screen wipe plays on the way into every fight.
 - Winning puts you back in the room you left, on the spot you left.
-- Losing still writes the tombstone and returns to the title (permadeath).
+- Losing still writes the tombstone and returns to the title (permadeath) after **GONE** (`WIN_RETURN_SEC`). `AxelWorld.notify_fight_ended()` clears `_starting_fight` on a loss so New Game can fight again.
 
 ## Layer rule
 
@@ -60,22 +60,21 @@ open with a random fight.
 
 ### Locker tutorial (first fight)
 
-Open the locker (which only sets the opened-locker flag — no starter items), look around as long as you like, then
-leave the hub yourself with the red `X` or Esc. `1.3_LockerHub` calls
-`AxelWorld.queue_locker_tutorial_fight()`, which only marks the fight as owed;
-`AxelWorld._on_scene_changed` starts it once `1.2_Corridor` is loaded and the
-player is standing. Reason string: `locker_tutorial`.
+Open the locker if you want (it only sets the opened-locker flag — no starter items), look around as long as you like, then
+leave the hub yourself with the red `X` or Esc. The **first** hub→`1.2` leave queues the tutorial even if they never opened LOCKER. First-visit map lines block X/Esc. `1.3_LockerHub` calls
+`AxelWorld.queue_locker_tutorial_fight()` (no stash required); `open_locker` also queues.
+`AxelWorld._on_scene_changed` starts it once `1.2_Corridor` is loaded.
+`tutorial_fight_done` is set only after `in_encounter` is true. Reason string: `locker_tutorial`.
 
-That fight is the lowest rung of the goal ladder (3x), runs with an **empty**
+That fight is the lowest rung of the goal ladder (500 cents), runs with an **empty**
 loadout, and gets a one-time last-spin assist (see below). No in-fiction
 warning line plays — master plan D10's `first_encounter_warned` flag stays
 unwired.
 
 ### World goal ladder
 
-`AxelRun.WORLD_GOAL_LADDER_CENTS` = `3000, 5000, 7500, 10000, 15000, 20000,
-30000` — 3x / 5x / 7.5x / 10x / 15x / 20x / 30x of the 1000-cent chip bar,
-indexed by `RunState.world_fight_count` (monotonic; **not**
+`AxelRun.WORLD_GOAL_LADDER_CENTS` = `500, 750, 1000, 1500, 2000, 3000, 5000`
+(HUD units = raw cents), indexed by `RunState.world_fight_count` (monotonic; **not**
 `world_encounter_index`, which wraps at 3). Past the last rung each further
 fight multiplies by `1.5`, rounded to 100 cents. It reaches combat as a plain
 number through the pre-existing `CombatRoot.set_goal_base_target_cents()`; the
@@ -113,7 +112,9 @@ zones (`2.4`) rather than skip the item.
 What the item actually is only shows up when you walk into the existing
 220 px radius: `scenes/ui/world_item_info_card.gd` (one per room, layer 109 —
 above CRT 108, below the `[E]` chip 110 and dialogue 111) shows the item's real
-`display_name`, `description` and catalog `icon` next to the `[E]` chip.
+`display_name`, `description` and catalog `icon` directly under the `[E]` chip.
+Floor pickups auto-equip into a free slot (`AxelRun.equip_owned_if_free`) so that
+fight's ITEMS list is live. Locker is still where you unequip.
 
 ## Rank progression (AXEL_notes §2.3)
 

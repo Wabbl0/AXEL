@@ -6,10 +6,10 @@
 [resource]
 script = ExtResource("1_script")
 id = &"U6"
-display_name = "Storm Charm"
+display_name = "Cigarette Charm"
 rarity = 1
 family = "storm"
-description = "Storm symbol chance +12%; Storm power removes +1 extra low-pay set at 20% chance"
+description = "Cigarette symbol chance +12%; Cigarette power removes +1 extra low-pay set at 20% chance"
 effect_id = &"princess_charm"
 effect_params = {"princess": "storm", "spawn_chance": 0.12, "extra_set_chance": 0.2}
 icon = ExtResource("2_icon")
