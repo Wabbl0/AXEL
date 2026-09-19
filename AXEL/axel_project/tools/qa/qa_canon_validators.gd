@@ -26,9 +26,9 @@ const REQUIRED_COMBAT_TEST_UNIQUE: Array[String] = [
 	"EncounterWinOverlay",
 	"EncounterWinLabel",
 	"SuperFSChoiceOverlay",
-	"ChooseLoveButton",
-	"ChooseStarButton",
-	"ChooseStormButton",
+	"ChooseBloodyHandButton",
+	"ChooseAlcoholButton",
+	"ChooseCigaretteButton",
 ]
 
 const COMBAT_ROOT_GRID_UNIQUE: Array[String] = [

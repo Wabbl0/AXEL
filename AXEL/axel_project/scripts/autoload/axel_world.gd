@@ -6,6 +6,8 @@ const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
 const PROMPT_SCENE := "res://scenes/ui/InteractPromptOverlay.tscn"
 const PROMPT_NODE_NAME := "WorldItemPromptOverlay"
 const INFO_CARD_NODE_NAME := "WorldItemInfoCard"
+const ITEM_PROMPT_SCREEN_OFFSET := Vector2(-4, 10)
+const ITEM_CARD_GAP_BELOW_CHIP := 20.0
 const PICKUP_HOST_NAME := "WorldItemScatter"
 const INTERACT_PAD_PX := 8.0
 const ITEM_SEPARATION_PX := 220.0
@@ -89,6 +91,9 @@ var _cleared: Dictionary = {}
 var _upgrade_spent: Dictionary = {}
 var _room_items: Dictionary = {}
 var _lore_fights: Dictionary = {}
+var _item_seed: int = 0
+const ITEM_ROLL_SALT := 0xA5A511
+const PLACE_SALT := 0x5A5A22
 
 var _steps_since_fight: int = STEP_GRACE_AFTER_FIGHT
 var _step_fights_this_visit: int = 0
@@ -120,6 +125,7 @@ func reset_world() -> void:
 	_upgrade_spent.clear()
 	_room_items.clear()
 	_lore_fights.clear()
+	_item_seed = 0
 	for area_id in AREAS.keys():
 		_rank[area_id] = 0
 		_engaged[area_id] = false
@@ -395,6 +401,7 @@ func _refresh_cleared(area_id: String) -> void:
 func to_dict() -> Dictionary:
 	return {
 		"schema_version": 1,
+		"item_seed": _item_seed,
 		"rank": _rank.duplicate(true),
 		"engaged": _engaged.duplicate(true),
 		"cleared": _cleared.duplicate(true),
@@ -408,6 +415,7 @@ func from_dict(data: Dictionary) -> void:
 	reset_world()
 	if data.is_empty():
 		return
+	_item_seed = int(data.get("item_seed", 0))
 	for area_id in AREAS.keys():
 		_rank[area_id] = clampi(int((data.get("rank", {}) as Dictionary).get(area_id, 0)), 0, MAX_RANK)
 		_engaged[area_id] = bool((data.get("engaged", {}) as Dictionary).get(area_id, false))
@@ -494,26 +502,113 @@ func _populate_room(scene: Node) -> void:
 		_room_items[path] = _decide_placements(scene, env, area_id, want, path)
 		_save()
 	else:
+		_fill_unplaced_spots(scene, env, path)
 		_repair_illegal_spots(scene, env, path)
 	_spawn_pickups(scene, env, path)
+
+
+func plan_floor_items(seed: int) -> void:
+	_item_seed = seed if seed != 0 else 1
+	_room_items.clear()
+	var used_lanes: Array = []
+	var area_ids: Array = AREAS.keys()
+	area_ids.sort()
+	for area_id in area_ids:
+		var rooms: Dictionary = AREAS[area_id]["rooms"]
+		var paths: Array = rooms.keys()
+		paths.sort()
+		for path in paths:
+			var want: int = int(rooms[path])
+			if want <= 0:
+				continue
+			var rng := _room_rng(String(path), ITEM_ROLL_SALT)
+			var entries: Array = []
+			for _i in want:
+				var item_id := _roll_item(String(area_id), rng, used_lanes)
+				if item_id.is_empty():
+					continue
+				used_lanes.append(_lane_of(item_id))
+				entries.append({"id": item_id, "x": 0.0, "y": 0.0, "taken": false})
+			_room_items[String(path)] = entries
+
+
+func _effective_item_seed() -> int:
+	if _item_seed != 0:
+		return _item_seed
+	var run := _run()
+	if run != null:
+		var s := int(run.state.seed)
+		if s != 0:
+			_item_seed = s
+			return s
+	return 1
+
+
+func _room_rng(path: String, salt: int) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	var mixed := int(_effective_item_seed()) ^ int(hash(path)) ^ salt
+	if mixed == 0:
+		mixed = 1
+	rng.seed = mixed
+	return rng
 
 
 func _decide_placements(
 	scene: Node, env: Node2D, area_id: String, want: int, path: String
 ) -> Array:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(path)
+	var rng := _room_rng(path, ITEM_ROLL_SALT)
+	var ids: Array = []
+	var used_lanes: Array = []
+	for _i in want:
+		var item_id := _roll_item(area_id, rng, used_lanes)
+		if item_id.is_empty():
+			continue
+		used_lanes.append(_lane_of(item_id))
+		ids.append(item_id)
+	return _spots_for_ids(scene, env, path, ids)
+
+
+func _fill_unplaced_spots(scene: Node, env: Node2D, path: String) -> void:
+	var entries: Array = _room_items.get(path, [])
+	if entries.is_empty():
+		return
+	var ids: Array = []
+	var need := false
+	for entry in entries:
+		var d: Dictionary = entry
+		ids.append(String(d.get("id", "")))
+		if bool(d.get("taken", false)):
+			continue
+		if absf(float(d.get("x", 0.0))) < 0.5 and absf(float(d.get("y", 0.0))) < 0.5:
+			need = true
+	if not need:
+		return
+	var placed := _spots_for_ids(scene, env, path, ids)
+	for i in mini(placed.size(), entries.size()):
+		var src: Dictionary = placed[i]
+		var dst: Dictionary = entries[i]
+		if bool(dst.get("taken", false)):
+			continue
+		dst["id"] = String(src.get("id", dst.get("id", "")))
+		dst["x"] = float(src.get("x", 0.0))
+		dst["y"] = float(src.get("y", 0.0))
+		entries[i] = dst
+	_room_items[path] = entries
+	_save()
+
+
+func _spots_for_ids(scene: Node, env: Node2D, path: String, ids: Array) -> Array:
+	var rng := _room_rng(path, PLACE_SALT)
 	var tex_size := _texture_size(scene)
 	var player := scene.find_child("Player", true, false) as Node2D
-
 	var player_tex := PlayerSpawnSync.capture_tex(env, player) if player != null else Vector2.ZERO
 	var floor_y: float = player_tex.y if player != null else tex_size.y * 0.72
 	var exclude: Array[RID] = []
 	if player is CollisionObject2D:
 		exclude.append((player as CollisionObject2D).get_rid())
 	var out: Array = []
-	var used_lanes: Array = []
 	var occupied: Array = []
+	var want: int = ids.size()
 	for i in want:
 		var frac := (float(i) + 1.0) / (float(want) + 1.0)
 		frac = clampf(frac + rng.randf_range(-0.07, 0.07), 0.14, 0.86)
@@ -526,12 +621,13 @@ func _decide_placements(
 		if not _is_finite_spot(spot):
 			push_warning("AxelWorld: no wall-clear floor for an item in %s" % path)
 			continue
-		var item_id := _roll_item(area_id, rng, used_lanes)
-		if item_id.is_empty():
-			continue
-		used_lanes.append(_lane_of(item_id))
 		occupied.append(spot)
-		out.append({"id": item_id, "x": spot.x, "y": spot.y, "taken": false})
+		out.append({
+			"id": String(ids[i]),
+			"x": spot.x,
+			"y": spot.y,
+			"taken": false,
+		})
 	return out
 
 
@@ -836,7 +932,7 @@ func _ensure_prompt_overlay(scene: Node) -> Node:
 		return null
 	var overlay := packed.instantiate()
 	overlay.name = PROMPT_NODE_NAME
-	overlay.set("screen_offset", Vector2(3, 0))
+	overlay.set("screen_offset", ITEM_PROMPT_SCREEN_OFFSET)
 	scene.add_child(overlay)
 	return overlay
 

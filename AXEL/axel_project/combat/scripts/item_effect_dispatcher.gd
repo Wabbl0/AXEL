@@ -1,7 +1,7 @@
 class_name ItemEffectDispatcher
 extends RefCounted
 
-const ALL_POWERS: Array[StringName] = [&"love", &"star", &"storm"]
+const ALL_POWERS: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
 
 var dead_power_streak: int = 0
 var pending_power_chance: float = 0.0
@@ -137,7 +137,7 @@ func apply_weights(items: Array, base_weights: Dictionary, symbols_by_id: Dictio
 	var normal_add := 0.0
 	var power_add := 0.0
 	var power_chance_add := 0.0
-	var per_princess: Dictionary = {}
+	var per_power: Dictionary = {}
 	for item in items:
 		var eid := _eff(item)
 		var p := _params(item)
@@ -150,9 +150,9 @@ func apply_weights(items: Array, base_weights: Dictionary, symbols_by_id: Dictio
 				power_add += float(p.get("amount", 0.0))
 			&"paid_spin_payout_scalar":
 				power_chance_add += float(p.get("power_symbol_chance", 0.0))
-			&"princess_charm":
-				var pid := StringName(str(p.get("princess", "")))
-				per_princess[pid] = float(per_princess.get(pid, 0.0)) + float(p.get("spawn_chance", 0.0))
+			&"power_charm":
+				var pid := StringName(str(p.get("power", "")))
+				per_power[pid] = float(per_power.get(pid, 0.0)) + float(p.get("spawn_chance", 0.0))
 			&"first_dead_power_spawn":
 				pass
 	power_add += pending_power_spawn
@@ -162,17 +162,17 @@ func apply_weights(items: Array, base_weights: Dictionary, symbols_by_id: Dictio
 			continue
 		var w := float(weights[sid])
 		var tier = sd.get("tier")
-		var princess_id: StringName = sd.get("princess_id") if sd.get("princess_id") != null else &""
+		var power_id: StringName = sd.get("power_id") if sd.get("power_id") != null else &""
 		if int(tier) == 0:
 			w *= 1.0 + normal_add
-		if princess_id != &"":
+		if power_id != &"":
 			w *= 1.0 + power_add + power_chance_add
-			w *= 1.0 + float(per_princess.get(princess_id, 0.0))
+			w *= 1.0 + float(per_power.get(power_id, 0.0))
 		weights[sid] = w
 	return weights
 
 
-func line_payout_bonus(items: Array, symbol_tier: int, princess_id: StringName, in_trinity: bool) -> float:
+func line_payout_bonus(items: Array, symbol_tier: int, power_id: StringName, in_trinity: bool) -> float:
 	var bonus := 0.0
 	for item in items:
 		var eid := _eff(item)
@@ -184,11 +184,11 @@ func line_payout_bonus(items: Array, symbol_tier: int, princess_id: StringName, 
 			&"girl_power_chance":
 				if symbol_tier == 0:
 					bonus += float(p.get("normal_value", 0.0))
-			&"princess_payout_bonus":
-				if princess_id != &"" and StringName(str(p.get("princess", ""))) == princess_id:
+			&"power_payout_bonus":
+				if power_id != &"" and StringName(str(p.get("power", ""))) == power_id:
 					bonus += float(p.get("amount", 0.0))
 			&"power_symbol_weight":
-				if princess_id != &"":
+				if power_id != &"":
 					bonus += float(p.get("payout", 0.0))
 			&"trinity_run":
 				if in_trinity and symbol_tier == 0:
@@ -390,17 +390,17 @@ func roll_glyphs(items: Array, rng: CombatRNG) -> void:
 		}
 
 
-func charm_mods(items: Array, princess_id: StringName) -> Dictionary:
+func charm_mods(items: Array, power_id: StringName) -> Dictionary:
 	var out := {
 		"extra_set_chance": 0.0,
 		"extra_wild_chance": 0.0,
 		"extra_transform_chance": 0.0,
 	}
 	for item in items:
-		if _eff(item) != &"princess_charm":
+		if _eff(item) != &"power_charm":
 			continue
 		var p := _params(item)
-		if StringName(str(p.get("princess", ""))) != princess_id:
+		if StringName(str(p.get("power", ""))) != power_id:
 			continue
 		out["extra_set_chance"] = float(out["extra_set_chance"]) + float(p.get("extra_set_chance", 0.0))
 		out["extra_wild_chance"] = float(out["extra_wild_chance"]) + float(p.get("extra_wild_chance", 0.0))
@@ -461,13 +461,13 @@ func extra_wilds_for_create(items: Array, rng: CombatRNG) -> int:
 	return extra
 
 
-func apply_c5_c9_from_items(items: Array, produced_win: bool, princess_triggered: bool) -> void:
-	if princess_triggered:
+func apply_c5_c9_from_items(items: Array, produced_win: bool, power_triggered: bool) -> void:
+	if power_triggered:
 		dead_power_streak = 0
 	else:
 		dead_power_streak += 1
 	pending_power_chance = 0.0
-	if not princess_triggered:
+	if not power_triggered:
 		for item in items:
 			if _eff(item) != &"dead_spin_power_catchup":
 				continue

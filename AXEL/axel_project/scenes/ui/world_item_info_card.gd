@@ -4,13 +4,16 @@ const CARD_LAYER := 109
 const ICON_PX := 64.0
 const NAME_FONT := 26
 const DESC_FONT := 20
-const CARD_WIDTH := 520.0
-const CHIP_GAP_PX := 6.0
-const BAR_TOP_FRACTION := 0.82
+const CARD_WIDTH := 280.0
+const CHIP_GAP_PX := 20.0
+const WINDOW_PAD := 8.0
+const ROW_SEP := 12.0
+const PANEL_PAD_X := 24.0
 
 var _root: Control
 var _panel: PanelContainer
 var _icon: TextureRect
+var _text_col: VBoxContainer
 var _name_label: Label
 var _desc_label: Label
 var _world_anchor := Vector2.ZERO
@@ -56,7 +59,7 @@ func _build() -> void:
 	_root.add_child(_panel)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", int(ROW_SEP))
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(row)
 
@@ -68,21 +71,47 @@ func _build() -> void:
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(_icon)
 
-	var text_col := VBoxContainer.new()
-	text_col.add_theme_constant_override("separation", 2)
-	text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(text_col)
+	_text_col = VBoxContainer.new()
+	_text_col.add_theme_constant_override("separation", 2)
+	_text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_text_col.propagate_maximum_size = true
+	row.add_child(_text_col)
 
 	_name_label = Label.new()
 	_name_label.name = "ItemName"
+	_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	MenuLook.apply_label(_name_label, NAME_FONT, MenuLook.ACCENT)
-	text_col.add_child(_name_label)
+	_text_col.add_child(_name_label)
 
 	_desc_label = Label.new()
 	_desc_label.name = "ItemDescription"
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	MenuLook.apply_label(_desc_label, DESC_FONT, MenuLook.TEXT)
-	text_col.add_child(_desc_label)
+	_text_col.add_child(_desc_label)
+	_apply_wrap_sizes(1.0)
+
+
+func _text_wrap_width(f: float) -> float:
+	var icon_w := ICON_PX * f
+	if _icon != null and not _icon.visible:
+		icon_w = 0.0
+	var sep := ROW_SEP if icon_w > 0.0 else 0.0
+	return maxf(CARD_WIDTH * f - icon_w - sep - PANEL_PAD_X, 80.0)
+
+
+func _apply_wrap_sizes(f: float) -> void:
+	var wrap_w := _text_wrap_width(f)
+	if _name_label != null:
+		_name_label.custom_maximum_size = Vector2(wrap_w, -1.0)
+	if _desc_label != null:
+		_desc_label.custom_minimum_size = Vector2(wrap_w, 0.0)
+		_desc_label.custom_maximum_size = Vector2(wrap_w, -1.0)
+	if _text_col != null:
+		_text_col.custom_maximum_size = Vector2(wrap_w, -1.0)
+	if _icon != null:
+		_icon.custom_minimum_size = Vector2(ICON_PX * f, ICON_PX * f)
+	if _panel != null:
+		_panel.custom_maximum_size = Vector2(CARD_WIDTH * f, -1.0)
 
 
 func _apply_scale() -> void:
@@ -91,8 +120,7 @@ func _apply_scale() -> void:
 	var f := UiViewportScale.factor(self)
 	_name_label.add_theme_font_size_override("font_size", maxi(roundi(NAME_FONT * f), 10))
 	_desc_label.add_theme_font_size_override("font_size", maxi(roundi(DESC_FONT * f), 10))
-	_desc_label.custom_minimum_size = Vector2(CARD_WIDTH * f, 0.0)
-	_icon.custom_minimum_size = Vector2(ICON_PX * f, ICON_PX * f)
+	_apply_wrap_sizes(f)
 	if _shown:
 		_update_screen_position()
 
@@ -106,6 +134,9 @@ func show_item(world_pos: Vector2, item_name: String, description: String, icon:
 	_shown = true
 	_root.visible = true
 	set_process(true)
+	_apply_scale()
+	if _panel != null:
+		_panel.reset_size()
 	_update_screen_position()
 
 
@@ -138,19 +169,22 @@ func _chip_rect() -> Rect2:
 
 func _update_screen_position() -> void:
 	var viewport := get_viewport()
-	if viewport == null or _panel == null:
+	if viewport == null or _panel == null or _root == null:
 		return
 	var chip := _chip_rect()
+	if _panel.size.x <= 0.0 or _panel.size.y <= 0.0:
+		_panel.reset_size()
 	var card_size := _panel.size
 	if card_size.x <= 0.0 or card_size.y <= 0.0:
 		card_size = _panel.get_combined_minimum_size()
+	var card_w := card_size.x
+	var card_h := card_size.y
 	var gap := CHIP_GAP_PX * UiViewportScale.factor(self)
-	var pos := Vector2(chip.get_center().x - card_size.x * 0.5, chip.end.y + gap)
+	var pos := Vector2(chip.get_center().x - card_w * 0.5, chip.end.y + gap)
 	var view_size := Vector2(viewport.get_visible_rect().size)
-	var bar_top := view_size.y * BAR_TOP_FRACTION
-	if pos.y + card_size.y > bar_top - 8.0:
-		pos.y = maxf(8.0, bar_top - 8.0 - card_size.y)
-	pos.x = chip.get_center().x - card_size.x * 0.5
-	pos.x = clampf(pos.x, 8.0, maxf(view_size.x - card_size.x - 8.0, 8.0))
-	pos.y = clampf(pos.y, 8.0, maxf(view_size.y - card_size.y - 8.0, 8.0))
+	if pos.y + card_h > view_size.y:
+		pos.y = chip.position.y - gap - card_h
+	pos.x = clampf(pos.x, WINDOW_PAD, maxf(view_size.x - card_w - WINDOW_PAD, WINDOW_PAD))
+	pos.y = clampf(pos.y, WINDOW_PAD, maxf(view_size.y - card_h - WINDOW_PAD, WINDOW_PAD))
 	_root.position = pos
+	_root.size = card_size

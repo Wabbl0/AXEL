@@ -10,9 +10,9 @@ const COMBAT_ROOT_INSTANCED_CHILDREN := [
 ]
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
-const PRINCESS_LOVE: StringName = &"love"
-const PRINCESS_STAR: StringName = &"star"
-const PRINCESS_STORM: StringName = &"storm"
+const POWER_BLOODY_HAND: StringName = &"bloody_hand"
+const POWER_ALCOHOL: StringName = &"alcohol"
+const POWER_CIGARETTE: StringName = &"cigarette"
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const GRID_COLUMN_GAP := 10.0
 const RESPONSIVE_NARROW_W := 900.0
@@ -86,7 +86,6 @@ const HISTORY_ROW_SEPARATION := 3
 const HUD_WHITE_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
 const HUD_WHITE_TEXT_SHADOW_COLOR := Color(0.22, 0.22, 0.22, 0.72)
 const HUD_WHITE_TEXT_SHADOW_OFFSET_Y := 1
-const SETTINGS_PANEL_SCENE := preload("res://combat/scenes/combat_settings_panel.tscn")
 const TERMINAL_THEME := preload("res://combat/ui/terminal_theme.tres")
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const BET_STRIP_TWEEN_SEC := 0.15
@@ -134,9 +133,9 @@ var combat: CombatRootScript
 var encounter_win_overlay: Control
 var encounter_win_label: Label
 var super_fs_choice_overlay: Control
-var choose_love_button: Button
-var choose_star_button: Button
-var choose_storm_button: Button
+var choose_bloody_hand_button: Button
+var choose_alcohol_button: Button
+var choose_cigarette_button: Button
 var top_bar: Control
 var meta_box: PanelContainer
 var goal_box: PanelContainer
@@ -220,7 +219,6 @@ var _piece_premium_bar: CombatHudPiece
 var _piece_spin_money: CombatHudPiece
 var _premium_bar_fill: ColorRect
 var _premium_skull: Node
-var _settings_panel: CanvasLayer
 var _bet_strip_row: HBoxContainer
 var _bet_strip_labels: Array[Label] = []
 var _bet_strip_tween: Tween
@@ -485,12 +483,12 @@ func _missing_scaffold_refs() -> PackedStringArray:
 		missing.append("%GoalBox")
 	if stake_selector == null and _resolve_scaffold_node("BetMinusButton") == null:
 		missing.append("StakeSelector/BetMinusButton")
-	if choose_love_button == null:
-		missing.append("%ChooseLoveButton")
-	if choose_star_button == null:
-		missing.append("%ChooseStarButton")
-	if choose_storm_button == null:
-		missing.append("%ChooseStormButton")
+	if choose_bloody_hand_button == null:
+		missing.append("%ChooseBloodyHandButton")
+	if choose_alcohol_button == null:
+		missing.append("%ChooseAlcoholButton")
+	if choose_cigarette_button == null:
+		missing.append("%ChooseCigaretteButton")
 	return missing
 
 func _run_runtime_when_ready() -> void:
@@ -569,12 +567,12 @@ func _cache_scene_refs() -> bool:
 		encounter_win_label = _resolve_scaffold_node("EncounterWinLabel") as Label
 	if super_fs_choice_overlay == null or not is_instance_valid(super_fs_choice_overlay):
 		super_fs_choice_overlay = _resolve_scaffold_node("SuperFSChoiceOverlay") as Control
-	if choose_love_button == null or not is_instance_valid(choose_love_button):
-		choose_love_button = _resolve_scaffold_node("ChooseLoveButton") as Button
-	if choose_star_button == null or not is_instance_valid(choose_star_button):
-		choose_star_button = _resolve_scaffold_node("ChooseStarButton") as Button
-	if choose_storm_button == null or not is_instance_valid(choose_storm_button):
-		choose_storm_button = _resolve_scaffold_node("ChooseStormButton") as Button
+	if choose_bloody_hand_button == null or not is_instance_valid(choose_bloody_hand_button):
+		choose_bloody_hand_button = _resolve_scaffold_node("ChooseBloodyHandButton") as Button
+	if choose_alcohol_button == null or not is_instance_valid(choose_alcohol_button):
+		choose_alcohol_button = _resolve_scaffold_node("ChooseAlcoholButton") as Button
+	if choose_cigarette_button == null or not is_instance_valid(choose_cigarette_button):
+		choose_cigarette_button = _resolve_scaffold_node("ChooseCigaretteButton") as Button
 	if top_bar == null or not is_instance_valid(top_bar):
 		top_bar = get_node_or_null("TopBar") as Control
 	if meta_box == null or not is_instance_valid(meta_box):
@@ -718,14 +716,16 @@ func _connect_runtime_signals() -> void:
 		combat.meter_full_transition_started.connect(_on_meter_full_transition_started)
 	if not combat.winnings_popup_border_touched.is_connected(_on_winnings_popup_border_touched):
 		combat.winnings_popup_border_touched.connect(_on_winnings_popup_border_touched)
-	if not choose_love_button.pressed.is_connected(_on_choose_love_pressed):
-		choose_love_button.pressed.connect(_on_choose_love_pressed)
-	if not choose_star_button.pressed.is_connected(_on_choose_star_pressed):
-		choose_star_button.pressed.connect(_on_choose_star_pressed)
-	if not choose_storm_button.pressed.is_connected(_on_choose_storm_pressed):
-		choose_storm_button.pressed.connect(_on_choose_storm_pressed)
+	if not choose_bloody_hand_button.pressed.is_connected(_on_choose_bloody_hand_pressed):
+		choose_bloody_hand_button.pressed.connect(_on_choose_bloody_hand_pressed)
+	if not choose_alcohol_button.pressed.is_connected(_on_choose_alcohol_pressed):
+		choose_alcohol_button.pressed.connect(_on_choose_alcohol_pressed)
+	if not choose_cigarette_button.pressed.is_connected(_on_choose_cigarette_pressed):
+		choose_cigarette_button.pressed.connect(_on_choose_cigarette_pressed)
 	if not seed_spin.value_changed.is_connected(_on_seed_spin_value_changed):
 		seed_spin.value_changed.connect(_on_seed_spin_value_changed)
+	if combat.has_signal("goal_victory_requested") and not combat.goal_victory_requested.is_connected(_flash_goal_victory):
+		combat.goal_victory_requested.connect(_flash_goal_victory)
 	_wire_piece_input_signals()
 
 func _apply_editor_combat_preview() -> void:
@@ -1639,9 +1639,9 @@ func _spin_hotkey_allowed() -> bool:
 		return false
 	if _safe_is_waiting_for_free_spin_choice():
 		return false
-	if _settings_panel != null and is_instance_valid(_settings_panel) and _settings_panel.has_method("is_open"):
-		if bool(_settings_panel.call("is_open")):
-			return false
+	var pause := get_node_or_null("/root/AxelPause")
+	if pause != null and pause.has_method("is_paused") and bool(pause.call("is_paused")):
+		return false
 	var tools := get_node_or_null("/root/AxelCombatDevTools")
 	if tools != null and tools.has_method("is_menu_open") and bool(tools.call("is_menu_open")):
 		return false
@@ -2098,7 +2098,6 @@ func _bind_widgets_to_pieces() -> void:
 		meta_box.visible = false
 	if goal_box != null:
 		goal_box.visible = false
-	_ensure_settings_panel()
 	_wire_piece_input_signals()
 
 	_animate_bet_strip()
@@ -2143,19 +2142,10 @@ func _on_piece_execute_activated() -> void:
 	await _request_spin()
 
 
-func _ensure_settings_panel() -> void:
-	if Engine.is_editor_hint():
-		return
-	if _settings_panel != null and is_instance_valid(_settings_panel):
-		return
-	_settings_panel = SETTINGS_PANEL_SCENE.instantiate() as CanvasLayer
-	add_child(_settings_panel)
-
-
 func _on_settings_activated() -> void:
-	_ensure_settings_panel()
-	if _settings_panel != null and _settings_panel.has_method("toggle_panel"):
-		_settings_panel.toggle_panel()
+	var pause := get_node_or_null("/root/AxelPause")
+	if pause != null and pause.has_method("request_pause"):
+		pause.call("request_pause")
 
 
 func _ensure_bet_strip_row() -> void:
@@ -2591,36 +2581,51 @@ func _refresh_spin_button_state() -> void:
 func _refresh_encounter_win_overlay() -> void:
 	if encounter_win_overlay == null:
 		return
+	if _is_player_combat_host():
+		encounter_win_overlay.visible = false
+		return
 	var should_show := _safe_is_encounter_complete() and _safe_did_win_encounter()
 	encounter_win_overlay.visible = should_show
 	if encounter_win_label != null and should_show:
 		encounter_win_label.text = "Encounter won!"
+
+
+func _flash_goal_victory() -> void:
+	if _piece_goal == null:
+		return
+	_piece_goal.modulate = Color.WHITE
+	var tw := create_tween()
+	for _i in 3:
+		tw.tween_property(_piece_goal, "modulate", Color(1.55, 1.55, 1.55, 1.0), 0.2)
+		tw.tween_property(_piece_goal, "modulate", Color.WHITE, 0.2)
+		if _piece_goal.has_method("pop"):
+			_piece_goal.pop()
 
 func _refresh_super_fs_choice_overlay() -> void:
 	if super_fs_choice_overlay == null:
 		return
 	var awaiting_choice: bool = _safe_is_waiting_for_free_spin_choice()
 	super_fs_choice_overlay.visible = awaiting_choice
-	if choose_love_button != null:
-		choose_love_button.disabled = not awaiting_choice
-	if choose_star_button != null:
-		choose_star_button.disabled = not awaiting_choice
-	if choose_storm_button != null:
-		choose_storm_button.disabled = not awaiting_choice
+	if choose_bloody_hand_button != null:
+		choose_bloody_hand_button.disabled = not awaiting_choice
+	if choose_alcohol_button != null:
+		choose_alcohol_button.disabled = not awaiting_choice
+	if choose_cigarette_button != null:
+		choose_cigarette_button.disabled = not awaiting_choice
 
-func _on_choose_love_pressed() -> void:
-	_submit_super_fs_choice(PRINCESS_LOVE)
+func _on_choose_bloody_hand_pressed() -> void:
+	_submit_super_fs_choice(POWER_BLOODY_HAND)
 
-func _on_choose_star_pressed() -> void:
-	_submit_super_fs_choice(PRINCESS_STAR)
+func _on_choose_alcohol_pressed() -> void:
+	_submit_super_fs_choice(POWER_ALCOHOL)
 
-func _on_choose_storm_pressed() -> void:
-	_submit_super_fs_choice(PRINCESS_STORM)
+func _on_choose_cigarette_pressed() -> void:
+	_submit_super_fs_choice(POWER_CIGARETTE)
 
-func _submit_super_fs_choice(princess_id: StringName) -> void:
+func _submit_super_fs_choice(power_id: StringName) -> void:
 	if not combat.is_waiting_for_free_spin_choice():
 		return
-	combat.choose_free_spins_princess(princess_id)
+	combat.choose_free_spins_power(power_id)
 	spin_btn.disabled = false
 	_refresh_readouts()
 	_refresh_spin_button_state()

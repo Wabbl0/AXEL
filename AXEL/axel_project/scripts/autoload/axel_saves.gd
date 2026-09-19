@@ -26,6 +26,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	_purge_dead_slots()
 	var tree := get_tree()
 	if tree != null and not tree.scene_changed.is_connected(_on_scene_changed):
 		tree.scene_changed.connect(_on_scene_changed)
@@ -100,6 +101,43 @@ func is_empty(slot: int) -> bool:
 	return read_header(slot).is_empty()
 
 
+func first_free_slot() -> int:
+	for i in SLOT_COUNT:
+		if is_empty(i) or is_dead(i):
+			return i
+	return -1
+
+
+func oldest_living_slot() -> int:
+	var best := -1
+	var best_ts := 9223372036854775807
+	for i in SLOT_COUNT:
+		if not _is_living(i):
+			continue
+		var stamp := int(read_header(i).get("timestamp_unix", 0))
+		if stamp < best_ts or (stamp == best_ts and (best < 0 or i < best)):
+			best = i
+			best_ts = stamp
+	return best
+
+
+func living_slot_count() -> int:
+	var n := 0
+	for i in SLOT_COUNT:
+		if _is_living(i):
+			n += 1
+	return n
+
+
+func begin_new_game_and_enter(slot: int) -> bool:
+	if not new_game(slot):
+		return false
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("to_overworld"):
+		music.call("to_overworld")
+	return _change_scene(NEW_GAME_SCENE)
+
+
 func new_game(slot: int) -> bool:
 	if not _valid_slot(slot):
 		return false
@@ -107,7 +145,10 @@ func new_game(slot: int) -> bool:
 	GameManager.reset_state()
 	var run := get_node_or_null("/root/AxelRun")
 	if run != null and run.has_method("reset_run"):
-		run.call("reset_run")
+		run.call("reset_run", slot)
+	var world := get_node_or_null("/root/AxelWorld")
+	if run != null and world != null and world.has_method("plan_floor_items"):
+		world.call("plan_floor_items", int(run.state.seed))
 	active_slot = slot
 	_playtime_sec = 0.0
 	_pending_tex_valid = false
@@ -181,21 +222,7 @@ func delete_slot(slot: int) -> bool:
 
 
 func write_tombstone(slot: int) -> void:
-	if not _valid_slot(slot):
-		return
-	var header := read_header(slot)
-	if header.is_empty():
-		header = _header_from_live(get_tree().current_scene.scene_file_path if get_tree().current_scene else "")
-	header["dead"] = true
-	header["timestamp_unix"] = int(Time.get_unix_time_from_system())
-	_atomic_write(_meta_path(slot), header)
-	var body_path := _body_path(slot)
-	if FileAccess.file_exists(body_path):
-		DirAccess.remove_absolute(body_path)
-	if active_slot == slot:
-		active_slot = -1
-		active_slot_changed.emit(-1)
-	slots_changed.emit()
+	delete_slot(slot)
 
 
 func deactivate() -> void:
@@ -301,6 +328,7 @@ func _header_from_body(body: Dictionary, scene_path: String) -> Dictionary:
 		"items": items,
 		"combat_items": combat_items,
 		"act": int(run_state.get("act", 1)),
+		"seed": int(run_state.get("seed", 0)),
 		"playtime_sec": float(body.get("playtime_sec", _playtime_sec)),
 		"last_room": room,
 		"timestamp_unix": int(Time.get_unix_time_from_system()),
@@ -340,6 +368,13 @@ func _atomic_write(path: String, data: Dictionary) -> void:
 	var err := DirAccess.rename_absolute(abs_tmp, abs_path)
 	if err != OK:
 		push_warning("AxelSaves: rename failed (%d) for %s" % [err, path])
+
+
+func _purge_dead_slots() -> void:
+	for i in SLOT_COUNT:
+		if is_dead(i):
+			_delete_slot_files(i)
+	slots_changed.emit()
 
 
 func _delete_slot_files(slot: int) -> void:

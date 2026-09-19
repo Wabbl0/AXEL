@@ -5,9 +5,9 @@ const LINE_DEFS := {
 	"normpay": {"name": "Normal payout", "rungs": ["C2", "U2", "R2", "", ""]},
 	"pwrwgt": {"name": "Power-symbol weight", "rungs": ["", "U3", "R3", "E1", ""]},
 	"pwrch": {"name": "Power chance", "rungs": ["C4", "U4", "R4", "", ""]},
-	"storm": {"name": "Cigarette", "rungs": ["C6", "U6", "", "", ""]},
-	"star": {"name": "Alcohol", "rungs": ["C7", "U7", "", "", ""]},
-	"love": {"name": "Bloody Hand", "rungs": ["C8", "U8", "", "", ""]},
+	"cigarette": {"name": "Cigarette", "rungs": ["C6", "U6", "", "", ""]},
+	"alcohol": {"name": "Alcohol", "rungs": ["C7", "U7", "", "", ""]},
+	"bloody_hand": {"name": "Bloody Hand", "rungs": ["C8", "U8", "", "", ""]},
 	"wilds": {"name": "Extra wild", "rungs": ["", "U5", "R5", "E3", "L1"]},
 }
 

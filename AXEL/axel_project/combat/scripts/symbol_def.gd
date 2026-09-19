@@ -9,7 +9,7 @@ enum Tier { LOW, PREMIUM, WILD, HAZARD }
 @export var texture: Texture2D
 @export var power_intro_texture: Texture2D
 @export var base_weight: float = 1.0
-@export var princess_id: StringName = &""
+@export var power_id: StringName = &""
 @export var payout_x3: float = 0.0
 @export var payout_x4: float = 0.0
 @export var payout_x5: float = 0.0

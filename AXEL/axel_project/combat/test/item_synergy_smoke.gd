@@ -2,7 +2,7 @@ extends SceneTree
 
 const CombatRootScene := preload("res://combat/scenes/combat_root.tscn")
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
-const FS_PICK: StringName = &"storm"
+const FS_PICK: StringName = &"cigarette"
 const FIXED_SEED := 42
 
 var _pass_count := 0
@@ -178,7 +178,7 @@ func _test_deterministic_scalar_across_runs() -> void:
 		var payouts: Array[int] = []
 		for spin_idx in 10:
 			if cr.is_waiting_for_free_spin_choice():
-				cr.choose_free_spins_princess(FS_PICK)
+				cr.choose_free_spins_power(FS_PICK)
 			cr.spin_sync()
 			var summary := cr.get_last_spin_summary()
 			payouts.append(int(summary.get("payout", 0)))
@@ -244,7 +244,7 @@ func _test_coexistence_c1_and_l3() -> void:
 	cr.setup_new_grid(FIXED_SEED)
 	for spin_idx in 5:
 		if cr.is_waiting_for_free_spin_choice():
-			cr.choose_free_spins_princess(FS_PICK)
+			cr.choose_free_spins_power(FS_PICK)
 		cr.spin_sync()
 	var summary := cr.get_last_spin_summary()
 	_assert(summary != null, "spin summary produced with mixed loadout")

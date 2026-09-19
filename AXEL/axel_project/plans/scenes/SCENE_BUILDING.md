@@ -105,7 +105,11 @@ Root (`extends ExplorationRoom`)
 
 **Floor item marker:** runtime `scenes/world/ItemMarker.tscn` on `PlayerLayer` (white pointing hand, drop shadow, faint red outline). The pickup `Area2D` stays under `EnvironmentColliders`. Do not put a catalog icon on the floor. Scatter must keep the 220 px interact circle off walls and furniture.
 
-**1.2 right-arrow hint (1.2 only):** runtime `scenes/fx/DirectionHint.tscn` on `PlayerLayer`. Do not copy it into other rooms. Details: `AI_DOCS.md`.
+**1.2 right-arrow hint (1.2 only):** runtime `scenes/fx/DirectionHint.tscn` on `PlayerLayer`. Pin to the viewport right edge at scale `1.67`; do not pass it to `bind_player_cover` as an extra. Do not copy it into other rooms. Details: `AI_DOCS.md`.
+
+**1.3 locker shelves (hub only):** three crooked shelf rows (`scenes/ui/locker_shelves.gd` / `locker_shelf_row.gd`). No **LOCKER** button or overlay. Equip is `AxelRun.toggle_equip`. Tune UV boxes in the Inspector. Do not copy the shelf rows into other rooms.
+
+**1.4 chained door:** `[E]` plays `"Not yet."` and stays in `1.4`. Do not load a grey-box basement scene.
 
 ### Camera2D exports (`BackgroundCamera`)
 
@@ -213,7 +217,7 @@ There is no separate spawn point. The `Player` node **is** the spawn.
 
 - Drag `PlayerLayer/Player` (instance of `scenes/player/Player.tscn`) on the drawing. That is where Mike starts a fresh Play / F6.
 - **Forbidden:** hardcoded `env.to_global(Vector2(...))`, skipping the first cover-fit remap, teleporting default spawn onto a door / stones / interact shape, or storing a spawn constant that can go stale.
-- **Allowed elsewhere:** only GameManager peek / return when arriving from another room. Arrival along a dest InteractArea / ExitTrigger (`interact_arrival_t`) may place off the Player node.
+- **Allowed elsewhere:** only GameManager peek / return when arriving from another room. Arrival along a dest InteractArea / ExitTrigger (`interact_arrival_t`) may place off the Player node. Pause Map **X / Esc** is a tex restore (`pause_map_return_tex` + `PlayerSpawnSync.apply_tex`). A map travel click still uses the dest Player node and clears the pause-map path/tex.
 - 1.1 intro may start off-screen and walk **to** the remapped Player node. Skip-intro leaves Mike on that node. Do not walk to a computed stones target instead.
 - Helper: `PlayerSpawnSync.capture_tex` before mutating `EnvironmentColliders`, then `apply_tex` after. Works for both unscaled (2.1-style) and pre-scaled (1.2/1.4 `_OLD_BG_SCALE`) colliders.
 - Editor: assign `res://assets/sprites/mike_sprite_frames.tres` on `AnimatedSprite` / `ShadowOutline` so Mike is visible on the node while you drag. Play still rebuilds frames in `Player.gd`. Keep `ShadowOutline` visible in the editor (the pose-nudge tool must not force it off). `AnimatedSprite` stays hidden in the 2D view because the pose stack draws it.
@@ -381,7 +385,7 @@ Do not copy to new scenes without a design pass.
 
 - Zones: `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` / `Stump_Left_Behind` / `Rocks_Left_Behind` / `Rocks_Right_Behind` + `leaf_occlusion_zone.gd`
 - Wired in `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_polygons` → `white_sprite.gdshader`
-- Trees, stump, and rocks use a collision-front Y-gate (same as the tree trunk line): fade only when standing behind the object, not when overlapping from the front. `RightWall_Behind` uses cutoff `1e9` (no Y-gate) so only the polygon matters. Shader: cutoff `> 1e8` means “allow,” not “off.” Extra `CollisionPolygon2D` children under one behind zone all count (max 4 per zone). Each extra polygon uses the nearest rock/stump collision as its own front line. Furniture behind zones (2.1 / 4.1) cover the **back** of the object — not a copy of the full walk-blocker — so standing in front does not fade.
+- Trees, stump, and rocks use a collision-front Y-gate (same as the tree trunk line): fade only when standing behind the object, not when overlapping from the front. `RightWall_Behind` uses cutoff `1e9` (no Y-gate) so only the polygon matters. `RightWall_Behind` may include a `Roof_Behind` child polygon for the school roof (editor-placed). Shader: cutoff `> 1e8` means “allow,” not “off.” Extra `CollisionPolygon2D` children under one behind zone all count (max 4 per zone). Each extra polygon uses the nearest rock/stump collision as its own front line. Furniture behind zones (2.1 / 4.1) cover the **back** of the object — not a copy of the full walk-blocker — so standing in front does not fade.
 - Shader has 6 behind slots. Canon `feather_px = 2.0` on all behind zones (1.1 trees + wall + stump + rocks, 2.1 tables/chairs, 3.1 wall/bush/well, 4.1 table/chair, 5.1 furniture 6–9)
 
 ## What is walkable / shipped

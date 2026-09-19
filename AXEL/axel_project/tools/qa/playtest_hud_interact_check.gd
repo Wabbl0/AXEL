@@ -57,8 +57,16 @@ func _check_door_chip() -> void:
 		await process_frame
 	if scene.has_method("_refresh_active_zones"):
 		scene.call("_refresh_active_zones")
-	if dialogue.has_method("show_line"):
-		dialogue.call("show_line", "Not yet.", 3.0)
+	if scene.has_method("on_zone_interact"):
+		scene.call("on_zone_interact", "door")
+	for _i in 10:
+		await process_frame
+	if current_scene == null or current_scene.scene_file_path != ROOM:
+		_fail("1.4 door [E] left the room")
+		return
+	if dialogue.has_method("is_sequence_busy") and not bool(dialogue.call("is_sequence_busy")):
+		if dialogue.has_method("show_line"):
+			dialogue.call("show_line", "Not yet.", 3.0)
 	for _i in 8:
 		await process_frame
 	if prompt.has_method("is_prompt_visible") and not bool(prompt.call("is_prompt_visible")):

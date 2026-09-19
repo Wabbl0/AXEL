@@ -2,13 +2,13 @@ class_name MeterState
 extends RefCounted
 
 var sections_filled: int = 0
-var saved_active_princess: StringName = &""
+var saved_active_power: StringName = &""
 var allow_overflow: bool = false
 
 
 func reset() -> void:
 	sections_filled = 0
-	saved_active_princess = &""
+	saved_active_power = &""
 	allow_overflow = false
 
 

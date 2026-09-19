@@ -4,7 +4,7 @@ const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const MILL_SHEET := "res://assets/sprites/combat/wind_mill_blades_48x48.png"
 const FLAME_SHEET := "res://assets/sprites/combat/flame_1_48x48.png"
 const TICKER_TEXT := "Nothing but us chickens."
-const TICKER_H := 36.0
+const TICKER_H := 63.0
 const MILL_DRAW := 96.0
 const FLAME_DRAW := 48.0
 const SPEED := 118.0
@@ -71,7 +71,7 @@ func _build_chrome() -> void:
 	_ticker.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_ticker.add_theme_font_override("font", VT323_FONT)
 	_ticker.add_theme_color_override("font_color", Color(1.0, 0.0, 0.0, 1.0))
-	_ticker.add_theme_font_size_override("font_size", 26)
+	_ticker.add_theme_font_size_override("font_size", 46)
 	_ticker.text = "%s    %s    %s    %s" % [TICKER_TEXT, TICKER_TEXT, TICKER_TEXT, TICKER_TEXT]
 	_ticker_clip.add_child(_ticker)
 

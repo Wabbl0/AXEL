@@ -1,24 +1,20 @@
 extends PanelContainer
 
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
-const ICON_PX := 48
-const BODY_FONT := 32
-const HINT_FONT := 29
+const ItemDefScript := preload("res://combat/scripts/item_def.gd")
+const ICON_PX := 144
+const ICON_RES_PX := 120
+const BODY_FONT := 84
+const DESC_FONT := 48
 const ROW_SEP := 8
 const LIST_SEP := 10
 const NAME_RIGHT_PAD := 8.0
 const NAME_MAX_LINES := 2
-const RARITY_COLORS := {
-	0: Color(0.65, 0.65, 0.65),
-	1: Color(0.4, 0.78, 0.4),
-	2: Color(0.4, 0.6, 0.9),
-	3: Color(0.72, 0.4, 0.88),
-	4: Color(0.95, 0.75, 0.2),
-}
+const NAME_COLOR := Color(1.0, 1.0, 1.0, 1.0)
+const DESC_COLOR := Color(1.0, 1.0, 1.0, 0.75)
 
 var _list: VBoxContainer
-var _hover: PanelContainer
-var _hover_label: Label
+var _fitting: bool = false
 
 
 func _ready() -> void:
@@ -41,7 +37,6 @@ func _ready() -> void:
 	_list.propagate_maximum_size = true
 	_list.add_theme_constant_override("separation", LIST_SEP)
 	scroll.add_child(_list)
-	_ensure_hover()
 
 
 func set_equipped_items(items: Array) -> void:
@@ -50,10 +45,6 @@ func set_equipped_items(items: Array) -> void:
 	for child in _list.get_children():
 		child.queue_free()
 	if items.is_empty():
-		var empty := Label.new()
-		empty.text = ""
-		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_list.add_child(empty)
 		return
 	for item in items:
 		if item == null:
@@ -63,113 +54,123 @@ func set_equipped_items(items: Array) -> void:
 
 
 func _on_resized() -> void:
+	if _fitting:
+		return
 	call_deferred("_fit_row_names")
+
+
+func _text_col_width() -> float:
+	return maxf(size.x - float(ICON_PX) - float(ROW_SEP) - NAME_RIGHT_PAD, 1.0)
 
 
 func _make_row(item: Resource) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	row.add_theme_constant_override("separation", ROW_SEP)
-	var rarity_idx: int = clampi(int(item.get("rarity")), 0, RARITY_COLORS.size() - 1)
 	var icon := TextureRect.new()
 	icon.set_meta("item_row_icon", true)
 	icon.custom_minimum_size = Vector2(ICON_PX, ICON_PX)
-	icon.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.texture = item.get("icon") as Texture2D
+	icon.texture = ItemDefScript.texture_at_res(item.get("icon") as Texture2D, ICON_RES_PX)
 	row.add_child(icon)
+	var text_col := VBoxContainer.new()
+	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_col.propagate_maximum_size = true
+	text_col.add_theme_constant_override("separation", 2)
+	row.add_child(text_col)
+	var leftover := _text_col_width()
 	var name_lab := Label.new()
 	name_lab.set_meta("item_row_name", true)
 	name_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lab.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	name_lab.mouse_filter = Control.MOUSE_FILTER_STOP
 	name_lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lab.clip_text = false
+	name_lab.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	name_lab.max_lines_visible = NAME_MAX_LINES
 	name_lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_lab.custom_maximum_size = Vector2(leftover, -1.0)
+	name_lab.custom_minimum_size = Vector2(leftover, float(ICON_PX))
 	name_lab.text = str(item.get("display_name"))
 	name_lab.add_theme_font_override("font", VT323_FONT)
 	name_lab.add_theme_font_size_override("font_size", BODY_FONT)
-	name_lab.add_theme_color_override("font_color", RARITY_COLORS.get(rarity_idx, Color.WHITE))
-	name_lab.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.add_child(name_lab)
+	name_lab.add_theme_color_override("font_color", NAME_COLOR)
+	text_col.add_child(name_lab)
+	var desc_lab := Label.new()
+	desc_lab.set_meta("item_row_desc", true)
+	desc_lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	desc_lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lab.clip_text = false
+	desc_lab.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	desc_lab.custom_maximum_size = Vector2(leftover, -1.0)
 	var desc_val = item.get("description")
-	var desc := str(desc_val).strip_edges() if desc_val != null else ""
-	row.set_meta("item_desc", desc)
-	row.mouse_entered.connect(_on_row_entered.bind(row))
-	row.mouse_exited.connect(_on_row_exited)
-	icon.mouse_entered.connect(_on_row_entered.bind(row))
-	icon.mouse_exited.connect(_on_row_exited)
-	name_lab.mouse_entered.connect(_on_row_entered.bind(row))
-	name_lab.mouse_exited.connect(_on_row_exited)
+	desc_lab.text = str(desc_val).strip_edges() if desc_val != null else ""
+	desc_lab.add_theme_font_override("font", VT323_FONT)
+	desc_lab.add_theme_font_size_override("font_size", DESC_FONT)
+	desc_lab.add_theme_color_override("font_color", DESC_COLOR)
+	desc_lab.visible = false
+	text_col.add_child(desc_lab)
+	name_lab.mouse_entered.connect(func() -> void: _show_row_desc(desc_lab))
+	name_lab.mouse_exited.connect(func() -> void: _hide_row_desc(desc_lab))
 	return row
 
 
-func _fit_row_names() -> void:
-	if _list == null:
+func _show_row_desc(desc_lab: Label) -> void:
+	if desc_lab == null or not is_instance_valid(desc_lab):
 		return
+	desc_lab.visible = true
+	call_deferred("_fit_row_names")
+
+
+func _hide_row_desc(desc_lab: Label) -> void:
+	if desc_lab == null or not is_instance_valid(desc_lab):
+		return
+	desc_lab.visible = false
+	call_deferred("_fit_row_names")
+
+
+func _fit_row_names() -> void:
+	if _fitting or _list == null:
+		return
+	_fitting = true
 	var inner := maxf(size.x, 64.0)
-	_list.custom_maximum_size = Vector2(inner, -1.0)
-	var max_w := maxf(inner - float(ICON_PX) - float(ROW_SEP) - NAME_RIGHT_PAD, 48.0)
+	if not is_equal_approx(_list.custom_maximum_size.x, inner):
+		_list.custom_maximum_size = Vector2(inner, -1.0)
+	var max_w := maxf(inner - float(ICON_PX) - float(ROW_SEP) - NAME_RIGHT_PAD, 1.0)
 	for row in _list.get_children():
 		if not row is HBoxContainer:
 			continue
-		for child in row.get_children():
-			var lab := child as Label
-			if lab == null or not bool(lab.get_meta("item_row_name", false)):
-				continue
+		_fit_text_labels(row, max_w)
+	_fitting = false
+
+
+func _fit_text_labels(node: Node, max_w: float) -> void:
+	if node is VBoxContainer:
+		var box := node as VBoxContainer
+		box.propagate_maximum_size = true
+		if not is_equal_approx(box.custom_maximum_size.x, max_w):
+			box.custom_maximum_size = Vector2(max_w, -1.0)
+	var lab := node as Label
+	if lab != null and (
+		bool(lab.get_meta("item_row_name", false)) or bool(lab.get_meta("item_row_desc", false))
+	):
+		if not is_equal_approx(lab.custom_maximum_size.x, max_w):
 			lab.custom_maximum_size = Vector2(max_w, -1.0)
-			lab.size.x = max_w
-			var line_h := lab.get_line_height()
-			if line_h <= 0:
-				line_h = BODY_FONT
-			var lines := clampi(lab.get_line_count(), 1, NAME_MAX_LINES)
-			lab.custom_minimum_size = Vector2(0.0, float(line_h * lines))
-
-
-func _ensure_hover() -> void:
-	_hover = PanelContainer.new()
-	_hover.name = "ItemHover"
-	_hover.visible = false
-	_hover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hover.z_index = 2
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.0, 0.0, 0.0, 0.9)
-	style.border_color = Color(0.45, 0.03, 0.03, 1.0)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	_hover.add_theme_stylebox_override("panel", style)
-	_hover_label = Label.new()
-	_hover_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hover_label.clip_text = false
-	_hover_label.add_theme_font_override("font", VT323_FONT)
-	_hover_label.add_theme_font_size_override("font_size", HINT_FONT)
-	_hover_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.82, 1.0))
-	_hover_label.custom_maximum_size = Vector2(220, -1.0)
-	_hover_label.custom_minimum_size = Vector2(220, 0)
-	_hover.add_child(_hover_label)
-	add_child(_hover)
-
-
-func _on_row_entered(row: Control) -> void:
-	var desc := str(row.get_meta("item_desc", "")).strip_edges()
-	if desc.is_empty() or _hover == null:
-		return
-	_hover_label.text = desc
-	_hover.visible = true
-	_hover.reset_size()
-	var local := get_local_mouse_position() + Vector2(12, 18)
-	var max_x := maxf(size.x - _hover.size.x - 4.0, 0.0)
-	var max_y := maxf(size.y - _hover.size.y - 4.0, 0.0)
-	_hover.position = Vector2(clampf(local.x, 0.0, max_x), clampf(local.y, 0.0, max_y))
-
-
-func _on_row_exited() -> void:
-	if _hover != null:
-		_hover.visible = false
+		var line_h := lab.get_line_height()
+		if line_h <= 0:
+			line_h = BODY_FONT if bool(lab.get_meta("item_row_name", false)) else DESC_FONT
+		var lines := maxi(lab.get_line_count(), 1)
+		if bool(lab.get_meta("item_row_name", false)):
+			lines = clampi(lines, 1, NAME_MAX_LINES)
+		var want_h := float(line_h * lines)
+		if bool(lab.get_meta("item_row_name", false)):
+			want_h = maxf(want_h, float(ICON_PX))
+		if not is_equal_approx(lab.custom_minimum_size.x, max_w) or not is_equal_approx(lab.custom_minimum_size.y, want_h):
+			lab.custom_minimum_size = Vector2(max_w, want_h)
+	for child in node.get_children():
+		_fit_text_labels(child, max_w)

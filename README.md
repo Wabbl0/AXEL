@@ -39,8 +39,8 @@ From repository root:
 :: Combat determinism smoke
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
 
-:: Combat princess behavior check
-tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
+:: Combat power behavior check
+tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://combat/test/powers_check.gd
 
 :: Overworld bot playthroughs
 tools\cmd\godot.cmd --headless --path AXEL/axel_project -s res://tools/bots/playthrough_arc1_exterior.gd

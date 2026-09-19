@@ -3,7 +3,6 @@ extends ExplorationRoom
 const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const DOOR_LINE := "Not yet."
-const BASEMENT_SCENE := "res://scenes/Arc_6/6.1_BasementDoor.tscn"
 const CAFETERIA_PEEK_MARGIN_PX := 12.0
 const CORRIDOR_PEEK_MARGIN_PX := 12.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
@@ -67,11 +66,19 @@ func on_zone_interact(zone_id: String) -> void:
 				CAFETERIA_SCENE,
 			)
 		"door":
-			begin_scene_change(BASEMENT_SCENE)
+			_play_door_line()
+
+
+func _play_door_line() -> void:
+	if extra_blocks_interact() or InteractZoneGate.dialogue_busy(_top_dialogue):
+		return
+	_play_door_line_async()
 
 
 func _restore_player_position_if_needed() -> void:
 	if not is_instance_valid(_player):
+		return
+	if GameManager.has_pause_map_return_for(scene_file_path):
 		return
 	var basement_side := GameManager.take_basement_spawn_side()
 	if basement_side == "cafeteria_right":

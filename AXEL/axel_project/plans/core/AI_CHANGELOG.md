@@ -6958,4 +6958,146 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Read-back of how-to vs live `extends ExplorationRoom` / `MemoryStill` / `Player.tscn` / glow exports. No game scripts changed in this pass.
 - Notes: Does not rewrite the Shared scene building blocks row above. Do not copy `_begin_scene_change` / `_show_interact_prompt` into a new room.
 
+### Playtest: bankroll, item seed, GONE, tutorial lock, ITEMS HUD, 1.2 arrow
+
+- Request: After playtest, always start fights at 1000 chips; each save needs its own floor-item seed; GONE must cover the screen above the grid then kick to title; first tutorial fight must pay at least 500 from real matches (including an immediate all-in); 1.4 pickup must show in the combat ITEMS box; 1.2 right-arrow sits on the viewport right and is 50% of the old live size.
+- Implementation: Live fights reset to 1000 chips every enter/win (leftover carry and reroll tokens are later). New Game builds a unique run seed and pre-rolls floor item ids from it. GONE/IT TAKES YOU use FeelLayer 115 and hold 1.6s. Tutorial last affordable paid spin reseeds to a fixed board (seed 12) so symbol matches pay the 500 goal; betting the whole 1000 immediately uses that same lock. CombatRun refreshes PlayerItemPanel from the live loadout after wire; wrap uses `custom_maximum_size`. 1.2 arrow is not a cover-fit extra; it pins to the right at scale 1.67.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_saves.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_feel.gd`
+  - `AXEL/axel_project/combat/scripts/combat_run.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/combat/test/princess_check.gd`
+  - `AXEL/axel_project/combat/test/combat_player_item_box_check.gd`
+  - `AXEL/axel_project/tools/qa/run_state_check.gd`
+  - `AXEL/axel_project/tools/qa/world_item_scatter_check.gd`
+  - `AXEL/axel_project/tools/qa/corridor_right_hint_check.gd`
+  - `AXEL/axel_project/tools/qa/basement_item_hud_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+- Behavior impact: First fight cannot GONE if they take the last spin or all-in. Floor items differ per save. GONE reads on top of the grid. ITEMS names wrap inside the box. Corridor arrow is smaller and on the far right. Chip count always returns to 1000 for now.
+- Verification: Headless AGENTS.md suite plus `run_state_check`, `world_item_scatter_check`, `corridor_right_hint_check`, `combat_player_item_box_check`, `basement_item_hud_check`.
+- Notes: Leftover chips / reroll tokens after a win stay future work. Old 99% bar-fill assist is unused. Do not edit the playtest plan file.
+
+## 2026-09-19
+
+### Playtest: death menu, New Game, seed, win pacing, HUD, CRT, 1.1 roof
+
+- Request: After playtest, death needs Retry / Main Menu / Exit and must delete that slot (no grey grave); New Game should start 1.1 at once and overwrite the oldest only when all 3 slots are living; show the run seed on Load Game and pause; replace TRINITY / IT TAKES YOU; GOAL win flashes then waits for a press then fades; slow Vice/power/banners; CRT wave rarer/dimmer/red; item card under `[E]`; combat ITEMS ~3× with in-box desc; chickens ticker 75% larger; 1.1 roof behind-polygon for editor placement.
+- Implementation: Death keeps GONE on FeelLayer 115, deletes that slot’s files, and blocks pause. Retry is a brand-new 1.1 run on the slot that died. New Game uses `first_free_slot` / `oldest_living_slot`. Headers store `seed`. Win emits `goal_victory_requested` (3 GOAL pulses), waits for interact/click (headless skips), then combat wipe. Vice copy is `VICE ROUND` and banners are awaited; `_dev_skip_visuals` skips those holds so princess QA does not freeze. Overworld card uses Godot 4.7 `custom_maximum_size` and sits under the chip (flips above if offscreen). Combat ITEMS icon 144 / name 96 / desc 76. Pulse cadence is 30s only, rest alpha 0, surge 0.536, red roll. `RightWall_Behind` gained a starter `Roof_Behind` polygon.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_saves.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_pause.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd`
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/scenes/ui/world_item_info_card.gd`
+  - `AXEL/axel_project/scenes/fx/interface_pulse_overlay.gd`
+  - `AXEL/axel_project/scenes/fx/InterfacePulseOverlay.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_feel.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_run.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/combat/scripts/empty_item_dvd.gd`
+  - `AXEL/axel_project/tools/visual_style/shaders/option_1_crt_tv.gdshader`
+  - `AXEL/axel_project/tools/qa/world_item_card_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+- Behavior impact: A lost fight no longer leaves a tombstone or auto-titles. New Game no longer opens the slot picker unless all three saves are living. Load/pause show the seed. Winning a fight no longer shows IT TAKES YOU. The CRT wave is a rare red pulse. Item names stay spaced and sit under `[E]`. Combat ITEMS rows are large enough to read.
+- Verification: Headless exit 0: `determinism_check`, `princess_check`, `combat_test_scaffold_check`, `scene_smoke_check`, `run_state_check`, `save_slots_check`, `menu_nav_check`, `combat_player_item_box_check`, `item_icon_draw_size_check`, `basement_item_hud_check`, `world_item_card_check`, `world_combat_roundtrip_check`. Windowed `--quit-after 3` had no `SHADER ERROR`.
+- Notes: Seed-entry UI is later. `Roof_Behind` is a starter quad — drag it onto the school roof in the editor. Combat CRT glass overlay was not changed. Style-sweep `option_1_crt_tv` now also draws a red roll.
+
+### Playtest UI and combat fixes
+
+- Request: Load Game Delete clipped to D; no LOCKER button (items on 1.3 shelves); shorter wait after power flash; GOAL win fade + Round Complete; overworld item chip/card layout; combat ITEMS hover text; settings gear opens pause; smaller goal ladder.
+- Implementation: Load rows ellipsis the summary and keep Delete at full width. 1.3 uses three editor-tunable crooked shelf rows. `pause_after_power_sec` is 0.25. GOAL win fades with white Round Complete and skips the enter glitch. Item `[E]` offset is `(-4, 10)` with a settled chip rect; card wrap 280 / gap 20. Combat ITEMS 48/38 white, desc 75% on title hover. Settings opens pause; Dev Tools lives on the pause menu. Goal ladder is 100 / 150 / 225 then ×1.5 rounded to 25.
+- Files changed:
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd`
+  - `AXEL/axel_project/scenes/ui/locker_shelves.gd`
+  - `AXEL/axel_project/scenes/ui/locker_shelf_row.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Early fights are easier to clear. Winning a fight no longer plays the combat wipe. The locker picture is the equip UI. Item names are smaller and descriptions hide until hover.
+- Verification: Headless exit 0: `save_slots_check`, `menu_nav_check`, `world_combat_loop_check`, `run_state_check`, `princess_check`, `combat_test_scaffold_check`, `determinism_check`, `combat_player_item_box_check`, `item_icon_draw_size_check`, `world_item_card_check`, `basement_item_hud_check`, `hud_click_rect_check`, `pause_contract_check`, `scene_smoke_check`.
+- Notes: Shelf UV boxes are a first guess — drag them in the Inspector.
+
+### Power ids + remaining playtest bugs
+
+- Request: Scripts must not use princess / storm / love / star as power ids (use cigarette / alcohol / bloody_hand). Then finish the six playtest plans.
+- Implementation: Power code ids are now `bloody_hand` / `alcohol` / `cigarette`. Charm files were renamed. GOAL already credits the full spin payout and shows a full-screen Round Complete card. Combat ITEMS names sit beside the 144px icon (84 / 48). Pause Map X restores the saved tex stand point. Pause Inventory and Load labels only show collected items. The 1.4 chained door plays “Not yet.” and stays in the room. Suit PNGs are transparent outside the shape and keep a black plug inside.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/power_controller.gd`
+  - `AXEL/axel_project/combat/scripts/free_spins.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/combat/data/items/U6_cigarette_charm.tres`
+  - `AXEL/axel_project/combat/data/items/U7_alcohol_charm.tres`
+  - `AXEL/axel_project/combat/data/items/U8_bloody_hand_charm.tres`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/scenes/core/exploration_room.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_SchoolMap.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd`
+  - `AXEL/axel_project/combat/art/generate_placeholders.py`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Free Spins buttons and item families use the vice names. Pause Map no longer dumps Mike on the authored spawn. Menus no longer list missing lore or Memories N/5. The 1.4 door does not open the grey-box basement. Grid suits no longer sit on black squares.
+- Verification: Headless exit 0: `powers_check`, `determinism_check`, `combat_test_scaffold_check`, `scene_smoke_check`, `item_synergy_smoke`, `combat_player_item_box_check`, `save_slots_check`, `pause_contract_check`, `pause_map_restore_check`, `playtest_hud_interact_check`, `suit_symbol_alpha_check`, `player_spawn_sync_check`, `menu_nav_check`, `run_state_check`.
+- Notes: Left `blue_star` / “Blue star” and words like `start` alone. Historical `AI_CHANGELOG` lines still say princess_check.
+
+### Combat item icons at 120px resolution
+
+- Request: Use the max item-icon resolution for locker/pause inventory, and 120px resolution for combat. Keep the combat ITEMS slot size.
+- Implementation: Files stay **1024×1024**. Locker shelves and pause inventory draw that full file. Combat ITEMS copies the texture to **120×120** and still sits in the **144px** slot (name 84 / desc 48).
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/item_def.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/tools/qa/item_icon_draw_size_check.gd`
+  - `AXEL/axel_project/tools/qa/basement_item_hud_check.gd`
+  - `AXEL/axel_project/tools/qa/pause_contract_check.gd`
+  - `AXEL/axel_project/combat/test/combat_player_item_box_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+- Behavior impact: Combat icons are a 120px copy. Locker and pause keep the sharp 1024 file. On-screen combat slot size is unchanged.
+- Verification: Headless exit 0: `item_icon_draw_size_check`, `combat_player_item_box_check`, `basement_item_hud_check`, `pause_contract_check`, `determinism_check`, `powers_check`, `combat_test_scaffold_check`, `scene_smoke_check`.
+- Notes: 120 scales to 144 by exactly 6/5. F6 picker and the walk-near card were not changed.
+
+### Docs catch-up after playtest week
+
+- Request: `update docs` — log leftover live facts and fix stale canon. Do not rewrite the four Sep 19 playtest rows above.
+- Implementation: Tutorial last-spin lock now pays the live lowest rung (**100**), not 500. Scene smoke lists **21** scenes. Power QA prints `Powers check OK.` (`powers_check.gd`). `1.4` chained door stays in the room with `"Not yet."`. Hub shelves / no LOCKER button are in the 1.3 how-to. Combat implementation snippets use `power_id` / `PowerController.current_id()`. Catalog wording is Vice charms. Headless list names `pause_map_restore_check`, `world_item_card_check`, `basement_item_hud_check`, `suit_symbol_alpha_check`. Master ships unmuted (`audio_bus_layout_check` fails if muted).
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/combat/README.md`
+  - `AGENTS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None (docs only). Live code already matched these facts.
+- Verification: Read-back of the stale 500 / 5× / 6-scene / Princess-check lines against live `WORLD_GOAL_LADDER_CENTS`, `scene_smoke_check.gd` (21 paths), `powers_check.gd` print, and `1.4_BasementDoor.gd` door zone.
+- Notes: Historical changelog rows may still say 500, `princess_check`, or LOCKER. `AXEL_combat_design.md` still uses Moon Princess 100 language on purpose. Master unmute was already in the working tree; this row only records that it is the shipped check.
+
 

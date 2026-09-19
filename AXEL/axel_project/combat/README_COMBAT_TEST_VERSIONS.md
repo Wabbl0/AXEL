@@ -14,7 +14,7 @@ The playtest shell uses a **drawing-backed HUD**: white plate + one node per dra
 - Open `combat/combat_test.tscn` → **F6** (Play Scene) for the catalog tool.
 - Overworld fights load `combat/combat_run.tscn` via `AxelRun`. F6 on that scene previews the empty item box.
 
-Headless combat checks (`princess_check`, `determinism_check`) use `combat_root.tscn` only — not this shell.
+Headless combat checks (`powers_check`, `determinism_check`) use `combat_root.tscn` only — not this shell.
 
 ## HUD features
 

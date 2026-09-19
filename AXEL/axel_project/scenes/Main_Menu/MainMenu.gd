@@ -9,6 +9,8 @@ extends Control
 
 var _backdrop: TextureRect
 var _time := 0.0
+var _overwrite_box: VBoxContainer
+var _overwrite_label: Label
 
 
 func _ready() -> void:
@@ -18,10 +20,8 @@ func _ready() -> void:
 	_style_buttons()
 	_refresh_continue()
 	_continue_button.pressed.connect(_on_continue)
-	_new_button.pressed.connect(func() -> void:
-		SavesScreen.open_mode = "new"
-		MenuLook.go(get_tree(), MenuLook.SAVES_SCENE)
-	)
+	_new_button.pressed.connect(_on_new_game)
+	_build_overwrite_prompt(chrome)
 	_load_button.pressed.connect(func() -> void:
 		SavesScreen.open_mode = "load"
 		MenuLook.go(get_tree(), MenuLook.SAVES_SCENE)
@@ -45,11 +45,81 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("back"):
 		get_viewport().set_input_as_handled()
+		if _overwrite_box != null and _overwrite_box.visible:
+			_hide_overwrite()
+			return
 		get_tree().quit()
 
 
 func _on_continue() -> void:
 	if not AxelSaves.continue_last():
+		_refresh_continue()
+
+
+func _on_new_game() -> void:
+	_hide_overwrite()
+	var free := AxelSaves.first_free_slot()
+	if free >= 0:
+		if not AxelSaves.begin_new_game_and_enter(free):
+			_refresh_continue()
+		return
+	_show_overwrite()
+
+
+func _build_overwrite_prompt(chrome: CanvasLayer) -> void:
+	_overwrite_box = VBoxContainer.new()
+	_overwrite_box.name = "OverwriteOldestBox"
+	_overwrite_box.visible = false
+	_overwrite_box.set_anchors_preset(Control.PRESET_CENTER)
+	_overwrite_box.offset_left = -320
+	_overwrite_box.offset_right = 320
+	_overwrite_box.offset_top = 220
+	_overwrite_box.offset_bottom = 360
+	_overwrite_box.add_theme_constant_override("separation", 8)
+	chrome.add_child(_overwrite_box)
+	_overwrite_label = Label.new()
+	_overwrite_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_overwrite_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_overwrite_label.custom_maximum_size = Vector2(640, -1)
+	MenuLook.apply_label(_overwrite_label, MenuLook.scaled_font(self, 28), MenuLook.TEXT)
+	_overwrite_label.text = "Overwrite oldest save file?"
+	_overwrite_box.add_child(_overwrite_label)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	_overwrite_box.add_child(row)
+	var yes := Button.new()
+	yes.text = "Yes"
+	MenuLook.apply_button(yes, MenuLook.scaled_font(self, 32))
+	yes.pressed.connect(_confirm_overwrite_oldest)
+	row.add_child(yes)
+	var no := Button.new()
+	no.text = "No"
+	MenuLook.apply_button(no, MenuLook.scaled_font(self, 32))
+	no.pressed.connect(_hide_overwrite)
+	row.add_child(no)
+
+
+func _show_overwrite() -> void:
+	if _overwrite_box == null:
+		return
+	_overwrite_box.visible = true
+	MenuLook.grab_first_focus(_overwrite_box)
+
+
+func _hide_overwrite() -> void:
+	if _overwrite_box != null:
+		_overwrite_box.visible = false
+	_focus_start()
+
+
+func _confirm_overwrite_oldest() -> void:
+	var oldest := AxelSaves.oldest_living_slot()
+	_hide_overwrite()
+	if oldest < 0:
+		_on_new_game()
+		return
+	if not AxelSaves.begin_new_game_and_enter(oldest):
 		_refresh_continue()
 
 

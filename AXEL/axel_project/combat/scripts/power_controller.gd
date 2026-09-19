@@ -1,4 +1,4 @@
-class_name PrincessController
+class_name PowerController
 extends RefCounted
 
 const SymbolDefScript := preload("res://combat/scripts/symbol_def.gd")
@@ -6,30 +6,30 @@ const GridManagerScript := preload("res://combat/scripts/grid_manager.gd")
 const CombatRNGScript := preload("res://combat/scripts/rng.gd")
 const LineDetectorScript := preload("res://combat/scripts/line_detector.gd")
 
-enum Id { LOVE, STAR, STORM }
+enum Id { BLOODY_HAND, ALCOHOL, CIGARETTE }
 
 const ID_TO_NAME := {
-	Id.LOVE: &"love",
-	Id.STAR: &"star",
-	Id.STORM: &"storm",
+	Id.BLOODY_HAND: &"bloody_hand",
+	Id.ALCOHOL: &"alcohol",
+	Id.CIGARETTE: &"cigarette",
 }
 const NAME_TO_ID := {
-	&"love": Id.LOVE,
-	&"star": Id.STAR,
-	&"storm": Id.STORM,
+	&"bloody_hand": Id.BLOODY_HAND,
+	&"alcohol": Id.ALCOHOL,
+	&"cigarette": Id.CIGARETTE,
 }
 
-var _order: Array[int] = [Id.LOVE, Id.STAR, Id.STORM]
+var _order: Array[int] = [Id.BLOODY_HAND, Id.ALCOHOL, Id.CIGARETTE]
 var _index: int = 0
 
 
 func current_id() -> StringName:
-	return ID_TO_NAME.get(_order[_index], &"love")
+	return ID_TO_NAME.get(_order[_index], &"bloody_hand")
 
 
 func next_id() -> StringName:
 	var next_index := (_index + 1) % _order.size()
-	return ID_TO_NAME.get(_order[next_index], &"star")
+	return ID_TO_NAME.get(_order[next_index], &"alcohol")
 
 
 func set_current_id(id_name: StringName) -> void:
@@ -55,14 +55,14 @@ func trigger_current_power(ctx: Dictionary) -> void:
 	trigger_power_by_id(current_id(), ctx)
 
 
-func trigger_power_by_id(princess_id: StringName, ctx: Dictionary) -> void:
-	match princess_id:
-		&"love":
-			_love_transform(ctx)
-		&"star":
-			_star_add_wilds(ctx)
-		&"storm":
-			_storm_remove_lowpays(ctx)
+func trigger_power_by_id(power_id: StringName, ctx: Dictionary) -> void:
+	match power_id:
+		&"bloody_hand":
+			_bloody_hand_transform(ctx)
+		&"alcohol":
+			_alcohol_add_wilds(ctx)
+		&"cigarette":
+			_cigarette_remove_lowpays(ctx)
 
 
 func snapshot_state() -> Dictionary:
@@ -83,7 +83,7 @@ func restore_state(state: Dictionary) -> void:
 		set_current_id(state["current"] as StringName)
 
 
-func _love_transform(ctx: Dictionary) -> void:
+func _bloody_hand_transform(ctx: Dictionary) -> void:
 	var grid: GridManagerScript = ctx.get("grid")
 	var rng: CombatRNGScript = ctx.get("rng")
 	var low_pool: Array = ctx.get("low_pool", [])
@@ -138,7 +138,7 @@ func _love_transform(ctx: Dictionary) -> void:
 			grid.set_cell(candidates[rng.randi_range(0, candidates.size() - 1)], target)
 
 
-func _star_add_wilds(ctx: Dictionary) -> void:
+func _alcohol_add_wilds(ctx: Dictionary) -> void:
 	var grid: GridManagerScript = ctx.get("grid")
 	var rng: CombatRNGScript = ctx.get("rng")
 	var wild: SymbolDefScript = ctx.get("wild")
@@ -170,7 +170,7 @@ func _star_add_wilds(ctx: Dictionary) -> void:
 		blocked[best_cell] = true
 
 
-func _storm_remove_lowpays(ctx: Dictionary) -> void:
+func _cigarette_remove_lowpays(ctx: Dictionary) -> void:
 	var grid: GridManagerScript = ctx.get("grid")
 	var rng: CombatRNGScript = ctx.get("rng")
 	if grid == null:

@@ -293,15 +293,18 @@ func _is_exit_key(event: InputEvent) -> bool:
 
 func _on_exit_pressed() -> void:
 	var dest := LOCKER_HUB_SCENE
+	var keep_pause_return := false
 	if not GameManager.pause_map_return_path.is_empty():
 		dest = GameManager.pause_map_return_path
-		GameManager.pause_map_return_path = ""
-	_go_to_scene(dest)
+		keep_pause_return = true
+	_go_to_scene(dest, keep_pause_return)
 
 
-func _go_to_scene(scene_path: String) -> void:
+func _go_to_scene(scene_path: String, keep_pause_return: bool = false) -> void:
 	if _is_transitioning:
 		return
+	if not keep_pause_return:
+		GameManager.clear_pause_map_return()
 	_is_transitioning = true
 	var err := get_tree().change_scene_to_file(scene_path)
 	if err != OK:

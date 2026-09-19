@@ -155,9 +155,18 @@ func _run_hide_async() -> void:
 
 
 func chip_screen_rect() -> Rect2:
-	if _panel == null or not is_instance_valid(_panel):
+	var viewport := get_viewport()
+	if viewport == null:
 		return Rect2()
-	return _panel.get_global_rect()
+	var panel_size := Vector2.ZERO
+	if _panel != null and is_instance_valid(_panel):
+		panel_size = _panel.get_combined_minimum_size()
+		if panel_size.x <= 1.0 or panel_size.y <= 1.0:
+			panel_size = _panel.size
+	if panel_size.x <= 1.0 or panel_size.y <= 1.0:
+		panel_size = Vector2(36.0, 28.0)
+	var screen_pos := viewport.get_canvas_transform() * _world_anchor
+	return Rect2(screen_pos + screen_offset - panel_size * 0.5, panel_size)
 
 
 func _update_screen_position() -> void:

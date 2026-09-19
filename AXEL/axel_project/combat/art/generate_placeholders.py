@@ -2,9 +2,8 @@
 """Write 128x128 RGBA PNG suit symbols from Unicode silhouettes.
 
 Suit symbols: hollow red outlines with identical stroke width.
-Uses filled Unicode forms (■ ▲ ★ ♥) as silhouettes, then keeps only pixels
-within a fixed distance of the edge so every symbol shares the same line
-weight and has no fill.
+Uses filled Unicode forms (■ ▲ ★ ♥) as silhouettes, then keeps a red ring
+near the edge, a black plug inside the shape, and transparent pixels outside.
 
 Also adds a 1px faint white halo around the hand-authored wild icon
 (satanic_wild) without redrawing its art. Premium icons (cigarette, booze,
@@ -24,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 RGBA = tuple[int, int, int, int]
 
 BLACK: RGBA = (0, 0, 0, 255)
+CLEAR: RGBA = (0, 0, 0, 0)
 RED: RGBA = (255, 0, 0, 255)
 # Dim grey so a 1px halo reads as a faint white edge on black.
 FAINT_WHITE: RGBA = (96, 96, 96, 255)
@@ -160,15 +160,22 @@ def _distance_to_outside(inside: np.ndarray) -> np.ndarray:
 
 
 def _hollow_outline(mask: Image.Image, stroke: int = STROKE) -> bytes:
-    """Carve a fixed-width red ring using distance-to-edge (same weight on all shapes)."""
+    """Carve a fixed-width red ring, keep a black plug inside, clear the outside."""
     inside = np.array(mask, dtype=np.uint8) > THRESHOLD
     dist = _distance_to_outside(inside)
     ring = inside & (dist > 0.0) & (dist <= float(stroke))
+    plug = inside & (dist > float(stroke))
 
     rgba = bytearray()
-    flat = ring.reshape(-1)
-    for on in flat:
-        rgba.extend(RED if on else BLACK)
+    h, w = inside.shape
+    for y in range(h):
+        for x in range(w):
+            if ring[y, x]:
+                rgba.extend(RED)
+            elif plug[y, x]:
+                rgba.extend(BLACK)
+            else:
+                rgba.extend(CLEAR)
     return bytes(rgba)
 
 

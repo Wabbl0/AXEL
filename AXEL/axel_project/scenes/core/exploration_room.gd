@@ -83,6 +83,7 @@ func sync_world_space(cover_scale: float, bg_position: Vector2) -> void:
 		glow.call("remap_to_env", env)
 	_cover_layout_ready = true
 	on_world_space_synced(cover_scale, bg_position)
+	_queue_pause_map_restore()
 
 
 func apply_player_cover(
@@ -93,6 +94,29 @@ func apply_player_cover(
 
 func on_world_space_synced(_cover_scale: float, _bg_position: Vector2) -> void:
 	call_deferred("wake_static_colliders")
+
+
+func _queue_pause_map_restore() -> void:
+	if not GameManager.has_pause_map_return_for(scene_file_path):
+		return
+	_apply_pause_map_restore()
+
+
+func _apply_pause_map_restore() -> void:
+	await await_two_physics_frames()
+	for _i in 6:
+		var tree := get_tree()
+		if tree == null:
+			return
+		await tree.process_frame
+	if not is_inside_tree():
+		return
+	if not GameManager.has_pause_map_return_for(scene_file_path):
+		return
+	var env := env_colliders()
+	if env == null or not is_instance_valid(_player):
+		return
+	PlayerSpawnSync.apply_tex(env, _player, GameManager.take_pause_map_return_tex())
 
 
 func wake_static_colliders() -> void:

@@ -12,8 +12,8 @@ func _main() -> void:
 		push_error("Determinism check FAILED: logs differ.")
 		quit(1)
 		return
-	if pass_a["princess_current"] != pass_b["princess_current"]:
-		push_error("Determinism check FAILED: princess rotation drift.")
+	if pass_a["power_current"] != pass_b["power_current"]:
+		push_error("Determinism check FAILED: power rotation drift.")
 		quit(1)
 		return
 	print("Determinism check OK (100 spins, seed 12345).")
@@ -33,13 +33,13 @@ func _run_determinism_pass() -> Dictionary:
 	for i in 100:
 		cr.spin_sync()
 		snapshots.append(cr.serialize_spin_result())
-	var princess_current := String(cr.get_princess_current_id())
+	var power_current := String(cr.get_power_current_id())
 	cr.queue_free()
 	await process_frame
 	await process_frame
 	return {
 		"snapshots": snapshots,
-		"princess_current": princess_current,
+		"power_current": power_current,
 	}
 
 

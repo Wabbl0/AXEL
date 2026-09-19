@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dpb8qwgd5xo7d" path="res://combat/scripts/combat_test.gd" id="1_combat_test"]
 [ext_resource type="PackedScene" path="res://combat/scenes/combat_root.tscn" id="2_combat_root"]
-[ext_resource type="Theme" path="res://combat/ui/terminal_theme.tres" id="3_theme"]
+[ext_resource type="Theme" uid="uid://cuoe1vvdwp5bf" path="res://combat/ui/terminal_theme.tres" id="3_theme"]
 [ext_resource type="Shader" uid="uid://c0q3vq1cvevaa" path="res://combat/shaders/scanline_overlay.gdshader" id="5_scanline"]
 [ext_resource type="Texture2D" uid="uid://dd8pcjqbpqluq" path="res://exports/Drawings/axel_combat_plate_white.png" id="6_hud_art"]
 [ext_resource type="Texture2D" uid="uid://slqx2ygoy3f4" path="res://exports/Drawings/axel_combat_grid.png" id="7_art_grid"]
@@ -607,6 +607,9 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = -108.687256
+offset_right = -105.99974
+offset_bottom = 3.5000153
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -685,8 +688,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(346, 461)
 scale = Vector2(0.85, 0.85)
+pivot_offset = Vector2(346, 461)
 script = ExtResource("17_skull_script")
 
 [node name="Glow" type="TextureRect" parent="HudCanvas/NEW_Execute/PremiumSkull" unique_id=900000021]
@@ -1220,7 +1223,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="ChooseLoveButton" type="Button" parent="HudCanvas/SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1378230592]
+[node name="ChooseBloodyHandButton" type="Button" parent="HudCanvas/SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1378230592]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
@@ -1232,7 +1235,7 @@ text = "BLOODY HAND
 4 SPINS
 +4 on meter fill"
 
-[node name="ChooseStarButton" type="Button" parent="HudCanvas/SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1821044435]
+[node name="ChooseAlcoholButton" type="Button" parent="HudCanvas/SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1821044435]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
@@ -1244,7 +1247,7 @@ text = "ALCOHOL
 5 SPINS
 +3 on meter fill"
 
-[node name="ChooseStormButton" type="Button" parent="HudCanvas/SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=435294811]
+[node name="ChooseCigaretteButton" type="Button" parent="HudCanvas/SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=435294811]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2

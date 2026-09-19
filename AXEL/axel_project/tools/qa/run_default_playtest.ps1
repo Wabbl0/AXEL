@@ -8,7 +8,7 @@ $godot = Join-Path $repo "tools\cmd\godot.cmd"
 $proj = "--headless --path AXEL/axel_project -s"
 
 $commands = @(
-    @{ key = "princess_check"; script = "res://combat/test/princess_check.gd" },
+    @{ key = "powers_check"; script = "res://combat/test/powers_check.gd" },
     @{ key = "determinism"; script = "res://combat/test/determinism_check.gd" },
     @{ key = "rtp_audit"; script = "res://combat/test/rtp_audit.gd"; metrics_only = $true },
     @{ key = "scene_smoke"; script = "res://tools/scene_smoke_check.gd" },

@@ -23,9 +23,9 @@ package manager, database, or backend service.
 Run from the repo root:
 
 - Combat determinism: `godot --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd`
-- Princess behavior: `godot --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd`
+- Power / vice behavior: `godot --headless --path AXEL/axel_project -s res://combat/test/powers_check.gd`
 - Combat scaffold: `godot --headless --path AXEL/axel_project -s res://combat/test/combat_test_scaffold_check.gd`
-- Scene smoke (loads 6 scenes): `godot --headless --path AXEL/axel_project -s res://tools/scene_smoke_check.gd`
+- Scene smoke (loads 21 scenes): `godot --headless --path AXEL/axel_project -s res://tools/scene_smoke_check.gd`
 - RTP audit (metrics only, always exits 0): `godot --headless --path AXEL/axel_project -s res://combat/test/rtp_audit.gd`
 - Audio bus layout: `godot --headless --path AXEL/axel_project -s res://tools/qa/audio_bus_layout_check.gd`
 - Settings persistence: `godot --headless --path AXEL/axel_project -s res://tools/qa/settings_persistence_check.gd`

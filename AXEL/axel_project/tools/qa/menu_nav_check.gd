@@ -2,6 +2,7 @@ extends SceneTree
 
 const TITLE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
 const SAVES := "res://scenes/Main_Menu/Saves.tscn"
+const NEW_GAME_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const OPTIONS := "res://scenes/Main_Menu/Options.tscn"
 const CREDITS := "res://scenes/Main_Menu/Credits.tscn"
 const WINDOW := Vector2i(1920, 1280)
@@ -13,6 +14,7 @@ var _failures: Array[String] = []
 func _init() -> void:
 	OS.set_environment("AXEL_DISABLE_EVENT_FX", "1")
 	OS.set_environment("AXEL_DISABLE_MUSIC", "1")
+	OS.set_environment("AXEL_SKIP_INTRO", "1")
 	call_deferred("_main")
 
 
@@ -187,25 +189,12 @@ func _check_interact_and_back() -> void:
 	new_game.grab_focus()
 	await process_frame
 	await _tap(KEY_E)
-	if not await _open_wait(SAVES):
-		_fail("E on New Game did not open Saves (scene=%s)" % _scene_path())
+	if not await _open_wait(NEW_GAME_SCENE):
+		_fail("E on New Game did not start 1.1 (scene=%s)" % _scene_path())
 		return
 	await _settle()
-	if current_scene.find_child("DeleteSlot1", true, false) != null:
-		_fail("New Game Saves showed a Delete button")
-	var new_slot := current_scene.find_child("Slot1", true, false) as Button
-	if new_slot == null:
-		_fail("New Game Saves Slot1 missing")
-	elif not new_slot.has_focus():
-		_fail("New Game Saves did not focus Slot1 (owner=%s)" % _focus_name())
-	var new_back := current_scene.find_child("BackButton", true, false) as Button
-	if new_back == null:
-		_fail("New Game Saves Back missing")
-	else:
-		_assert_hugs_text(new_back, "Saves Back")
-	await _tap(KEY_ESCAPE)
-	if not await _open_wait(TITLE):
-		_fail("Esc on New Game Saves did not return to title (scene=%s)" % _scene_path())
+	if not await _open(TITLE):
+		_fail("could not return to title after New Game")
 		return
 	await _settle()
 
@@ -332,7 +321,7 @@ func _open(path: String) -> bool:
 
 
 func _open_wait(path: String) -> bool:
-	for _i in 40:
+	for _i in 90:
 		await process_frame
 		if current_scene != null and current_scene.scene_file_path == path:
 			return true

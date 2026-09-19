@@ -431,7 +431,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="ChooseLoveButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1378230592]
+[node name="ChooseBloodyHandButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1378230592]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
@@ -442,7 +442,7 @@ text = "BLOODY HAND
 4 SPINS
 +4 on meter fill"
 
-[node name="ChooseStarButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1821044435]
+[node name="ChooseAlcoholButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=1821044435]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2
@@ -453,7 +453,7 @@ text = "ALCOHOL
 5 SPINS
 +3 on meter fill"
 
-[node name="ChooseStormButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=435294811]
+[node name="ChooseCigaretteButton" type="Button" parent="SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox/SuperFSChoiceButtons" unique_id=435294811]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 2

@@ -82,6 +82,23 @@ func _main() -> void:
 				_fail("player moved %.2f px while paused" % player.global_position.distance_to(before))
 
 
+		var pause_menu := pause.get_node_or_null("AxelPauseMenu")
+		if pause_menu == null or not pause_menu.has_method("_open_inventory"):
+			_fail("pause menu missing inventory")
+		else:
+			pause_menu.call("_open_inventory")
+			await process_frame
+			_assert_inventory_clean(pause_menu, "")
+			var run := root.get_node_or_null("AxelRun")
+			if run != null:
+				run.state.owned_item_ids = PackedStringArray(["C1"])
+				pause_menu.call("_fill_inventory")
+				await process_frame
+				_assert_inventory_clean(pause_menu, "Ash Spin Token")
+				run.state.owned_item_ids = PackedStringArray()
+			if pause_menu.has_method("_show_main"):
+				pause_menu.call("_show_main")
+
 		await _tap_escape()
 		if paused:
 			_fail("Esc did not unpause")
@@ -101,6 +118,20 @@ func _main() -> void:
 			if overlay.has_method("interrupt_line"):
 				overlay.call("interrupt_line")
 
+	if change_scene_to_file("res://combat/combat_run.tscn") == OK:
+		for _i in 12:
+			await process_frame
+		if bool(pause.call("request_pause")):
+			var menu := pause.get_node_or_null("AxelPauseMenu")
+			var dev := menu.find_child("DevToolsButton", true, false) as Button if menu != null else null
+			if OS.is_debug_build() and (dev == null or not dev.visible):
+				_fail("combat pause menu missing visible Dev Tools")
+			pause.call("request_unpause")
+		else:
+			_fail("pause should be allowed in combat")
+	else:
+		_fail("could not load combat_run")
+
 	if _failures.is_empty():
 		print("Pause contract check OK.")
 		quit(0)
@@ -108,6 +139,39 @@ func _main() -> void:
 		for f in _failures:
 			push_error("pause_contract_check: %s" % f)
 		quit(1)
+
+
+func _assert_inventory_clean(menu: Node, must_contain: String) -> void:
+	var box := menu.get("_inventory") as Node
+	if box == null:
+		_fail("pause inventory box missing")
+		return
+	var texts: PackedStringArray = PackedStringArray()
+	_collect_labels(box, texts)
+	var blob := " ".join(texts)
+	for leak in ["missing", "Memories", "Flashlight", "Key", "Shovel", "Name"]:
+		if blob.contains(leak):
+			_fail("pause inventory leaked '%s'" % leak)
+	if not must_contain.is_empty() and not blob.contains(must_contain):
+		_fail("pause inventory missing owned item '%s'" % must_contain)
+	if not must_contain.is_empty():
+		var saw_full := false
+		for node in box.find_children("*", "TextureRect", true, false):
+			var icon := node as TextureRect
+			if icon == null or icon.texture == null:
+				continue
+			if icon.texture.get_width() == 1024 and icon.texture.get_height() == 1024:
+				saw_full = true
+				break
+		if not saw_full:
+			_fail("pause inventory icon resolution is not 1024x1024")
+
+
+func _collect_labels(node: Node, texts: PackedStringArray) -> void:
+	if node is Label:
+		texts.append((node as Label).text)
+	for child in node.get_children():
+		_collect_labels(child, texts)
 
 
 func _tap_escape() -> void:

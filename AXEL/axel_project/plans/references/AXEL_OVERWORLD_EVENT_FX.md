@@ -7,7 +7,7 @@ Canonical reference for **event-tier** overworld visual effects — distinct fro
 | Layer | Owner | Behavior |
 |-------|-------|----------|
 | **Baseline post-FX** | `AxelPostFxStack` autoload | Always-on 8-band inverted noir + scanline + CRT on non-combat scene enter |
-| **Event-tier overlays** | `AxelEventFx` autoload | Always-on interference wave + scripted glitch bursts + interface pulse cadence |
+| **Event-tier overlays** | `AxelEventFx` autoload | Pulse-only red interference wave + scripted glitch bursts + interface pulse cadence |
 | **Future micro-FX** | Per-scene (planned) | StoryBox text glitch, camera shake tweens, localized flashes |
 
 Do **not** embed baseline noir/scanline/CRT in overworld `.tscn` files. Event overlays are owned globally by `AxelEventFx` — do not duplicate `IntroGlitchOverlay` / `InterfacePulseOverlay` in scene files.
@@ -44,26 +44,19 @@ AxelEventFx.set_cadence_enabled(true)              # resume after intro unlock
 **When to use:**
 
 - **Glitch burst** — scene transitions (automatic), memory spikes, jumpscares, narrative corruption beats
-- **Interface pulse / distortion** — “system interface” unease during movement or UI beats (distinct from glitch). The **interference wave** (rolling CRT band in `InterfacePulseOverlay`) is always on at a faint baseline in non-combat scenes; surges rise from that level and settle back.
+- **Interface pulse / distortion** — “system interface” unease during movement or UI beats (distinct from glitch). The **interference wave** (rolling CRT band in `InterfacePulseOverlay`) is **pulse-only**: rest alpha is `0` (no always-on baseline after scene change). Surges come from `play_interface_pulse` / `play_pulse` (and scripted `start_interface_distortion`) and settle back to zero.
 
-### Always-on interference wave
+### Pulse-only interference wave
 
-On every non-combat scene enter (same opt-outs as cadence), `InterfacePulseOverlay` fades to a constant **baseline** alpha (`0.30`) and stays visible. This keeps the CRT interference wave present in the normal look instead of popping in from nothing.
+The wave does **not** stay on after scene change. `start_ambient()` is a no-op for visibility (rest `0`; it does not fade to `BASELINE_ALPHA` `0.20`). The roll is visible only during a pulse.
 
-**Surges** (scripted distortion, cadence pulses) rise to **peak** alpha (`0.80`, ~20% below the old full-strength pop) and fade back to baseline — not to zero.
+**Surges** (scripted distortion, cadence pulses) rise to **peak** alpha (`0.536`) and fade back to rest `0`. The rolling line is **red only** (`option_1_crt_tv.gdshader` adds `vec3(roll_line * 0.12, 0.0, 0.0)`; `InterfacePulseOverlay` `FilterRect` color is `Color(1, 0, 0, 1)`).
 
-Combat, `AXEL_DISABLE_POST_FX=1`, `AXEL_DISABLE_EVENT_FX=1`, and style-sweep scenes turn the wave off entirely.
+Combat, `AXEL_DISABLE_POST_FX=1`, `AXEL_DISABLE_EVENT_FX=1`, and style-sweep scenes keep the wave off. `reduce_flashing` still skips pulses.
 
 ### Interface cadence (passive)
 
-While player has control in a non-combat scene, fires an interface pulse when **either**:
-
-- Random timer elapses (**30–60 s**), or
-- Player walks **40–90 steps** (8 px per step, input-enabled movement only)
-
-Whichever fires first wins; both targets re-arm after each pulse. **Shared 30 s cooldown** blocks back-to-back triggers.
-
-Step reporting: `Player.gd` → `AxelEventFx.register_walk_step()`.
+While the player has control in a non-combat scene, fires an interface pulse when a **30 s** timer elapses (`CADENCE_TIMER_MIN` / `MAX` both `30.0`). **No cooldown** (`CADENCE_COOLDOWN_SEC` `0.0`). Walk steps do **not** advance cadence — `Player.gd` still calls `AxelEventFx.register_walk_step()`, but that function is a no-op (kept so callers compile).
 
 Pause cadence during scripted intros via `set_cadence_enabled(false)`.
 
@@ -72,7 +65,7 @@ Pause cadence during scripted intros via `set_cadence_enabled(false)`.
 | Overlay | Shader source | Role |
 |---------|---------------|------|
 | `IntroGlitchOverlay` | `tools/visual_style/shaders/option_2_vhs_glitch.gdshader` | Discrete burst |
-| `InterfacePulseOverlay` | `tools/visual_style/shaders/option_1_crt_tv.gdshader` | Always-on interference wave + sustained / pulsed CRT surges. Pulse no longer warps, chroma-splits, or vignettes (`curvature`/`chroma`/`vignette`/`player_chroma` all `0` on the overlay) — keeps scanlines, roll, noise, and glitch bursts only so it does not peel a second lens off the baseline CRT. |
+| `InterfacePulseOverlay` | `tools/visual_style/shaders/option_1_crt_tv.gdshader` | Pulse-only red interference wave + sustained / pulsed CRT surges. Pulse no longer warps, chroma-splits, or vignettes (`curvature`/`chroma`/`vignette`/`player_chroma` all `0` on the overlay) — keeps scanlines, red roll, noise, and glitch bursts only so it does not peel a second lens off the baseline CRT. |
 
 ## Canvas layer stack
 
@@ -95,12 +88,12 @@ Noir 90 → Scanline 105 → CRT 108 → InterfacePulse 109 → InteractPrompt 1
 
 Sequence in `1.1_SchoolExterior.gd`:
 
-1. Disable cadence (ambient wave stays on)
+1. Disable cadence (wave stays at rest `0` — no always-on roll)
 2. Glitch burst (manual API — skips duplicate enter glitch)
 3. 1 s wait
-4. Start interface distortion (surges from baseline wave)
+4. Start interface distortion (red wave surges from rest `0`)
 5. Scripted walk to stones
-6. Stop distortion (settles back to baseline wave)
+6. Stop distortion (settles back to rest `0`)
 7. First dialogue → unlock controls → enable cadence
 8. Second dialogue after ~50 px movement (scene-local, not event FX)
 9. `InteractPromptOverlay` when player overlaps `DoorInteractArea` (intro unlocked); E/Space/Enter → `1.2_Corridor`

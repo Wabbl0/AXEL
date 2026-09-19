@@ -6,6 +6,7 @@ const ITEM_BOX_LEFT_INSET_PX := 12.0
 
 var _hide_tries: int = 0
 var _attach_tries: int = 0
+var _refresh_tries: int = 0
 var _player_box: Control
 
 
@@ -20,13 +21,15 @@ func _ready() -> void:
 
 
 func _open_combat_wipe() -> void:
+	if not is_inside_tree():
+		return
 	if not is_instance_valid(AxelEventFx):
 		return
 	var tree := get_tree()
 	if tree == null:
 		return
 	await tree.process_frame
-	if not is_instance_valid(AxelEventFx):
+	if not is_inside_tree() or not is_instance_valid(AxelEventFx):
 		return
 	AxelEventFx.clear_combat_wipe()
 
@@ -45,6 +48,8 @@ func _on_sfx_requested(_cue: StringName) -> void:
 
 
 func _hide_playtest_chrome() -> void:
+	if not is_inside_tree():
+		return
 	for node_name in ["SeedSpinBox", "PlaytestTuning", "ItemPickerPanel"]:
 		var node := find_child(node_name, true, false)
 		if node != null:
@@ -77,6 +82,8 @@ func _items_host() -> Control:
 
 
 func _attach_player_item_box() -> void:
+	if not is_inside_tree():
+		return
 	var host := _items_host()
 	var piece := find_child("NEW_Items", true, false)
 	if host == null or piece == null:
@@ -88,11 +95,6 @@ func _attach_player_item_box() -> void:
 	if _player_box != null and is_instance_valid(_player_box):
 		var is_egg: bool = _player_box.get_script() == EmptyItemDvdScript
 		if is_egg == want_egg:
-			if not want_egg:
-				_refresh_equipped_list()
-			_attach_tries += 1
-			if _attach_tries < 24:
-				call_deferred("_attach_player_item_box")
 			return
 		_player_box.queue_free()
 		_player_box = null
@@ -107,9 +109,48 @@ func _attach_player_item_box() -> void:
 		(_player_box as Control).offset_left = ITEM_BOX_LEFT_INSET_PX
 	if not want_egg:
 		_refresh_equipped_list()
-	_attach_tries += 1
-	if _attach_tries < 24:
-		call_deferred("_attach_player_item_box")
+
+
+func refresh_player_item_box() -> void:
+	if not is_inside_tree():
+		return
+	_refresh_tries = 0
+	_attach_player_item_box()
+	_refresh_equipped_list()
+	_follow_equipped_refresh()
+
+
+func _follow_equipped_refresh() -> void:
+	if not is_inside_tree():
+		return
+	if _player_box != null and is_instance_valid(_player_box) and _player_box.has_method("_fit_row_names"):
+		_player_box.call("_fit_row_names")
+	if not _item_list_needs_retry():
+		return
+	_refresh_tries += 1
+	if _refresh_tries < 48:
+		call_deferred("_follow_equipped_refresh")
+
+
+func _item_list_needs_retry() -> bool:
+	if _is_empty_egg_mode():
+		return false
+	var root := find_child("CombatRoot", true, false)
+	var inv_n := 0
+	if root != null:
+		var inv = root.get("inventory")
+		if inv != null and inv.get("items") != null:
+			inv_n = (inv.items as Array).size()
+	if inv_n <= 0:
+		return false
+	if _player_box == null or not is_instance_valid(_player_box):
+		return true
+	if _player_box.size.x < 8.0:
+		return true
+	var list := _player_box.find_child("List", true, false)
+	if list == null:
+		return true
+	return list.get_child_count() < inv_n
 
 
 func _refresh_equipped_list() -> void:

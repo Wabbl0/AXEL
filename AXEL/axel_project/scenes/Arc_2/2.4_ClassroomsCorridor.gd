@@ -113,6 +113,8 @@ func on_zone_interact(zone_id: String) -> void:
 func _restore_player_position_if_needed() -> void:
 	if not is_instance_valid(_player):
 		return
+	if GameManager.has_pause_map_return_for(scene_file_path):
+		return
 	_pending_spawn_side = GameManager.take_classrooms_corridor_spawn_side()
 	_seed_depth_from_spawn_side(_pending_spawn_side)
 	if _pending_spawn_side in ["cafeteria_door", "lounge_door", "classroom_door"]:

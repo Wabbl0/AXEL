@@ -2,18 +2,26 @@ class_name CombatFeel
 extends Node
 
 const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
+const BANNER_LAYER := 115
+const ENCOUNTER_BANNER_HOLD_SEC := 1.6
+const ENCOUNTER_BANNER_SCRIM := 0.85
+const BANNER_FADE_IN_SEC := 0.36
+const BANNER_FADE_OUT_SEC := 0.70
 
 var _root: Node2D
 var _grid_ui: Control
 var _shake_host: Node2D
+var _layer: CanvasLayer
 var _banner: Label
 var _banner_scrim: ColorRect
 var _grime: ColorRect
 var _grime_band: ColorRect
+var _menu_box: VBoxContainer
 var _banner_tween: Tween
 var _shake_tween: Tween
 var _wobble_tween: Tween
 var _host_rest: Vector2 = Vector2.ZERO
+var _game_over_open := false
 
 
 func setup(root: Node2D, grid_ui: Control) -> void:
@@ -45,16 +53,17 @@ func _build() -> void:
 	_grime_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_grime_band.color = Color(0.04, 0.0, 0.0, 0.0)
 	overlay.add_child(_grime_band)
-	var layer := CanvasLayer.new()
-	layer.name = "FeelLayer"
-	layer.layer = 95
-	_root.add_child(layer)
+	_layer = CanvasLayer.new()
+	_layer.name = "FeelLayer"
+	_layer.layer = BANNER_LAYER
+	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	_root.add_child(_layer)
 	_banner_scrim = ColorRect.new()
 	_banner_scrim.name = "FeelBannerScrim"
 	_banner_scrim.color = Color(0.0, 0.0, 0.0, 0.0)
 	_banner_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_banner_scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	layer.add_child(_banner_scrim)
+	_layer.add_child(_banner_scrim)
 	_banner = Label.new()
 	_banner.name = "FeelBanner"
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -64,7 +73,18 @@ func _build() -> void:
 	_banner.add_theme_color_override("font_color", Color(0.75, 0.04, 0.04, 1.0))
 	_banner.modulate.a = 0.0
 	_banner.set_anchors_preset(Control.PRESET_FULL_RECT)
-	layer.add_child(_banner)
+	_banner.offset_bottom = -180.0
+	_layer.add_child(_banner)
+	_menu_box = VBoxContainer.new()
+	_menu_box.name = "GameOverMenu"
+	_menu_box.visible = false
+	_menu_box.set_anchors_preset(Control.PRESET_CENTER)
+	_menu_box.offset_left = -260
+	_menu_box.offset_right = 260
+	_menu_box.offset_top = 40
+	_menu_box.offset_bottom = 280
+	_menu_box.add_theme_constant_override("separation", 10)
+	_layer.add_child(_menu_box)
 
 
 func set_goal_progress(ratio: float) -> void:
@@ -85,11 +105,11 @@ func set_goal_progress(ratio: float) -> void:
 		_grime_band.color.a = t * 0.45
 
 
-func highlight_princess(_id_name: StringName) -> void:
+func highlight_power(_id_name: StringName) -> void:
 	pass
 
 
-func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62) -> void:
+func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62, persist: bool = false) -> void:
 	if _banner == null:
 		return
 	_banner.text = text
@@ -97,11 +117,46 @@ func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62) ->
 	_banner.modulate.a = 0.0
 	_banner_scrim.color = Color(0.0, 0.0, 0.0, 0.0)
 	_banner_tween = create_tween()
-	_banner_tween.tween_property(_banner, "modulate:a", 1.0, 0.18)
-	_banner_tween.parallel().tween_property(_banner_scrim, "color:a", scrim_a, 0.18)
+	_banner_tween.tween_property(_banner, "modulate:a", 1.0, BANNER_FADE_IN_SEC)
+	_banner_tween.parallel().tween_property(_banner_scrim, "color:a", scrim_a, BANNER_FADE_IN_SEC)
 	_banner_tween.tween_interval(hold_sec)
-	_banner_tween.tween_property(_banner, "modulate:a", 0.0, 0.35)
-	_banner_tween.parallel().tween_property(_banner_scrim, "color:a", 0.0, 0.35)
+	if not persist:
+		_banner_tween.tween_property(_banner, "modulate:a", 0.0, BANNER_FADE_OUT_SEC)
+		_banner_tween.parallel().tween_property(_banner_scrim, "color:a", 0.0, BANNER_FADE_OUT_SEC)
+	await _banner_tween.finished
+
+
+func is_game_over_open() -> bool:
+	return _game_over_open
+
+
+func show_game_over_menu(retry: Callable, to_menu: Callable, quit_app: Callable) -> void:
+	_game_over_open = true
+	_kill(_banner_tween)
+	if _banner != null:
+		_banner.text = "GONE"
+		_banner.modulate.a = 1.0
+	if _banner_scrim != null:
+		_banner_scrim.color = Color(0.0, 0.0, 0.0, ENCOUNTER_BANNER_SCRIM)
+		_banner_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	if _menu_box == null:
+		return
+	for child in _menu_box.get_children():
+		_menu_box.remove_child(child)
+		child.free()
+	_add_game_over_button("Retry", retry)
+	_add_game_over_button("Return To Main Menu", to_menu)
+	_add_game_over_button("Exit", quit_app)
+	_menu_box.visible = true
+	MenuLook.grab_first_focus(_menu_box)
+
+
+func _add_game_over_button(caption: String, cb: Callable) -> void:
+	var button := Button.new()
+	button.text = caption
+	MenuLook.apply_button(button, 36)
+	button.pressed.connect(cb)
+	_menu_box.add_child(button)
 
 
 func shake(multiplier_value: int, settings: Node) -> void:

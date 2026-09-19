@@ -22,13 +22,13 @@ res://combat/
 ├── combat_test.tscn            # standalone F6 catalog tool
 ├── combat_run.tscn             # player fight host (world / act)
 ├── scenes/
-│   ├── combat_root.tscn        # grid + HUD; center PowerIntroIcon names the acting princess
+│   ├── combat_root.tscn        # grid + HUD; center PowerIntroIcon names the acting power
 │   └── symbol.tscn             # one cell's renderable symbol
 ├── scripts/
 │   ├── combat_root.gd          # orchestrates spin → resolve → cascade → powers
 │   ├── grid_manager.gd         # grid state, spawning, cascading
 │   ├── line_detector.gd        # row/column line win detection
-│   ├── princess_controller.gd  # rotation + power dispatch
+│   ├── power_controller.gd     # rotation + power dispatch
 │   ├── multiplier.gd           # per-spin multiplier tracking
 │   ├── meter.gd                # Vice meter state
 │   ├── premium_skull_meter.gd  # skull HUD widget (no ring)
@@ -67,13 +67,13 @@ enum Tier { LOW, PREMIUM, WILD, HAZARD }
 @export var tier: Tier
 @export var texture: Texture2D
 @export var base_weight: float = 1.0
-# Premium-specific: which princess owns this symbol (null for others)
-@export var princess_id: StringName = &""
+# Premium-specific: which power owns this symbol (empty for others)
+@export var power_id: StringName = &""
 ```
 
 Register the eight gameplay symbols as `.tres` files:
 - Low: `sym_green_circle`, `sym_yellow_triangle`, `sym_blue_star`, `sym_red_heart`
-- Premium: `sym_cigarette` (cigarette), `sym_booze`/alcohol, `sym_bloody_hand` (bloody hand). Code princess ids stay `storm` / `star` / `love`.
+- Premium: `sym_cigarette` (cigarette), `sym_booze`/alcohol, `sym_bloody_hand` (bloody hand). Code power ids are `cigarette` / `alcohol` / `bloody_hand`.
 - Wild: `sym_satanic`
 - Hazard (later): `sym_scar`
 
@@ -133,13 +133,13 @@ Add explicit resource state for Vice Round and Free Spins so the spin machine re
 ```gdscript
 class_name MeterState extends Resource
 @export var sections_filled: int = 0            # 0..3
-@export var saved_active_princess: StringName = &""
+@export var saved_active_power: StringName = &""
 ```
 
 ```gdscript
 class_name FreeSpinsState extends Resource
 @export var active: bool = false
-@export var chosen_princess: StringName = &""
+@export var chosen_power: StringName = &""
 @export var spins_remaining: int = 0
 @export var spins_awarded_total: int = 0
 @export var multiplier_cap: int = 100
@@ -154,8 +154,8 @@ class_name PaytableDef extends Resource
 ```
 
 Seed `PaytableDef` with the screenshot values as source-of-truth tuning inputs:
-- Princess symbols: x3 0.48, x4 1.60, x5 16.00
-- Any princess: x3 0.32, x4 0.80, x5 8.00
+- Power symbols: x3 0.48, x4 1.60, x5 16.00
+- Any power: x3 0.32, x4 0.80, x5 8.00
 - Bell / Heart: x3 0.24, x4 0.48, x5 4.80
 - Star / Green coin: x3 0.16, x4 0.32, x5 3.20
 - Wild: x3 1.60, x4 3.20, x5 80.00
@@ -196,15 +196,15 @@ func spin() -> void:
         cascade_drops += 1
         multiplier.add(1)                   # +1 per drop event
         await _item_hooks_post_cascade()
-        meter.apply_line_contributions(lines) # princess-only contribution: x3=+1, x4=+2, x5=+3
+        meter.apply_line_contributions(lines) # power-symbol contribution: x3=+1, x4=+2, x5=+3
 
     if _should_enter_trinity(meter, produced_any_win):
         await _run_trinity_round()          # fixed bloody hand→alcohol→cigarette sequence, non-winning drops only
     elif free_spins.active:
-        await _run_forced_princess_on_non_win(free_spins.chosen_princess, produced_any_win)
+        await _run_forced_power_on_non_win(free_spins.chosen_power, produced_any_win)
     elif not produced_any_win and _roll_girl_power():
-        await princesses.trigger_active_power()
-        princesses.advance_rotation_after_activation()
+        await powers.trigger_current_power(ctx)
+        powers.advance_rotation()
 
     if _is_grid_empty():
         if _in_trinity_round:
@@ -294,29 +294,29 @@ Do not spawn wilds for 4- or 5-symbol wins. If two 3-lines overlap and point to 
 
 ---
 
-## 7. Princess rotation + powers
+## 7. Power rotation
 
-`PrincessController` holds ordered princess ids `[love, star, storm]` (display names: bloody hand, alcohol, cigarette) and one active index. On encounter start, randomize the active index once (`rng.randi_range(0, 2)`).
+`PowerController` holds ordered power ids `[bloody_hand, alcohol, cigarette]` (display names: bloody hand, alcohol, cigarette) and one active index. On encounter start, randomize the active index once (`rng.randi_range(0, 2)`). Live methods: `current_id()`, `trigger_current_power(ctx)`, `advance_rotation()`.
 
 Trigger rules:
 - In the base game, Girl Power may trigger only on a spin that produced zero wins after full cascade resolution.
 - Trigger chance is probabilistic (`p_girl_power` data value), not guaranteed.
 - Rotation advances only after an actual Girl Power activation.
-- Free Spins overrides this (chosen princess forced every non-winning spin).
-- Vice Round overrides this (fixed bloody hand → alcohol → cigarette sequence, then restore previously active princess).
+- Free Spins overrides this (chosen power forced every non-winning spin).
+- Vice Round overrides this (fixed bloody hand → alcohol → cigarette sequence, then restore previously active power).
 
 ```gdscript
-func trigger_active_power(grid: GridManager) -> void:
-    match active_princess_id():
-        &"love":    _love_transform(grid)
-        &"star":    _star_add_wilds(grid, rng.randi_range(1, 2))
-        &"storm":   _storm_remove_two_symbol_sets(grid)
+func trigger_current_power(ctx: Dictionary) -> void:
+    match current_id():
+        &"bloody_hand":    _bloody_hand_transform(ctx)
+        &"alcohol":    _alcohol_add_wilds(ctx)
+        &"cigarette":   _cigarette_remove_lowpays(ctx)
 ```
 
 Implementation notes per power:
-- **Bloody hand (`love`):** select one source symbol type currently on grid and convert that full set into one target symbol type.
-- **Alcohol (`star`):** pick 1–2 empty-ish cells "intelligently" — simplest heuristic is "cell that would create the strongest immediate line-win potential if it were a wild"; score each candidate, pick top.
-- **Cigarette (`storm`):** remove two symbol sets from the grid, then cascade.
+- **Bloody hand (`bloody_hand`):** select one source symbol type currently on grid and convert that full set into one target symbol type.
+- **Alcohol (`alcohol`):** pick 1–2 empty-ish cells "intelligently" — simplest heuristic is "cell that would create the strongest immediate line-win potential if it were a wild"; score each candidate, pick top.
+- **Cigarette (`cigarette`):** remove two symbol sets from the grid, then cascade.
 
 Items can swap, amplify, or suppress these via hooks (see §9).
 
@@ -326,19 +326,19 @@ Items can swap, amplify, or suppress these via hooks (see §9).
 
 `MeterState` tracks the 3-section Vice meter.
 
-- On each resolved line, meter contribution is counted only from princess-symbol lines:
+- On each resolved line, meter contribution is counted only from power-symbol lines:
   - x3 line -> +1 section
   - x4 line -> +2 sections
   - x5 line -> +3 sections
-- Wilds can contribute when they are part of a princess-symbol line.
+- Wilds can contribute when they are part of a power-symbol line.
 - Meter caps at 3 sections.
 - When meter is full and the current cascade chain reaches a non-winning drop, enter one Vice Round:
-  1. Save current active princess id.
+  1. Save current active power id.
   2. Play meter-full transition FX.
   3. Repopulate a fresh 5×5 grid (same encounter RNG stream; no reseed).
   4. Reset multiplier to x1.
   5. On each non-winning drop, trigger Girl Power in fixed order bloody hand -> alcohol -> cigarette.
-  6. Exit after all three powers have triggered, restore saved active princess.
+  6. Exit after all three powers have triggered, restore saved active power.
 - If grid clears during Vice Round, transition to Free Spins (no instant clear-grid payout).
 
 ---
@@ -348,11 +348,11 @@ Items can swap, amplify, or suppress these via hooks (see §9).
 Create a dedicated `free_spins.gd` controller.
 
 - Entry: only by clearing the grid during Vice Round.
-- Pre-entry choice: player selects princess:
+- Pre-entry choice: player selects a power:
   - Bloody hand: 4 starting spins
   - Alcohol: 5 starting spins
   - Cigarette: 8 starting spins
-- On princess choice: repopulate a fresh 5×5 grid (same encounter RNG stream; no reseed) before the first Super Free Spin.
+- On power choice: repopulate a fresh 5×5 grid (same encounter RNG stream; no reseed) before the first Free Spin.
 - During Free Spins:
   - chosen Girl Power triggers on every non-winning spin
   - spin start does not repopulate; each spin continues from the entry grid state and depletes it
@@ -394,7 +394,7 @@ Create concrete subclasses per goal type from design doc §5:
 - `GoalAbstinence`
 - `GoalBurnMemory`
 
-`GoalTracker` owns the `progress` dict and forwards `on_spin_completed` to the active goal with a spin summary (payout, wilds placed, lines formed, princess triggered, etc).
+`GoalTracker` owns the `progress` dict and forwards `on_spin_completed` to the active goal with a spin summary (payout, wilds placed, lines formed, power triggered, etc).
 
 Important clarifications:
 - `GoalTrinity` succeeds when the player triggers the real Vice Round.
@@ -410,7 +410,7 @@ Items should be data + a small script that subscribes to lifecycle signals. Defi
 on_encounter_start(ctx)
 on_spin_start(ctx)
 on_line_resolve(ctx, line)
-on_princess_power(ctx, princess_id)   # can mutate/cancel
+on_power(ctx, power_id)   # can mutate/cancel
 on_cascade_end(ctx)
 on_encounter_end(ctx, result)
 ```
@@ -429,7 +429,7 @@ class_name ItemDef extends Resource
 
 Start by implementing three items end-to-end so the hook wiring is battle-tested:
 - **Half-smoked cigarette** (`on_encounter_start` → place one wild)
-- **Empty bottle** (`on_princess_power` where princess==star → add +1 wild)
+- **Empty bottle** (`on_power` where power==alcohol → add +1 wild)
 - **Lighter ("AXEL")** (`on_spin_start` once-per-encounter → spin a new grid)
 
 Ship those before filling out the full table from design doc §6.
@@ -439,9 +439,9 @@ Ship those before filling out the full table from design doc §6.
 ## 10. UI / renderer
 
 - Grid: a `GridContainer` with 25 `TextureRect` children, each bound to a cell. Listen to `grid_populated`, `cells_cleared`, `symbols_fell`, `symbols_spawned` — animate from signal payloads. Keep animations short (≤200ms per step) so cascade chains don't drag. **One exception:** the ~1.9 s board swap on `grid_populated` (§5). It happens once per fresh board, never inside a cascade chain.
-- HUD: current goal text + progress (`%GoalLabel`, not `goal_hud.tscn`), spin budget remaining, current multiplier, stake, Vice **skull** meter (3 sections; `premium_skull_meter.gd` + `meter.gd`). No ring widget. No match win-line overlay (`FeelWinLines` / `show_win_lines` gone). Paid spin uses the `interact` action (E/Space/Enter + pad A) and the EXECUTE piece. The acting princess is named by the center power-intro flash, not by a portrait — the old dim corner icon row was removed.
-- Free Spins HUD: chosen princess, spins remaining, carry multiplier, total-spin-cap progress.
-- **Feel FX to ship early:** CRT scanline shader overlay (carry from prototype), glitch flash on big multipliers, screen shake scaled to multiplier value. Audio: muffled stab on princess trigger, a quiet tone on grid clear. Big wins should feel *wrong* — see design doc §7.
+- HUD: current goal text + progress (`%GoalLabel`, not `goal_hud.tscn`), spin budget remaining, current multiplier, stake, Vice **skull** meter (3 sections; `premium_skull_meter.gd` + `meter.gd`). No ring widget. No match win-line overlay (`FeelWinLines` / `show_win_lines` gone). Paid spin uses the `interact` action (E/Space/Enter + pad A) and the EXECUTE piece. The acting power is named by the center power-intro flash, not by a portrait — the old dim corner icon row was removed.
+- Free Spins HUD: chosen power, spins remaining, carry multiplier, total-spin-cap progress.
+- **Feel FX to ship early:** CRT scanline shader overlay (carry from prototype), glitch flash on big multipliers, screen shake scaled to multiplier value. Audio: muffled stab on power trigger, a quiet tone on grid clear. Big wins should feel *wrong* — see design doc §7.
 
 ---
 
@@ -460,9 +460,9 @@ Write headless tests (no scene tree) for:
 1. **Line detector** — canned grids with known row/column runs (x3/x4/x5), gap rejection, wild substitution, pure-wild runs, and cells participating in both horizontal and vertical wins.
 2. **Cascade** — column pull correctness; no top refill during cascade loops.
 3. **Wild placement** — 3-line spawns in middle cell only; no spawns for 4/5 lines; overlap-spawn dedupe.
-4. **Princess powers** — mocked grid before/after for bloody hand, alcohol, cigarette and rotation changes only on activation.
-5. **Vice meter** — princess-line meter increments (x3/x4/x5), cap at 3, save/restore active princess behavior.
-6. **Free Spins** — initial spin awards by chosen princess, extra-spin awards, Vice Round disabled in feature, x100 multiplier cap, no per-spin repopulation, and no refill spawns during free-spin cascades.
+4. **Powers** — mocked grid before/after for bloody hand, alcohol, cigarette and rotation changes only on activation. Live check: `combat/test/powers_check.gd`.
+5. **Vice meter** — power-symbol line meter increments (x3/x4/x5), cap at 3, save/restore active power behavior.
+6. **Free Spins** — initial spin awards by chosen power, extra-spin awards, Vice Round disabled in feature, x100 multiplier cap, no per-spin repopulation, and no refill spawns during free-spin cascades.
 7. **Goal evaluation** — every goal type with synthetic spin summaries.
 8. **Determinism** — seed the RNG, run 100 spins on a fixed encounter, verify identical final grid on replay.
 
@@ -475,16 +475,16 @@ For visual iteration, keep `combat_test.tscn` bound to F5 with a dropdown to pic
 ## 13. Phased build order
 
 **Phase 1 — Silent grid (no theme, no polish).**
-Goal: spin, resolve line wins, gravity-only cascade, place wilds from 3-lines only, read multiplier-per-drop. No princesses, no goals, no items. Must be deterministic under a fixed seed.
+Goal: spin, resolve line wins, gravity-only cascade, place wilds from 3-lines only, read multiplier-per-drop. No powers, no goals, no items. Must be deterministic under a fixed seed.
 
-**Phase 2a — Princess rotation (base game).**
+**Phase 2a — Power rotation (base game).**
 Add the three powers. Hook them to random Girl Power on non-winning spins. Verify rotation advances only after activation.
 
 **Phase 2b — Vice meter + Vice Round.**
-Implement meter fill from princess wins, fixed bloody hand->alcohol->cigarette Vice Round sequence, and active-princess restore.
+Implement meter fill from power-symbol wins, fixed bloody hand->alcohol->cigarette Vice Round sequence, and active-power restore.
 
 **Phase 2c — Free Spins.**
-Implement feature entry via Vice Round grid clear, princess choice, extra-spin grants, and x100 cap.
+Implement feature entry via Vice Round grid clear, power choice, extra-spin grants, and x100 cap.
 
 **Phase 3 — Goals and encounters.**
 Implement `GoalDef` base + three goal types (payout threshold, wild count, grid clear). Build one `EncounterDef` per goal. Combat is now win/losable.
@@ -513,8 +513,8 @@ Ship Phase 1 before you touch Phase 2. Do not skip phases.
 - **Await hell:** if `spin()` awaits a renderer that never finishes, the whole machine hangs. Always add a hard timeout fallback on animation awaits in debug builds.
 - **Line-vs-cluster confusion:** if any flood-fill logic remains, you'll get invalid wins. Keep win detection strictly row/column run-length.
 - **Wild spawn conflicts:** only 3-lines spawn wilds at middle cell. Overlapping 3-lines can target same spawn cell; dedupe deterministically and document resolution order.
-- **Princess-power feedback loop:** Cigarette removes symbols -> cascade -> new symbols -> maybe new lines — that's expected; just make sure a princess power does not re-queue another princess power on the same spin.
-- **Vice Round restore bug:** save and restore active princess around Vice Round; do not permanently alter base rotation.
+- **Power feedback loop:** Cigarette removes symbols -> cascade -> new symbols -> maybe new lines — that's expected; just make sure a power does not re-queue another power on the same spin.
+- **Vice Round restore bug:** save and restore the active power around Vice Round; do not permanently alter base rotation.
 - **Multiplier accounting bug:** multiplier increments once per cascade drop, not once per line.
 - **Item ordering:** when two items modify the same hook, a later addition can break earlier behavior. Add an item-stack snapshot in the debug HUD from Phase 4 onward.
 - **Save-safety:** `RunState` schema changes break saves. Add a `schema_version` field from day 1 and handle migrations.
@@ -526,6 +526,6 @@ Ship Phase 1 before you touch Phase 2. Do not skip phases.
 Once Phase 3 runs end-to-end, export:
 - A 30-second clip of a cascading spin.
 - A JSON dump of one full encounter's spin log (seed, actions, results).
-- Any mechanic that felt wrong in play — especially around princess power timing and grid-clear pacing.
+- Any mechanic that felt wrong in play — especially around power timing and grid-clear pacing.
 
 That feedback is where the design doc gets its next revision.

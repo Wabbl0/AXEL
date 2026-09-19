@@ -62,6 +62,8 @@ func _check_ten_second_path(gm: Node) -> bool:
 			await process_frame
 	if not hint.visible:
 		_fail("arrow should show after 10s in 1.2")
+	else:
+		_assert_hint_pin(hint, "10s path")
 	var elapsed_before: float = float(scene.get("_hint_elapsed"))
 	paused = true
 	await process_frame
@@ -95,6 +97,8 @@ func _check_locker_path(gm: Node) -> bool:
 	await process_frame
 	if not hint.visible:
 		_fail("arrow should show immediately after locker when tutorial is done")
+	else:
+		_assert_hint_pin(hint, "locker path")
 	scene.queue_free()
 	await process_frame
 	return true
@@ -122,6 +126,21 @@ func _hint_of(scene: Node) -> Node2D:
 	if scene == null:
 		return null
 	return scene.get_node_or_null("PlayerLayer/DirectionHint") as Node2D
+
+
+func _assert_hint_pin(hint: Node2D, where: String) -> void:
+	if absf(hint.scale.x - 1.67) > 0.08 or absf(hint.scale.y - 1.67) > 0.08:
+		_fail("%s: arrow scale %.2f should be ~1.67" % [where, hint.scale.x])
+	var canvas := hint.get_canvas_transform()
+	var screen: Vector2 = canvas * hint.global_position
+	if screen.x < float(WINDOW.x) * 0.85:
+		_fail("%s: arrow screen x %.1f is not on the right of %d" % [where, screen.x, WINDOW.x])
+	var sprite := hint.get_node_or_null("Sprite") as Sprite2D
+	if sprite != null and sprite.texture != null:
+		var half := sprite.texture.get_width() * hint.scale.x * 0.5
+		var right := screen.x + half
+		if right < float(WINDOW.x) - 24.0 or right > float(WINDOW.x) + 8.0:
+			_fail("%s: arrow right edge %.1f should sit on the viewport right" % [where, right])
 
 
 func _settle(frames: int) -> void:

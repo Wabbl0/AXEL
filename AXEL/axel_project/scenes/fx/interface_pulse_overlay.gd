@@ -2,8 +2,8 @@ extends CanvasLayer
 
 @onready var _filter_rect: ColorRect = $FilterRect
 
-const BASELINE_ALPHA := 0.30
-const SURGE_ALPHA := 0.80
+const BASELINE_ALPHA := 0.20
+const SURGE_ALPHA := 0.536
 const _DEFAULT_DURATION := 1.1
 const _FADE_IN := 0.12
 const _FADE_OUT := 0.16
@@ -21,24 +21,26 @@ func _ready() -> void:
 
 
 func _rest_alpha() -> float:
-	return BASELINE_ALPHA if _ambient_active else 0.0
+	# Pulse-only: never leave a visible roll between pulses.
+	return 0.0
 
 
 func start_ambient() -> void:
+	# Kept for AxelEventFx callers. Do not show the roll or fade to 0.20.
 	_kill_fade_tween()
 	_ambient_active = true
-	visible = true
-	_fade_tween = create_tween()
-	_fade_tween.tween_property(_filter_rect, "modulate:a", BASELINE_ALPHA, _FADE_IN)
+	if _distortion_active:
+		return
+	_filter_rect.modulate.a = 0.0
+	visible = false
 
 
 func stop_ambient() -> void:
+	# Instant hide so a scene change never leaves a visible roll.
 	_kill_fade_tween()
 	_ambient_active = false
 	_distortion_active = false
-	_fade_tween = create_tween()
-	_fade_tween.tween_property(_filter_rect, "modulate:a", 0.0, _FADE_OUT)
-	await _fade_tween.finished
+	_filter_rect.modulate.a = 0.0
 	visible = false
 
 

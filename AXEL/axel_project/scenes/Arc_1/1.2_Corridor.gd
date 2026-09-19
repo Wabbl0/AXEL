@@ -4,6 +4,9 @@ const LOCKER_HUB_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
 const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const EXTERIOR_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const HINT_WAIT_SEC := 10.0
+const HINT_SCREEN_SCALE := 1.67
+const HINT_RIGHT_INSET_PX := 48.0
+const HINT_Y_FRAC := 0.64
 const LOCKER_LINE := "This was your locker."
 const BASEMENT_PEEK_MARGIN_PX := 12.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
@@ -37,7 +40,7 @@ func _ready() -> void:
 	if is_instance_valid(_direction_hint):
 		_direction_hint_tex = _direction_hint.position
 		_direction_hint.visible = false
-	bind_player_cover(null, _direction_hint)
+	bind_player_cover(null, null)
 	_locker_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/LockerInteractArea"
 	) as Area2D
@@ -112,6 +115,8 @@ func _latch_corridor_arrival() -> void:
 
 func _restore_player_position_if_needed() -> void:
 	if not is_instance_valid(_player):
+		return
+	if GameManager.has_pause_map_return_for(scene_file_path):
 		return
 	if _pending_basement_peek:
 		call_deferred("_apply_basement_peek_if_pending")
@@ -442,8 +447,18 @@ func on_world_space_synced(_cover_scale: float, _bg_position: Vector2) -> void:
 func _sync_direction_hint() -> void:
 	if not is_instance_valid(_direction_hint):
 		return
-	var env := $WalkableWorld/EnvironmentColliders
-	_direction_hint.global_position = env.to_global(_direction_hint_tex)
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var rect := vp.get_visible_rect()
+	_direction_hint.scale = Vector2(HINT_SCREEN_SCALE, HINT_SCREEN_SCALE)
+	var half_w := HINT_RIGHT_INSET_PX
+	var sprite := _direction_hint.get_node_or_null("Sprite") as Sprite2D
+	if sprite != null and sprite.texture != null:
+		half_w = sprite.texture.get_width() * HINT_SCREEN_SCALE * 0.5
+	var screen := Vector2(rect.size.x - half_w - 8.0, rect.size.y * HINT_Y_FRAC)
+	var canvas := _direction_hint.get_canvas_transform()
+	_direction_hint.global_position = canvas.affine_inverse() * screen
 
 
 func _update_direction_hint(delta: float) -> void:
@@ -461,6 +476,8 @@ func _update_direction_hint(delta: float) -> void:
 	if not dialogue_holds and not pause_holds:
 		_hint_elapsed += delta
 	_direction_hint.visible = bool(GameManager.corridor_from_locker) or _hint_elapsed >= HINT_WAIT_SEC
+	if _direction_hint.visible:
+		_sync_direction_hint()
 
 
 func _hint_should_stay_off() -> bool:

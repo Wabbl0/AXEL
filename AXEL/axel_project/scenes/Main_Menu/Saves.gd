@@ -40,6 +40,7 @@ func _build() -> void:
 	host.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_chrome.add_child(host)
 	var col := VBoxContainer.new()
+	col.name = "SavesColumn"
 	col.set_anchors_preset(Control.PRESET_CENTER)
 	col.offset_left = -_COL_HALF_W
 	col.offset_right = _COL_HALF_W
@@ -84,16 +85,22 @@ func _make_slot_row(slot: int) -> Control:
 		return _make_slot_button(slot)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
+	row.propagate_maximum_size = true
 	var button := _make_slot_button(slot)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_child(button)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(spacer)
 	var delete_btn := Button.new()
 	delete_btn.name = "DeleteSlot%d" % (slot + 1)
 	delete_btn.text = "Delete"
 	MenuLook.apply_button(delete_btn, MenuLook.scaled_font(self, 28), Control.SIZE_SHRINK_END)
+	var font := delete_btn.get_theme_font("font")
+	var fs := delete_btn.get_theme_font_size("font_size")
+	var word_w := 80.0
+	if font != null:
+		word_w = font.get_string_size("Delete", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	delete_btn.custom_minimum_size.x = word_w + 32.0
 	MenuLook.set_button_disabled(delete_btn, AxelSaves.is_empty(slot))
 	delete_btn.pressed.connect(func() -> void: _on_delete_pressed(slot))
 	row.add_child(delete_btn)
@@ -118,10 +125,6 @@ func _slot_label(slot: int) -> String:
 	var header := AxelSaves.read_header(slot)
 	if header.is_empty():
 		return "Slot %d  —  empty" % (slot + 1)
-	var items: Array = header.get("items", [])
-	var item_text := "none"
-	if not items.is_empty():
-		item_text = ", ".join(items)
 	var play := int(float(header.get("playtime_sec", 0.0)))
 	var mins := play / 60
 	var secs := play % 60
@@ -130,15 +133,16 @@ func _slot_label(slot: int) -> String:
 	if stamp > 0:
 		when = Time.get_datetime_string_from_unix_time(stamp, true)
 	var dead := "  DIED" if bool(header.get("dead", false)) else ""
-	return "Slot %d%s  —  %s  |  mem %d/5  |  %s  |  %dm %ds  |  %s" % [
+	var seed_n := int(header.get("seed", 0))
+	var seed_txt := ("  |  seed %d" % seed_n) if seed_n != 0 else ""
+	return "Slot %d%s  —  %s  |  %dm %ds  |  %s%s" % [
 		slot + 1,
 		dead,
 		String(header.get("last_room", "?")),
-		int(header.get("memories", 0)),
-		item_text,
 		mins,
 		secs,
 		when,
+		seed_txt,
 	]
 
 

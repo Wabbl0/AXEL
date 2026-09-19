@@ -74,7 +74,7 @@ void fragment() {
 	// Rolling bright line (old TV roll)
 	float roll = fract(uv_safe.y * 0.5 + t * roll_speed * 0.08);
 	float roll_line = smoothstep(0.92, 1.0, roll) * roll_amount;
-	col += vec3(roll_line * 0.12);
+	col += vec3(roll_line * 0.12, 0.0, 0.0);
 
 	// Interference + white static grain
 	float grain_t = floor(t * 18.0);

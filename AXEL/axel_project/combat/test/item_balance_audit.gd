@@ -1,7 +1,7 @@
 extends SceneTree
 
 const CombatRootScene := preload("res://combat/scenes/combat_root.tscn")
-const FS_PICK: StringName = &"storm"
+const FS_PICK: StringName = &"cigarette"
 const ITEMS_DIR := "res://combat/data/items"
 const SEEDS_PER_ITEM := 20
 const PAID_SPINS_PER_SEED := 50
@@ -130,7 +130,7 @@ func _run_seed_baseline(seed_value: int) -> Dictionary:
 	while paid_count < PAID_SPINS_PER_SEED and loop_guard < PAID_SPINS_PER_SEED * 20:
 		loop_guard += 1
 		if cr.is_waiting_for_free_spin_choice():
-			cr.choose_free_spins_princess(FS_PICK)
+			cr.choose_free_spins_power(FS_PICK)
 		var was_free := cr.free_spins.active
 		var bankroll_before := int(round(cr.get_bankroll()))
 		cr.spin_sync()
@@ -179,7 +179,7 @@ func _run_encounter_seed(seed_value: int, item_path: String) -> bool:
 	while not cr.is_encounter_complete() and guard < 200:
 		guard += 1
 		if cr.is_waiting_for_free_spin_choice():
-			cr.choose_free_spins_princess(FS_PICK)
+			cr.choose_free_spins_power(FS_PICK)
 		cr.spin_sync()
 	var won := cr.is_encounter_complete() and cr.did_win_encounter()
 	cr.queue_free()
@@ -266,7 +266,7 @@ func _run_seed_with_item(seed_value: int, item_path: String) -> Dictionary:
 	while paid_count < PAID_SPINS_PER_SEED and loop_guard < PAID_SPINS_PER_SEED * 20:
 		loop_guard += 1
 		if cr.is_waiting_for_free_spin_choice():
-			cr.choose_free_spins_princess(FS_PICK)
+			cr.choose_free_spins_power(FS_PICK)
 		var was_free := cr.free_spins.active
 		var bankroll_before := int(round(cr.get_bankroll()))
 		cr.spin_sync()

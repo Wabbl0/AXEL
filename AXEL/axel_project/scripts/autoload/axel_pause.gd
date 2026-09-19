@@ -72,6 +72,9 @@ func _can_pause_here() -> bool:
 		return false
 	if _dialogue_busy(scene):
 		return false
+	var run := get_node_or_null("/root/AxelRun")
+	if run != null and run.has_method("is_game_over_menu_open") and bool(run.call("is_game_over_menu_open")):
+		return false
 	return true
 
 

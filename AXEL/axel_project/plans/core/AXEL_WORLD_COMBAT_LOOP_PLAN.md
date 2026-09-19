@@ -20,7 +20,7 @@ Canon still wins: `plans/core/AI_DOCS.md`. Catalog text changes only in
 - The school map shows unvisited rooms dark and refuses to travel there.
 - A full-screen wipe plays on the way into every fight.
 - Winning puts you back in the room you left, on the spot you left.
-- Losing still writes the tombstone and returns to the title (permadeath) after **GONE** (`WIN_RETURN_SEC`). `AxelWorld.notify_fight_ended()` clears `_starting_fight` on a loss so New Game can fight again.
+- Losing deletes that slot’s save files (no tombstone) and keeps **GONE** up with **Retry** / **Return To Main Menu** / **Exit**. Retry starts a new run from `1.1` on the slot that died. `AxelWorld.notify_fight_ended()` clears `_starting_fight` on a loss so New Game can fight again.
 
 ## Layer rule
 
@@ -60,39 +60,42 @@ open with a random fight.
 
 ### Locker tutorial (first fight)
 
-Open the locker if you want (it only sets the opened-locker flag — no starter items), look around as long as you like, then
-leave the hub yourself with the red `X` or Esc. The **first** hub→`1.2` leave queues the tutorial even if they never opened LOCKER. First-visit map lines block X/Esc. `1.3_LockerHub` calls
-`AxelWorld.queue_locker_tutorial_fight()` (no stash required); `open_locker` also queues.
+Owned items sit on three crooked shelf rows in `1.3_LockerHub` (no LOCKER button).
+First hub visit sets the opened-locker flag — no starter items. Leave the hub
+yourself with the red `X` or Esc. The **first** hub→`1.2` leave queues the tutorial.
+First-visit map lines block X/Esc. `1.3_LockerHub` calls
+`AxelWorld.queue_locker_tutorial_fight()` (no stash required).
 `AxelWorld._on_scene_changed` starts it once `1.2_Corridor` is loaded.
 `tutorial_fight_done` is set only after `in_encounter` is true. Reason string: `locker_tutorial`.
 
-That fight is the lowest rung of the goal ladder (500 cents), runs with an **empty**
-loadout, and gets a one-time last-spin assist (see below). No in-fiction
+That fight is the lowest rung of the goal ladder (100 cents), runs with an **empty**
+loadout, and locks the last affordable paid spin (including an immediate all-in)
+to a fixed seed whose real matches pay the goal (see below). No in-fiction
 warning line plays — master plan D10's `first_encounter_warned` flag stays
 unwired.
 
 ### World goal ladder
 
-`AxelRun.WORLD_GOAL_LADDER_CENTS` = `500, 750, 1000, 1500, 2000, 3000, 5000`
+`AxelRun.WORLD_GOAL_LADDER_CENTS` = `100, 150, 225`
 (HUD units = raw cents), indexed by `RunState.world_fight_count` (monotonic; **not**
 `world_encounter_index`, which wraps at 3). Past the last rung each further
-fight multiplies by `1.5`, rounded to 100 cents. It reaches combat as a plain
+fight multiplies by `1.5`, rounded to 25 cents (337.5 → 350). It reaches combat as a plain
 number through the pre-existing `CombatRoot.set_goal_base_target_cents()`; the
 lore goal bonus and family-H percents still multiply on top. Act fights are
 untouched and keep combat's own 10x default.
 
-### Last-spin assist (tutorial only)
+### Last-spin lock (tutorial / first fight)
 
-`CombatRoot.set_final_spin_goal_assist(p)` defaults to `0.0`. When `p > 0` and
-the spin that would end the encounter leaves the goal unmet, combat rolls once
-against `p`; on success it credits the shortfall instead of losing. Only the
-locker tutorial passes a value (`0.99`), so you can still lose your first fight
-about 1 in 100 times — and losing still deletes the save (D8).
+`CombatRoot.set_tutorial_last_spin_lock(true)` on the locker tutorial (and the
+first world fight). The last affordable paid spin — you can afford this bet,
+but not the same bet again, so an immediate all-in of the whole 1000 counts —
+reseeds to `TUTORIAL_LAST_SPIN_SEED` (`12`) before the grid populate. Real symbol
+matches pay the remaining live lowest-rung goal (100). This replaces the old 99% silent
+goal-bar fill (`set_final_spin_goal_assist`). Losing still deletes the save (D8).
 
 This is a deliberate, narrow carve-out from `AXEL_notes` §8.3 ("no minimum
-payout safety net"). Determinism is safe: with `p == 0.0` no RNG draw happens
-at all, so every existing seed replays bit for bit, and the tutorial's single
-draw lands after every spin draw so it cannot shift the reels.
+payout safety net"). The lock only remaps that one spin's RNG; other fights
+keep their encounter seeds.
 
 ### Floor marker and info card
 
@@ -162,9 +165,9 @@ ids the player already owns and ids already placed on a floor.
    `has_visited()`; save body carries `visited_rooms` and the `AxelWorld` block.
 8. `scripts/Player.gd` — one call to `AxelWorld.register_walk_step()` next to
    the existing `AxelEventFx.register_walk_step()`.
-9. `scenes/ui/locker_interior.gd` + `scenes/Arc_1/1.3_LockerHub.gd` — remove the
-   `START RUN` button, the act line, and the pre-run warning. Keep the LOCKER
-   button, the equip grid, and the opened-locker flag (no C1/C2/C3 grant).
+9. `scenes/ui/locker_shelves.gd` + `locker_shelf_row.gd` + `scenes/Arc_1/1.3_LockerHub.gd` —
+   no LOCKER button and no overlay. Three crooked in-scene shelf rows equip
+   owned items. First hub visit sets the opened-locker flag (no C1/C2/C3 grant).
 10. `scenes/Arc_1/1.3_SchoolMap.gd` — travel needs `GameManager.has_visited()`.
     Unvisited rooms get a dark card, a `?????` label, and no click.
 11. Memory stills — `2.2_CafeteriaMemory.gd`, `3.2_BackyardMemory.gd`,
@@ -187,28 +190,32 @@ ids the player already owns and ids already placed on a floor.
 
 - Walking indoors sometimes starts a fight; `3.1` never does, and `1.1` / `1.2`
   only after the tutorial gate opens.
-- Opening the locker and then leaving the hub yourself starts one fight on
-  arrival in `1.2`: 3x goal, empty loadout, ~99% winnable.
+- Leaving the hub yourself starts one fight on
+  arrival in `1.2`: 100 goal, empty loadout, last affordable paid spin (including
+  an immediate all-in) reseeds to a fixed board whose real matches pay the goal.
 - Flashlight / key / shovel / name each start exactly one fight, ever.
 - Every memory still ends in a fight. The locker map paper (`scene_3`) does not.
 - Every floor item looks like the same white pointing hand from across the
   room; walking near one shows its real name, description and icon.
 - Floor items show `[E]`, join the locker on pickup, and start a fight.
 - `1.1` and `1.2` never hold a floor item.
-- Fight goals climb 3x, 5x, 7.5x, 10x, 15x, 20x, 30x of the chip bar.
+- Fight goals climb 100, 150, 225, then ×1.5 (rounded to 25).
 - The first area's floor items are Common; untouched areas read one rank higher
   after the first pickup.
-- The locker panel has no START RUN.
+- The locker has no START RUN button and no LOCKER overlay; items sit on shelves.
 - Unvisited map rooms are dark and unclickable; visiting once unlocks them.
-- A wipe plays before each fight; a win returns to the same room and spot.
+- A wipe plays before each fight; a win shows Round Complete!, fades, and returns to the same room and spot.
+- The `1.4` chained door plays `"Not yet."` and stays in the room.
 
 ## Manual test checklist
 
 1. New game → walk `1.1` and `1.2` for a while: no floor-item hands and no fights.
-2. Locker → close → red `X`: a fight starts as you land in `1.2`, with a 3x
-   goal and an empty item panel. Win → back in `1.2` where you stood.
+2. Locker → close → red `X`: a fight starts as you land in `1.2`, with a 100
+   goal and an empty item panel. Last spin / all-in pays the goal from real
+   matches. Win → back in `1.2` where you stood.
 3. Walk to `1.4`, walk near the hand: its real name, description and icon
-   show before you press `[E]`. Take it → fight (5x goal) → win.
+   show before you press `[E]`. Take it → fight (next ladder rung, 150) → win.
+   The chained door only plays `"Not yet."` and stays in the room.
 4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot.
 5. Open the map before visiting `2.3`: kitchen is dark and dead. Walk there,
    reopen: it works.

@@ -59,17 +59,34 @@ func _main() -> void:
 	if bool(saves.call("delete_slot", 1)):
 		failures.append("delete_slot should refuse an empty slot")
 
+	saves.call("new_game", 0)
+	saves.call("save_active_now")
+	if int(saves.call("read_header", 0).get("seed", 0)) == 0:
+		failures.append("new_game header is missing seed")
 	saves.call("write_tombstone", 0)
-	if not bool(saves.call("is_dead", 0)):
-		failures.append("tombstone did not mark slot 0 dead")
-	if bool(saves.call("load_slot", 0)):
-		failures.append("load_slot should refuse a tombstone")
-	if not bool(saves.call("delete_slot", 0)):
-		failures.append("delete_slot(0) tombstone failed")
 	if not bool(saves.call("is_empty", 0)):
-		failures.append("delete_slot did not clear tombstone")
+		failures.append("write_tombstone should delete slot 0")
 	if bool(saves.call("is_dead", 0)):
-		failures.append("deleted tombstone still reads as dead")
+		failures.append("write_tombstone left a dead header")
+	if bool(saves.call("load_slot", 0)):
+		failures.append("load_slot should refuse an empty slot")
+	if bool(saves.call("delete_slot", 0)):
+		failures.append("delete_slot should refuse an empty slot")
+
+	saves.call("new_game", 0)
+	saves.call("deactivate")
+	saves.call("new_game", 1)
+	saves.call("deactivate")
+	saves.call("new_game", 2)
+	saves.call("deactivate")
+	if int(saves.call("first_free_slot")) != -1:
+		failures.append("first_free_slot should be -1 when all three slots live")
+	var oldest: int = int(saves.call("oldest_living_slot"))
+	if oldest < 0:
+		failures.append("oldest_living_slot failed on three living slots")
+	saves.call("delete_slot", 1)
+	if int(saves.call("first_free_slot")) != 1:
+		failures.append("first_free_slot should reuse the emptied slot")
 
 	if settings != null:
 		var live_vol := float(settings.get_value("audio", "master_volume"))
@@ -102,12 +119,33 @@ func _main() -> void:
 			if bg == null or bg.texture == null:
 				failures.append("title backdrop missing texture")
 			var host := screen.find_child("SavesHost", true, false) as Control
+			var col := screen.find_child("SavesColumn", true, false) as Control
+			var slot_btn := screen.find_child("Slot1", true, false) as Button
+			if slot_btn != null:
+				var label := slot_btn.text
+				for leak in ["mem ", "Flashlight", "Key", "Shovel", "Name", "missing"]:
+					if label.contains(leak):
+						failures.append("Load label leaked '%s': %s" % [leak, label])
 			var del := screen.find_child("DeleteSlot1", true, false) as Button
 			if host == null or del == null:
 				failures.append("load saves UI missing host or Delete")
 			else:
+				if del.text != "Delete":
+					failures.append("Delete button text is '%s' not Delete" % del.text)
+				var font := del.get_theme_font("font")
+				var fs := del.get_theme_font_size("font_size")
+				var need_w := 24.0
+				if font != null:
+					need_w = font.get_string_size("Delete", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 24.0
+				if del.get_global_rect().size.x + 0.5 < need_w:
+					failures.append(
+						"Delete width %.1f smaller than word %.1f"
+						% [del.get_global_rect().size.x, need_w]
+					)
 				if not host.get_global_rect().encloses(del.get_global_rect()):
 					failures.append("Delete button sits outside SavesHost")
+				if col != null and not col.get_global_rect().encloses(del.get_global_rect()):
+					failures.append("Delete button sits outside the 1000px SavesColumn")
 				if del.disabled:
 					failures.append("Delete on occupied slot was disabled")
 				del.pressed.emit()

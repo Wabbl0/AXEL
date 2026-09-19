@@ -10,6 +10,7 @@ var game_state: Dictionary = {}
 const SAVE_PATH := "user://axel_game_state.json"
 const INVALID_RETURN_POS := Vector2(1.0e20, 1.0e20)
 var pause_map_return_path: String = ""
+var pause_map_return_tex: Vector2 = INVALID_RETURN_POS
 
 var corridor_locker_line_seen: bool = false
 var corridor_spawn_line_seen: bool = false
@@ -127,6 +128,7 @@ func reset_state() -> void:
 	walkoff_floor_offset_y = NAN
 	interact_arrival_t = NAN
 	pause_map_return_path = ""
+	pause_map_return_tex = INVALID_RETURN_POS
 	var run := get_node_or_null("/root/AxelRun")
 	if run != null and run.has_method("reset_run"):
 		run.call("reset_run")
@@ -185,6 +187,7 @@ func import_save_body(data: Dictionary) -> void:
 	corridor_from_locker = bool(data.get("corridor_from_locker", false))
 	corridor_right_hint_done = bool(data.get("corridor_right_hint_done", false))
 	pause_map_return_path = String(data.get("pause_map_return_path", ""))
+	pause_map_return_tex = INVALID_RETURN_POS
 	visited_rooms = {}
 	for room_path in data.get("visited_rooms", []):
 		visited_rooms[String(room_path)] = true
@@ -367,6 +370,26 @@ func take_teachers_lounge_memory_return_pos() -> Vector2:
 	var pos := teachers_lounge_memory_return_pos
 	teachers_lounge_memory_return_pos = INVALID_RETURN_POS
 	return pos
+
+func set_pause_map_return(path: String, tex: Vector2) -> void:
+	pause_map_return_path = path
+	pause_map_return_tex = tex
+
+
+func has_pause_map_return_for(path: String) -> bool:
+	return pause_map_return_path == path and pause_map_return_tex != INVALID_RETURN_POS
+
+
+func clear_pause_map_return() -> void:
+	pause_map_return_path = ""
+	pause_map_return_tex = INVALID_RETURN_POS
+
+
+func take_pause_map_return_tex() -> Vector2:
+	var tex := pause_map_return_tex
+	clear_pause_map_return()
+	return tex
+
 
 func set_corridor_spawn_side(side: String) -> void:
 	corridor_spawn_side = side

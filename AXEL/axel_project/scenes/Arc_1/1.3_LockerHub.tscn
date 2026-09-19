@@ -5,6 +5,8 @@
 [ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
 [ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="4_font"]
 [ext_resource type="Script" uid="uid://dlv3mwtkwxemi" path="res://scenes/ui/ui_polygon_hotspot.gd" id="5_map_hotspot"]
+[ext_resource type="Script" path="res://scenes/ui/locker_shelves.gd" id="6_shelves"]
+[ext_resource type="Script" path="res://scenes/ui/locker_shelf_row.gd" id="7_shelf_row"]
 
 [node name="LockerHub" type="Control" unique_id=1765057209]
 layout_mode = 3
@@ -26,6 +28,44 @@ mouse_filter = 2
 texture = ExtResource("2_hub_bg")
 expand_mode = 1
 stretch_mode = 6
+
+[node name="LockerShelves" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_shelves")
+background_path = NodePath("../Background")
+
+[node name="ShelfTop" type="Control" parent="LockerShelves"]
+layout_mode = 0
+offset_right = 400.0
+offset_bottom = 80.0
+rotation = -0.06981317
+script = ExtResource("7_shelf_row")
+uv_rect = Rect2(0.18, 0.22, 0.62, 0.14)
+icon_px = 120.0
+
+[node name="ShelfMid" type="Control" parent="LockerShelves"]
+layout_mode = 0
+offset_right = 400.0
+offset_bottom = 80.0
+rotation = -0.034906585
+script = ExtResource("7_shelf_row")
+uv_rect = Rect2(0.16, 0.42, 0.66, 0.15)
+icon_px = 120.0
+
+[node name="ShelfBot" type="Control" parent="LockerShelves"]
+layout_mode = 0
+offset_right = 400.0
+offset_bottom = 80.0
+rotation = 0.034906585
+script = ExtResource("7_shelf_row")
+uv_rect = Rect2(0.14, 0.62, 0.70, 0.16)
+icon_px = 120.0
 
 [node name="MapHotspot" type="Control" parent="." unique_id=1504629887]
 layout_mode = 1

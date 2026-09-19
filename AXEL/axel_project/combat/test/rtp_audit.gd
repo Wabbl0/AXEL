@@ -1,7 +1,7 @@
 extends SceneTree
 
 const CombatRootScene := preload("res://combat/scenes/combat_root.tscn")
-const FS_PICK: StringName = &"storm"
+const FS_PICK: StringName = &"cigarette"
 const BASELINE_SEEDS := 20
 const PAID_SPINS_PER_SEED := 50
 const ENCOUNTER_SEEDS := 120
@@ -48,7 +48,7 @@ func _run_baseline_no_item() -> Dictionary:
 		while seed_paid_spins < PAID_SPINS_PER_SEED and loop_guard < PAID_SPINS_PER_SEED * 20:
 			loop_guard += 1
 			if cr.is_waiting_for_free_spin_choice():
-				cr.choose_free_spins_princess(FS_PICK)
+				cr.choose_free_spins_power(FS_PICK)
 				forced_choice_count += 1
 				trinity_entry_count += 1
 			var was_free_spin := cr.free_spins.active
@@ -114,7 +114,7 @@ func _run_encounter_success() -> Dictionary:
 		while not cr.is_encounter_complete() and guard < 200:
 			guard += 1
 			if cr.is_waiting_for_free_spin_choice():
-				cr.choose_free_spins_princess(FS_PICK)
+				cr.choose_free_spins_power(FS_PICK)
 			cr.spin_sync()
 		if cr.is_encounter_complete() and cr.did_win_encounter():
 			wins += 1

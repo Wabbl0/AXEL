@@ -1,6 +1,6 @@
 extends SceneTree
 
-const LockerInteriorScript := preload("res://scenes/ui/locker_interior.gd")
+const LockerShelvesScript := preload("res://scenes/ui/locker_shelves.gd")
 
 const NEVER_FIGHTS := [
 	"res://scenes/Arc_3/3.1_Backyard.tscn",
@@ -291,13 +291,23 @@ func _check_lore_guard(world: Node) -> void:
 
 
 func _check_locker_has_no_start_run() -> void:
-	var locker = LockerInteriorScript.new()
+	var hub_src := FileAccess.get_file_as_string("res://scenes/Arc_1/1.3_LockerHub.tscn")
+	if hub_src.contains("locker_interior"):
+		_fail("locker hub still references locker_interior")
+	if hub_src.contains("text = \"START RUN\"") or hub_src.contains("text = \"LOCKER\""):
+		_fail("locker hub scene still has a START RUN or LOCKER button")
+	if not hub_src.contains("locker_shelves.gd"):
+		_fail("locker hub is missing locker_shelves.gd")
+	var locker = LockerShelvesScript.new()
 	root.add_child(locker)
 	var offenders := _button_texts(locker)
 	locker.queue_free()
 	for text in offenders:
-		if text.to_upper().contains("START RUN"):
+		var upper := text.to_upper()
+		if upper.contains("START RUN"):
 			_fail("locker still has a START RUN button")
+		if upper.contains("LOCKER") and upper != "LOCKER TAPE" and upper != "LOCKER MAP PIN":
+			_fail("locker still has a LOCKER button")
 
 
 func _button_texts(node: Node) -> Array[String]:
@@ -347,7 +357,7 @@ func _check_walk_gate(world: Node, run: Node) -> void:
 
 func _check_goal_ladder(run: Node) -> void:
 	run.call("reset_run")
-	var want := [500, 750, 1000, 1500, 2000, 3000, 5000]
+	var want := [100, 150, 225]
 	for i in want.size():
 		run.state.world_fight_count = i + 1
 		var got := int(run.call("world_goal_base_cents"))

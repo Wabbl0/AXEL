@@ -180,6 +180,11 @@ script = ExtResource("16_leaf_zone")
 position = Vector2(267, -218)
 polygon = PackedVector2Array(398, 76, 92, 80, 91, 48, 400, -125)
 
+[node name="Roof_Behind" type="CollisionPolygon2D" parent="EnvironmentColliders/RightWall_Behind" unique_id=2101207]
+position = Vector2(341.00006, 1935.7411)
+scale = Vector2(0.22983871, 10.419643)
+polygon = PackedVector2Array(90, -200, 400, -200, 400, -130, 90, -130)
+
 [node name="RightWall" type="StaticBody2D" parent="EnvironmentColliders" unique_id=432242208]
 position = Vector2(1264, 360)
 

@@ -20,19 +20,19 @@
 | 14 | `combat/scripts/meter.gd` |
 | 15 | `combat/scripts/multiplier.gd` |
 | 16 | `combat/scripts/premium_skull_meter.gd` |
-| 17 | `combat/scripts/princess_controller.gd` |
+| 17 | `combat/scripts/power_controller.gd` |
 | 18 | `combat/scripts/rng.gd` |
 | 19 | `combat/scripts/symbol_def.gd` |
 | 20 | `combat/scripts/symbol_slot.gd` |
 | 21 | `combat/test/determinism_check.gd` |
-| 22 | `combat/test/princess_check.gd` |
+| 22 | `combat/test/powers_check.gd` |
 
 **Note:** `cluster_detector.gd` was removed (contradicted line-wins canon; unused). A future “N+ symbols anywhere” item can rebuild that idea from scratch.
 
 **Headless checks (from repo root, with Godot on PATH):**
 
 ```bat
-tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/princess_check.gd
+tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/powers_check.gd
 tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://combat/test/determinism_check.gd
 ```
 
@@ -47,4 +47,4 @@ tools/cmd/godot.cmd --headless --path AXEL/axel_project -s res://tools/scene_smo
 
 **Troubleshooting headless / `class_name` resolution:** If Godot reports missing types like `EncounterDef` or `GoalDef`, ensure [`.godot/global_script_class_cache.cfg`](../.godot/global_script_class_cache.cfg) includes all combat `class_name` entries, or open the project once in the editor to regenerate the cache.
 
-**Test scripts:** In Godot 4, `await node.ready` after the node is already ready never resumes; tests use `is_node_ready()` guards (see `princess_check.gd` / `determinism_check.gd`).
+**Test scripts:** In Godot 4, `await node.ready` after the node is already ready never resumes; tests use `is_node_ready()` guards (see `powers_check.gd` / `determinism_check.gd`).

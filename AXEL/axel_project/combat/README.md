@@ -5,6 +5,6 @@
 - **Determinism check (CLI):** from `axel_project`, run  
   `godot --path . --headless -s res://combat/test/determinism_check.gd`  
   Expect: `Determinism check OK (100 spins, seed 12345).`
-- **Princess behavior check (CLI):** from `axel_project`, run  
-  `godot --path . --headless -s res://combat/test/princess_check.gd`  
-  Expect: `Princess check OK.`
+- **Power / vice behavior check (CLI):** from `axel_project`, run  
+  `godot --path . --headless -s res://combat/test/powers_check.gd`  
+  Expect: `Powers check OK.`

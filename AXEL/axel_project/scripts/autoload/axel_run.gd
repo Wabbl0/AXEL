@@ -10,14 +10,14 @@ const ITEM_DIR := "res://combat/data/items/"
 const LORE_FLAGS: PackedStringArray = ["hasFlashlight", "hasKey", "hasShovel", "hasName"]
 const LORE_GOAL_BONUS := 0.15
 const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
-	500, 750, 1000, 1500, 2000, 3000, 5000,
+	100, 150, 225,
 ]
 const WORLD_GOAL_LADDER_GROWTH := 1.5
-const WORLD_GOAL_LADDER_ROUNDING := 100
+const WORLD_GOAL_LADDER_ROUNDING := 25
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
-const TUTORIAL_FINAL_SPIN_ASSIST := 0.99
+const STARTING_BANKROLL_CENTS := 1000
 const MAX_PLAYABLE_ACT := 3
-const WIN_RETURN_SEC := 1.6
+const NEW_GAME_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const WORLD_ENCOUNTER_PATHS: PackedStringArray = [
 	"res://combat/data/encounters/encounter_payout.tres",
 	"res://combat/data/encounters/encounter_wild_count.tres",
@@ -46,6 +46,8 @@ var _catalog: Dictionary = {}
 var _wired_root: Node = null
 var _wire_tries: int = 0
 var _finish_busy: bool = false
+var _game_over_open: bool = false
+var _retry_slot: int = -1
 
 
 func _ready() -> void:
@@ -55,12 +57,40 @@ func _ready() -> void:
 	reset_run()
 
 
-func reset_run() -> void:
+func reset_run(slot: int = -1) -> void:
 	state = RunStateScript.new()
-	state.seed = int(Time.get_unix_time_from_system())
+	state.seed = _make_run_seed(slot)
+	state.bankroll_cents = STARTING_BANKROLL_CENTS
 	_wired_root = null
 	_wire_tries = 0
 	_finish_busy = false
+	_game_over_open = false
+	_retry_slot = -1
+
+
+func _make_run_seed(slot: int = -1) -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var mixed := int(Time.get_ticks_usec())
+	mixed ^= int(rng.randi())
+	mixed ^= int(Time.get_unix_time_from_system()) * 1009
+	if slot >= 0:
+		mixed ^= (slot + 1) * 1000003
+	if mixed == 0:
+		mixed = int(rng.randi())
+	if mixed == 0:
+		mixed = 1
+	return mixed
+
+
+func reset_encounter_bankroll() -> void:
+	state.bankroll_cents = STARTING_BANKROLL_CENTS
+
+
+func is_tutorial_last_spin_lock() -> bool:
+	if is_tutorial_encounter():
+		return true
+	return state.world_encounter and int(state.world_fight_count) <= 1
 
 
 func to_dict() -> Dictionary:
@@ -75,10 +105,16 @@ func from_dict(data: Dictionary) -> void:
 	_wired_root = null
 	_wire_tries = 0
 	_finish_busy = false
+	_game_over_open = false
+	_retry_slot = -1
 
 
 func is_in_encounter() -> bool:
 	return state.in_encounter
+
+
+func is_game_over_menu_open() -> bool:
+	return _game_over_open
 
 
 func mark_first_encounter_warned() -> void:
@@ -174,6 +210,7 @@ func enter_world_encounter(
 	state.world_encounter_index = (int(state.world_encounter_index) + 1) % WORLD_ENCOUNTER_PATHS.size()
 	state.world_fight_count = int(state.world_fight_count) + 1
 	state.in_encounter = true
+	reset_encounter_bankroll()
 	_persist_now()
 	if is_instance_valid(AxelEventFx):
 		await AxelEventFx.play_combat_wipe()
@@ -189,6 +226,7 @@ func enter_combat() -> void:
 	if not can_start_encounter():
 		return
 	state.in_encounter = true
+	reset_encounter_bankroll()
 	_persist_now()
 	var music := get_node_or_null("/root/AxelMusic")
 	if music != null and music.has_method("to_combat"):
@@ -202,8 +240,10 @@ func on_encounter_finished(success: bool) -> void:
 	_finish_busy = true
 	state.in_encounter = false
 	if not success:
+		_delete_active_run()
 		_permadeath_to_title()
 		return
+	reset_encounter_bankroll()
 	_apply_win_progress()
 	if state.world_encounter:
 		_return_to_world_room()
@@ -214,16 +254,17 @@ func on_encounter_finished(success: bool) -> void:
 
 
 func abort_encounter_as_loss() -> void:
-	if not state.in_encounter and not _finish_busy:
+	if not state.in_encounter and not _finish_busy and not _game_over_open:
 		return
 	_finish_busy = false
 	state.in_encounter = false
+	_delete_active_run()
 	_permadeath_to_title()
 
 
 func write_tombstone_only() -> void:
 	state.in_encounter = false
-	_write_tombstone()
+	_delete_active_run()
 
 
 func load_item(item_id: String) -> Resource:
@@ -326,15 +367,14 @@ func _wire_combat_root() -> void:
 		root.call("set_equipped_items", [] if tutorial else equipped_items())
 	if state.world_encounter and root.has_method("set_goal_base_target_cents"):
 		root.call("set_goal_base_target_cents", world_goal_base_cents())
-	if tutorial and root.has_method("set_final_spin_goal_assist"):
-		root.call("set_final_spin_goal_assist", TUTORIAL_FINAL_SPIN_ASSIST)
+	if is_tutorial_last_spin_lock() and root.has_method("set_tutorial_last_spin_lock"):
+		root.call("set_tutorial_last_spin_lock", true)
 	if encounter != null and root.has_method("set_spin_budget"):
 		root.call("set_spin_budget", int(encounter.get("spin_budget")))
 	root.call("setup_new_grid", encounter_seed())
-	if root.has_method("restore_run_bankroll"):
-		root.call("restore_run_bankroll", state.bankroll_cents)
-	elif root.has_method("set_bankroll_cents"):
-		root.call("set_bankroll_cents", state.bankroll_cents)
+	reset_encounter_bankroll()
+	if scene.has_method("refresh_player_item_box"):
+		scene.call("refresh_player_item_box")
 	if root.has_signal("encounter_finished"):
 		if not root.is_connected("encounter_finished", _on_root_finished):
 			root.connect("encounter_finished", _on_root_finished)
@@ -345,17 +385,20 @@ func _on_root_finished(success: bool) -> void:
 		return
 	if success:
 		_finish_busy = true
-		capture_bankroll_from(_wired_root)
+		_show_round_complete_card()
+		var root := _live_combat_root()
+		if root != null and root.has_method("await_victory_confirm"):
+			await root.call("await_victory_confirm")
+		await _fade_out_of_combat()
+		if get_tree() == null:
+			return
+		reset_encounter_bankroll()
 		_apply_win_progress()
-		_return_after_win()
+		await _return_after_win()
 		return
 	_finish_busy = true
-	if WIN_RETURN_SEC > 0.0 and get_tree() != null:
-		await get_tree().create_timer(WIN_RETURN_SEC).timeout
-	if get_tree() == null:
-		return
 	state.in_encounter = false
-	_permadeath_to_title()
+	_open_permadeath_menu()
 
 
 func max_equip_slots() -> int:
@@ -366,6 +409,7 @@ func max_equip_slots() -> int:
 
 func _apply_win_progress() -> void:
 	state.in_encounter = false
+	reset_encounter_bankroll()
 	if state.world_encounter:
 
 		_persist_now()
@@ -382,15 +426,14 @@ func _apply_win_progress() -> void:
 
 
 func _return_after_win() -> void:
-	if WIN_RETURN_SEC > 0.0:
-		await get_tree().create_timer(WIN_RETURN_SEC).timeout
 	if get_tree() == null:
 		return
 	if state.world_encounter:
-		_return_to_world_room()
+		await _return_to_world_room()
 		return
 	_to_overworld_music()
 	get_tree().change_scene_to_file(LOCKER_SCENE)
+	await _fade_in_after_combat()
 	_finish_busy = false
 
 
@@ -409,6 +452,7 @@ func _return_to_world_room() -> void:
 		world.call("notify_fight_won", reason, dest, tex, has_tex)
 	_to_overworld_music()
 	get_tree().change_scene_to_file(dest)
+	await _fade_in_after_combat()
 	_finish_busy = false
 
 
@@ -421,23 +465,109 @@ func _clear_world_encounter() -> void:
 	state.world_return_tex_valid = false
 
 
+func _open_permadeath_menu() -> void:
+	_game_over_open = true
+	var saves := get_node_or_null("/root/AxelSaves")
+	_retry_slot = -1
+	if saves != null and bool(saves.call("is_active")):
+		_retry_slot = int(saves.get("active_slot"))
+	_delete_active_run()
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("notify_fight_ended"):
+		world.call("notify_fight_ended")
+	var feel := _live_feel()
+	if feel != null and feel.has_method("show_game_over_menu"):
+		feel.call(
+			"show_game_over_menu",
+			_retry_new_run,
+			_to_title_after_death,
+			_quit_after_death
+		)
+		return
+	_to_title_after_death()
+
+
+func _retry_new_run() -> void:
+	_game_over_open = false
+	var saves := get_node_or_null("/root/AxelSaves")
+	var slot := _retry_slot
+	if slot < 0 and saves != null and saves.has_method("first_free_slot"):
+		slot = int(saves.call("first_free_slot"))
+	if saves != null and slot >= 0 and saves.has_method("begin_new_game_and_enter"):
+		if bool(saves.call("begin_new_game_and_enter", slot)):
+			_finish_busy = false
+			return
+	_to_overworld_music()
+	if get_tree() != null:
+		get_tree().change_scene_to_file(NEW_GAME_SCENE)
+	_finish_busy = false
+
+
+func _to_title_after_death() -> void:
+	_game_over_open = false
+	_permadeath_to_title()
+
+
+func _quit_after_death() -> void:
+	_game_over_open = false
+	if get_tree() != null:
+		get_tree().quit()
+
+
 func _permadeath_to_title() -> void:
 	state.in_encounter = false
 	_clear_world_encounter()
 	var world := get_node_or_null("/root/AxelWorld")
 	if world != null and world.has_method("notify_fight_ended"):
 		world.call("notify_fight_ended")
-	_write_tombstone()
 	_to_overworld_music()
-	get_tree().change_scene_to_file(TITLE_SCENE)
+	if get_tree() != null:
+		get_tree().change_scene_to_file(TITLE_SCENE)
 	_finish_busy = false
+	_game_over_open = false
 
 
-func _write_tombstone() -> void:
+func _delete_active_run() -> void:
 	var saves := get_node_or_null("/root/AxelSaves")
 	if saves == null or not bool(saves.call("is_active")):
 		return
-	saves.call("write_tombstone", int(saves.get("active_slot")))
+	saves.call("delete_slot", int(saves.get("active_slot")))
+
+
+func _live_combat_root() -> Node:
+	if get_tree() == null:
+		return null
+	var scene := get_tree().current_scene
+	if scene == null:
+		return null
+	return scene.find_child("CombatRoot", true, false)
+
+
+func _live_feel() -> Node:
+	var root := _live_combat_root()
+	if root != null and root.has_method("get_feel"):
+		return root.call("get_feel")
+	if root != null:
+		return root.find_child("CombatFeel", true, false)
+	return null
+
+
+func _show_round_complete_card() -> void:
+	var fx := get_node_or_null("/root/AxelEventFx")
+	if fx != null and fx.has_method("show_round_complete_card"):
+		fx.call("show_round_complete_card")
+
+
+func _fade_out_of_combat() -> void:
+	var fx := get_node_or_null("/root/AxelEventFx")
+	if fx != null and fx.has_method("play_round_complete_fade"):
+		await fx.call("play_round_complete_fade")
+
+
+func _fade_in_after_combat() -> void:
+	var fx := get_node_or_null("/root/AxelEventFx")
+	if fx != null and fx.has_method("finish_round_complete_fade"):
+		await fx.call("finish_round_complete_fade")
 
 
 func _to_overworld_music() -> void:

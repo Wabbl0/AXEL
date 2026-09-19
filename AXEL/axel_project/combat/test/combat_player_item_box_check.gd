@@ -6,13 +6,19 @@ const STARTER := "res://combat/data/items/C1_ash_spin_token.tres"
 const HOST_PAD_PX := 1.0
 const ICON_INSET_MIN_PX := 8.0
 const NAME_MIN_W := 40.0
-const PLAYER_HOVER_FONT := 29
+const PLAYER_ICON_PX := 144.0
+const PLAYER_ICON_RES_PX := 120
+const PLAYER_NAME_FONT := 84
+const PLAYER_DESC_FONT := 48
+const MID_Y_SLACK := 8.0
 const RARITY_PREFIXES := ["◇", "◈", "◆", "★", "✦"]
 
 var _failures: Array[String] = []
 
 
 func _init() -> void:
+	OS.set_environment("AXEL_DISABLE_EVENT_FX", "1")
+	OS.set_environment("AXEL_DISABLE_MUSIC", "1")
 	call_deferred("_main")
 
 
@@ -50,9 +56,9 @@ func _check_playtest_picker() -> void:
 	if ui.find_child("PlayerItemPanel", true, false) != null:
 		_fail("F6 combat_test should not spawn PlayerItemPanel")
 	await _wait_layout()
-	_assert_named_item_rows(ui, "F6 picker")
+	await _assert_named_item_rows(ui, "F6 picker")
 	ui.queue_free()
-	await process_frame
+	await _drain()
 
 
 func _check_player_preview_egg() -> void:
@@ -62,7 +68,7 @@ func _check_player_preview_egg() -> void:
 		return
 	_assert_player_chrome(ui, true)
 	ui.queue_free()
-	await process_frame
+	await _drain()
 
 
 func _check_tutorial_egg() -> void:
@@ -79,7 +85,7 @@ func _check_tutorial_egg() -> void:
 		return
 	_assert_player_chrome(ui, true)
 	ui.queue_free()
-	await process_frame
+	await _drain()
 	_reset_run()
 
 
@@ -102,6 +108,7 @@ func _check_equipped_list() -> void:
 	for _i in 30:
 		await process_frame
 	_assert_player_chrome(ui, false)
+	_assert_feel_layer(ui)
 	var panel := ui.find_child("PlayerItemPanel", true, false)
 	if panel == null:
 		_fail("later fight missing PlayerItemPanel")
@@ -112,11 +119,19 @@ func _check_equipped_list() -> void:
 		if list == null or list.get_child_count() < 1:
 			_fail("PlayerItemPanel did not show equipped rows")
 		else:
-			_assert_named_item_rows(ui, "equipped list")
-			_assert_player_hover_font(panel)
+			await _assert_named_item_rows(ui, "equipped list", true)
 	ui.queue_free()
-	await process_frame
+	await _drain()
 	_reset_run()
+
+
+func _assert_feel_layer(ui: Node) -> void:
+	var layer := ui.find_child("FeelLayer", true, false) as CanvasLayer
+	if layer == null:
+		_fail("FeelLayer missing")
+		return
+	if layer.layer < 115:
+		_fail("FeelLayer %d should sit above the grid/CRT (115+)" % layer.layer)
 
 
 func _assert_player_chrome(ui: Node, want_egg: bool) -> void:
@@ -157,26 +172,23 @@ func _items_host(ui: Node) -> Control:
 	return ui.find_child("Host_items", true, false) as Control
 
 
-func _assert_named_item_rows(ui: Node, where: String) -> void:
+func _assert_named_item_rows(ui: Node, where: String, player_list: bool = false) -> void:
 	var host := _items_host(ui)
 	if host == null:
 		_fail("%s: missing items host" % where)
 		return
 	var names: Array[Label] = []
 	var icons: Array[TextureRect] = []
-	_collect_item_row_nodes(ui, names, icons)
+	var descs: Array[Label] = []
+	_collect_item_row_nodes(ui, names, icons, descs)
 	if names.is_empty():
 		_fail("%s: no item row names" % where)
 		return
 	var host_rect := host.get_global_rect()
 	for lab in names:
-		if lab.get_visible_line_count() < 1:
-			_fail("%s: '%s' has no visible lines" % [where, lab.text])
+		_assert_visible_label(lab, where, "name")
 		if lab.size.x < NAME_MIN_W:
 			_fail("%s: '%s' width %.1f < %.1f" % [where, lab.text, lab.size.x, NAME_MIN_W])
-		var bounds := lab.get_character_bounds(0)
-		if bounds.size.x <= 0.0 and bounds.size.y <= 0.0:
-			_fail("%s: '%s' character bounds empty" % [where, lab.text])
 		if not _rect_inside_x(lab.get_global_rect(), host_rect):
 			_fail("%s: name '%s' spills past ITEMS host" % [where, lab.text])
 		if _has_rarity_glyph_prefix(lab.text):
@@ -185,6 +197,12 @@ func _assert_named_item_rows(ui: Node, where: String) -> void:
 		_fail("%s: no item row icons" % where)
 		return
 	for icon in icons:
+		if player_list:
+			if not is_equal_approx(icon.custom_minimum_size.x, PLAYER_ICON_PX) or not is_equal_approx(icon.custom_minimum_size.y, PLAYER_ICON_PX):
+				_fail("%s: icon slot %s not 144x144" % [where, icon.custom_minimum_size])
+			var tex := icon.texture
+			if tex == null or tex.get_width() != PLAYER_ICON_RES_PX or tex.get_height() != PLAYER_ICON_RES_PX:
+				_fail("%s: combat icon resolution is not 120x120" % where)
 		var icon_rect := icon.get_global_rect()
 		var local_pos: Vector2 = host.get_global_transform().affine_inverse() * icon_rect.position
 		var local_left: float = local_pos.x
@@ -195,17 +213,60 @@ func _assert_named_item_rows(ui: Node, where: String) -> void:
 			)
 		if not _rect_inside_x(icon_rect, host_rect):
 			_fail("%s: icon spills past ITEMS host" % where)
+	if player_list:
+		if descs.is_empty():
+			_fail("%s: no item row descriptions" % where)
+			return
+		for desc in descs:
+			if desc.visible:
+				_fail("%s: desc should start hidden until title hover" % where)
+		if names[0].get_theme_font_size("font_size") != PLAYER_NAME_FONT:
+			_fail("%s: name font %d not %d" % [where, names[0].get_theme_font_size("font_size"), PLAYER_NAME_FONT])
+		if descs[0].get_theme_font_size("font_size") != PLAYER_DESC_FONT:
+			_fail("%s: desc font %d not %d" % [where, descs[0].get_theme_font_size("font_size"), PLAYER_DESC_FONT])
+		if not names.is_empty() and not icons.is_empty():
+			var icon_rect := icons[0].get_global_rect()
+			var name_rect := names[0].get_global_rect()
+			var icon_mid := icon_rect.position.y + icon_rect.size.y * 0.5
+			var name_mid := name_rect.position.y + name_rect.size.y * 0.5
+			if absf(icon_mid - name_mid) > MID_Y_SLACK:
+				_fail("%s: icon mid y %.1f not beside title mid y %.1f" % [where, icon_mid, name_mid])
+		for i in names.size():
+			names[i].mouse_entered.emit()
+		await _wait_layout()
+		for desc in descs:
+			if not desc.visible:
+				_fail("%s: desc stayed hidden after title hover" % where)
+				continue
+			_assert_visible_label(desc, where, "desc")
+			if not String(desc.text).contains(" "):
+				_fail("%s: desc '%s' has no spaces" % [where, desc.text])
+			if not _rect_inside_x(desc.get_global_rect(), host_rect):
+				_fail("%s: desc spills past ITEMS host" % where)
 
 
-func _collect_item_row_nodes(node: Node, names: Array[Label], icons: Array[TextureRect]) -> void:
+func _collect_item_row_nodes(
+	node: Node, names: Array[Label], icons: Array[TextureRect], descs: Array[Label]
+) -> void:
 	var lab := node as Label
-	if lab != null and bool(lab.get_meta("item_row_name", false)) and lab.is_visible_in_tree():
-		names.append(lab)
+	if lab != null:
+		if bool(lab.get_meta("item_row_name", false)) and lab.is_visible_in_tree():
+			names.append(lab)
+		elif bool(lab.get_meta("item_row_desc", false)):
+			descs.append(lab)
 	var icon := node as TextureRect
 	if icon != null and bool(icon.get_meta("item_row_icon", false)) and icon.is_visible_in_tree():
 		icons.append(icon)
 	for child in node.get_children():
-		_collect_item_row_nodes(child, names, icons)
+		_collect_item_row_nodes(child, names, icons, descs)
+
+
+func _assert_visible_label(lab: Label, where: String, kind: String) -> void:
+	if lab.get_visible_line_count() < 1:
+		_fail("%s: %s '%s' has no visible lines" % [where, kind, lab.text])
+	var bounds := lab.get_character_bounds(0)
+	if bounds.size.x <= 0.0 and bounds.size.y <= 0.0:
+		_fail("%s: %s '%s' character bounds empty" % [where, kind, lab.text])
 
 
 func _has_rarity_glyph_prefix(text: String) -> bool:
@@ -216,30 +277,17 @@ func _has_rarity_glyph_prefix(text: String) -> bool:
 	return false
 
 
-func _assert_player_hover_font(panel: Node) -> void:
-	var hover := panel.find_child("ItemHover", true, false)
-	if hover == null:
-		_fail("equipped list missing ItemHover")
-		return
-	var hover_lab: Label = null
-	for child in hover.get_children():
-		hover_lab = child as Label
-		if hover_lab != null:
-			break
-	if hover_lab == null:
-		_fail("equipped list ItemHover missing label")
-		return
-	var size := hover_lab.get_theme_font_size("font_size")
-	if size != PLAYER_HOVER_FONT:
-		_fail("equipped hover font %d != %d" % [size, PLAYER_HOVER_FONT])
-
-
 func _rect_inside_x(child: Rect2, host: Rect2) -> bool:
 	return child.position.x + HOST_PAD_PX >= host.position.x and child.end.x <= host.end.x + HOST_PAD_PX
 
 
 func _wait_layout() -> void:
 	for _i in 8:
+		await process_frame
+
+
+func _drain() -> void:
+	for _i in 24:
 		await process_frame
 
 

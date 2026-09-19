@@ -12,6 +12,7 @@ signal line_win_resolved(event: Dictionary)
 signal winnings_popup_border_touched(event: Dictionary)
 signal encounter_finished(success: bool)
 signal sfx_requested(cue: StringName)
+signal goal_victory_requested()
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -19,7 +20,7 @@ signal sfx_requested(cue: StringName)
 @export var pause_at_spin_start_sec: float = 1.275
 @export var pause_after_cluster_resolve_sec: float = 0.15
 @export var pause_after_gravity_refill_sec: float = 0.2
-@export var pause_after_power_sec: float = 1.8
+@export var pause_after_power_sec: float = 0.25
 @export_group("Symbol FX")
 @export var enable_symbol_fx: bool = true
 @export var drop_duration_sec: float = 0.2
@@ -38,13 +39,13 @@ signal sfx_requested(cue: StringName)
 @export_range(1, 4, 1) var grid_flash_count: int = 2
 @export_range(0.0, 1.0, 0.01) var grid_flash_peak_alpha: float = 0.7
 @export var grid_border_pulse_duration_sec: float = 0.45
-@export var meter_handoff_pause_sec: float = 0.375
-@export var free_spin_handoff_pause_sec: float = 0.18
+@export var meter_handoff_pause_sec: float = 0.75
+@export var free_spin_handoff_pause_sec: float = 0.90
 @export_group("Power Intro FX")
 @export var enable_power_intro_fx: bool = true
-@export var power_intro_scale_in_sec: float = 0.27
-@export var power_intro_hold_sec: float = 0.27
-@export var power_intro_scale_out_sec: float = 0.21
+@export var power_intro_scale_in_sec: float = 0.54
+@export var power_intro_hold_sec: float = 0.54
+@export var power_intro_scale_out_sec: float = 0.42
 @export var power_intro_peak_scale: float = 1.8
 @export_range(0.0, 1.0, 0.01) var power_intro_glow_alpha: float = 0.5
 @export var girl_power_chance: float = 0.01
@@ -62,7 +63,7 @@ signal sfx_requested(cue: StringName)
 @onready var power_intro_icon: TextureRect = $PowerIntroLayer/PowerIntroIcon
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
-const PrincessControllerScript := preload("res://combat/scripts/princess_controller.gd")
+const PowerControllerScript := preload("res://combat/scripts/power_controller.gd")
 const LineDetectorScript := preload("res://combat/scripts/line_detector.gd")
 const MeterScript := preload("res://combat/scripts/meter.gd")
 const FreeSpinsScript := preload("res://combat/scripts/free_spins.gd")
@@ -91,10 +92,11 @@ const BET_LADDER: Array[float] = [
 	100.0, 200.0, 300.0, 400.0, 500.0, 1000.0,
 ]
 const BASELINE_PAYOUT_SCALAR := 0.431
+const TUTORIAL_LAST_SPIN_SEED := 12
 
 var rng := CombatRNG.new()
 var multiplier := CombatMultiplier.new()
-var princesses := PrincessControllerScript.new()
+var powers := PowerControllerScript.new()
 var meter := MeterScript.new()
 var free_spins := FreeSpinsScript.new()
 var goal_tracker := GoalTrackerScript.new()
@@ -126,6 +128,8 @@ var _encounter_goal_base_target_cents: int = CHIP_BAR_FULL_CENTS * CHIP_BAR_GOAL
 var _lore_goal_bonus: float = 0.0
 var _final_spin_goal_assist: float = 0.0
 var _final_spin_assist_rolled: bool = false
+var _tutorial_last_spin_lock: bool = false
+var _tutorial_last_spin_seed: int = TUTORIAL_LAST_SPIN_SEED
 var _playtest_spin_budget: int = 8
 var _playtest_limit_spins: bool = false
 var _item_fx := ItemEffectDispatcherScript.new()
@@ -218,8 +222,8 @@ func _load_symbols_from_export() -> void:
 			_weights[sd.id] = sd.base_weight
 			_base_weights[sd.id] = sd.base_weight
 			_premium_symbol_ids[sd.id] = true
-		if sd.princess_id != &"":
-			_power_symbol_by_id[sd.princess_id] = sd
+		if sd.power_id != &"":
+			_power_symbol_by_id[sd.power_id] = sd
 	if wild_symbol == null:
 		push_error("CombatRoot: assign wild SymbolDef in symbol_resources.")
 	if low_symbol_pool.is_empty():
@@ -263,11 +267,11 @@ func is_multiplier_cap_active() -> bool:
 func get_multiplier_cap_value() -> int:
 	return multiplier.cap_value
 
-func get_princess_current_id() -> StringName:
-	return princesses.current_id()
+func get_power_current_id() -> StringName:
+	return powers.current_id()
 
-func get_princess_next_id() -> StringName:
-	return princesses.next_id()
+func get_power_next_id() -> StringName:
+	return powers.next_id()
 
 func get_goal_label() -> String:
 	return get_chip_bar_goal_label()
@@ -327,6 +331,26 @@ func set_final_spin_goal_assist(p: float) -> void:
 
 func get_final_spin_goal_assist() -> float:
 	return _final_spin_goal_assist
+
+func set_tutorial_last_spin_lock(on: bool) -> void:
+	_tutorial_last_spin_lock = on
+
+func get_tutorial_last_spin_lock() -> bool:
+	return _tutorial_last_spin_lock
+
+func set_tutorial_last_spin_seed(n: int) -> void:
+	_tutorial_last_spin_seed = n if n != 0 else TUTORIAL_LAST_SPIN_SEED
+
+func get_tutorial_last_spin_seed() -> int:
+	return _tutorial_last_spin_seed
+
+func is_last_affordable_paid_spin() -> bool:
+	if free_spins.active or _in_trinity_round:
+		return false
+	if not _can_afford_spin():
+		return false
+	# All-in (bankroll equals the bet, e.g. 1000/1000) is this last spin.
+	return _bankroll_cents < _to_cents(total_bet) * 2
 
 func set_goal_progress_cents(n: int) -> void:
 	_encounter_goal_winnings_cents = maxi(n, 0)
@@ -466,7 +490,7 @@ func is_waiting_for_free_spin_choice() -> bool:
 func setup_new_grid(seed_value: int) -> void:
 	_current_seed = seed_value
 	rng.seed(seed_value)
-	princesses.randomize_start(rng)
+	powers.randomize_start(rng)
 	multiplier.reset()
 	multiplier.cap_enabled = false
 	meter.reset()
@@ -543,11 +567,11 @@ func spin() -> void:
 		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"]) and not free_spins.all_powers_used_once()
 		if should_trigger_power and _should_trigger_girl_power():
 			_state = State.POWER
-			var power_id := free_spins.chosen_princess
+			var power_id := free_spins.chosen_power
 			await _play_power_intro_flash_async(power_id)
 			_trigger_item_power(power_id, 1.0, false, false)
 			free_spins.mark_power_used_once(power_id)
-			spin_summary["princess_triggered"] = true
+			spin_summary["power_triggered"] = true
 			_refresh_cells_visual()
 			await _pause_visual(pause_after_power_sec)
 			await _apply_gravity_and_refill(not free_spins.active)
@@ -568,7 +592,7 @@ func spin() -> void:
 		_state = State.FREE_SPINS_CHOOSE
 		_awaiting_free_spin_choice = true
 		_pending_free_spins = false
-		_notify_free_spins_entry()
+		await _notify_free_spins_entry_async()
 		emit_signal("readouts_progressed")
 	if free_spins.active and not _awaiting_free_spin_choice:
 		free_spins.consume_spin()
@@ -580,7 +604,6 @@ func spin() -> void:
 	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
-	_apply_encounter_goal_from_spin(int(spin_summary["payout"]))
 	_music_notify_first_win_if_needed(spin_summary)
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
@@ -626,10 +649,10 @@ func spin_sync() -> void:
 		var should_trigger_power: bool = not bool(spin_summary["produced_any_win"]) and not free_spins.all_powers_used_once()
 		if should_trigger_power and _should_trigger_girl_power():
 			_state = State.POWER
-			var power_id := free_spins.chosen_princess
+			var power_id := free_spins.chosen_power
 			_trigger_item_power(power_id, 1.0, false, false)
 			free_spins.mark_power_used_once(power_id)
-			spin_summary["princess_triggered"] = true
+			spin_summary["power_triggered"] = true
 			_refresh_cells_visual()
 			_apply_gravity_and_refill_sync(not free_spins.active)
 			var after_power: Dictionary = _resolve_cascade_loop_sync()
@@ -659,7 +682,6 @@ func spin_sync() -> void:
 	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
-	_apply_encounter_goal_from_spin(int(spin_summary["payout"]))
 	_music_notify_first_win_if_needed(spin_summary)
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
@@ -673,19 +695,19 @@ func spin_sync() -> void:
 	emit_signal("readouts_progressed")
 
 func debug_trigger_power() -> void:
-	_trigger_item_power(princesses.current_id(), 1.0, false, false)
+	_trigger_item_power(powers.current_id(), 1.0, false, false)
 	_refresh_cells_visual()
 
 func serialize_spin_result() -> String:
-	return "%s|%d|%s" % [grid.snapshot_ids(), multiplier.value, String(princesses.current_id())]
+	return "%s|%d|%s" % [grid.snapshot_ids(), multiplier.value, String(powers.current_id())]
 
-func choose_free_spins_princess(princess_id: StringName) -> void:
+func choose_free_spins_power(power_id: StringName) -> void:
 	if not _awaiting_free_spin_choice:
 		return
 
 	var fs_mods: Dictionary = _item_fx.free_spins_mods(inventory.items)
-	free_spins.start_with_princess(princess_id, int(fs_mods.get("extra_spins", 0)))
-	princesses.set_current_id(princess_id)
+	free_spins.start_with_power(power_id, int(fs_mods.get("extra_spins", 0)))
+	powers.set_current_id(power_id)
 	_repopulate_grid_handoff("super_fs_entry")
 	var burst := float(fs_mods.get("enter_burst", 0.0))
 	if burst > 0.0:
@@ -693,7 +715,6 @@ func choose_free_spins_princess(princess_id: StringName) -> void:
 		_add_round_winnings(burst_cents)
 		_bankroll_cents += burst_cents
 		_clamp_bankroll()
-		_apply_encounter_goal_from_spin(burst_cents)
 	_awaiting_free_spin_choice = false
 	multiplier.cap_enabled = true
 	multiplier.cap_value = free_spins.multiplier_cap
@@ -713,11 +734,8 @@ func end_encounter(success: bool) -> void:
 		_hide_encounter_won_banner()
 	encounter_finished.emit(success)
 	sfx_requested.emit(&"win" if success else &"loss")
-	if _feel != null:
-		if success:
-			_feel.play_banner("IT TAKES YOU")
-		else:
-			_feel.play_banner("GONE")
+	if success:
+		goal_victory_requested.emit()
 
 func equip_item(item: Resource) -> bool:
 	var ok: bool = inventory.equip(item)
@@ -740,7 +758,7 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	var preserved_bankroll := _bankroll_cents
 	_current_seed = seed_value
 	rng.seed(seed_value)
-	princesses.randomize_start(rng)
+	powers.randomize_start(rng)
 	multiplier.reset()
 	multiplier.cap_enabled = false
 	meter.reset()
@@ -804,13 +822,13 @@ func _try_regular_spin_start_girl_power_async(spin_summary: Dictionary) -> void:
 	var power_id := _pick_power_for_current_spin()
 	await _play_power_intro_flash_async(power_id)
 	_trigger_item_power(power_id, 1.0, false, true)
-	spin_summary["princess_triggered"] = true
+	spin_summary["power_triggered"] = true
 	_refresh_cells_visual()
 	await _pause_visual(pause_after_power_sec)
 	await _apply_gravity_and_refill(true)
 	var after_power: Dictionary = await _resolve_cascade_loop_async()
 	_merge_spin_summary(spin_summary, after_power)
-	princesses.advance_rotation()
+	powers.advance_rotation()
 
 func _try_regular_spin_start_girl_power_sync(spin_summary: Dictionary) -> void:
 	if free_spins.active:
@@ -820,12 +838,12 @@ func _try_regular_spin_start_girl_power_sync(spin_summary: Dictionary) -> void:
 	_state = State.POWER
 	var power_id := _pick_power_for_current_spin()
 	_trigger_item_power(power_id, 1.0, false, true)
-	spin_summary["princess_triggered"] = true
+	spin_summary["power_triggered"] = true
 	_refresh_cells_visual()
 	_apply_gravity_and_refill_sync(true)
 	var after_power: Dictionary = _resolve_cascade_loop_sync()
 	_merge_spin_summary(spin_summary, after_power)
-	princesses.advance_rotation()
+	powers.advance_rotation()
 
 func _resolve_cascade_loop_async() -> Dictionary:
 	var out := _empty_spin_summary()
@@ -949,10 +967,10 @@ func _resolve_trinity_cascade_loop_sync() -> Dictionary:
 		_apply_glyph_payouts(lines, out)
 	return out
 
-func _make_princess_ctx(potency: float = 1.0, princess_id: StringName = &"") -> Dictionary:
-	var pid: StringName = princess_id
+func _make_power_ctx(potency: float = 1.0, power_id: StringName = &"") -> Dictionary:
+	var pid: StringName = power_id
 	if pid == &"":
-		pid = princesses.current_id()
+		pid = powers.current_id()
 	var charm: Dictionary = _item_fx.charm_mods(inventory.items, pid)
 	return {
 		"grid": grid,
@@ -1284,10 +1302,37 @@ func _await_board_swap_fx() -> void:
 	while _board_swap_fx_active and not _dev_skip_visuals:
 		await tree.process_frame
 
+func get_feel() -> Node:
+	return _feel
+
+
+func await_victory_confirm() -> void:
+	if _dev_skip_visuals:
+		return
+	if DisplayServer.get_name() == "headless":
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(0.4).timeout
+	while tree != null:
+		if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("dialogue_advance"):
+			return
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			return
+		await tree.process_frame
+
+
 func _notify_free_spins_entry() -> void:
 	sfx_requested.emit(&"free_spins")
 	if _feel != null:
-		_feel.play_banner("FREE SPINS", 0.9, 0.78)
+		_feel.play_banner("FREE SPINS", 1.8, 0.78)
+
+
+func _notify_free_spins_entry_async() -> void:
+	sfx_requested.emit(&"free_spins")
+	if _feel != null and not _dev_skip_visuals:
+		await _feel.play_banner("FREE SPINS", 1.8, 0.78)
 
 
 func _play_count_flash_for_lines(lines: Array) -> void:
@@ -1428,6 +1473,7 @@ func _line_win_event_from_line(line: Dictionary, payout_cents: int) -> Dictionar
 	}
 
 func _start_spin_with_new_grid() -> void:
+	_maybe_reseed_tutorial_last_spin()
 	_item_fx.reset_spin()
 	_refresh_spin_weights()
 	var used_before := _spins_used
@@ -1481,6 +1527,18 @@ func _repopulate_grid_handoff_async(_handoff: String) -> void:
 func _can_afford_spin() -> bool:
 	return _bankroll_cents >= _to_cents(total_bet)
 
+
+func _maybe_reseed_tutorial_last_spin() -> void:
+	if not _tutorial_last_spin_lock:
+		return
+	if is_chip_bar_goal_complete():
+		return
+	if not is_last_affordable_paid_spin():
+		return
+	rng.seed(_tutorial_last_spin_seed)
+	_current_seed = _tutorial_last_spin_seed
+	powers.randomize_start(rng)
+
 func _is_headless_runtime() -> bool:
 	return DisplayServer.get_name() == "headless"
 
@@ -1488,6 +1546,7 @@ func _add_round_winnings(amount_cents: int) -> void:
 	if amount_cents <= 0:
 		return
 	_round_winnings_cents += amount_cents
+	_encounter_goal_winnings_cents += amount_cents
 	_refresh_round_winnings_label()
 	emit_signal("readouts_progressed")
 
@@ -1561,7 +1620,7 @@ func _empty_spin_summary() -> Dictionary:
 		"payout": 0,
 		"line_payout": 0,
 		"clear_bonus_payout": 0,
-		"princess_triggered": false,
+		"power_triggered": false,
 		"grid_cleared": false,
 	}
 
@@ -1572,7 +1631,7 @@ func _merge_spin_summary(base: Dictionary, extra: Dictionary) -> void:
 	base["payout"] = int(base["payout"]) + int(extra.get("payout", 0))
 	base["line_payout"] = int(base["line_payout"]) + int(extra.get("line_payout", 0))
 	base["clear_bonus_payout"] = int(base["clear_bonus_payout"]) + int(extra.get("clear_bonus_payout", 0))
-	base["princess_triggered"] = bool(base["princess_triggered"]) or bool(extra.get("princess_triggered", false))
+	base["power_triggered"] = bool(base["power_triggered"]) or bool(extra.get("power_triggered", false))
 	base["grid_cleared"] = bool(base["grid_cleared"]) or bool(extra.get("grid_cleared", false))
 
 func _count_wild_spawns(lines: Array) -> int:
@@ -1642,9 +1701,14 @@ func _apply_dev_payout_override(spin_summary: Dictionary) -> void:
 	if not OS.is_debug_build() or not _dev_guarantee_payout_1000x:
 		return
 	var forced := _to_cents(1000.0 * total_bet)
+	var already := _round_winnings_cents
+	var delta := forced - already
 	spin_summary["payout"] = forced
 	_round_winnings_cents = forced
+	if delta != 0:
+		_encounter_goal_winnings_cents = maxi(_encounter_goal_winnings_cents + delta, 0)
 	_refresh_round_winnings_label()
+	emit_signal("readouts_progressed")
 
 func _get_item_payout_scalar() -> float:
 	var total := _item_fx.paid_spin_payout_scalar(inventory.items, _spins_used)
@@ -1759,23 +1823,23 @@ func _settle_symbols_down_without_refill() -> void:
 
 func _pick_power_for_current_spin() -> StringName:
 	if not free_spins.active:
-		return princesses.current_id()
-	var order: Array[StringName] = [&"love", &"star", &"storm"]
+		return powers.current_id()
+	var order: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
 	for power_id in order:
 		if not free_spins.has_used_power(power_id):
-			princesses.set_current_id(power_id)
+			powers.set_current_id(power_id)
 			return power_id
-	var fallback := princesses.current_id()
-	princesses.set_current_id(fallback)
+	var fallback := powers.current_id()
+	powers.set_current_id(fallback)
 	return fallback
 
 func _play_meter_full_transition_async() -> void:
 	emit_signal("meter_full_transition_started")
 	emit_signal("readouts_progressed")
 	sfx_requested.emit(&"trinity")
-	if _feel != null:
-		_feel.play_banner("TRINITY", 0.9, 0.82)
-		_feel.highlight_princess(princesses.current_id())
+	if _feel != null and not _dev_skip_visuals:
+		await _feel.play_banner("VICE ROUND", 1.8, 0.82)
+		_feel.highlight_power(powers.current_id())
 	if _dev_skip_visuals or not enable_transition_fx:
 		await _pause_visual(pause_after_power_sec * 0.6)
 		return
@@ -1976,8 +2040,8 @@ func _grant_trinity_first_miss_extra_spins_async(out: Dictionary, chosen: String
 
 func _run_trinity_round_async() -> Dictionary:
 	var out := _empty_spin_summary()
-	meter.saved_active_princess = princesses.current_id()
-	var chosen: StringName = meter.saved_active_princess
+	meter.saved_active_power = powers.current_id()
+	var chosen: StringName = meter.saved_active_power
 	multiplier.reset()
 	_refresh_multiplier_label()
 	_in_trinity_round = true
@@ -1989,13 +2053,13 @@ func _run_trinity_round_async() -> Dictionary:
 	await _repopulate_grid_handoff_async("trinity_entry")
 	if await _grant_trinity_first_miss_extra_spins_async(out, chosen):
 		return out
-	var order: Array[StringName] = [&"love", &"star", &"storm"]
+	var order: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
 	for id in order:
-		princesses.set_current_id(id)
+		powers.set_current_id(id)
 		await _play_power_intro_flash_async(id)
 		_trigger_item_power(id, 1.0, false, false)
 		_maybe_trinity_crucible(id, tmods)
-		out["princess_triggered"] = true
+		out["power_triggered"] = true
 		_refresh_cells_visual()
 		await _pause_visual(pause_after_power_sec)
 		var post_power := await _resolve_trinity_cascade_loop_async()
@@ -2010,8 +2074,8 @@ func _run_trinity_round_async() -> Dictionary:
 
 func _run_trinity_round_sync() -> Dictionary:
 	var out := _empty_spin_summary()
-	meter.saved_active_princess = princesses.current_id()
-	var chosen: StringName = meter.saved_active_princess
+	meter.saved_active_power = powers.current_id()
+	var chosen: StringName = meter.saved_active_power
 	multiplier.reset()
 	_in_trinity_round = true
 	_music_notify_trinity()
@@ -2022,12 +2086,12 @@ func _run_trinity_round_sync() -> Dictionary:
 	_repopulate_grid_handoff("trinity_entry")
 	if _grant_trinity_first_miss_extra_spins_sync(out, chosen):
 		return out
-	var order: Array[StringName] = [&"love", &"star", &"storm"]
+	var order: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
 	for id in order:
-		princesses.set_current_id(id)
+		powers.set_current_id(id)
 		_trigger_item_power(id, 1.0, false, false)
 		_maybe_trinity_crucible(id, tmods)
-		out["princess_triggered"] = true
+		out["power_triggered"] = true
 		_refresh_cells_visual()
 		var post_power := _resolve_trinity_cascade_loop_sync()
 		_merge_spin_summary(out, post_power)
@@ -2038,11 +2102,6 @@ func _run_trinity_round_sync() -> Dictionary:
 			break
 	_finish_trinity_round()
 	return out
-
-func _apply_encounter_goal_from_spin(payout_cents: int) -> void:
-	if payout_cents <= 0:
-		return
-	_encounter_goal_winnings_cents += payout_cents
 
 func _emit_matched_symbols_from_lines(lines: Array) -> void:
 	if lines.is_empty():
@@ -2078,7 +2137,7 @@ func _feel_on_line_wins(lines: Array) -> void:
 	_feel.set_goal_progress(
 		clampf(float(_encounter_goal_winnings_cents) / float(maxi(get_effective_goal_target_cents(), 1)), 0.0, 1.0)
 	)
-	_feel.highlight_princess(princesses.current_id())
+	_feel.highlight_power(powers.current_id())
 
 
 func _bonus_blocks_finalize() -> bool:
@@ -2157,11 +2216,11 @@ func _line_item_bonus(line: Dictionary) -> float:
 		symbol_id = wild_symbol.id
 	var sd := _symbols_by_id.get(symbol_id, null) as SymbolDef
 	var tier := 0
-	var princess_id: StringName = &""
+	var power_id: StringName = &""
 	if sd != null:
 		tier = int(sd.tier)
-		princess_id = sd.princess_id
-	return _item_fx.line_payout_bonus(inventory.items, tier, princess_id, _in_trinity_round)
+		power_id = sd.power_id
+	return _item_fx.line_payout_bonus(inventory.items, tier, power_id, _in_trinity_round)
 
 
 func _line_has_wild(line: Dictionary) -> bool:
@@ -2207,7 +2266,7 @@ func _maybe_fs_first_win_wild(lines: Array) -> void:
 
 func _trigger_item_power(power_id: StringName, potency: float, is_chain: bool, is_girl_power: bool) -> void:
 	var pot := potency * (1.0 + _item_fx.power_potency_bonus(inventory.items))
-	princesses.trigger_power_by_id(power_id, _make_princess_ctx(pot, power_id))
+	powers.trigger_power_by_id(power_id, _make_power_ctx(pot, power_id))
 	if is_girl_power:
 		_item_fx.girl_power_this_spin = true
 		var echo: Dictionary = _item_fx.trinity_echo(inventory.items)
@@ -2262,7 +2321,7 @@ func _maybe_trinity_crucible(power_id: StringName, tmods: Dictionary) -> void:
 
 func _finish_trinity_round() -> void:
 	_in_trinity_round = false
-	princesses.set_current_id(meter.saved_active_princess)
+	powers.set_current_id(meter.saved_active_power)
 	meter.reset()
 
 
@@ -2298,14 +2357,14 @@ func _apply_trinity_spin_followup_async(out: Dictionary, step: Dictionary, chose
 
 func _finish_item_spin_hooks(spin_summary: Dictionary) -> void:
 	var produced: bool = bool(spin_summary.get("produced_any_win", false))
-	var powered: bool = bool(spin_summary.get("princess_triggered", false))
+	var powered: bool = bool(spin_summary.get("power_triggered", false))
 	_apply_board_count_bonus(spin_summary, false)
 	if not produced and not free_spins.active and not _in_trinity_round:
 		var ng := _item_fx.null_gravity_chance(inventory.items)
 		if ng > 0.0 and rng.randf() <= ng:
 			var pid := _pick_power_for_current_spin()
 			_trigger_item_power(pid, 1.0, false, false)
-			spin_summary["princess_triggered"] = true
+			spin_summary["power_triggered"] = true
 			powered = true
 			_refresh_cells_visual()
 			var after := _resolve_cascade_loop_sync() if _is_headless_runtime() or not enable_symbol_fx else _resolve_cascade_loop_sync()

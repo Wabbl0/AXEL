@@ -23,7 +23,7 @@ Opening the locker only sets the tutorial flag (`locker_stash_granted`). It does
 - Alignment target: [AI_DOCS.md](../core/AI_DOCS.md) and [AXEL_combat_implementation.md](AXEL_combat_implementation.md).
 - User-approved override path: diagonal and board-count wins are allowed as **item-scoped core resolver overrides** when equipped.
 - **Family G:** live combat is already gravity-only (`grid.refill()` is never called). G’s live effect is a **regular-spin payout bonus**. A refill skip-guard still exists if refill is ever invoked. G does not run in Vice Round or Free Spins.
-- Terminology lock: Vice Round naming and power alias map from [AXEL_combat_design.md](AXEL_combat_design.md). Prefer the name “alcohol” (not “booze”) in docs and user-facing text. Player-facing item names use **Vice** (Vice Ash, Weighted Vice Die, …), not Trinity. File stems and `effect_id` may still say `trinity`. Princess charms and symbols use cigarette / alcohol / bloody hand (code ids stay `storm` / `star` / `love`).
+- Terminology lock: Vice Round naming and power alias map from [AXEL_combat_design.md](AXEL_combat_design.md). Prefer the name “alcohol” (not “booze”) in docs and user-facing text. Player-facing item names use **Vice** (Vice Ash, Weighted Vice Die, …), not Trinity. File stems and `effect_id` may still say `trinity`. Vice charms and symbols use cigarette / alcohol / bloody hand (code ids are `cigarette` / `alcohol` / `bloody_hand`).
 
 ## External Reference Correlation (Cloverpit)
 
@@ -330,7 +330,7 @@ Rough shape over a playthrough:
 - Effect math: [../../combat/scripts/item_effect_dispatcher.gd](../../combat/scripts/item_effect_dispatcher.gd)
 - Hooks: [../../combat/scripts/combat_root.gd](../../combat/scripts/combat_root.gd)
 - World floor ranks / families: [../../scripts/autoload/axel_world.gd](../../scripts/autoload/axel_world.gd)
-- Icon QA: [../../tools/qa/item_icons_check.gd](../../tools/qa/item_icons_check.gd) — **75 × 1024**, no `L-A`. Draw-size QA: [../../tools/qa/item_icon_draw_size_check.gd](../../tools/qa/item_icon_draw_size_check.gd) — combat ITEMS/equipped **48px**, locker shelf buttons **1024px**.
+- Icon QA: [../../tools/qa/item_icons_check.gd](../../tools/qa/item_icons_check.gd) — **75 × 1024**, no `L-A`. Draw-size QA: [../../tools/qa/item_icon_draw_size_check.gd](../../tools/qa/item_icon_draw_size_check.gd) — combat slot **144px** / texture **120px**, locker/pause keep the **1024** file.
 
 ## Still future
 
@@ -360,14 +360,14 @@ Not player-final. Right-hand ITEMS list:
 - **Unique items** grouped by rarity (rainbow rarity text). Common-only leftovers stay here (`C3`, `C5`, `C9`, `C10`). Within a rarity group, sort by real item number (`C3` before `C10`, not string order). `L-A` is not listed.
 - Header `ITEMS (n/max)` plus debug **Ignore slot cap** (off by default). Default cap 7, or 9 with Void Satchel.
 - **PAID SPINS** (EXECUTE spins only, not Free Spins remaining): Used SpinBox sets `_spins_used` (C1 / U1 / R1 / E4 / C10). Optional Budget + Limit spins gate. Does not reseed.
-- **GOAL:** Base Target + Progress live in **AxelCombatDevTools** (debug wrench menu), not the ITEMS panel. Effective = `round(base * (1 + sum of equipped H percents + lore bonus))`. `%GoalLabel` stays as display. **Live world fights do not use the 10000 default** — `AxelRun` pushes the ladder rung (`500 / 750 / 1000 / 1500 / 2000 / 3000 / 5000`, then ×1.5 per further fight) through `set_goal_base_target_cents()`, and H percents multiply on top of that. Act fights keep 10000.
+- **GOAL:** Base Target + Progress live in **AxelCombatDevTools** (debug wrench menu), not the ITEMS panel. Effective = `round(base * (1 + sum of equipped H percents + lore bonus))`. `%GoalLabel` stays as display. **Live world fights do not use the 10000 default** — `AxelRun` pushes the ladder rung (`100 / 150 / 225`, then ×1.5 per further fight rounded to 25) through `set_goal_base_target_cents()`, and H percents multiply on top of that. Act fights keep 10000.
 - **Hover description:** runtime `ItemDescOverlay` (not saved in the `.tscn`). Own **CanvasLayer 107** (above WidgetLayer 106, below CRT 108) so it **can draw over** item rows. Solid black fill, whole card **90%** opacity, word wrap, 0.08s fade-in (text swap while open stays instant). Tries to sit under the cursor / below the row and clip to the ITEMS rectangle.
 
 ## Icons (live)
 
 - Game path: `res://combat/art/item_icons/{id}.png` on `ItemDef.icon`.
-- Size: **1024×1024** files. File gate: `tools/qa/item_icons_check.gd`. On-screen gate: `tools/qa/item_icon_draw_size_check.gd` (combat 48px / locker 1024px).
-- Draw size: combat ITEMS list and equipped panel **48px**; locker shelf buttons **1024px** on screen (one column, scroll). Walk-near card stays 64px. Do not re-run the old 48×48 baker (`bake_item_icons.gd`) or `bake_item_icons_256.gd` — those sizes overwrite the 1024 set.
+- Size: **1024×1024** files. File gate: `tools/qa/item_icons_check.gd`. On-screen gate: `tools/qa/item_icon_draw_size_check.gd` (combat slot 144 / res 120, locker/pause file 1024).
+- Draw size: combat ITEMS slot stays **144px** and uses a **120px** copy of the icon. Locker and pause inventory use the **1024×1024** file. Walk-near card stays 64px. Do not re-run the old 48×48 baker (`bake_item_icons.gd`) or `bake_item_icons_256.gd` — those sizes overwrite the 1024 set.
 - Floor pickups never show this picture — shared white pointing hand only. Name / description / icon appear on the walk-near card, locker buttons, and the playtest ITEMS list.
 - All **75** live icons are detailed 8-band noir remaps. Stage originals in `tools/combat/ai_icon_src/{id}.png`. Skip `L-A`.
 - Bake-time LimeZu map still lives in `tools/combat/item_icon_sources.json` (CLI folder args only — no machine-absolute paths in gameplay). Family A (C-A…E-A) must **not** reuse the L2 clock.

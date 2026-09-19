@@ -76,7 +76,7 @@ func _draw_glyph(img: Image, name_l: String, ink: Color, grey: Color, h: int) ->
 	elif name_l.contains("lighter") or name_l.contains("spark") or name_l.contains("burn"):
 		_fill_rect(img, 100, 100, 56, 80, grey)
 		_fill_circle(img, 128, 84, 22, ink)
-	elif name_l.contains("charm") or name_l.contains("star") or name_l.contains("sigil") or name_l.contains("pentagram") or name_l.contains("glyph"):
+	elif name_l.contains("charm") or name_l.contains("sigil") or name_l.contains("pentagram") or name_l.contains("glyph"):
 		_fill_circle(img, 128, 128, 64, ink)
 		_fill_rect(img, 120, 64, 16, 128, grey)
 		_fill_rect(img, 64, 120, 128, 16, grey)

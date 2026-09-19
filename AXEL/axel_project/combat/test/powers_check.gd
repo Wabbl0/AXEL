@@ -15,8 +15,8 @@ func _main() -> void:
 	await _assert_default_girl_power_chance_is_one_percent()
 	await _assert_rotation_only_advances_on_activation()
 	await _assert_regular_start_girl_power_advances_rotation()
-	await _assert_love_changes_full_symbol_set()
-	await _assert_star_adds_one_or_two_wilds()
+	await _assert_bloody_hand_changes_full_symbol_set()
+	await _assert_alcohol_adds_one_or_two_wilds()
 	await _assert_wild_spawn_only_on_3_line()
 	await _assert_premium_meter_signal_timing_and_sections()
 	await _assert_premium_meter_updates_on_wild_assisted_booze_line()
@@ -37,7 +37,9 @@ func _main() -> void:
 	await _assert_live_spin_budget_does_not_end_fight()
 	await _assert_trinity_with_chips_does_not_end()
 	await _assert_free_spin_choice_does_not_end()
-	print("Princess check OK.")
+	await _assert_tutorial_last_spin_lock_pays_goal()
+	await _assert_goal_credits_full_round_winnings()
+	print("Powers check OK.")
 	quit(0)
 
 
@@ -124,10 +126,10 @@ func _assert_regular_start_girl_power_advances_rotation() -> void:
 	cr.encounter_def = null
 	cr.setup_new_grid(1011)
 	_set_checkerboard_no_clusters(cr)
-	cr.princesses.set_current_id(&"love")
+	cr.powers.set_current_id(&"bloody_hand")
 	cr.girl_power_chance = 1.0
 	cr.spin_sync()
-	if cr.get_princess_current_id() != &"star":
+	if cr.get_power_current_id() != &"alcohol":
 		push_error("Start-of-spin Girl Power at 100%% should advance bloody hand -> alcohol.")
 		quit(1)
 		return
@@ -139,29 +141,29 @@ func _assert_rotation_only_advances_on_activation() -> void:
 	var cr := _spawn_root()
 	await _await_combat_ready(cr)
 	cr.setup_new_grid(1001)
-	cr.princesses.set_current_id(&"love")
+	cr.powers.set_current_id(&"bloody_hand")
 
 	cr.girl_power_chance = 0.0
 	cr.spin_sync()
-	if cr.get_princess_current_id() != &"love":
-		push_error("Princess advanced despite failed girl power roll.")
+	if cr.get_power_current_id() != &"bloody_hand":
+		push_error("Power advanced despite failed girl power roll.")
 		quit(1)
 		return
-	cr.princesses.advance_rotation()
-	if cr.get_princess_current_id() != &"star":
-		push_error("Princess advance_rotation() should move love -> star.")
+	cr.powers.advance_rotation()
+	if cr.get_power_current_id() != &"alcohol":
+		push_error("Power advance_rotation() should move bloody_hand -> alcohol.")
 		quit(1)
 		return
 	cr.queue_free()
 	await process_frame
 
 
-func _assert_love_changes_full_symbol_set() -> void:
+func _assert_bloody_hand_changes_full_symbol_set() -> void:
 	var cr := _spawn_root()
 	await _await_combat_ready(cr)
 	cr.setup_new_grid(1003)
 	_set_checkerboard_no_clusters(cr)
-	cr.princesses.set_current_id(&"love")
+	cr.powers.set_current_id(&"bloody_hand")
 	var counts_before: Dictionary = {}
 	for y in GridManagerScript.ROWS:
 		for x in GridManagerScript.COLS:
@@ -237,12 +239,12 @@ func _assert_wild_spawn_only_on_3_line() -> void:
 	await process_frame
 
 
-func _assert_star_adds_one_or_two_wilds() -> void:
+func _assert_alcohol_adds_one_or_two_wilds() -> void:
 	var cr := _spawn_root()
 	await _await_combat_ready(cr)
 	cr.setup_new_grid(1004)
 	_set_checkerboard_no_clusters(cr)
-	cr.princesses.set_current_id(&"star")
+	cr.powers.set_current_id(&"alcohol")
 	var before := _count_wilds(cr)
 	cr.debug_trigger_power()
 	var after := _count_wilds(cr)
@@ -402,6 +404,7 @@ func _assert_trinity_transition_completes_without_freeze() -> void:
 	cr.grid_border_pulse_duration_sec = 0.03
 	cr.meter_handoff_pause_sec = 0.01
 	cr.free_spin_handoff_pause_sec = 0.01
+	cr._dev_skip_visuals = true
 	var spin_done := {"value": false}
 	cr.spin_finished.connect(func() -> void:
 		spin_done["value"] = true
@@ -419,9 +422,9 @@ func _assert_trinity_transition_completes_without_freeze() -> void:
 		push_error("Expected FREE_SPINS_CHOOSE state after pending free-spin handoff.")
 		quit(1)
 		return
-	cr.choose_free_spins_princess(&"storm")
+	cr.choose_free_spins_power(&"cigarette")
 	if not cr.free_spins.active:
-		push_error("Expected free spins to activate after choosing princess.")
+		push_error("Expected free spins to activate after choosing a power.")
 		quit(1)
 		return
 	cr.queue_free()
@@ -667,16 +670,16 @@ func _assert_free_spins_forces_all_three_powers_once() -> void:
 	var cr := _spawn_root()
 	await _await_combat_ready(cr)
 	cr.setup_new_grid(3001)
-	cr.free_spins.start_with_princess(&"love")
+	cr.free_spins.start_with_power(&"bloody_hand")
 	cr.free_spins.spins_remaining = 0
 	cr.free_spins.ensure_end_guard_spin()
-	cr.free_spins.mark_power_used_once(&"love")
+	cr.free_spins.mark_power_used_once(&"bloody_hand")
 	cr.free_spins.consume_spin()
 	cr.free_spins.ensure_end_guard_spin()
-	cr.free_spins.mark_power_used_once(&"star")
+	cr.free_spins.mark_power_used_once(&"alcohol")
 	cr.free_spins.consume_spin()
 	cr.free_spins.ensure_end_guard_spin()
-	cr.free_spins.mark_power_used_once(&"storm")
+	cr.free_spins.mark_power_used_once(&"cigarette")
 	cr.free_spins.consume_spin()
 	if cr.free_spins.active:
 		push_error("Free Spins should end after all three one-time powers have been used and no spins remain.")
@@ -699,7 +702,7 @@ func _assert_free_spins_does_not_refill_from_top() -> void:
 		cr.grid.set_cell(Vector2i(0, y), null)
 		cr.grid.set_cell(Vector2i(1, y), null)
 		cr.grid.set_cell(Vector2i(2, y), null)
-	cr.free_spins.start_with_princess(&"love")
+	cr.free_spins.start_with_power(&"bloody_hand")
 	cr._resolve_cascade_loop_sync()
 	var empties_after := 0
 	for y in GridManagerScript.ROWS:
@@ -756,7 +759,7 @@ func _assert_uc_grants_extra_trinity_spin_only_on_first_miss() -> void:
 		return
 	var before_extra := _snapshot_ids(cr)
 	var extra_out: Dictionary = cr._empty_spin_summary()
-	cr._grant_trinity_first_miss_extra_spins_sync(extra_out, cr.princesses.current_id())
+	cr._grant_trinity_first_miss_extra_spins_sync(extra_out, cr.powers.current_id())
 	if before_extra == _snapshot_ids(cr):
 		push_error("U-C extra Vice Round spin should fill a new board when the first spin misses.")
 		quit(1)
@@ -790,10 +793,10 @@ func _assert_super_fs_entry_repopulates_grid() -> void:
 	cr._pending_free_spins = true
 	cr._awaiting_free_spin_choice = true
 	cr._state = cr.State.FREE_SPINS_CHOOSE
-	cr.choose_free_spins_princess(&"star")
+	cr.choose_free_spins_power(&"alcohol")
 	var after_choice := _snapshot_ids(cr)
 	if before_choice == after_choice:
-		push_error("Super Free Spins entry should repopulate a fresh grid after princess choice.")
+		push_error("Super Free Spins entry should repopulate a fresh grid after power choice.")
 		quit(1)
 		return
 	var filled := 0
@@ -805,7 +808,7 @@ func _assert_super_fs_entry_repopulates_grid() -> void:
 		quit(1)
 		return
 	if not cr.free_spins.active:
-		push_error("Super Free Spins should be active after princess choice.")
+		push_error("Super Free Spins should be active after power choice.")
 		quit(1)
 		return
 	cr.queue_free()
@@ -820,7 +823,7 @@ func _assert_super_fs_spin_does_not_repopulate_at_start() -> void:
 	cr._pending_free_spins = true
 	cr._awaiting_free_spin_choice = true
 	cr._state = cr.State.FREE_SPINS_CHOOSE
-	cr.choose_free_spins_princess(&"love")
+	cr.choose_free_spins_power(&"bloody_hand")
 	var before := _snapshot_ids(cr)
 	cr._begin_spin_round()
 	var after := _snapshot_ids(cr)
@@ -845,7 +848,7 @@ func _assert_free_spins_non_wild_clear_counts_as_grid_clear() -> void:
 	for y in GridManagerScript.ROWS:
 		for x in GridManagerScript.COLS:
 			cr.grid.set_cell(Vector2i(x, y), wild)
-	cr.free_spins.start_with_princess(&"love")
+	cr.free_spins.start_with_power(&"bloody_hand")
 	cr.girl_power_chance = 0.0
 	cr.spin_sync()
 	if not cr._is_grid_cleared_for_current_mode():
@@ -854,3 +857,103 @@ func _assert_free_spins_non_wild_clear_counts_as_grid_clear() -> void:
 		return
 	cr.queue_free()
 	await process_frame
+
+
+func _assert_tutorial_last_spin_lock_pays_goal() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	var lock_seed := int(cr.get_tutorial_last_spin_seed())
+	cr.set_tutorial_last_spin_lock(true)
+	cr.set_equipped_items([])
+	cr.set_limit_spins(false)
+	cr.setup_new_grid(1)
+	cr.set_goal_base_target_cents(100)
+	cr.set_goal_progress_cents(0)
+	cr.set_bet_index(0)
+	cr.restore_run_bankroll(100)
+	if not cr.is_last_affordable_paid_spin():
+		push_error("Last 100-chip spin should count as last affordable paid spin.")
+		quit(1)
+		return
+	cr.spin_sync()
+	var p100 := int(cr.get_last_spin_summary().get("payout", 0))
+	if p100 < 100:
+		push_error("Tutorial last-spin seed %d paid %d at bet 100, need >= 100." % [lock_seed, p100])
+		quit(1)
+		return
+	if not cr.did_win_encounter():
+		push_error("Tutorial last-spin at bet 100 should win from real matches.")
+		quit(1)
+		return
+	cr.setup_new_grid(1)
+	cr.set_goal_base_target_cents(100)
+	cr.set_goal_progress_cents(0)
+	cr.set_bet_index(cr.get_bet_ladder().size() - 1)
+	cr.restore_run_bankroll(1000)
+	if not cr.is_last_affordable_paid_spin():
+		push_error("All-in 1000/1000 should count as last affordable paid spin.")
+		quit(1)
+		return
+	cr.spin_sync()
+	var p_all := int(cr.get_last_spin_summary().get("payout", 0))
+	if p_all < 100:
+		push_error("Tutorial all-in seed %d paid %d, need >= 100." % [lock_seed, p_all])
+		quit(1)
+		return
+	if not cr.did_win_encounter():
+		push_error("Tutorial all-in should win from real matches.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_goal_credits_full_round_winnings() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.set_tutorial_last_spin_lock(true)
+	cr.set_equipped_items([])
+	cr.set_limit_spins(false)
+	cr.setup_new_grid(1)
+	cr.set_goal_base_target_cents(10000)
+	cr.set_goal_progress_cents(89)
+	cr.set_bet_index(0)
+	cr.restore_run_bankroll(100)
+	var bet := int(round(cr.total_bet))
+	cr.spin_sync()
+	var payout := int(cr.get_last_spin_summary().get("payout", 0))
+	var bar := int(cr.get_round_winnings())
+	var goal := int(cr.get_chip_bar_goal_progress_cents())
+	if payout <= 0:
+		push_error("Goal-credit spin paid 0; need a real payout.")
+		quit(1)
+		return
+	if bar != payout:
+		push_error("Spin bar %d should match payout %d." % [bar, payout])
+		quit(1)
+		return
+	if goal != 89 + payout:
+		push_error("GOAL should be 89 + full payout %d, got %d." % [payout, goal])
+		quit(1)
+		return
+	if bet > 0 and goal == 89 + payout - bet:
+		push_error("GOAL subtracted the bet (%d); it must add the full payout." % bet)
+		quit(1)
+		return
+	if cr.did_win_encounter():
+		push_error("High target should not win from the credit-only spin.")
+		quit(1)
+		return
+	cr.setup_new_grid(1)
+	cr.set_goal_base_target_cents(100)
+	cr.set_goal_progress_cents(89)
+	cr.set_bet_index(0)
+	cr.restore_run_bankroll(100)
+	cr.spin_sync()
+	if not cr.did_win_encounter():
+		push_error("89 plus a paying spin should meet a 100 GOAL.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+

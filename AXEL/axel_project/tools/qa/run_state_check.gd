@@ -24,8 +24,29 @@ func _main() -> void:
 	if not bool(saves.call("new_game", 0)):
 		failures.append("new_game(0) failed")
 
+	var world := root.get_node_or_null("AxelWorld")
+	var seed_a := int(run.state.seed)
+	if int(run.state.bankroll_cents) != 1000:
+		failures.append("new game bankroll should be 1000")
+	if world != null:
+		var item_a := int((world.call("to_dict") as Dictionary).get("item_seed", 0))
+		if item_a != seed_a:
+			failures.append("new_game should plan floor items from the run seed")
+	if not bool(saves.call("new_game", 1)):
+		failures.append("new_game(1) failed")
+	if int(run.state.seed) == seed_a:
+		failures.append("each save slot needs its own run seed")
+	if not bool(saves.call("new_game", 0)):
+		failures.append("new_game(0) restore failed")
+
 	run.call("reset_run")
 	run.state.seed = 42
+	if int(run.state.bankroll_cents) != 1000:
+		failures.append("reset_run bankroll should be 1000")
+	run.state.bankroll_cents = 250
+	run.call("reset_encounter_bankroll")
+	if int(run.state.bankroll_cents) != 1000:
+		failures.append("reset_encounter_bankroll should restore 1000, leftover chips are later")
 	if int(run.state.act) != 1 or int(run.state.encounter_index) != 0:
 		failures.append("fresh run is not Act I encounter 0")
 	if not bool(run.call("can_start_encounter")):
@@ -93,13 +114,17 @@ func _main() -> void:
 	var header: Dictionary = saves.call("read_header", 0)
 	if int(header.get("act", 0)) < 3:
 		failures.append("header missing act")
+	if int(header.get("seed", 0)) != int(run.state.seed) or int(header.get("seed", 0)) == 0:
+		failures.append("header seed should match the live run seed")
 
 	run.state.in_encounter = true
 	run.call("write_tombstone_only")
-	if not bool(saves.call("is_dead", 0)):
-		failures.append("write_tombstone_only did not mark slot dead")
+	if not bool(saves.call("is_empty", 0)):
+		failures.append("write_tombstone_only should delete the slot")
+	if bool(saves.call("is_dead", 0)):
+		failures.append("deleted slot should not stay a tombstone")
 	if bool(saves.call("is_active")):
-		failures.append("tombstone should clear the active slot")
+		failures.append("death should clear the active slot")
 
 
 	if not ResourceLoader.exists("res://combat/scenes/combat_root.tscn"):

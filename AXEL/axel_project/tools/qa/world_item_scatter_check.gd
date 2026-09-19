@@ -30,6 +30,7 @@ func _main() -> void:
 		quit(1)
 		return
 	world.call("reset_world")
+	_check_item_seed_differs(world)
 
 	var areas: Dictionary = world.AREAS
 	for area_id in areas.keys():
@@ -157,3 +158,28 @@ func _first_collision_shape(item: Node) -> CollisionShape2D:
 func _frames(count: int) -> void:
 	for _i in count:
 		await process_frame
+
+
+func _check_item_seed_differs(world: Node) -> void:
+	world.call("reset_world")
+	world.call("plan_floor_items", 111)
+	var a: Dictionary = world.call("to_dict")
+	world.call("reset_world")
+	world.call("plan_floor_items", 99991)
+	var b: Dictionary = world.call("to_dict")
+	if int(a.get("item_seed", 0)) == int(b.get("item_seed", 0)):
+		_fail("plan_floor_items did not keep distinct item seeds")
+	if _planned_ids(a) == _planned_ids(b):
+		_fail("two item seeds planned the same floor item ids")
+	world.call("reset_world")
+
+
+func _planned_ids(data: Dictionary) -> PackedStringArray:
+	var ids := PackedStringArray()
+	var rooms: Dictionary = data.get("room_items", {})
+	var paths: Array = rooms.keys()
+	paths.sort()
+	for path in paths:
+		for entry in (rooms[path] as Array):
+			ids.append(String((entry as Dictionary).get("id", "")))
+	return ids

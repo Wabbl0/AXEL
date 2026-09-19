@@ -69,7 +69,7 @@ Suit symbols are generated hollow red outlines (no fill, same stroke). Premium /
 
 ### Premium symbols (Princess Power aliases)
 
-Power-symbol names used across this project (MP100 princess names in parentheses; code ids stay `storm` / `star` / `love`):
+Power-symbol names used across this project (MP100 princess names in parentheses; code ids are `cigarette` / `alcohol` / `bloody_hand`):
 - `cigarette` (MP100 Storm)
 - `alcohol` (MP100 Star; prefer this name; older code may still use id `booze`)
 - `bloody hand` (MP100 Love)
@@ -174,7 +174,7 @@ Items should be **theme-coded**, not just mechanically driven: each one tied to 
 
 ## 7. Thematic ties — keep these honest
 
-- The three premium symbols (cigarette, alcohol, bloody hand) *are* the princess power names and should be used that way in UI and tuning docs. Code ids stay `storm` / `star` / `love`. Prefer “alcohol” (not “booze”).
+- The three premium symbols (cigarette, alcohol, bloody hand) *are* the power names and should be used that way in UI and tuning docs. Code ids are `cigarette` / `alcohol` / `bloody_hand`. Prefer “alcohol” (not “booze”).
 - Every time a princess power triggers and *helps* the player, something in the overworld should subtly worsen — more mold on a wall, a flickering bulb, a new stain. This makes the combat-exploration loop bidirectional: combat rewards come at exploration cost.
 - **Winning loudly is suspicious.** Big payouts should trigger glitch/shake FX not as celebration but as intrusion. Consider a "you went too far" flag when the player hits max multiplier too early in an encounter — it unlocks harder variants for the rest of the run.
 - **Grid clear = clarity.** The one "clean" feeling in the combat layer should be reserved for full grid clears, where the screen briefly goes still and quiet before the next spin. This is the mechanical equivalent of a recovered memory.
