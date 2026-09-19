@@ -186,18 +186,17 @@ func _run_forced_intro_sequence() -> void:
 	if is_instance_valid(_left_wall_collision):
 		_left_wall_collision.set_deferred("disabled", true)
 
-	await AxelEventFx.stop_interface_distortion()
-
 	_unlock_position = _player.global_position
 	_enable_player_control()
 	_intro_state = IntroState.PLAYER_FREE
 	_watching_movement = true
-	AxelEventFx.set_cadence_enabled(true)
 	_enter_dialogue_pending = true
 	_refresh_door_interact_prompt()
 	_arm_exit_trigger_grace()
 
-	_play_first_dialogue_line()
+	await _play_first_dialogue_line()
+	await AxelEventFx.stop_interface_distortion()
+	AxelEventFx.set_cadence_enabled(true)
 
 
 func _capture_intro_target_tex() -> Vector2:

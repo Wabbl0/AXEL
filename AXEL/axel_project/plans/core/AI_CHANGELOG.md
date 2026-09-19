@@ -7100,4 +7100,23 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Read-back of the stale 500 / 5× / 6-scene / Princess-check lines against live `WORLD_GOAL_LADDER_CENTS`, `scene_smoke_check.gd` (21 paths), `powers_check.gd` print, and `1.4_BasementDoor.gd` door zone.
 - Notes: Historical changelog rows may still say 500, `princess_check`, or LOCKER. `AXEL_combat_design.md` still uses Moon Princess 100 language on purpose. Master unmute was already in the working tree; this row only records that it is the shipped check.
 
+### Keep CRT wave on the dialogue bar
+
+- Request: The CRT wave stopped as soon as a dialogue line appeared. Keep it going and draw it in screen order so it also hits the box.
+- Implementation: `InterfacePulseOverlay` moved to layer 112 (above dialogue 111; glitch 113). A viewport `BackBufferCopy` recopies the screen after the bar, because Godot’s first `hint_screen_texture` copy is still CRT 108. 1.1 keeps the walk wave up through the first line, then fades it. Cadence pulses already stayed on; they now cover the bar too.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/interface_pulse_overlay.gd`
+  - `AXEL/axel_project/scenes/fx/InterfacePulseOverlay.tscn`
+  - `AXEL/axel_project/scenes/fx/intro_glitch_overlay.gd`
+  - `AXEL/axel_project/scenes/fx/IntroGlitchOverlay.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/tools/qa/interface_pulse_dialogue_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+- Behavior impact: A red wave that is already rolling keeps going when a line opens, and the roll crosses the dialogue box. The always-on CRT curve stays under the bar so the text does not warp.
+- Verification: Headless exit 0: `interface_pulse_dialogue_check`, `determinism_check`, `powers_check`, `combat_test_scaffold_check`, `scene_smoke_check`. Windowed `--quit-after 3` printed no `SHADER ERROR`.
+- Notes: Godot 4.7 screen-reading shaders copy the back buffer only at the first `hint_screen_texture` node each frame.
+
 

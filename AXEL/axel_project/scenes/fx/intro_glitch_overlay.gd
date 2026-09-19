@@ -2,11 +2,12 @@ extends CanvasLayer
 
 @onready var _filter_rect: ColorRect = $FilterRect
 
+const LAYER := 113
 const _DEFAULT_DURATION := 0.85
 
 
 func _ready() -> void:
-	layer = 112
+	layer = LAYER
 	visible = false
 	_filter_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 

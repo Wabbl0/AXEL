@@ -10,7 +10,7 @@ shader_parameter/glitch_frequency = 4.2
 shader_parameter/slice_intensity = 0.5
 
 [node name="IntroGlitchOverlay" type="CanvasLayer"]
-layer = 112
+layer = 113
 script = ExtResource("2_glitch_script")
 
 [node name="FilterRect" type="ColorRect" parent="."]

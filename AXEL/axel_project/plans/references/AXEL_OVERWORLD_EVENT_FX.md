@@ -18,7 +18,7 @@ Path: `res://scripts/autoload/axel_event_fx.gd`
 
 ### Scene-transition glitch
 
-On every non-combat scene enter, plays a brief VHS glitch burst (`IntroGlitchOverlay`, layer 112).
+On every non-combat scene enter, plays a brief VHS glitch burst (`IntroGlitchOverlay`, layer 113).
 
 **Opt-outs:**
 
@@ -48,7 +48,7 @@ AxelEventFx.set_cadence_enabled(true)              # resume after intro unlock
 
 ### Pulse-only interference wave
 
-The wave does **not** stay on after scene change. `start_ambient()` is a no-op for visibility (rest `0`; it does not fade to `BASELINE_ALPHA` `0.20`). The roll is visible only during a pulse.
+The wave does **not** stay on after scene change. `start_ambient()` is a no-op for visibility (rest `0`; it does not fade to `BASELINE_ALPHA` `0.20`). The roll is visible only during a pulse. A pulse **keeps going** if a dialogue line opens — do not stop it just because the bar is up. Layer 112 + viewport `BackBufferCopy` make the roll apply to the box.
 
 **Surges** (scripted distortion, cadence pulses) rise to **peak** alpha (`0.536`) and fade back to rest `0`. The rolling line is **red only** (`option_1_crt_tv.gdshader` adds `vec3(roll_line * 0.12, 0.0, 0.0)`; `InterfacePulseOverlay` `FilterRect` color is `Color(1, 0, 0, 1)`).
 
@@ -70,8 +70,8 @@ Pause cadence during scripted intros via `set_cadence_enabled(false)`.
 ## Canvas layer stack
 
 ```
-Noir 90 → Scanline 105 → CRT 108 → InterfacePulse 109 → InteractPrompt 110 → TopDialogue 111 → IntroGlitch 112
-(Dialogue must draw above the `[E]` prompt.)
+Noir 90 → Scanline 105 → CRT 108 → InteractPrompt 110 → TopDialogue 111 → InterfacePulse 112 → IntroGlitch 113
+(Dialogue must draw above the `[E]` prompt. The wave sits above the bar and recopies the viewport so the roll applies to the box.)
 ```
 
 `InteractPromptOverlay` is scene-local (not `AxelEventFx`): CRT chip at door/proximity via `1.1_SchoolExterior.gd` + `EnvironmentColliders/Doors/DoorInteractArea`.
@@ -93,8 +93,8 @@ Sequence in `1.1_SchoolExterior.gd`:
 3. 1 s wait
 4. Start interface distortion (red wave surges from rest `0`)
 5. Scripted walk to stones
-6. Stop distortion (settles back to rest `0`)
-7. First dialogue → unlock controls → enable cadence
+6. Unlock controls; first dialogue while the wave is still up (layer 112 samples the bar)
+7. After the first line hides, stop distortion (settles back to rest `0`) and enable cadence
 8. Second dialogue after ~50 px movement (scene-local, not event FX)
 9. `InteractPromptOverlay` when player overlaps `DoorInteractArea` (intro unlocked); E/Space/Enter → `1.2_Corridor`
 

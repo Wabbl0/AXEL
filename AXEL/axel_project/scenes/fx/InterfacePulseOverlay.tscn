@@ -16,8 +16,11 @@ shader_parameter/glitch_rate = 2.0
 shader_parameter/glitch_shift = 0.003
 
 [node name="InterfacePulseOverlay" type="CanvasLayer"]
-layer = 109
+layer = 112
 script = ExtResource("2_pulse_script")
+
+[node name="BackBufferCopy" type="BackBufferCopy" parent="."]
+copy_mode = 2
 
 [node name="FilterRect" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_crt_tv_pulse")

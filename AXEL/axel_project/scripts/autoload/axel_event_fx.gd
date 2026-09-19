@@ -382,6 +382,18 @@ func play_interface_pulse(duration_sec: float = DEFAULT_PULSE_DURATION) -> void:
 	await _pulse.play_pulse(duration_sec * _glitch_scale())
 
 
+func get_interface_pulse() -> CanvasLayer:
+	if _pulse != null and is_instance_valid(_pulse):
+		return _pulse
+	return null
+
+
+func get_intro_glitch() -> CanvasLayer:
+	if _glitch != null and is_instance_valid(_glitch):
+		return _glitch
+	return null
+
+
 func start_interface_distortion() -> void:
 	if _pulse != null and is_instance_valid(_pulse) and _pulse.has_method("start_distortion"):
 		_pulse.start_distortion()
