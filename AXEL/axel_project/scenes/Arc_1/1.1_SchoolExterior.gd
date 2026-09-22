@@ -149,7 +149,7 @@ func _run_forced_intro_sequence() -> void:
 	if is_instance_valid(_left_wall_collision):
 		_left_wall_collision.set_deferred("disabled", true)
 
-	AxelEventFx.start_interface_distortion()
+	AxelEventFx.start_interface_distortion(true)
 
 
 	var spawn_target_tex := _capture_intro_target_tex()

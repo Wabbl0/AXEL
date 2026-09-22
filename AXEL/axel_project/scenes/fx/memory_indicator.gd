@@ -3,6 +3,7 @@ extends Node2D
 const _DEFAULT_SHEET := "res://assets/sprites/memory_glow-Sheet.png"
 const _FRAME_COUNT := 5
 const _ANIM := &"glow"
+const OutlineStyle := preload("res://scenes/fx/marker_outline_style.gd")
 
 @export var sprite_sheet: Texture2D
 @export var frame_size: int = 48
@@ -21,6 +22,7 @@ var _tex_captured := false
 
 
 func _ready() -> void:
+	OutlineStyle.apply_memory(_sprite, _halo)
 	scale = Vector2(indicator_scale, indicator_scale)
 	var local_offset := visual_offset / maxf(indicator_scale, 0.0001)
 	_sprite.position = local_offset

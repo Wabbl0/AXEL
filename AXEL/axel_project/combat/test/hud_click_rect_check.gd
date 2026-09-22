@@ -81,6 +81,7 @@ func _check_combat_test_scene() -> void:
 		await process_frame
 	for piece_name in CLICKABLE:
 		_check_piece(scene, piece_name)
+	_check_settings_square(scene)
 	var poly := scene.find_child("SkullClickPolygon", true, false) as Control
 	if poly == null:
 		_fail("SkullClickPolygon missing")
@@ -124,6 +125,64 @@ func _check_piece(scene: Node, piece_name: String) -> void:
 	if Rect2(Vector2.ZERO, piece.size).has_point(just_outside):
 		if hud._has_point(just_outside):
 			_fail("%s hit outside TextBox at %s" % [piece_name, just_outside])
+
+
+func _check_settings_square(scene: Node) -> void:
+	var piece := scene.find_child("NEW_Settings", true, false) as CombatHudPiece
+	if piece == null:
+		_fail("NEW_Settings missing for square check")
+		return
+	var art := piece.get_art()
+	var box := piece.get_text_box()
+	if art == null or art.texture == null or box == null:
+		_fail("NEW_Settings art or TextBox missing")
+		return
+	var image := art.texture.get_image()
+	if image == null or image.is_empty():
+		_fail("NEW_Settings art has no image")
+		return
+	if image.is_compressed():
+		image.decompress()
+	var ink := _opaque_bounds(image)
+	if ink.size.x < 8.0 or ink.size.y < 8.0:
+		_fail("NEW_Settings ink bounds are empty (%s)" % ink)
+		return
+	var art_to_piece := piece.get_global_transform().affine_inverse() * art.get_global_transform()
+	var ink_in_piece := Rect2(art_to_piece * ink.position, ink.size * art_to_piece.get_scale())
+	var box_in_piece := Rect2(box.position, box.size)
+	if not _rects_close(box_in_piece, ink_in_piece, 2.0):
+		_fail("Settings click box %s is not on the square %s" % [box_in_piece, ink_in_piece])
+	var center: Vector2 = ink_in_piece.position + ink_in_piece.size * 0.5
+	if not piece._has_point(center):
+		_fail("Settings square center should click (got miss at %s)" % center)
+	var beside := Vector2(ink_in_piece.position.x + ink_in_piece.size.x + 24.0, center.y)
+	if piece._has_point(beside):
+		_fail("Settings hit empty space beside the square at %s" % beside)
+
+
+func _opaque_bounds(image: Image) -> Rect2:
+	var min_x := image.get_width()
+	var min_y := image.get_height()
+	var max_x := -1
+	var max_y := -1
+	for y in image.get_height():
+		for x in image.get_width():
+			if image.get_pixel(x, y).a <= 10.0 / 255.0:
+				continue
+			min_x = mini(min_x, x)
+			min_y = mini(min_y, y)
+			max_x = maxi(max_x, x)
+			max_y = maxi(max_y, y)
+	if max_x < 0:
+		return Rect2()
+	return Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x + 1, max_y - min_y + 1))
+
+
+func _rects_close(a: Rect2, b: Rect2, tol: float) -> bool:
+	return absf(a.position.x - b.position.x) <= tol \
+		and absf(a.position.y - b.position.y) <= tol \
+		and absf(a.size.x - b.size.x) <= tol \
+		and absf(a.size.y - b.size.y) <= tol
 
 
 func _fail(msg: String) -> void:

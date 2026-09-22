@@ -7119,4 +7119,134 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Headless exit 0: `interface_pulse_dialogue_check`, `determinism_check`, `powers_check`, `combat_test_scaffold_check`, `scene_smoke_check`. Windowed `--quit-after 3` printed no `SHADER ERROR`.
 - Notes: Godot 4.7 screen-reading shaders copy the back buffer only at the first `hint_screen_texture` node each frame.
 
+## 2026-09-22
+
+### Overworld item card and rarity mark
+
+- Request: Move the rarity mark closer to the floor item (it may overlap the sprite). Give the item description the same CRT open as the dialogue bar and the `[E]` chip. Move `[E]` off the item and onto the bottom-right of the description, at the description’s font size. Size the whole box from the title, with the full title on one row.
+- Implementation: The rarity mark tucks 14 screen pixels into the hand’s top-right. The walk-near card CRT-opens with the dialogue beam, sits 10px under the painted hand, and no longer spawns `WorldItemPromptOverlay`. `[E]` is the card’s last line, right-aligned, at the description font. The title does not wrap; that line plus the icon sets the box width, and the description wraps inside it.
+- Files changed:
+  - `AXEL/axel_project/scenes/world/item_marker.gd`
+  - `AXEL/axel_project/scenes/world/world_item_pickup.gd`
+  - `AXEL/axel_project/scenes/ui/world_item_info_card.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/tools/qa/world_item_card_check.gd`
+  - `AXEL/axel_project/tools/qa/playtest_fix_groups_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+- Behavior impact: Walking up to a floor item opens the description box instead of a separate `[E]` chip. Pressing E still picks the item up. Door `[E]` chips are unchanged.
+- Verification: Headless exit 0: `world_item_card_check.gd`, `playtest_fix_groups_check.gd`.
+- Notes: The rarity overlap is one constant (`GLYPH_OVERLAP_PX`) so it can be nudged later.
+
+### Playtest fix groups
+
+- Request: After a playtest, fix the arrow, the always-on CRT pulse, floor-item marks, pause loadout, options chrome, the mid-spin goal bar, item hover, the wild halo, white HUD numbers, item pulses, and goal rounding. That chat asked not to write `AI_DOCS` then. This row is the later `update docs` log.
+- Implementation: The 1.2 arrow glows and nudges right, and hides only when Mike’s sprite overlaps it. The quiet CRT pulse stays on; the black roll is the 30s burst. Floor hands sit under Mike (`z_index` `-8`). Memory blobs are red with a white halo; item outlines stay red. Pause has no Inventory page: owned items sit under Quit to Desktop with `N/7`, a rarity glyph, the description, and an Equipped box. Options sliders and scrollbars are red VT323. `FeelGrimeBand` stays hidden. Hovering an ITEMS title does not move the icon; the description sits on a faint dark-red panel; the icon pulses on each proc. The wild picture has no grey halo. Round winnings, the multiplier, and the selected bet are white. Lore and family-H percents are rounded, then ceiled to the next 25. The same-day “remove combat music” line was replaced by the drum entry below.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.2_Corridor.gd`
+  - `AXEL/axel_project/scenes/fx/direction_hint.gd`
+  - `AXEL/axel_project/scenes/fx/marker_outline_style.gd`
+  - `AXEL/axel_project/scenes/fx/memory_indicator.gd`
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/combat/scripts/combat_feel.gd`
+  - `AXEL/axel_project/combat/scripts/player_item_panel.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/item_def.gd`
+  - `AXEL/axel_project/combat/art/generate_placeholders.py`
+  - `AXEL/axel_project/tools/qa/playtest_fix_groups_check.gd`
+- Behavior impact: The corridor arrow stays up until Mike touches it. Memories read as red blobs; floor hands stay white and draw under Mike. Pause lists what you own under the quit buttons. A goal hit mid-spin no longer paints a dark band across the lower grid. Goals land on a multiple of 25.
+- Verification: Not re-run in this docs pass. The implement chat’s contract is `playtest_fix_groups_check.gd`.
+- Notes: “Remove combat music” from this list is not the live rule. See the drum entry.
+
+### Combat drums on the room song
+
+- Request: Casino music is deleted. The room song should keep playing into the fight. Fade `B_Goes_Down_Drums_p1` in the same way New Game fades the bed. Keep `B_Goes_Down_Drums_p2` silent until Vice Round, then fade it in quickly, and fade it out just as fast unless the fight goes into Free Spins.
+- Implementation: `AxelMusic` is one synced player with four layers (menu bed, room bed, drums p1, drums p2). Casino stems and `notify_first_win` are gone. Fight start fades drums p1 in over 10s and leaves the room stem running. Drums p2 fades in over 0.5s on Vice Round. It fades out over 0.5s when Vice Round ends, unless Free Spins follow — then it stays through the choice and the free spins, and fades out over 0.5s when the last free spin is used. Leaving the fight fades both drum layers out over 10s.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_music.gd`
+  - `AXEL/axel_project/assets/audio/music/casino_*.ogg`
+  - `AXEL/axel_project/assets/audio/music/casino_*.wav`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+- Behavior impact: Fights no longer switch to a casino track. The school song continues, with drums on top. Vice Round is the only time the second drum layer is heard.
+- Verification: Not re-run in this docs pass. `playtest_fix_groups_check.gd` locks the bed/drums handoff.
+- Notes: `Master` in `default_bus_layout.tres` is muted in the working tree. Canon is still “Master ships unmuted.” Un-mute it in the Audio panel before a commit. This row does not change that rule.
+
+### Options bars one third of the window
+
+- Request: Sound sliders were too long. Make them one third of the screen. Then make the other option bars the same length.
+- Implementation: Every options `HSlider` (audio and the rest) uses `custom_minimum_size.x` = one third of the live window width, and updates on resize.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/options_panel.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Options bars stay about a third of the window, including after a resize.
+- Verification: Not re-run in this docs pass.
+- Notes: Red VT323 chrome is the playtest-groups row above.
+
+### Intro wave once, then black at half strength
+
+- Request: The intro wave played too often — play it once. The wave color went red, then back to black. Keep the warp, set the wave color’s opacity to 50%, and let the band cross the whole screen.
+- Implementation: `1.1` calls `start_interface_distortion(true)` once and does not play a separate intro glitch. The roll is black at strength `0.50`, warp `0.0045`. Quiet pulse stays at alpha `0.20`; surge is `0.536`. `AXEL_OVERWORLD_EVENT_FX.md` had still said rest alpha `0` and a red roll; that file now matches the live numbers.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/fx/interface_pulse_overlay.gd`
+  - `AXEL/axel_project/scenes/fx/InterfacePulseOverlay.tscn`
+  - `AXEL/axel_project/tools/visual_style/shaders/option_1_crt_tv.gdshader`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: The 1.1 intro rolls the black band once. Later rooms keep the quiet pulse, and the band returns on the 30s timer. The roll is black, not red.
+- Verification: Not re-run in this docs pass. Contract check: `interface_pulse_dialogue_check.gd`.
+- Notes: The Sep 19 changelog row that says “red roll” is history. Live color is black.
+
+### Combat settings click on the square
+
+- Request: In combat, the settings cursor target was not on the gear square.
+- Implementation: `NEW_Settings` / `MOVE_TextBox` is sized to the square’s opaque ink. Clicks outside that ink miss. The gear still opens the pause menu.
+- Files changed:
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/hud_piece.gd`
+  - `AXEL/axel_project/combat/test/hud_click_rect_check.gd`
+  - `AXEL/axel_project/tools/qa/hud_piece_placement_check.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: The combat gear only accepts clicks on the square.
+- Verification: Not re-run in this docs pass. Contract check: `hud_click_rect_check.gd`.
+
+### One combat scene, no spin-budget controls
+
+- Request: Do not keep two playtest combat scenes. Items were missing from the dev fight. Delete Paid spins, Used, Budget, and Limit spins.
+- Implementation: `combat_run.tscn` / `combat_run.gd` are gone. `AxelRun` loads `combat/combat_test.tscn` for live fights and for F6. F6 still shows the catalog picker. A live fight hides it and shows equipped items (the locker tutorial shows the empty DVD). The Limit / Budget / Used controls are stripped at runtime. Fights still end when the player cannot afford another paid spin, or on GOAL.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+  - `AXEL/axel_project/combat/test/combat_player_item_box_check.gd`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: There is one combat scene. The dev fight shows items. The old budget row is not on screen.
+- Verification: Not re-run in this docs pass. Contract check: `combat_player_item_box_check.gd` and `combat_test_scaffold_check.gd`.
+- Notes: `AXEL_combat_design.md` still describes an old spin-budget encounter shape, then points at the live end rule in `AI_DOCS.md`.
+
+### Docs catch-up for 22 Sep
+
+- Request: `update docs`.
+- Implementation: Canon lines that still said the hand matches a white memory glow, that the corridor arrow hides on `move_right`, that the wave rests at alpha 0 / is red, that pause has an Inventory page, that the HUD shows spin budget remaining, and that `combat_test.tscn` is F5 were rewritten to match the code above. Headless list now names `playtest_fix_groups_check`, `corridor_right_hint_check`, `hud_piece_placement_check`, and `hud_click_rect_check`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/combat/README_COMBAT_TEST_VERSIONS.md`
+- Behavior impact: None (docs only).
+- Verification: Read-back against `1.2_Corridor.gd`, `marker_outline_style.gd`, `axel_event_fx.gd`, `1.1_SchoolExterior.gd`, `pause_menu.gd`, `options_panel.gd`, `combat_root.gd` goal ceil, `combat_feel.gd` grime band, and `axel_music.gd`. Headless checks were not re-run.
+- Notes: Older changelog rows may still say casino, `combat_run`, a red roll, or an Inventory button. Do not treat those as the live rule.
+
 

@@ -104,7 +104,7 @@ Reading the combat language: the three premium symbols *are* the princess power 
 
 ## 5. Encounter design — varied goals, escalating difficulty
 
-A run is a sequence of encounters. Each encounter has **one goal**, a **spin budget** (or a soft budget in the form of resources), and a **difficulty tier**. Failing the goal before the budget runs out ends the run.
+A run is a sequence of encounters. Each encounter has **one goal**, a **spin budget** (or a soft budget in the form of resources), and a **difficulty tier**. Failing the goal before the budget runs out ends the run. Live fights do not use that spin-budget end. They end when the player cannot afford another paid spin, or when GOAL is met (`AI_DOCS.md`).
 
 ### Goal types (mix and match across encounters)
 

@@ -1,7 +1,7 @@
 extends SceneTree
 
 const PLAYTEST := "res://combat/combat_test.tscn"
-const PLAYER := "res://combat/combat_run.tscn"
+const PLAYER := "res://combat/combat_test.tscn"
 const STARTER := "res://combat/data/items/C1_ash_spin_token.tres"
 const HOST_PAD_PX := 1.0
 const ICON_INSET_MIN_PX := 8.0
@@ -30,7 +30,6 @@ func _main() -> void:
 	root.size = Vector2i(1920, 1280)
 	await process_frame
 	await _check_playtest_picker()
-	await _check_player_preview_egg()
 	await _check_tutorial_egg()
 	await _check_equipped_list()
 	_reset_run()
@@ -57,18 +56,30 @@ func _check_playtest_picker() -> void:
 		_fail("F6 combat_test should not spawn PlayerItemPanel")
 	await _wait_layout()
 	await _assert_named_item_rows(ui, "F6 picker")
+	_assert_no_paid_spin_chrome(ui)
 	ui.queue_free()
 	await _drain()
 
 
-func _check_player_preview_egg() -> void:
-	_reset_run()
-	var ui := await _boot(PLAYER)
-	if ui == null:
+func _assert_no_paid_spin_chrome(ui: Node) -> void:
+	var panel := ui.find_child("ItemPickerPanel", true, false)
+	if panel == null:
+		_fail("F6 combat_test missing ItemPickerPanel")
 		return
-	_assert_player_chrome(ui, true)
-	ui.queue_free()
-	await _drain()
+	for banned in ["PaidSpinUsedSpin", "PaidSpinBudgetSpin", "LimitSpinsCheck", "PaidSpinHint"]:
+		if panel.find_child(banned, true, false) != null:
+			_fail("F6 still has %s" % banned)
+	for node in panel.find_children("*", "Label", true, false):
+		var lab := node as Label
+		if lab == null:
+			continue
+		var text := lab.text.strip_edges()
+		if text == "PAID SPINS" or text == "Limit spins" or text == "Used" or text == "Budget":
+			_fail("F6 still shows '%s'" % text)
+	for node in panel.find_children("*", "CheckBox", true, false):
+		var box := node as CheckBox
+		if box != null and box.text.strip_edges() == "Limit spins":
+			_fail("F6 still shows Limit spins")
 
 
 func _check_tutorial_egg() -> void:

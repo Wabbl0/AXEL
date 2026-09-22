@@ -4,7 +4,7 @@ const RunStateScript := preload("res://combat/scripts/run_state.gd")
 const ItemInventoryScript := preload("res://combat/scripts/item_inventory.gd")
 
 const LOCKER_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
-const COMBAT_SCENE := "res://combat/combat_run.tscn"
+const COMBAT_SCENE := "res://combat/combat_test.tscn"
 const TITLE_SCENE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
 const ITEM_DIR := "res://combat/data/items/"
 const LORE_FLAGS: PackedStringArray = ["hasFlashlight", "hasKey", "hasShovel", "hasName"]

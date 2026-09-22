@@ -103,9 +103,10 @@ Every floor pickup draws the same white pointing-hand
 (`scenes/world/ItemMarker.tscn`, `assets/sprites/item_hand-Sheet.png` — 5
 frames of 48×48). The pickup `Area2D` stays under `EnvironmentColliders` so
 the 220 px interact circle takes the room's cover-fit. The picture reparents
-to `PlayerLayer` (above noir) so CRT keeps it bright white like the memory
-glow. A drop shadow and a faint red outline (`memory_outer_glow.gdshader`)
-tell it apart from a memory marker.
+to `PlayerLayer` (above noir, `z_index` `-8` so Mike draws in front) so the
+hand stays white. The memory blob is red with a white halo. A drop shadow and
+a faint red outline (`memory_outer_glow.gdshader`) keep the hand from looking
+like that blob.
 
 Scatter only accepts a spot whose **full** interact circle misses walls and
 furniture (shape query, not a point). Pass 1 still tries to dodge door
@@ -114,8 +115,11 @@ zones (`2.4`) rather than skip the item.
 
 What the item actually is only shows up when you walk into the existing
 220 px radius: `scenes/ui/world_item_info_card.gd` (one per room, layer 109 —
-above CRT 108, below the `[E]` chip 110 and dialogue 111) shows the item's real
-`display_name`, `description` and catalog `icon` directly under the `[E]` chip.
+above CRT 108, below dialogue 111) CRT-opens like the dialogue bar. It shows
+the item's real name (with the rarity glyph), `description`, and catalog `icon` 10px under the painted
+hand. `[E]` is the bottom-right line of that card, at the description font
+size. The card is as wide as the icon plus the full title on one row.
+
 Floor pickups auto-equip into a free slot (`AxelRun.equip_owned_if_free`) so that
 fight's ITEMS list is live. Locker is still where you unequip.
 
@@ -146,7 +150,7 @@ ids the player already owns and ids already placed on a floor.
    `world_return_scene`, `world_return_tex_x/y`, `world_return_tex_valid`,
    `world_encounter_index`; serialise them.
 2. `scripts/autoload/axel_run.gd` — add `enter_world_encounter()`. It plays the
-   wipe, switches music, and loads `combat/combat_run.tscn`. World encounters do
+   wipe, switches music, and loads `combat/combat_test.tscn`. World encounters do
    not advance acts; on win the run returns to `world_return_scene` and asks
    `AxelWorld` to restore the standing spot. Loss path unchanged. The old
    three-act `enter_combat()` stays in the file, unreachable.
@@ -160,7 +164,7 @@ ids the player already owns and ids already placed on a floor.
    `clear_combat_wipe()` — red-bar wipe on an autoload layer above CRT so it
    survives the scene change. No sound (D15). `reduce_flashing` gets a plain
    fade. Safety timeout clears a stuck wipe.
-6. `combat/scripts/combat_run.gd` — clear the wipe once the board is up.
+6. `combat/scripts/combat_test.gd` — clear the wipe once the board is up.
 7. `exports/GameManager.gd` — `visited_rooms` set plus `mark_room_visited()` /
    `has_visited()`; save body carries `visited_rooms` and the `AxelWorld` block.
 8. `scripts/Player.gd` — one call to `AxelWorld.register_walk_step()` next to

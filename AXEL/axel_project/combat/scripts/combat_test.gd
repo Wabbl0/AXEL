@@ -10,6 +10,8 @@ const COMBAT_ROOT_INSTANCED_CHILDREN := [
 ]
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
+const EmptyItemDvdScript := preload("res://combat/scripts/empty_item_dvd.gd")
+const PlayerItemPanelScript := preload("res://combat/scripts/player_item_panel.gd")
 const POWER_BLOODY_HAND: StringName = &"bloody_hand"
 const POWER_ALCOHOL: StringName = &"alcohol"
 const POWER_CIGARETTE: StringName = &"cigarette"
@@ -53,7 +55,6 @@ const ITEM_PICKER_LIST_SEP := 10
 const ITEM_PICKER_CHECKBOX_ICON_MAX := int(round(18.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
 const ITEM_PICKER_PLAYTEST_CHECK_MIN := int(round(float(ITEM_PICKER_CHECKBOX_ICON_MAX * 2)))
 const ITEM_PICKER_CHECKBOX_COL_W := int(round(22.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
-const ITEM_PICKER_SPIN_MIN_W := int(round(176.0 * ITEM_BOX_SIZE_MUL))
 const ITEM_ICON_DRAW_SIZE := 48
 const ITEM_RANK_BTN_W := int(round(88.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
 const ITEM_BOX_LEFT_INSET_PX := 12.0
@@ -167,14 +168,12 @@ var _item_desc_fade: Tween
 var _item_entries: Array = []
 var _family_rank: Dictionary = {}
 var _ignore_cap_checkbox: CheckBox
-var _paid_spin_used_spin: SpinBox
-var _paid_spin_budget_spin: SpinBox
-var _limit_spins_checkbox: CheckBox
-var _paid_spin_hint_label: Label
-var _goal_base_spin: SpinBox
-var _goal_progress_spin: SpinBox
-var _goal_effective_label: Label
 var _playtest_tuning: VBoxContainer
+var _player_box: Control
+var _hide_tries: int = 0
+var _attach_tries: int = 0
+var _refresh_tries: int = 0
+var _wipe_cleared: bool = false
 var _playtest_check_icons: Dictionary = {}
 var _stake_pill: PanelContainer
 var _economics_center: CenterContainer
@@ -675,7 +674,9 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 	if budget_label != null:
 		budget_label.visible = false
 	if _is_player_combat_host():
-		_hide_scene_item_picker()
+		_hide_playtest_chrome()
+		call_deferred("_attach_player_item_box")
+		call_deferred("_clear_combat_wipe")
 	else:
 		_build_item_picker()
 	_apply_side_panel_typography()
@@ -1200,7 +1201,7 @@ func _configure_winnings_readout() -> void:
 	if mult_label == null:
 		return
 	mult_label.add_theme_font_size_override("font_size", WINNINGS_READOUT_FONT)
-	mult_label.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+	mult_label.add_theme_color_override("font_color", HUD_WHITE_TEXT_COLOR)
 	mult_label.remove_theme_color_override("font_outline_color")
 	mult_label.add_theme_constant_override("outline_size", WINNINGS_READOUT_OUTLINE)
 
@@ -1213,7 +1214,7 @@ func _configure_cascade_multiplier_readout() -> void:
 		_cascade_mult_font.variation_embolden = 0.8
 	_cascade_mult_label.add_theme_font_override("font", _cascade_mult_font)
 	_cascade_mult_label.add_theme_font_size_override("font_size", CASCADE_MULT_READOUT_FONT)
-	_cascade_mult_label.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+	_cascade_mult_label.add_theme_color_override("font_color", HUD_WHITE_TEXT_COLOR)
 	_cascade_mult_label.remove_theme_color_override("font_outline_color")
 	_cascade_mult_label.add_theme_constant_override("outline_size", CASCADE_MULT_READOUT_OUTLINE)
 	_cascade_mult_label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -1321,13 +1322,6 @@ func _apply_item_picker_body_typography() -> void:
 			continue
 		if bool(label.get_meta("item_chrome_label", false)) or _is_item_chrome_label(label):
 			_style_item_chrome_label(label)
-	var chrome_font := _resolved_items_chrome_font()
-	for child in _item_picker_panel.find_children("*", "SpinBox", true, false):
-		var spin := child as SpinBox
-		if spin == null:
-			continue
-		if spin.name == "PaidSpinUsedSpin" or spin.name == "PaidSpinBudgetSpin":
-			_style_playtest_spin(spin, chrome_font)
 	var rank_font := _resolved_item_rank_font()
 	for child in _item_picker_panel.find_children("*", "Button", true, false):
 		var btn := child as Button
@@ -1363,10 +1357,10 @@ func _resolved_items_chrome_font() -> int:
 
 
 func _is_item_chrome_label(label: Label) -> bool:
-	if label == null or label.name == "PaidSpinHint":
+	if label == null:
 		return false
 	var t := label.text.strip_edges()
-	if t == "FAMILIES" or t == "PAID SPINS" or t == "Used" or t == "Budget":
+	if t == "FAMILIES":
 		return true
 	return t in RARITY_NAMES
 
@@ -1382,20 +1376,6 @@ func _style_item_chrome_label(lab: Label) -> void:
 	lab.max_lines_visible = ITEM_NAME_MAX_LINES
 	lab.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-
-func _style_playtest_spin(spin: SpinBox, chrome: int = -1) -> void:
-	if spin == null:
-		return
-	if chrome < 0:
-		chrome = _resolved_items_chrome_font()
-	spin.add_theme_font_override("font", VT323_FONT)
-	spin.add_theme_font_size_override("font_size", chrome)
-	spin.custom_minimum_size.x = float(ITEM_PICKER_SPIN_MIN_W)
-	var line := spin.get_line_edit()
-	if line != null:
-		line.add_theme_font_override("font", VT323_FONT)
-		line.add_theme_font_size_override("font_size", chrome)
 
 
 func _apply_playtest_checkbox_icons(cb: CheckBox, px: int) -> void:
@@ -2000,17 +1980,137 @@ func _cache_hud_pieces() -> void:
 
 
 func _is_player_combat_host() -> bool:
-	var parent := get_parent()
-	return parent != null and String(parent.name) == "CombatRun"
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not run.has_method("is_in_encounter"):
+		return false
+	return bool(run.call("is_in_encounter"))
 
 
-func _hide_scene_item_picker() -> void:
-	var panel := find_child("ItemPickerPanel", true, false) as CanvasItem
-	if panel != null:
-		panel.visible = false
-	var tuning := find_child("PlaytestTuning", true, false) as CanvasItem
-	if tuning != null:
-		tuning.visible = false
+func _hide_playtest_chrome() -> void:
+	if not is_inside_tree() or not _is_player_combat_host():
+		return
+	for node_name in ["SeedSpinBox", "PlaytestTuning", "ItemPickerPanel"]:
+		var node := find_child(node_name, true, false) as CanvasItem
+		if node != null:
+			node.visible = false
+	var focus := get_viewport().gui_get_focus_owner() as Control
+	if focus != null and not focus.is_visible_in_tree():
+		focus.release_focus()
+	_hide_tries += 1
+	if _hide_tries < 20:
+		call_deferred("_hide_playtest_chrome")
+
+
+func _is_tutorial_egg() -> bool:
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not _is_player_combat_host():
+		return false
+	return run.has_method("is_tutorial_encounter") and bool(run.call("is_tutorial_encounter"))
+
+
+func _attach_player_item_box() -> void:
+	if not is_inside_tree() or not _is_player_combat_host():
+		return
+	var host := get_items_widget_host()
+	var piece := find_child("NEW_Items", true, false)
+	if host == null or piece == null:
+		_attach_tries += 1
+		if _attach_tries < 24:
+			call_deferred("_attach_player_item_box")
+		return
+	var want_egg := _is_tutorial_egg()
+	if _player_box != null and is_instance_valid(_player_box):
+		var is_egg: bool = _player_box.get_script() == EmptyItemDvdScript
+		if is_egg == want_egg:
+			return
+		_player_box.queue_free()
+		_player_box = null
+	if want_egg:
+		_player_box = EmptyItemDvdScript.new() as Control
+	else:
+		_player_box = PlayerItemPanelScript.new() as Control
+	host.add_child(_player_box)
+	if piece.has_method("attach"):
+		piece.call("attach", _player_box, host)
+	_player_box.offset_left = ITEM_BOX_LEFT_INSET_PX
+	if not want_egg:
+		_refresh_equipped_list()
+
+
+func refresh_player_item_box() -> void:
+	if not is_inside_tree() or not _is_player_combat_host():
+		return
+	_refresh_tries = 0
+	_attach_tries = 0
+	_attach_player_item_box()
+	_refresh_equipped_list()
+	_follow_equipped_refresh()
+
+
+func _follow_equipped_refresh() -> void:
+	if not is_inside_tree() or not _is_player_combat_host():
+		return
+	if _player_box != null and is_instance_valid(_player_box) and _player_box.has_method("_fit_row_names"):
+		_player_box.call("_fit_row_names")
+	if not _item_list_needs_retry():
+		return
+	_refresh_tries += 1
+	if _refresh_tries < 48:
+		call_deferred("_follow_equipped_refresh")
+
+
+func _item_list_needs_retry() -> bool:
+	if _is_tutorial_egg():
+		return false
+	var root := find_child("CombatRoot", true, false)
+	var inv_n := 0
+	if root != null:
+		var inv = root.get("inventory")
+		if inv != null and inv.get("items") != null:
+			inv_n = (inv.items as Array).size()
+	if inv_n <= 0:
+		return false
+	if _player_box == null or not is_instance_valid(_player_box):
+		return true
+	if _player_box.size.x < 8.0:
+		return true
+	var list := _player_box.find_child("List", true, false)
+	if list == null:
+		return true
+	return list.get_child_count() < inv_n
+
+
+func _refresh_equipped_list() -> void:
+	if _player_box == null or not _player_box.has_method("set_equipped_items"):
+		return
+	var root := find_child("CombatRoot", true, false)
+	if root == null:
+		return
+	var inv = root.get("inventory")
+	if inv == null:
+		return
+	var items: Array = []
+	if inv.get("items") != null:
+		items = inv.items
+	_player_box.call("set_equipped_items", items)
+
+
+func _clear_combat_wipe() -> void:
+	if _wipe_cleared or not is_inside_tree() or not _is_player_combat_host():
+		return
+	var fx := get_node_or_null("/root/AxelEventFx")
+	if fx == null or not fx.has_method("clear_combat_wipe"):
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	_wipe_cleared = true
+	await tree.process_frame
+	if not is_inside_tree():
+		return
+	fx = get_node_or_null("/root/AxelEventFx")
+	if fx != null and fx.has_method("clear_combat_wipe"):
+		fx.call("clear_combat_wipe")
 
 
 func get_items_widget_host() -> Control:
@@ -2216,7 +2316,7 @@ func _refresh_bet_strip() -> void:
 	for i in range(_bet_strip_labels.size()):
 		var lab := _bet_strip_labels[i]
 		if i == selected:
-			lab.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
+			lab.add_theme_color_override("font_color", HUD_WHITE_TEXT_COLOR)
 			lab.modulate = Color(1, 1, 1, 1)
 		else:
 			lab.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 1.0))
@@ -2294,6 +2394,9 @@ func _finish_initial_layout() -> void:
 	await get_tree().process_frame
 	_fit_hud_canvas()
 	_bind_widgets_to_pieces()
+	if _is_player_combat_host():
+		_hide_playtest_chrome()
+		_attach_player_item_box()
 	_hide_legacy_meter_nodes()
 	_apply_hud_chrome()
 	await get_tree().process_frame
@@ -2671,6 +2774,7 @@ func _set_seed_spin_value_no_signal(seed_value: int) -> void:
 func _build_item_picker() -> void:
 	if _item_picker_panel != null and is_instance_valid(_item_picker_panel):
 		_bind_item_picker_live_nodes()
+		_ensure_playtest_tuning()
 		_rebuild_item_picker_contents()
 		return
 	var existing_panel := find_child("ItemPickerPanel", true, false) as PanelContainer
@@ -3004,105 +3108,60 @@ func _ensure_playtest_tuning() -> void:
 	if vbox == null:
 		return
 	var existing := vbox.get_node_or_null("PlaytestTuning") as VBoxContainer
-	if existing != null and existing.find_child("PaidSpinUsedSpin", true, false) == null:
-		existing.free()
-		existing = null
 	if existing != null:
+		_strip_retired_playtest_controls(existing)
 		_playtest_tuning = existing
-		_paid_spin_used_spin = existing.find_child("PaidSpinUsedSpin", true, false) as SpinBox
-		_paid_spin_budget_spin = existing.find_child("PaidSpinBudgetSpin", true, false) as SpinBox
-		_limit_spins_checkbox = existing.find_child("LimitSpinsCheck", true, false) as CheckBox
-		_paid_spin_hint_label = existing.find_child("PaidSpinHint", true, false) as Label
-		_goal_base_spin = existing.find_child("GoalBaseSpin", true, false) as SpinBox
-		_goal_progress_spin = existing.find_child("GoalProgressSpin", true, false) as SpinBox
-		_goal_effective_label = existing.find_child("GoalEffectiveLabel", true, false) as Label
 		_ignore_cap_checkbox = existing.find_child("IgnoreCapCheck", true, false) as CheckBox
-		_hide_playtest_goal_controls(existing)
-		_goal_base_spin = null
-		_goal_progress_spin = null
-		_goal_effective_label = null
+		if _ignore_cap_checkbox == null:
+			_ignore_cap_checkbox = _make_ignore_cap_checkbox()
+			existing.add_child(_ignore_cap_checkbox)
+			existing.move_child(_ignore_cap_checkbox, 0)
 		return
 	_playtest_tuning = VBoxContainer.new()
 	_playtest_tuning.name = "PlaytestTuning"
 	_playtest_tuning.add_theme_constant_override("separation", 3)
-	_ignore_cap_checkbox = CheckBox.new()
-	_ignore_cap_checkbox.name = "IgnoreCapCheck"
-	_ignore_cap_checkbox.text = "Ignore slot cap"
-	_style_item_picker_checkbox(_ignore_cap_checkbox, SIDE_PANEL_HINT_FONT)
-	_ignore_cap_checkbox.toggled.connect(_on_ignore_cap_toggled)
+	_ignore_cap_checkbox = _make_ignore_cap_checkbox()
 	_playtest_tuning.add_child(_ignore_cap_checkbox)
-	_playtest_tuning.add_child(_make_playtest_label("PAID SPINS"))
-	var used_row := _make_spin_row("Used", 0, 99, "PaidSpinUsedSpin")
-	_paid_spin_used_spin = used_row.get_node("PaidSpinUsedSpin") as SpinBox
-	_paid_spin_used_spin.value_changed.connect(_on_paid_spin_used_changed)
-	_playtest_tuning.add_child(used_row)
-	var budget_row := _make_spin_row("Budget", 0, 99, "PaidSpinBudgetSpin")
-	_paid_spin_budget_spin = budget_row.get_node("PaidSpinBudgetSpin") as SpinBox
-	_paid_spin_budget_spin.value_changed.connect(_on_paid_spin_budget_changed)
-	_playtest_tuning.add_child(budget_row)
-	_limit_spins_checkbox = CheckBox.new()
-	_limit_spins_checkbox.name = "LimitSpinsCheck"
-	_limit_spins_checkbox.text = "Limit spins"
-	_style_item_picker_checkbox(_limit_spins_checkbox, SIDE_PANEL_HINT_FONT)
-	_limit_spins_checkbox.toggled.connect(_on_limit_spins_toggled)
-	_playtest_tuning.add_child(_limit_spins_checkbox)
-	_paid_spin_hint_label = Label.new()
-	_paid_spin_hint_label.name = "PaidSpinHint"
-	_paid_spin_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_paid_spin_hint_label.add_theme_font_size_override("font_size", SIDE_PANEL_HINT_FONT)
-	_playtest_tuning.add_child(_paid_spin_hint_label)
-
-	_goal_base_spin = null
-	_goal_progress_spin = null
-	_goal_effective_label = null
 	vbox.add_child(_playtest_tuning)
 	vbox.move_child(_playtest_tuning, 1)
-	if _can_use_combat_api() and combat.has_method("get_playtest_spin_budget"):
-		_paid_spin_budget_spin.set_value_no_signal(float(combat.get_playtest_spin_budget()))
 
 
-func _hide_playtest_goal_controls(tuning: VBoxContainer) -> void:
+func _make_ignore_cap_checkbox() -> CheckBox:
+	var box := CheckBox.new()
+	box.name = "IgnoreCapCheck"
+	box.text = "Ignore slot cap"
+	_style_item_picker_checkbox(box, SIDE_PANEL_HINT_FONT)
+	box.toggled.connect(_on_ignore_cap_toggled)
+	return box
+
+
+func _strip_retired_playtest_controls(tuning: Node) -> void:
 	if tuning == null:
 		return
+	var retired_names := [
+		"PaidSpinUsedSpin", "PaidSpinBudgetSpin", "LimitSpinsCheck", "PaidSpinHint",
+		"GoalBaseSpin", "GoalProgressSpin", "GoalEffectiveLabel",
+	]
+	for retired_name in retired_names:
+		var node := tuning.find_child(retired_name, true, false)
+		if node == null or not is_instance_valid(node):
+			continue
+		var drop := node
+		var parent := node.get_parent()
+		if parent != null and parent != tuning:
+			drop = parent
+		drop.free()
+	var leftover: Array[Node] = []
 	for child in tuning.get_children():
-		var n := child as Node
-		if n == null:
-			continue
-		var name_str := String(n.name)
-		if name_str == "GoalBaseSpin" or name_str == "GoalProgressSpin" or name_str == "GoalEffectiveLabel":
-			n.visible = false
-			continue
-
-		if n.find_child("GoalBaseSpin", true, false) != null or n.find_child("GoalProgressSpin", true, false) != null:
-			n.visible = false
-			continue
-		if n is Label and String((n as Label).text).strip_edges() == "GOAL":
-			n.visible = false
-
-
-func _make_playtest_label(text: String) -> Label:
-	var lab := Label.new()
-	lab.text = text
-	lab.add_theme_color_override("font_color", READOUT_ACCENT_COLOR)
-	_style_item_chrome_label(lab)
-	return lab
-
-
-func _make_spin_row(label_text: String, min_v: int, max_v: int, spin_name: String) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	var lab := Label.new()
-	lab.text = label_text
-	lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_style_item_chrome_label(lab)
-	row.add_child(lab)
-	var spin := SpinBox.new()
-	spin.name = spin_name
-	spin.min_value = min_v
-	spin.max_value = max_v
-	spin.step = 1
-	_style_playtest_spin(spin)
-	row.add_child(spin)
-	return row
+		if child is Label:
+			var text := String((child as Label).text).strip_edges()
+			if text == "PAID SPINS" or text == "GOAL" or text == "Used" or text == "Budget" or text == "Limit spins":
+				leftover.append(child)
+		elif child is CheckBox and String((child as CheckBox).text).strip_edges() == "Limit spins":
+			leftover.append(child)
+	for node in leftover:
+		if is_instance_valid(node):
+			node.free()
 
 
 func _rebuild_item_picker_contents() -> void:
@@ -3496,45 +3555,8 @@ func _on_ignore_cap_toggled(on: bool) -> void:
 	_refresh_item_picker_title()
 
 
-func _on_paid_spin_used_changed(value: float) -> void:
-	if _can_use_combat_api() and combat.has_method("set_spins_used"):
-		combat.set_spins_used(int(value))
-	_refresh_playtest_readouts()
-
-
-func _on_paid_spin_budget_changed(value: float) -> void:
-	if _can_use_combat_api() and combat.has_method("set_spin_budget"):
-		combat.set_spin_budget(int(value))
-
-
-func _on_limit_spins_toggled(on: bool) -> void:
-	if _can_use_combat_api() and combat.has_method("set_limit_spins"):
-		combat.set_limit_spins(on)
-
-
-func _on_goal_base_changed(value: float) -> void:
-	if _can_use_combat_api() and combat.has_method("set_goal_base_target_cents"):
-		combat.set_goal_base_target_cents(int(value))
-	_refresh_playtest_readouts()
-
-
-func _on_goal_progress_changed(value: float) -> void:
-	if _can_use_combat_api() and combat.has_method("set_goal_progress_cents"):
-		combat.set_goal_progress_cents(int(value))
-	_refresh_playtest_readouts()
-
-
 func _refresh_playtest_readouts() -> void:
-	if _paid_spin_hint_label != null and _can_use_combat_api() and combat.has_method("get_paid_spin_item_hint"):
-		_paid_spin_hint_label.text = combat.get_paid_spin_item_hint()
-	if _goal_effective_label != null and _can_use_combat_api() and combat.has_method("get_effective_goal_target_cents"):
-		var eff: int = combat.get_effective_goal_target_cents()
-		var base: int = combat.get_goal_base_target_cents() if combat.has_method("get_goal_base_target_cents") else 10000
-		_goal_effective_label.text = "Effective %d (base %d)" % [eff, base]
-	if _paid_spin_used_spin != null and _can_use_combat_api():
-		_paid_spin_used_spin.set_value_no_signal(float(_safe_get_spins_used()))
-	if _goal_progress_spin != null and _can_use_combat_api():
-		_goal_progress_spin.set_value_no_signal(float(combat.get_chip_bar_goal_progress_cents()))
+	pass
 
 
 func _refresh_item_picker_title() -> void:

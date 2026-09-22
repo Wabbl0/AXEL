@@ -92,8 +92,8 @@ func _on_scene_changed() -> void:
 		return
 
 	_cadence_active = true
-	# Pulse-only: do not start an always-on baseline roll after scene change.
-	_set_ambient(false)
+	# Rest pulse stays on. The rolling wave is only the 30s burst.
+	_set_ambient(true)
 	_arm_cadence_targets()
 
 	if not _should_skip_enter_glitch(scene):
@@ -394,9 +394,9 @@ func get_intro_glitch() -> CanvasLayer:
 	return null
 
 
-func start_interface_distortion() -> void:
+func start_interface_distortion(once: bool = false) -> void:
 	if _pulse != null and is_instance_valid(_pulse) and _pulse.has_method("start_distortion"):
-		_pulse.start_distortion()
+		_pulse.start_distortion(once)
 
 
 func stop_interface_distortion() -> void:
@@ -424,8 +424,8 @@ func apply_to_scene(scene: Node) -> void:
 		_set_ambient(false)
 		return
 	_cadence_active = true
-	# Pulse-only: do not start an always-on baseline roll after scene change.
-	_set_ambient(false)
+	# Rest pulse stays on. The rolling wave is only the 30s burst.
+	_set_ambient(true)
 	_arm_cadence_targets()
 
 

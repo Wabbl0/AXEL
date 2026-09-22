@@ -35,10 +35,8 @@ CONTENT_MAX = 80
 STROKE = 7
 THRESHOLD = 128
 
-## Wild only — cigarette / booze / bloody_hand keep no halo.
-PREMIUM_FILES = (
-    "satanic_wild.png",
-)
+# Wild keeps its painted art. Do not add a halo back onto satanic_wild.png.
+PREMIUM_FILES = ()
 
 # Filled Unicode silhouettes — outline is carved afterward (no fill in output).
 SUITS: list[tuple[str, str]] = [

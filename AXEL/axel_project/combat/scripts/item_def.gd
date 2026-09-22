@@ -14,6 +14,33 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
 const FILE_PX := 1024
 const COMBAT_RES_PX := 120
+const RARITY_GLYPHS: PackedStringArray = ["◇", "◈", "◆", "★", "✦"]
+
+
+static func rarity_glyph(item: Resource) -> String:
+	if item == null:
+		return ""
+	return rarity_glyph_index(int(item.get("rarity")))
+
+
+static func rarity_glyph_index(rarity_index: int) -> String:
+	if rarity_index < 0 or rarity_index >= RARITY_GLYPHS.size():
+		return ""
+	return RARITY_GLYPHS[rarity_index]
+
+
+static func rarity_name(item: Resource) -> String:
+	var base := ""
+	if item != null:
+		base = str(item.get("display_name")).strip_edges()
+		if base.is_empty():
+			base = str(item.get("id"))
+	var glyph := rarity_glyph(item)
+	if glyph.is_empty():
+		return base
+	if base.is_empty():
+		return glyph
+	return "%s %s" % [glyph, base]
 
 
 static func texture_at_res(src: Texture2D, px: int) -> Texture2D:

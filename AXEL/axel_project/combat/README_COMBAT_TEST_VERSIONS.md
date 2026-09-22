@@ -6,13 +6,12 @@ The playtest shell uses a **drawing-backed HUD**: white plate + one node per dra
 
 | Entry | Scene | Script | Who |
 |-------|-------|--------|-----|
-| **Playtest (Godot / F6 only)** | `res://combat/combat_test.tscn` | `scripts/combat_test.gd` | Full catalog picker, seed, Ignore cap, DEV TOOLS. Overworld never loads this file. |
-| **Player (overworld)** | `res://combat/combat_run.tscn` | `scripts/combat_run.gd` | Instanced HUD. Hides playtest chrome. Shows `NEW_Items`: locker tutorial / F6 preview = empty DVD mill + “Nothing but us chickens.” ticker; later fights = read-only equipped icons. |
+| **Playtest (F6) and live fights** | `res://combat/combat_test.tscn` | `scripts/combat_test.gd` | One scene. F6 shows the catalog picker (Ignore cap, DEV TOOLS). A live fight hides that picker: locker tutorial is the empty DVD mill + “Nothing but us chickens.” ticker; later fights are a read-only list of equipped icons. |
 
 ## Launch
 
 - Open `combat/combat_test.tscn` → **F6** (Play Scene) for the catalog tool.
-- Overworld fights load `combat/combat_run.tscn` via `AxelRun`. F6 on that scene previews the empty item box.
+- Overworld fights load that same scene via `AxelRun`.
 
 Headless combat checks (`powers_check`, `determinism_check`) use `combat_root.tscn` only — not this shell.
 
@@ -32,7 +31,7 @@ Headless combat checks (`powers_check`, `determinism_check`) use `combat_root.ts
 - Room FX on combat is behind `AxelPostFxStack.COMBAT_ROOM_FX_TEST` (test flag; flip false to restore combat-only scanline). When the flag is on, combat gets flat `CrtCombatOverlay.tscn` (same CRT shader, zero curve/vignette/rim — edge-fringe fix without the round-TV look). Local `ScanlineOverlay` hides when that flag is on.
 - **Live widgets under CRT/pulse/glitch:** `WidgetLayer` (`CanvasLayer` 106) hosts numbers, item checks, history, `+/−`, and the 5×5 grid — above noir (90) so text stays white, below CRT (108) / pulse (112) / glitch (113) so symbols and readouts share the shake. Each host follows its `MOVE_TextBox` rect. Hand-drawn `NEW_*` pieces stay under the FX. `WidgetRoot` carries `terminal_theme.tres` (CanvasLayer breaks theme inheritance from the root Control).
 - **Grid:** `NEW_Grid` has a `MOVE_TextBox`; `GridHost` / `%CombatRoot` live under `WidgetLayer` and fill that box (not the old PlayArea host).
-- **Clicks:** Settings / Execute / `+` / `−` use each piece’s `MOVE_TextBox` rect (not the art frame, not opaque pixels, not the skull polygon). `SkullClickPolygon` is editor tracing only. One spin per click (shared guard).
+- **Clicks:** Settings / Execute / `+` / `−` use each piece’s `MOVE_TextBox` rect (not a per-pixel alpha test, and not the skull polygon). The Settings box is sized to the gear square’s opaque ink. `SkullClickPolygon` is editor tracing only. One spin per click (shared guard).
 - **Piece authoring (canon):** combat drawings use **black ink on white fill** (same rule as room backgrounds). Noir turns black → red and white → dark. Original white-on-black exports were inverted in place by `tools/invert_drawing_colors.gd`; pre-invert copies live in `exports/Drawings/backup_pre_invert/` (ignored by Godot). Re-run that tool after exporting a new white-on-black piece.
 
 ## Shared `combat_root`

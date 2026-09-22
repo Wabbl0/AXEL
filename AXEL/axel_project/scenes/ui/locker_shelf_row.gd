@@ -57,6 +57,13 @@ func _make_item_button(item: Resource, equipped: PackedStringArray) -> Button:
 	button.button_pressed = equipped.has(item_id)
 	button.expand_icon = false
 	button.flat = true
+	var empty := StyleBoxEmpty.new()
+	button.add_theme_stylebox_override("normal", empty)
+	button.add_theme_stylebox_override("hover", empty)
+	button.add_theme_stylebox_override("pressed", empty)
+	button.add_theme_stylebox_override("hover_pressed", empty)
+	button.add_theme_stylebox_override("focus", empty)
+	button.add_theme_stylebox_override("disabled", empty)
 	var icon := item.get("icon") as Texture2D
 	if icon != null:
 		button.icon = icon

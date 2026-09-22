@@ -577,25 +577,24 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="NEW_Settings" type="Control" parent="HudCanvas/HudPieces" unique_id=900000047]
+editor_description = "Click area hugs the drawn square. The picture stays at its native size and is shifted so the ink fills this box."
 anchors_preset = 0
-offset_left = 5.0
-offset_right = 167.0
-offset_bottom = 167.0
-pivot_offset = Vector2(81, 83.5)
+offset_left = -96.624756
+offset_top = 8.0
+offset_right = 48.375244
+offset_bottom = 159.0
+pivot_offset = Vector2(72.5, 75.5)
 mouse_default_cursor_shape = 2
 script = ExtResource("19_hud_piece")
 clickable = true
 use_alpha_hit = true
 
 [node name="ArtExit" type="TextureRect" parent="HudCanvas/HudPieces/NEW_Settings" unique_id=900000017]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -110.624756
-offset_right = -110.624756
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 0
+offset_left = -9.0
+offset_top = -8.0
+offset_right = 153.0
+offset_bottom = 159.0
 mouse_filter = 2
 texture = ExtResource("13_art_exit")
 expand_mode = 1
@@ -607,9 +606,6 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -108.687256
-offset_right = -105.99974
-offset_bottom = 3.5000153
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2

@@ -411,9 +411,6 @@ func _begin_exterior_transition() -> void:
 func _on_exit_trigger_body_entered(body: Node) -> void:
 	if body != _player or _is_transitioning or not _exit_trigger_armed:
 		return
-	_hint_hidden_this_visit = true
-	if is_instance_valid(_direction_hint):
-		_direction_hint.visible = false
 	call_deferred("_begin_basement_transition")
 
 
@@ -467,10 +464,6 @@ func _update_direction_hint(delta: float) -> void:
 	if _hint_should_stay_off():
 		_direction_hint.visible = false
 		return
-	if Input.is_action_pressed("move_right"):
-		_hint_hidden_this_visit = true
-		_direction_hint.visible = false
-		return
 	var dialogue_holds := _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue)
 	var pause_holds := get_tree() != null and get_tree().paused
 	if not dialogue_holds and not pause_holds:
@@ -478,6 +471,61 @@ func _update_direction_hint(delta: float) -> void:
 	_direction_hint.visible = bool(GameManager.corridor_from_locker) or _hint_elapsed >= HINT_WAIT_SEC
 	if _direction_hint.visible:
 		_sync_direction_hint()
+		if _hint_overlaps_player():
+			_hint_hidden_this_visit = true
+			GameManager.set_corridor_right_hint_done(true)
+			_direction_hint.visible = false
+
+
+func _hint_overlaps_player() -> bool:
+	if not is_instance_valid(_player) or not is_instance_valid(_direction_hint):
+		return false
+	var arrow := _direction_hint.get_node_or_null("Sprite") as Sprite2D
+	var mike := _player.get_node_or_null("AnimatedSprite") as AnimatedSprite2D
+	if arrow == null or mike == null or not mike.visible:
+		return false
+	var arrow_rect := _centered_sprite_global_rect(arrow, _sprite2d_size(arrow), arrow.offset, arrow.centered)
+	var mike_rect := _centered_sprite_global_rect(mike, _anim_frame_size(mike), mike.offset, mike.centered)
+	if arrow_rect.size.x <= 0.0 or arrow_rect.size.y <= 0.0:
+		return false
+	if mike_rect.size.x <= 0.0 or mike_rect.size.y <= 0.0:
+		return false
+	return arrow_rect.intersects(mike_rect, true)
+
+
+func _sprite2d_size(sprite: Sprite2D) -> Vector2:
+	if sprite.texture == null:
+		return Vector2.ZERO
+	if sprite.region_enabled:
+		return sprite.region_rect.size
+	return sprite.texture.get_size()
+
+
+func _anim_frame_size(sprite: AnimatedSprite2D) -> Vector2:
+	if sprite.sprite_frames == null:
+		return Vector2.ZERO
+	var anim := sprite.animation
+	if anim == StringName() or not sprite.sprite_frames.has_animation(anim):
+		return Vector2.ZERO
+	var tex := sprite.sprite_frames.get_frame_texture(anim, sprite.frame)
+	if tex == null:
+		return Vector2.ZERO
+	return tex.get_size()
+
+
+func _centered_sprite_global_rect(item: Node2D, tex_size: Vector2, sprite_offset: Vector2, centered: bool) -> Rect2:
+	if tex_size == Vector2.ZERO:
+		return Rect2()
+	var origin := sprite_offset
+	if centered:
+		origin -= tex_size * 0.5
+	var local := Rect2(origin, tex_size)
+	var xf := item.get_global_transform()
+	var rect := Rect2(xf * local.position, Vector2.ZERO)
+	rect = rect.expand(xf * (local.position + Vector2(local.size.x, 0.0)))
+	rect = rect.expand(xf * (local.position + local.size))
+	rect = rect.expand(xf * (local.position + Vector2(0.0, local.size.y)))
+	return rect
 
 
 func _hint_should_stay_off() -> bool:

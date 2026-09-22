@@ -15,6 +15,8 @@ const _CHIP_OUTLINE_BASE := 2
 @onready var _label: Label = $ViewportRoot/ChipRoot/BarPanel/InnerPanel/KeyLabel
 
 var _world_anchor := Vector2.ZERO
+var _below_sprite: CanvasItem = null
+var _below_gap_px := -1.0
 var _is_active := false
 var _crt_settled := false
 var _anim_token := 0
@@ -69,6 +71,30 @@ func set_world_anchor(world_pos: Vector2) -> void:
 		_update_screen_position()
 
 
+func show_prompt_below_sprite(sprite: CanvasItem, gap_px: float) -> void:
+	_below_sprite = sprite
+	_below_gap_px = gap_px
+	var anchor := Vector2.ZERO
+	if sprite is Node2D:
+		anchor = (sprite as Node2D).global_position
+	show_prompt(anchor)
+
+
+func show_prompt_below_sprite_immediate(sprite: CanvasItem, gap_px: float) -> void:
+	_below_sprite = sprite
+	_below_gap_px = gap_px
+	var anchor := Vector2.ZERO
+	if sprite is Node2D:
+		anchor = (sprite as Node2D).global_position
+	show_prompt_immediate(anchor)
+
+
+func anchored_hand_screen_rect() -> Rect2:
+	if _below_sprite == null or not is_instance_valid(_below_sprite):
+		return Rect2()
+	return _canvas_item_screen_rect(_below_sprite)
+
+
 func show_prompt(world_pos: Vector2) -> void:
 	_world_anchor = world_pos
 	if _is_active and _crt_settled:
@@ -94,6 +120,8 @@ func hide_prompt() -> void:
 func hide_prompt_immediate() -> void:
 	_anim_token += 1
 	CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
+	_below_sprite = null
+	_below_gap_px = -1.0
 	_is_active = false
 	_crt_settled = false
 	_root.visible = false
@@ -149,12 +177,19 @@ func _run_hide_async() -> void:
 	if not _host_alive() or token != _anim_token:
 		return
 	_is_active = false
+	_below_sprite = null
+	_below_gap_px = -1.0
 	_root.visible = false
 	set_process(false)
 	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
 
 
 func chip_screen_rect() -> Rect2:
+	if _using_hand_gap():
+		var placed := _hand_chip_top_left()
+		if placed.x > -100000.0:
+			var panel_size := _panel_size()
+			return Rect2(placed, panel_size)
 	var viewport := get_viewport()
 	if viewport == null:
 		return Rect2()
@@ -170,6 +205,11 @@ func chip_screen_rect() -> Rect2:
 
 
 func _update_screen_position() -> void:
+	if _using_hand_gap():
+		var placed := _hand_chip_top_left()
+		if placed.x > -100000.0:
+			_chip_root_position(placed)
+			return
 	var viewport := get_viewport()
 	if viewport == null:
 		return
@@ -182,6 +222,94 @@ func _update_screen_position() -> void:
 
 func _chip_root_position(pos: Vector2) -> void:
 	_root.position = pos
+
+
+func _using_hand_gap() -> bool:
+	return (
+		_below_gap_px >= 0.0
+		and _below_sprite != null
+		and is_instance_valid(_below_sprite)
+	)
+
+
+func _panel_size() -> Vector2:
+	var panel_size := _panel.size
+	if panel_size.x <= 1.0 or panel_size.y <= 1.0:
+		panel_size = _panel.get_combined_minimum_size()
+	if panel_size.x <= 1.0 or panel_size.y <= 1.0:
+		panel_size = Vector2(36.0, 28.0)
+	return panel_size
+
+
+func _hand_chip_top_left() -> Vector2:
+	var hand := _canvas_item_screen_rect(_below_sprite)
+	if hand.size.y <= 1.0:
+		return Vector2(-1000000.0, 0.0)
+	var panel_size := _panel_size()
+	return Vector2(hand.get_center().x - panel_size.x * 0.5, hand.end.y + _below_gap_px)
+
+
+func _canvas_item_screen_rect(item: CanvasItem) -> Rect2:
+	var local := _local_draw_rect(item)
+	if local.size.x <= 0.0 or local.size.y <= 0.0:
+		return Rect2()
+	var xf := item.get_global_transform_with_canvas()
+	var rect := Rect2(xf * local.position, Vector2.ZERO)
+	rect = rect.expand(xf * (local.position + Vector2(local.size.x, 0.0)))
+	rect = rect.expand(xf * (local.position + local.size))
+	rect = rect.expand(xf * (local.position + Vector2(0.0, local.size.y)))
+	return rect
+
+
+func _local_draw_rect(item: CanvasItem) -> Rect2:
+	var tex_size := Vector2.ZERO
+	var sprite_offset := Vector2.ZERO
+	var centered := true
+	if item is AnimatedSprite2D:
+		var anim := item as AnimatedSprite2D
+		sprite_offset = anim.offset
+		centered = anim.centered
+		tex_size = _anim_frame_size(anim)
+	elif item is Sprite2D:
+		var sprite := item as Sprite2D
+		sprite_offset = sprite.offset
+		centered = sprite.centered
+		if sprite.texture != null:
+			tex_size = sprite.region_rect.size if sprite.region_enabled else sprite.texture.get_size()
+	var ink := _ink_rect_from_parent(item)
+	if ink.size.x > 1.0 and ink.size.y > 1.0 and tex_size != Vector2.ZERO:
+		var origin := ink.position + sprite_offset
+		if centered:
+			origin -= tex_size * 0.5
+		return Rect2(origin, ink.size)
+	if tex_size == Vector2.ZERO:
+		return Rect2()
+	var fallback := sprite_offset
+	if centered:
+		fallback -= tex_size * 0.5
+	return Rect2(fallback, tex_size)
+
+
+func _ink_rect_from_parent(item: CanvasItem) -> Rect2:
+	var parent := item.get_parent()
+	if parent == null or not parent.has_method("ink_local_rect"):
+		return Rect2()
+	var got: Variant = parent.call("ink_local_rect")
+	if got is Rect2:
+		return got as Rect2
+	return Rect2()
+
+
+func _anim_frame_size(sprite: AnimatedSprite2D) -> Vector2:
+	if sprite.sprite_frames == null:
+		return Vector2.ZERO
+	var anim := sprite.animation
+	if anim == StringName() or not sprite.sprite_frames.has_animation(anim):
+		return Vector2.ZERO
+	var tex := sprite.sprite_frames.get_frame_texture(anim, sprite.frame)
+	if tex == null:
+		return Vector2.ZERO
+	return tex.get_size()
 
 
 func _set_ignore_mouse_recursive(n: Node) -> void:

@@ -11,7 +11,7 @@ Prefer the **live project tree** when this file and disk disagree — update thi
 
 ## Current top-level layout (live)
 
-- `assets/` — runtime art (`sprites/`, `ui/title_backdrop.png`) and game audio (`audio/` — typewriter WAVs plus `music/` `.ogg` stems: live `B_Goes_Down_p2` menu / `B_Goes_Down_p1` overworld; combat casino `casino_Drums_p1`/`p2`, `casino_p1`/`p2`, `casino_like_that`; unused on-disk `B_Goes_Down_Drums_*`, `p3`/`p4`)
+- `assets/` — runtime art (`sprites/`, `ui/title_backdrop.png`) and game audio (`audio/` — typewriter WAVs plus `music/` stems: live `B_Goes_Down_p2.ogg` menu / `B_Goes_Down_p1.ogg` rooms / `B_Goes_Down_Drums_p1.wav` fight / `B_Goes_Down_Drums_p2.wav` Vice Round and Free Spins; unused on-disk `B_Goes_Down_p3`/`p4`)
 - `default_bus_layout.tres` — `Master`, `Music` (~`-12` dB), `Typewriter` (typing loop), `TypewriterOpen` (bar open/close + Panner)
 - `scenes/`
   - `Main_Menu/`, `Arc_1/` … `Arc_7/`, `Endings/`

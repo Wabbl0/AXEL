@@ -7,7 +7,7 @@ const POS_TOLERANCE := 2.0
 const SIZE_TOLERANCE := 1.5
 
 const EXPECTED := {
-	"NEW_Settings": [5.0, 0.0, 162.0, 167.0],
+	"NEW_Settings": [-96.624756, 8.0, 145.0, 151.0],
 	"NEW_Goal": [76.0, 190.0, 775.0, 571.0],
 	"NEW_Items": [76.0, 791.0, 782.0, 1222.0],
 	"NEW_Bets": [64.0, 2041.0, 793.0, 381.0],
@@ -85,7 +85,7 @@ func _check_native_art_size(piece: Control, name: String) -> void:
 	if art == null or art.texture == null:
 		return
 	var native := Vector2(art.texture.get_width(), art.texture.get_height())
-	_expect(name, "native art size", _plate_rect(piece).size, native, SIZE_TOLERANCE)
+	_expect(name, "native art size", _plate_rect(art).size, native, SIZE_TOLERANCE)
 
 
 func _check_on_plate(canvas: Control) -> void:
@@ -103,7 +103,12 @@ func _check_on_plate(canvas: Control) -> void:
 		if r.size.x <= 1.0 or r.size.y <= 1.0:
 			_fail("%s has no size (%s)" % [ctrl.name, r.size])
 			continue
-		if r.position.x < -POS_TOLERANCE or r.position.y < -POS_TOLERANCE \
+		var min_x := -POS_TOLERANCE
+		var parent := ctrl.get_parent()
+		if ctrl.name == "NEW_Settings" or (parent != null and parent.name == "NEW_Settings"):
+			# The settings square sits in the left window margin, just off the plate.
+			min_x = -100.0
+		if r.position.x < min_x or r.position.y < -POS_TOLERANCE \
 				or r.position.x + r.size.x > PLATE.x + POS_TOLERANCE \
 				or r.position.y + r.size.y > PLATE.y + POS_TOLERANCE:
 			_fail("%s leaves the plate: %s" % [ctrl.name, r])

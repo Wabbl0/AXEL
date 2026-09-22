@@ -100,9 +100,9 @@ func set_goal_progress(ratio: float) -> void:
 	var t := clampf(ratio, 0.0, 1.0)
 	_grime.color.a = t * 0.28
 	if _grime_band != null:
-		_grime_band.size = Vector2(_grime.size.x, maxf(8.0, _grime.size.y * t * 0.35))
-		_grime_band.position = Vector2(0.0, _grime.size.y - _grime_band.size.y)
-		_grime_band.color.a = t * 0.45
+		_grime_band.size = Vector2.ZERO
+		_grime_band.position = Vector2.ZERO
+		_grime_band.color.a = 0.0
 
 
 func highlight_power(_id_name: StringName) -> void:

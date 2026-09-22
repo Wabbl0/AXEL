@@ -23,8 +23,10 @@ const _SIZE_CANDIDATES: PackedStringArray = [
 	"1280x720", "1366x768", "1600x900", "1920x1080",
 	"1920x1200", "1920x1280", "2560x1440", "3840x2160",
 ]
+const _BAR_SCREEN_FRACTION := 1.0 / 3.0
 
 var _listening_action := ""
+var _sliders: Array[HSlider] = []
 var _rebind_buttons: Dictionary = {}
 var _size_option: OptionButton
 var _time := 0.0
@@ -71,6 +73,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _build() -> void:
+	_sliders.clear()
 	for child in get_children():
 		child.queue_free()
 	var scroll := ScrollContainer.new()
@@ -81,6 +84,7 @@ func _build() -> void:
 	scroll.offset_bottom = -48
 	scroll.focus_mode = Control.FOCUS_NONE
 	scroll.follow_focus = true
+	MenuLook.apply_scroll(scroll)
 	add_child(scroll)
 
 	var col := VBoxContainer.new()
@@ -148,11 +152,12 @@ func _slider(col: VBoxContainer, caption: String, section: String, key: String, 
 	slider.min_value = lo
 	slider.max_value = hi
 	slider.step = 0.01 if hi <= 2.0 else 1.0
-	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pin_slider(slider)
 	slider.value = float(AxelSettings.get_value(section, key))
 	slider.value_changed.connect(func(v: float) -> void:
 		AxelSettings.set_value(section, key, v)
 	)
+	MenuLook.apply_slider(slider)
 	row.add_child(name)
 	row.add_child(slider)
 	col.add_child(row)
@@ -168,11 +173,12 @@ func _int_slider(col: VBoxContainer, caption: String, section: String, key: Stri
 	slider.min_value = lo
 	slider.max_value = hi
 	slider.step = 1
-	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pin_slider(slider)
 	slider.value = int(AxelSettings.get_value(section, key))
 	slider.value_changed.connect(func(v: float) -> void:
 		AxelSettings.set_value(section, key, int(v))
 	)
+	MenuLook.apply_slider(slider)
 	row.add_child(name)
 	row.add_child(slider)
 	col.add_child(row)
@@ -266,6 +272,15 @@ func _binding_label(action: String) -> String:
 	return events[0].as_text()
 
 
-func _apply_scale() -> void:
+func _pin_slider(slider: HSlider) -> void:
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_sliders.append(slider)
 
-	pass
+
+func _apply_scale() -> void:
+	var screen_w := get_viewport().get_visible_rect().size.x
+	if screen_w <= 1.0:
+		return
+	var bar_w := screen_w * _BAR_SCREEN_FRACTION
+	for slider in _sliders:
+		slider.custom_minimum_size.x = bar_w

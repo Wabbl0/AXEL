@@ -11,7 +11,6 @@ var item_id: String = ""
 var room_path: String = ""
 var slot_index: int = -1
 
-var _prompt: Node
 var _info_card: Node
 var _player_inside := false
 var _taken := false
@@ -19,12 +18,11 @@ var _marker: Node2D = null
 
 
 func setup(
-	new_item_id: String, new_room_path: String, index: int, prompt: Node, info_card: Node = null
+	new_item_id: String, new_room_path: String, index: int, info_card: Node = null
 ) -> void:
 	item_id = new_item_id
 	room_path = new_room_path
 	slot_index = index
-	_prompt = prompt
 	_info_card = info_card
 
 
@@ -58,9 +56,12 @@ func _build_visual() -> void:
 	var layer := _player_layer()
 	if layer != null:
 		layer.add_child(marker)
+		layer.move_child(marker, 0)
 	else:
 		add_child(marker)
 	_marker = marker
+	if marker.has_method("set_rarity_glyph"):
+		marker.call("set_rarity_glyph", ItemDef.rarity_glyph(_item_def()))
 
 
 func _player_layer() -> Node:
@@ -97,8 +98,7 @@ func display_name() -> String:
 	var item := _item_def()
 	if item == null:
 		return item_id
-	var name_text := String(item.get("display_name"))
-	return name_text if not name_text.is_empty() else item_id
+	return ItemDef.rarity_name(item)
 
 
 func description() -> String:
@@ -112,14 +112,14 @@ func _on_body_entered(body: Node) -> void:
 	if _taken or not _is_player(body):
 		return
 	_player_inside = true
-	_show_prompt()
+	_show_info_card()
 
 
 func _on_body_exited(body: Node) -> void:
 	if not _is_player(body):
 		return
 	_player_inside = false
-	_hide_prompt()
+	_hide_info_card()
 
 
 static func _is_player(body: Node) -> bool:
@@ -143,7 +143,7 @@ func _take() -> void:
 	if _taken:
 		return
 	_taken = true
-	_hide_prompt_immediate()
+	_hide_info_card_immediate()
 	visible = false
 	monitoring = false
 	if is_instance_valid(_marker):
@@ -155,41 +155,31 @@ func _take() -> void:
 	world.call("start_fight_here", REASON_ITEM)
 
 
-func _show_prompt() -> void:
-	_show_info_card()
-	if _prompt == null or not is_instance_valid(_prompt):
-		return
-	if _prompt.has_method("show_prompt"):
-		_prompt.call("show_prompt", global_position)
-
-
-func _hide_prompt() -> void:
-	_hide_info_card()
-	if _prompt == null or not is_instance_valid(_prompt):
-		return
-	if _prompt.has_method("hide_prompt"):
-		_prompt.call("hide_prompt")
-
-
-func _hide_prompt_immediate() -> void:
-	_hide_info_card()
-	if _prompt == null or not is_instance_valid(_prompt):
-		return
-	if _prompt.has_method("hide_prompt_immediate"):
-		_prompt.call("hide_prompt_immediate")
-	elif _prompt.has_method("hide_prompt"):
-		_prompt.call("hide_prompt")
-
-
 func _show_info_card() -> void:
 	if _info_card == null or not is_instance_valid(_info_card):
 		return
 	if _info_card.has_method("show_item"):
-		_info_card.call("show_item", global_position, display_name(), description(), _icon_texture())
+		_info_card.call(
+			"show_item",
+			global_position,
+			display_name(),
+			description(),
+			_icon_texture(),
+			_marker
+		)
 
 
 func _hide_info_card() -> void:
 	if _info_card == null or not is_instance_valid(_info_card):
 		return
 	if _info_card.has_method("hide_card"):
+		_info_card.call("hide_card")
+
+
+func _hide_info_card_immediate() -> void:
+	if _info_card == null or not is_instance_valid(_info_card):
+		return
+	if _info_card.has_method("hide_card_immediate"):
+		_info_card.call("hide_card_immediate")
+	elif _info_card.has_method("hide_card"):
 		_info_card.call("hide_card")

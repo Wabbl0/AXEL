@@ -18,6 +18,7 @@ var glyphs: Dictionary = {}
 var meter_frac_accum: float = 0.0
 var chaining: bool = false
 var girl_power_this_spin: bool = false
+var _procs: Array[StringName] = []
 
 
 func reset_encounter() -> void:
@@ -42,6 +43,51 @@ func reset_spin() -> void:
 	chaining = false
 	girl_power_this_spin = false
 	glyphs.clear()
+
+
+func note_proc(item: Resource) -> void:
+	if item == null:
+		return
+	var item_id := StringName(str(item.get("id")))
+	if item_id == &"":
+		return
+	_procs.append(item_id)
+
+
+func note_effect(items: Array, effect_id: StringName) -> void:
+	for item in items:
+		if _eff(item) == effect_id:
+			note_proc(item)
+
+
+func note_same_params(items: Array, params: Dictionary) -> void:
+	for item in items:
+		if _params(item) == params:
+			note_proc(item)
+			return
+
+
+func note_paid_spin_passives(items: Array) -> void:
+	for item in items:
+		var eid := _eff(item)
+		var p := _params(item)
+		var hit := false
+		match eid:
+			&"paid_spin_payout_scalar":
+				hit = float(p.get("per_paid_spin", 0.0)) > 0.0
+			&"spawn_weight_normals", &"power_symbol_weight", &"girl_power_chance":
+				hit = true
+			&"sealed_grid":
+				hit = float(p.get("payout_bonus", 0.0)) > 0.0
+		if hit:
+			note_proc(item)
+
+
+func drain_procs() -> Array[StringName]:
+	var out: Array[StringName] = []
+	out.assign(_procs)
+	_procs.clear()
+	return out
 
 
 func _eff(item: Resource) -> StringName:
@@ -172,27 +218,39 @@ func apply_weights(items: Array, base_weights: Dictionary, symbols_by_id: Dictio
 	return weights
 
 
-func line_payout_bonus(items: Array, symbol_tier: int, power_id: StringName, in_trinity: bool) -> float:
+func line_payout_bonus(
+	items: Array,
+	symbol_tier: int,
+	power_id: StringName,
+	in_trinity: bool,
+	record_procs: bool = false
+) -> float:
 	var bonus := 0.0
 	for item in items:
 		var eid := _eff(item)
 		var p := _params(item)
+		var add := 0.0
 		match eid:
 			&"normal_payout_bonus":
 				if symbol_tier == 0:
-					bonus += float(p.get("amount", 0.0))
+					add = float(p.get("amount", 0.0))
 			&"girl_power_chance":
 				if symbol_tier == 0:
-					bonus += float(p.get("normal_value", 0.0))
+					add = float(p.get("normal_value", 0.0))
 			&"power_payout_bonus":
 				if power_id != &"" and StringName(str(p.get("power", ""))) == power_id:
-					bonus += float(p.get("amount", 0.0))
+					add = float(p.get("amount", 0.0))
 			&"power_symbol_weight":
 				if power_id != &"":
-					bonus += float(p.get("payout", 0.0))
+					add = float(p.get("payout", 0.0))
 			&"trinity_run":
 				if in_trinity and symbol_tier == 0:
-					bonus += float(p.get("normal_payout", 0.0))
+					add = float(p.get("normal_payout", 0.0))
+		if add == 0.0:
+			continue
+		bonus += add
+		if record_procs:
+			note_proc(item)
 	if in_trinity:
 		bonus += trinity_win_scalar_accum
 	return bonus
@@ -364,6 +422,7 @@ func roll_glyphs(items: Array, rng: CombatRNG) -> void:
 	var n: int = mini(int(gp["cells"]), 25)
 	if n <= 0 or rng == null:
 		return
+	note_effect(items, &"corner_glyphs")
 	var used: Dictionary = {}
 	for _i in n:
 		var tries := 0
@@ -445,18 +504,22 @@ func extra_wilds_for_create(items: Array, rng: CombatRNG) -> int:
 		var p := _params(item)
 		if bool(p.get("always", false)):
 			extra += 1
+			note_proc(item)
 			continue
 		if bool(p.get("first_each_spin", false)):
 			if first_wild_this_spin:
 				extra += 1
+				note_proc(item)
 			continue
 		var every_nth := int(p.get("every_nth", 0))
 		if every_nth > 0 and wilds_created_encounter % every_nth == 0:
 			extra += 1
+			note_proc(item)
 			continue
 		var chance := float(p.get("chance", 0.0))
 		if chance > 0.0 and rng != null and rng.randf() <= chance:
 			extra += 1
+			note_proc(item)
 	first_wild_this_spin = false
 	return extra
 

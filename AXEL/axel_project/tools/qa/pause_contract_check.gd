@@ -83,19 +83,23 @@ func _main() -> void:
 
 
 		var pause_menu := pause.get_node_or_null("AxelPauseMenu")
-		if pause_menu == null or not pause_menu.has_method("_open_inventory"):
-			_fail("pause menu missing inventory")
+		if pause_menu == null or not pause_menu.has_method("_fill_loadout"):
+			_fail("pause menu missing loadout")
 		else:
-			pause_menu.call("_open_inventory")
+			_assert_no_inventory_button(pause_menu)
+			pause_menu.call("_fill_loadout")
 			await process_frame
 			_assert_inventory_clean(pause_menu, "")
 			var run := root.get_node_or_null("AxelRun")
 			if run != null:
-				run.state.owned_item_ids = PackedStringArray(["C1"])
-				pause_menu.call("_fill_inventory")
+				run.state.owned_item_ids = PackedStringArray(["C1", "C2"])
+				run.state.equipped_item_ids = PackedStringArray(["C1"])
+				pause_menu.call("_fill_loadout")
 				await process_frame
 				_assert_inventory_clean(pause_menu, "Ash Spin Token")
+				_assert_loadout_details(pause_menu)
 				run.state.owned_item_ids = PackedStringArray()
+				run.state.equipped_item_ids = PackedStringArray()
 			if pause_menu.has_method("_show_main"):
 				pause_menu.call("_show_main")
 
@@ -118,7 +122,7 @@ func _main() -> void:
 			if overlay.has_method("interrupt_line"):
 				overlay.call("interrupt_line")
 
-	if change_scene_to_file("res://combat/combat_run.tscn") == OK:
+	if change_scene_to_file("res://combat/combat_test.tscn") == OK:
 		for _i in 12:
 			await process_frame
 		if bool(pause.call("request_pause")):
@@ -130,7 +134,7 @@ func _main() -> void:
 		else:
 			_fail("pause should be allowed in combat")
 	else:
-		_fail("could not load combat_run")
+		_fail("could not load combat_test")
 
 	if _failures.is_empty():
 		print("Pause contract check OK.")
@@ -142,7 +146,7 @@ func _main() -> void:
 
 
 func _assert_inventory_clean(menu: Node, must_contain: String) -> void:
-	var box := menu.get("_inventory") as Node
+	var box := menu.find_child("LoadoutList", true, false) as Node
 	if box == null:
 		_fail("pause inventory box missing")
 		return
@@ -165,6 +169,40 @@ func _assert_inventory_clean(menu: Node, must_contain: String) -> void:
 				break
 		if not saw_full:
 			_fail("pause inventory icon resolution is not 1024x1024")
+
+
+func _assert_no_inventory_button(menu: Node) -> void:
+	for node in menu.find_children("*", "Button", true, false):
+		var button := node as Button
+		if button != null and button.text == "Inventory":
+			_fail("pause menu still has an Inventory button")
+
+
+func _assert_loadout_details(menu: Node) -> void:
+	var cap := menu.find_child("EquipCap", true, false) as Label
+	if cap == null or cap.text != "1/7":
+		_fail("equip cap should read 1/7, got %s" % (cap.text if cap != null else "missing"))
+	var box := menu.find_child("LoadoutList", true, false) as Node
+	if box == null:
+		return
+	var texts: PackedStringArray = PackedStringArray()
+	_collect_labels(box, texts)
+	var blob := " ".join(texts)
+	if not blob.contains("Chalk Dust"):
+		_fail("pause loadout missing second owned item")
+	if not blob.contains("paid spin"):
+		_fail("pause loadout missing item description")
+	var equipped_on := false
+	var boxes := 0
+	for node in box.find_children("*", "CheckBox", true, false):
+		var check := node as CheckBox
+		boxes += 1
+		if check.button_pressed:
+			equipped_on = true
+	if boxes < 2:
+		_fail("pause loadout should have an equip box per combat item")
+	if not equipped_on:
+		_fail("equipped item checkbox should be on")
 
 
 func _collect_labels(node: Node, texts: PackedStringArray) -> void:

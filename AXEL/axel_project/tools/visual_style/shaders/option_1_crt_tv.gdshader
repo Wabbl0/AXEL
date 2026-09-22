@@ -16,6 +16,11 @@ uniform float noise_amount : hint_range(0.0, 0.2) = 0.06;
 uniform float interference : hint_range(0.0, 1.0) = 0.18;
 uniform float roll_amount : hint_range(0.0, 1.0) = 0.35;
 uniform float roll_speed : hint_range(-8.0, 8.0) = 2.4;
+uniform float roll_manual = 0.0;
+uniform float roll_center = 1.5;
+uniform vec3 roll_color = vec3(0.0, 0.0, 0.0);
+uniform float roll_color_strength : hint_range(0.0, 1.0) = 0.50;
+uniform float roll_warp = 0.0045;
 uniform float glitch_rate : hint_range(0.0, 12.0) = 4.5;
 uniform float glitch_shift : hint_range(0.0, 0.02) = 0.006;
 uniform float player_chroma : hint_range(0.0, 0.01) = 0.001;
@@ -51,8 +56,14 @@ void fragment() {
 	float burst_on = step(0.72, hash21(vec2(burst_id, 1.7)));
 	float burst_y = hash21(vec2(burst_id, 9.3));
 	float burst_band = burst_on * (1.0 - smoothstep(0.0, 0.035, abs(uv_screen.y - burst_y)));
+	float roll_on = step(0.001, roll_amount);
+	float manual_band = 1.0 - smoothstep(0.02, 0.10, abs(uv_screen.y - roll_center));
+	float timed_band = smoothstep(0.92, 1.0, fract(uv_screen.y * 0.5 + t * roll_speed * 0.08));
+	float roll_band = mix(timed_band, manual_band, step(0.5, roll_manual));
+	float wave = roll_band * roll_on;
 	vec2 uv = uv_screen;
 	uv.x += (hash21(vec2(burst_id, uv_screen.y * 120.0)) - 0.5) * glitch_shift * burst_band;
+	uv.x += wave * roll_warp;
 
 	uv = curve_uv(uv, curvature);
 
@@ -71,10 +82,8 @@ void fragment() {
 	float mask = sin(uv_safe.x * 920.0) * 0.5 + 0.5;
 	col = mix(col, col * 0.86, mask * mask_strength);
 
-	// Rolling bright line (old TV roll)
-	float roll = fract(uv_safe.y * 0.5 + t * roll_speed * 0.08);
-	float roll_line = smoothstep(0.92, 1.0, roll) * roll_amount;
-	col += vec3(roll_line * 0.12, 0.0, 0.0);
+	// Black bar. The picture shift above is the warp.
+	col = mix(col, roll_color, wave * roll_color_strength);
 
 	// Interference + white static grain
 	float grain_t = floor(t * 18.0);

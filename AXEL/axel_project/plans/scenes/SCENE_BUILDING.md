@@ -95,9 +95,9 @@ Root (`extends ExplorationRoom`)
 
 **Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Stretch stays disabled; the overlay itself recomputes dialogue font size and outline from viewport height so the text-to-window ratio stays constant in a separate fullscreen window. Baseline scene value is `32`, but the live dialogue baseline is `48` at `1920×1280` (1.5x boost, rounded to an integer so VT323 stays crisp). Keep padding/margins authored; let the bar height grow to fit the full line instead of clipping bigger text. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Typing ticks use the `Typewriter` bus; open/close uses `TypewriterOpen` (Panner for the bar click only). Per-clip mix is `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players.
 
-**Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; combat casino layers via `to_combat` / first-win / Vice Round hooks). Loudness: `Music` bus in `default_bus_layout.tres`.
+**Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; a fight keeps `p1` and fades in `B_Goes_Down_Drums_p1` over 10s; `B_Goes_Down_Drums_p2` fades in for Vice Round and stays through Free Spins if that round leads there). Loudness: `Music` bus in `default_bus_layout.tres`.
 
-**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25` + shared white outer-glow `Halo` (`memory_outer_glow.gdshader`). The glow captures its editor position and remaps on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked. Set `memory_key` (or `collected_bool_property` for the desk) and `interact_area_path` on the instance so the glow hides itself and disables the walk-up box when collected. Do not copy `_sync_memory_indicator` / `_apply_collected_memory` into a new room.
+**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25`. The blob is red; the shared outer-glow `Halo` (`memory_outer_glow.gdshader`) stays white. The glow captures its editor position and remaps on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked. Set `memory_key` (or `collected_bool_property` for the desk) and `interact_area_path` on the instance so the glow hides itself and disables the walk-up box when collected. Do not copy `_sync_memory_indicator` / `_apply_collected_memory` into a new room.
 
 **Player packed scene:** instance `scenes/player/Player.tscn` under `PlayerLayer`. Keep that room’s authored `position` / `scale` / `speed` (and collision extras if that room already had them). Do not paste a new AnimatedSprite + ShadowOutline tree. Silhouette numbers stay on the packed scene.
 
@@ -274,9 +274,9 @@ must sit on their node. No extra offset.
   `MemoryInteractArea` to the same editor point as the glow node.
 - `[E]` chip: `InteractPromptOverlay.screen_offset` stays `Vector2.ZERO`
   (shared default). Do not put a scene-wide override on the overlay node.
-  Item floor chips are a second overlay (`WorldItemPromptOverlay`) with
-  `screen_offset = Vector2(3, 0)` only. The walk-near card sits **under** that
-  chip. Door chips may stay visible during dialogue.
+  Floor items do not use a second `[E]` chip. The walk-near card sits 10px
+  under the painted hand and carries `[E]` on its bottom-right line. Door
+  chips may stay visible during dialogue.
 
 Cover-fit remap (`env.to_global(_foo_tex)` from that node’s own editor
 position) is **not** an offset. Child `position`, `visual_offset`, and

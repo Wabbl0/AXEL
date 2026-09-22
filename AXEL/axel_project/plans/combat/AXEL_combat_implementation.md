@@ -9,7 +9,7 @@ Companion to `AXEL_combat_design.md`. This file is the engineering plan: project
 ## 0. Before you write code
 
 1. **Install:** Godot 4.x (LTS) + the `godot-tools` extension for Cursor.
-2. **Repo hygiene:** combat layer lives in `res://combat/` as a self-contained subsystem. It should be runnable in isolation via a test scene (`res://combat/combat_test.tscn`) — you want to iterate on combat without launching the whole school. Standalone F6 is that scene. Autoload `AxelCombatDevTools` (`scripts/debug/axel_combat_dev_tools.gd`) is editor/debug-only (`OS.is_debug_build()`); it must not change release RNG. BGM is autoload `AxelMusic` — `combat_root` calls `notify_first_win` / `notify_trinity` / `reset_combat_encounter` and must not await audio.
+2. **Repo hygiene:** combat layer lives in `res://combat/` as a self-contained subsystem. It should be runnable in isolation via a test scene (`res://combat/combat_test.tscn`) — you want to iterate on combat without launching the whole school. Standalone F6 is that scene. Autoload `AxelCombatDevTools` (`scripts/debug/axel_combat_dev_tools.gd`) is editor/debug-only (`OS.is_debug_build()`); it must not change release RNG. BGM is autoload `AxelMusic` — `combat_root` calls `notify_trinity` / `notify_trinity_ended` / `notify_free_spins_ended` / `reset_combat_encounter` and must not await audio.
 3. **Asset plan:** symbol sprites are 128×128 PNGs under `res://combat/art/grid_symbols/`. Suit symbols (square / triangle / star / heart; files still named `green_circle` / `yellow_triangle` / `blue_star` / `red_heart`) are hollow **red** outlines with the same stroke, carved from Unicode silhouettes (■ ▲ ★ ♥) so they have no fill. Premium / wild (cigarette, bottle, hand, skull) are **hand-authored** — `python combat/art/generate_placeholders.py` must not redraw them; it only adds a 1px faint white halo on the wild (`satanic_wild`). Cigarette / alcohol / bloody hand stay without a halo (`tools/combat/strip_premium_halo.gd` if one reappears). Don't block on final art — all symbols are data-driven by ID, so sprites can be swapped without touching code.
 4. **Tooling target:** keep combat deterministic when seeded. All randomness goes through a single `RNG` instance on the encounter state — never `randi()` directly. This is essential for bug-repro and for supporting a "daily seed" run later.
 
@@ -19,8 +19,7 @@ Companion to `AXEL_combat_design.md`. This file is the engineering plan: project
 
 ```
 res://combat/
-├── combat_test.tscn            # standalone F6 catalog tool
-├── combat_run.tscn             # player fight host (world / act)
+├── combat_test.tscn            # F6 catalog tool and world-fight host
 ├── scenes/
 │   ├── combat_root.tscn        # grid + HUD; center PowerIntroIcon names the acting power
 │   └── symbol.tscn             # one cell's renderable symbol
@@ -46,7 +45,7 @@ res://combat/
 └── art/grid_symbols/
 ```
 
-> **RunState status:** `combat/scripts/run_state.gd` is live (`class_name RunState`). Autoload `AxelRun` owns the instance and serializes it through `AxelSaves` (three slots under `user://saves/`). There is no `RunState` autoload and no `user://run.save`. Goal text is `%GoalLabel` in `combat_test.tscn` / `combat_run.tscn`. `combat/scenes/goal_hud.tscn` was archived 2026-09-17. Do not restore `RightMeterStack` / `PremiumMeterCircle` / `premium_meter_circle.gd` (deleted, not archived) or the `FeelWinLines` overlay.
+> **RunState status:** `combat/scripts/run_state.gd` is live (`class_name RunState`). Autoload `AxelRun` owns the instance and serializes it through `AxelSaves` (three slots under `user://saves/`). There is no `RunState` autoload and no `user://run.save`. Goal text is `%GoalLabel` in `combat_test.tscn`. `combat/scenes/goal_hud.tscn` was archived 2026-09-17. Do not restore `RightMeterStack` / `PremiumMeterCircle` / `premium_meter_circle.gd` (deleted, not archived) or the `FeelWinLines` overlay.
 
 Rule of thumb: if a thing is *content* (a symbol type, a goal type, an item), make it a `Resource`. If it's *behavior*, make it a script on a Node. Content should be editable in the Godot inspector without recompiling logic.
 
@@ -219,7 +218,7 @@ func spin() -> void:
         end_encounter(true)
     elif not can_afford_next_paid_spin():
         end_encounter(false)
-    # Live fights do not fail at encounter.spin_budget. F6 Limit spins is the only cap.
+    # Fights end on can't-afford or GOAL. No playtest spin-budget cap.
     state = State.IDLE
 ```
 
@@ -439,7 +438,7 @@ Ship those before filling out the full table from design doc §6.
 ## 10. UI / renderer
 
 - Grid: a `GridContainer` with 25 `TextureRect` children, each bound to a cell. Listen to `grid_populated`, `cells_cleared`, `symbols_fell`, `symbols_spawned` — animate from signal payloads. Keep animations short (≤200ms per step) so cascade chains don't drag. **One exception:** the ~1.9 s board swap on `grid_populated` (§5). It happens once per fresh board, never inside a cascade chain.
-- HUD: current goal text + progress (`%GoalLabel`, not `goal_hud.tscn`), spin budget remaining, current multiplier, stake, Vice **skull** meter (3 sections; `premium_skull_meter.gd` + `meter.gd`). No ring widget. No match win-line overlay (`FeelWinLines` / `show_win_lines` gone). Paid spin uses the `interact` action (E/Space/Enter + pad A) and the EXECUTE piece. The acting power is named by the center power-intro flash, not by a portrait — the old dim corner icon row was removed.
+- HUD: current goal text + progress (`%GoalLabel`, not `goal_hud.tscn`), current multiplier, stake, Vice **skull** meter (3 sections; `premium_skull_meter.gd` + `meter.gd`). No spin-budget readout. Limit spins / Budget / Used are stripped. The lower-grid `FeelGrimeBand` stays hidden. Round winnings, the cascade multiplier, and the selected bet are white. No ring widget. No match win-line overlay (`FeelWinLines` / `show_win_lines` gone). Paid spin uses the `interact` action (E/Space/Enter + pad A) and the EXECUTE piece. The acting power is named by the center power-intro flash, not by a portrait — the old dim corner icon row was removed.
 - Free Spins HUD: chosen power, spins remaining, carry multiplier, total-spin-cap progress.
 - **Feel FX to ship early:** CRT scanline shader overlay (carry from prototype), glitch flash on big multipliers, screen shake scaled to multiplier value. Audio: muffled stab on power trigger, a quiet tone on grid clear. Big wins should feel *wrong* — see design doc §7.
 
@@ -468,7 +467,7 @@ Write headless tests (no scene tree) for:
 
 Use [GUT](https://github.com/bitwes/Gut) or `gdunit4` for the runner — both work fine in Cursor.
 
-For visual iteration, keep `combat_test.tscn` bound to F5 with a dropdown to pick encounter and seed.
+For visual iteration, F6 `combat_test.tscn` (Play Scene). That same scene is the live fight host. The catalog dropdown is the F6 tool; a live fight hides it and shows equipped items (the locker tutorial shows the empty DVD).
 
 ---
 

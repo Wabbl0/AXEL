@@ -44,6 +44,80 @@ static func apply_button(button: Button, size_px: int = 36, h_flags: int = Contr
 	button.add_theme_stylebox_override("focus", _button_focus_style())
 
 
+static func apply_slider(slider: HSlider) -> void:
+	slider.add_theme_font_override("font", FONT)
+	slider.add_theme_stylebox_override("slider", _slider_track())
+	slider.add_theme_stylebox_override("grabber_area", _slider_fill())
+	slider.add_theme_stylebox_override("grabber_area_highlight", _slider_fill())
+	var grab := _pixel_texture(ACCENT, 14, 22)
+	slider.add_theme_icon_override("grabber", grab)
+	slider.add_theme_icon_override("grabber_highlight", grab)
+	slider.add_theme_icon_override("grabber_disabled", _pixel_texture(DIM, 14, 22))
+	slider.custom_minimum_size.y = 28
+
+
+static func apply_scroll(scroll: ScrollContainer) -> void:
+	var theme := Theme.new()
+	theme.default_font = FONT
+	var track := _scroll_track()
+	var grab := _scroll_grab()
+	var blank := _pixel_texture(Color(0, 0, 0, 0), 8, 8)
+	for bar in ["VScrollBar", "HScrollBar"]:
+		theme.set_stylebox("scroll", bar, track)
+		theme.set_stylebox("scroll_focus", bar, track)
+		theme.set_stylebox("grabber", bar, grab)
+		theme.set_stylebox("grabber_highlight", bar, grab)
+		theme.set_stylebox("grabber_pressed", bar, grab)
+		for icon_name in [
+			"increment", "increment_highlight", "increment_pressed",
+			"decrement", "decrement_highlight", "decrement_pressed",
+		]:
+			theme.set_icon(icon_name, bar, blank)
+	scroll.theme = theme
+
+
+static func _slider_track() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.0, 0.0, 1.0)
+	style.border_color = ACCENT
+	style.set_border_width_all(1)
+	style.anti_aliasing = false
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	return style
+
+
+static func _slider_fill() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.45, 0.04, 0.04, 1.0)
+	style.anti_aliasing = false
+	return style
+
+
+static func _scroll_track() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 1.0)
+	style.anti_aliasing = false
+	return style
+
+
+static func _scroll_grab() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = ACCENT
+	style.anti_aliasing = false
+	style.content_margin_left = 2
+	style.content_margin_right = 2
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
+	return style
+
+
+static func _pixel_texture(color: Color, w: int, h: int) -> Texture2D:
+	var image := Image.create(maxi(w, 1), maxi(h, 1), false, Image.FORMAT_RGBA8)
+	image.fill(color)
+	return ImageTexture.create_from_image(image)
+
+
 static func make_chrome_layer(parent: Node) -> CanvasLayer:
 	var layer := CanvasLayer.new()
 	layer.name = "MenuChrome"

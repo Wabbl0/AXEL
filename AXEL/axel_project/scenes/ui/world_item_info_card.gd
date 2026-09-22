@@ -1,24 +1,30 @@
 extends CanvasLayer
 
+const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
+
 const CARD_LAYER := 109
 const ICON_PX := 64.0
 const NAME_FONT := 26
 const DESC_FONT := 20
-const CARD_WIDTH := 280.0
-const CHIP_GAP_PX := 20.0
+const KEY_TEXT := "[E]"
+const HAND_GAP_PX := 10.0
 const WINDOW_PAD := 8.0
 const ROW_SEP := 12.0
-const PANEL_PAD_X := 24.0
 
 var _root: Control
 var _panel: PanelContainer
+var _beam: ColorRect
+var _bloom: ColorRect
 var _icon: TextureRect
 var _text_col: VBoxContainer
 var _name_label: Label
 var _desc_label: Label
+var _key_label: Label
 var _world_anchor := Vector2.ZERO
+var _anchor: Node
 var _shown := false
-var _chip_host: Node
+var _crt_settled := false
+var _anim_token := 0
 
 
 func _ready() -> void:
@@ -28,11 +34,10 @@ func _ready() -> void:
 	_apply_scale()
 	get_viewport().size_changed.connect(_apply_scale)
 	_root.visible = false
+	_root.modulate.a = 0.0
 	set_process(false)
-
-
-func bind_chip_host(host: Node) -> void:
-	_chip_host = host
+	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
+	tree_exiting.connect(_on_tree_exiting)
 
 
 func _build() -> void:
@@ -58,7 +63,20 @@ func _build() -> void:
 	_panel.add_theme_stylebox_override("panel", style)
 	_root.add_child(_panel)
 
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+
+	_beam = ColorRect.new()
+	_beam.name = "PowerBeam"
+	_beam.color = Color(1, 1, 1, 1)
+	_beam.modulate = Color(1, 1, 1, 0)
+	_beam.material = add
+	_beam.z_index = 2
+	_beam.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.add_child(_beam)
+
 	var row := HBoxContainer.new()
+	row.name = "CardRow"
 	row.add_theme_constant_override("separation", int(ROW_SEP))
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(row)
@@ -72,14 +90,14 @@ func _build() -> void:
 	row.add_child(_icon)
 
 	_text_col = VBoxContainer.new()
+	_text_col.name = "CardText"
 	_text_col.add_theme_constant_override("separation", 2)
 	_text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_text_col.propagate_maximum_size = true
 	row.add_child(_text_col)
 
 	_name_label = Label.new()
 	_name_label.name = "ItemName"
-	_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	MenuLook.apply_label(_name_label, NAME_FONT, MenuLook.ACCENT)
 	_text_col.add_child(_name_label)
 
@@ -88,61 +106,107 @@ func _build() -> void:
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	MenuLook.apply_label(_desc_label, DESC_FONT, MenuLook.TEXT)
 	_text_col.add_child(_desc_label)
-	_apply_wrap_sizes(1.0)
+
+	_key_label = Label.new()
+	_key_label.name = "ItemKey"
+	_key_label.text = KEY_TEXT
+	_key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_key_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	MenuLook.apply_label(_key_label, DESC_FONT, MenuLook.TEXT)
+	_text_col.add_child(_key_label)
+
+	_bloom = ColorRect.new()
+	_bloom.name = "Bloom"
+	_bloom.color = Color(1, 0, 0, 1)
+	_bloom.modulate = Color(1, 1, 1, 0)
+	_bloom.material = add
+	_bloom.z_index = 3
+	_bloom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.add_child(_bloom)
+	_set_ignore_mouse_recursive(self)
 
 
-func _text_wrap_width(f: float) -> float:
-	var icon_w := ICON_PX * f
-	if _icon != null and not _icon.visible:
-		icon_w = 0.0
-	var sep := ROW_SEP if icon_w > 0.0 else 0.0
-	return maxf(CARD_WIDTH * f - icon_w - sep - PANEL_PAD_X, 80.0)
+func _title_px() -> float:
+	if _name_label == null:
+		return 32.0
+	var font := _name_label.get_theme_font("font")
+	if font == null:
+		return 32.0
+	var px := _name_label.get_theme_font_size("font_size")
+	return maxf(font.get_string_size(_name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x, 32.0)
 
 
 func _apply_wrap_sizes(f: float) -> void:
-	var wrap_w := _text_wrap_width(f)
+	var title_w := _title_px()
 	if _name_label != null:
-		_name_label.custom_maximum_size = Vector2(wrap_w, -1.0)
+		_name_label.custom_minimum_size = Vector2(title_w, 0.0)
 	if _desc_label != null:
-		_desc_label.custom_minimum_size = Vector2(wrap_w, 0.0)
-		_desc_label.custom_maximum_size = Vector2(wrap_w, -1.0)
-	if _text_col != null:
-		_text_col.custom_maximum_size = Vector2(wrap_w, -1.0)
+		_desc_label.custom_minimum_size = Vector2(0.0, 0.0)
+		_desc_label.custom_maximum_size = Vector2(title_w, -1.0)
 	if _icon != null:
-		_icon.custom_minimum_size = Vector2(ICON_PX * f, ICON_PX * f)
-	if _panel != null:
-		_panel.custom_maximum_size = Vector2(CARD_WIDTH * f, -1.0)
+		var icon_px := ICON_PX * f
+		_icon.custom_minimum_size = Vector2(icon_px, icon_px)
 
 
 func _apply_scale() -> void:
 	if _desc_label == null:
 		return
 	var f := UiViewportScale.factor(self)
-	_name_label.add_theme_font_size_override("font_size", maxi(roundi(NAME_FONT * f), 10))
-	_desc_label.add_theme_font_size_override("font_size", maxi(roundi(DESC_FONT * f), 10))
+	var name_px := maxi(roundi(NAME_FONT * f), 10)
+	var desc_px := maxi(roundi(DESC_FONT * f), 10)
+	_name_label.add_theme_font_size_override("font_size", name_px)
+	_desc_label.add_theme_font_size_override("font_size", desc_px)
+	if _key_label != null:
+		_key_label.add_theme_font_size_override("font_size", desc_px)
 	_apply_wrap_sizes(f)
 	if _shown:
+		_refresh_panel_size()
 		_update_screen_position()
 
 
-func show_item(world_pos: Vector2, item_name: String, description: String, icon: Texture2D) -> void:
+func show_item(
+	world_pos: Vector2,
+	item_name: String,
+	description: String,
+	icon: Texture2D,
+	anchor: Node = null,
+) -> void:
 	_world_anchor = world_pos
+	_anchor = anchor
 	_name_label.text = item_name
 	_desc_label.text = description
 	_icon.texture = icon
 	_icon.visible = icon != null
-	_shown = true
-	_root.visible = true
-	set_process(true)
 	_apply_scale()
-	if _panel != null:
-		_panel.reset_size()
-	_update_screen_position()
+	if _shown and _crt_settled:
+		_refresh_panel_size()
+		_update_screen_position()
+		return
+	if _shown and not _crt_settled:
+		_snap_shown()
+		return
+	_run_show_async()
 
 
 func hide_card() -> void:
+	if not _shown:
+		return
+	if not _crt_settled:
+		hide_card_immediate()
+		return
+	_run_hide_async()
+
+
+func hide_card_immediate() -> void:
+	_anim_token += 1
+	if is_instance_valid(_root) and is_instance_valid(_panel):
+		CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
 	_shown = false
-	_root.visible = false
+	_crt_settled = false
+	_anchor = null
+	if is_instance_valid(_root):
+		_root.visible = false
+		_root.modulate.a = 0.0
 	set_process(false)
 
 
@@ -150,41 +214,116 @@ func is_card_visible() -> bool:
 	return _shown and _root != null and _root.visible
 
 
+func is_crt_settled() -> bool:
+	return _crt_settled
+
+
 func _process(_delta: float) -> void:
 	if _shown:
 		_update_screen_position()
 
 
-func _chip_rect() -> Rect2:
-	if is_instance_valid(_chip_host) and _chip_host.has_method("chip_screen_rect"):
-		var rect: Variant = _chip_host.call("chip_screen_rect")
-		if rect is Rect2 and (rect as Rect2).size.x > 1.0:
-			return rect as Rect2
+func _on_tree_exiting() -> void:
+	_anim_token += 1
+	if is_instance_valid(_root) and is_instance_valid(_panel):
+		CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
+	_shown = false
+	_crt_settled = false
+	set_process(false)
+
+
+func _host_alive() -> bool:
+	return is_instance_valid(self) and is_inside_tree() and get_tree() != null
+
+
+func _snap_shown() -> void:
+	_anim_token += 1
+	CrtPowerFx.cancel(self, _root, _panel, _beam, _bloom)
+	_shown = true
+	_crt_settled = true
+	_root.visible = true
+	_root.modulate.a = 1.0
+	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
+	set_process(true)
+	_refresh_panel_size()
+	_update_screen_position()
+
+
+func _run_show_async() -> void:
+	if not _host_alive():
+		return
+	_anim_token += 1
+	var token := _anim_token
+	_shown = true
+	_crt_settled = false
+	_root.visible = true
+	set_process(true)
+	_refresh_panel_size()
+	_update_screen_position()
+	await CrtPowerFx.power_on(self, _root, _panel, _beam, _bloom)
+	if not _host_alive() or token != _anim_token:
+		return
+	_crt_settled = true
+	_refresh_panel_size()
+	_update_screen_position()
+
+
+func _run_hide_async() -> void:
+	if not _host_alive():
+		return
+	_anim_token += 1
+	var token := _anim_token
+	_crt_settled = false
+	await CrtPowerFx.power_off(self, _root, _panel, _beam, _bloom)
+	if not _host_alive() or token != _anim_token:
+		return
+	_shown = false
+	_anchor = null
+	_root.visible = false
+	set_process(false)
+	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
+
+
+func _hand_rect() -> Rect2:
+	if is_instance_valid(_anchor) and _anchor.has_method("ink_screen_rect"):
+		var got: Variant = _anchor.call("ink_screen_rect")
+		if got is Rect2 and (got as Rect2).size.y > 1.0:
+			return got as Rect2
 	var viewport := get_viewport()
 	if viewport == null:
 		return Rect2()
 	var screen_pos := viewport.get_canvas_transform() * _world_anchor
-	return Rect2(screen_pos - Vector2(18.0, 18.0), Vector2(36.0, 36.0))
+	return Rect2(screen_pos, Vector2(1.0, 1.0))
+
+
+func _refresh_panel_size() -> void:
+	if _panel == null:
+		return
+	_panel.reset_size()
+	if _root != null:
+		_root.size = _panel.size
 
 
 func _update_screen_position() -> void:
 	var viewport := get_viewport()
 	if viewport == null or _panel == null or _root == null:
 		return
-	var chip := _chip_rect()
-	if _panel.size.x <= 0.0 or _panel.size.y <= 0.0:
-		_panel.reset_size()
+	var hand := _hand_rect()
+	_refresh_panel_size()
 	var card_size := _panel.size
 	if card_size.x <= 0.0 or card_size.y <= 0.0:
 		card_size = _panel.get_combined_minimum_size()
 	var card_w := card_size.x
-	var card_h := card_size.y
-	var gap := CHIP_GAP_PX * UiViewportScale.factor(self)
-	var pos := Vector2(chip.get_center().x - card_w * 0.5, chip.end.y + gap)
+	var gap := HAND_GAP_PX
+	var pos := Vector2(hand.get_center().x - card_w * 0.5, hand.end.y + gap)
 	var view_size := Vector2(viewport.get_visible_rect().size)
-	if pos.y + card_h > view_size.y:
-		pos.y = chip.position.y - gap - card_h
 	pos.x = clampf(pos.x, WINDOW_PAD, maxf(view_size.x - card_w - WINDOW_PAD, WINDOW_PAD))
-	pos.y = clampf(pos.y, WINDOW_PAD, maxf(view_size.y - card_h - WINDOW_PAD, WINDOW_PAD))
 	_root.position = pos
 	_root.size = card_size
+
+
+func _set_ignore_mouse_recursive(n: Node) -> void:
+	if n is Control:
+		(n as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for c in n.get_children():
+		_set_ignore_mouse_recursive(c)

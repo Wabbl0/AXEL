@@ -293,7 +293,17 @@ func get_goal_base_target_cents() -> int:
 
 func get_effective_goal_target_cents() -> int:
 	var pct := _item_fx.goal_percent(inventory.items) + _lore_goal_bonus
-	return int(round(float(_encounter_goal_base_target_cents) * (1.0 + pct)))
+	var raw := int(round(float(_encounter_goal_base_target_cents) * (1.0 + pct)))
+	return _ceil_to_multiple(raw, 25)
+
+
+func _ceil_to_multiple(n: int, step: int) -> int:
+	if n <= 0 or step <= 1:
+		return maxi(n, 0)
+	var remainder := n % step
+	if remainder == 0:
+		return n
+	return n + (step - remainder)
 
 
 func set_lore_goal_bonus(pct: float) -> void:
@@ -596,6 +606,8 @@ func spin() -> void:
 		emit_signal("readouts_progressed")
 	if free_spins.active and not _awaiting_free_spin_choice:
 		free_spins.consume_spin()
+		if not free_spins.active:
+			_music_notify_free_spins_ended()
 		multiplier.cap_enabled = true
 		multiplier.cap_value = free_spins.multiplier_cap
 	goal_tracker.on_spin_completed(spin_summary)
@@ -604,7 +616,6 @@ func spin() -> void:
 	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
-	_music_notify_first_win_if_needed(spin_summary)
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
@@ -674,6 +685,8 @@ func spin_sync() -> void:
 		emit_signal("readouts_progressed")
 	if free_spins.active and not _awaiting_free_spin_choice:
 		free_spins.consume_spin()
+		if not free_spins.active:
+			_music_notify_free_spins_ended()
 		multiplier.cap_enabled = true
 		multiplier.cap_value = free_spins.multiplier_cap
 	goal_tracker.on_spin_completed(spin_summary)
@@ -682,7 +695,6 @@ func spin_sync() -> void:
 	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
-	_music_notify_first_win_if_needed(spin_summary)
 	_reset_premium_meter_after_paid_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
@@ -864,6 +876,7 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
+		_note_paid_line_procs(lines)
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
@@ -894,6 +907,7 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
+		_note_paid_line_procs(lines)
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
@@ -925,6 +939,7 @@ func _resolve_trinity_cascade_loop_async() -> Dictionary:
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
+		_note_paid_line_procs(lines)
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
@@ -957,6 +972,7 @@ func _resolve_trinity_cascade_loop_sync() -> Dictionary:
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
+		_note_paid_line_procs(lines)
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
@@ -1484,10 +1500,14 @@ func _start_spin_with_new_grid() -> void:
 		if refund > 0.0 and used_before == 0:
 			_bankroll_cents += _to_cents(total_bet * refund)
 			_clamp_bankroll()
-
+			_item_fx.note_effect(inventory.items, &"first_paid_spin_refund")
+			_flush_item_procs()
+	_item_fx.note_paid_spin_passives(inventory.items)
+	_flush_item_procs()
 
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	_item_fx.roll_glyphs(inventory.items, rng)
+	_flush_item_procs()
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 	_spins_used += 1
@@ -1501,6 +1521,7 @@ func _begin_spin_round() -> void:
 
 		_item_fx.reset_spin()
 		_item_fx.roll_glyphs(inventory.items, rng)
+		_flush_item_procs()
 		emit_signal("spin_started", _current_seed)
 		emit_signal("readouts_progressed")
 		return
@@ -2223,6 +2244,37 @@ func _line_item_bonus(line: Dictionary) -> float:
 	return _item_fx.line_payout_bonus(inventory.items, tier, power_id, _in_trinity_round)
 
 
+func _note_paid_line_procs(lines: Array) -> void:
+	for line in lines:
+		var symbol_id: StringName = line.get("symbol_id", &"")
+		if symbol_id == &"wild" and wild_symbol != null:
+			symbol_id = wild_symbol.id
+		var sd := _symbols_by_id.get(symbol_id, null) as SymbolDef
+		var tier := 0
+		var power_id: StringName = &""
+		if sd != null:
+			tier = int(sd.tier)
+			power_id = sd.power_id
+		_item_fx.line_payout_bonus(inventory.items, tier, power_id, _in_trinity_round, true)
+	_flush_item_procs()
+
+
+func _flush_item_procs() -> void:
+	var ids: Array[StringName] = _item_fx.drain_procs()
+	if ids.is_empty():
+		return
+	var panel := _player_item_panel()
+	if panel != null and panel.has_method("pulse_items"):
+		panel.call("pulse_items", ids)
+
+
+func _player_item_panel() -> Node:
+	var tree := get_tree()
+	if tree == null or tree.current_scene == null:
+		return null
+	return tree.current_scene.find_child("PlayerItemPanel", true, false)
+
+
 func _line_has_wild(line: Dictionary) -> bool:
 	var cells: Array = line.get("cells", [])
 	for p in cells:
@@ -2237,6 +2289,7 @@ func _spawn_item_extra_wilds(from: Vector2i) -> void:
 	if wild_symbol == null:
 		return
 	var extra: int = _item_fx.extra_wilds_for_create(inventory.items, rng)
+	_flush_item_procs()
 	for _i in extra:
 		var empty: Vector2i = grid.nearest_empty(from)
 		if empty.x < 0:
@@ -2294,6 +2347,8 @@ func _run_power_chains(source_id: StringName) -> void:
 		var chance := float(chain.get("chance", 0.0))
 		if chance < 1.0 and rng.randf() > chance:
 			continue
+		_item_fx.note_same_params(inventory.items, chain)
+		_flush_item_procs()
 		if bool(chain.get("once_per_spin", false)):
 			_item_fx.overclock_used_this_spin = true
 		var others := _item_fx.other_powers(source_id)
@@ -2323,6 +2378,7 @@ func _finish_trinity_round() -> void:
 	_in_trinity_round = false
 	powers.set_current_id(meter.saved_active_power)
 	meter.reset()
+	_music_notify_trinity_ended(_pending_free_spins)
 
 
 func _apply_trinity_spin_followup_sync(out: Dictionary, step: Dictionary, chosen: StringName) -> void:
@@ -2407,6 +2463,8 @@ func _apply_board_count_bonus(out: Dictionary, is_cascade_step: bool) -> void:
 				out["payout"] = int(out["payout"]) + pay
 				out["line_payout"] = int(out["line_payout"]) + pay
 				_add_round_winnings(pay)
+				_item_fx.note_effect(inventory.items, &"board_count")
+				_flush_item_procs()
 				out["produced_any_win"] = true
 				grid.clear_cells_and_emit(cells)
 				_refresh_cells_visual()
@@ -2414,6 +2472,8 @@ func _apply_board_count_bonus(out: Dictionary, is_cascade_step: bool) -> void:
 			var bonus := _to_cents(float(rule.get("bonus_stake", 0.0)) * total_bet * BASELINE_PAYOUT_SCALAR)
 			out["payout"] = int(out["payout"]) + bonus
 			_add_round_winnings(bonus)
+			_item_fx.note_effect(inventory.items, &"board_count")
+			_flush_item_procs()
 			out["produced_any_win"] = true
 		if bool(mods.get("board_count_meter", false)):
 			meter.add_sections(1)
@@ -2455,20 +2515,22 @@ func _apply_glyph_payouts(lines: Array, out: Dictionary) -> void:
 				multiplier.add(maxi(1, int(round(mult))))
 
 
-func _music_notify_first_win_if_needed(spin_summary: Dictionary) -> void:
-	if free_spins.active:
-		return
-	if int(spin_summary.get("payout", 0)) <= 0:
-		return
-	var music := get_node_or_null("/root/AxelMusic")
-	if music != null and music.has_method("notify_first_win"):
-		music.call("notify_first_win")
-
-
 func _music_notify_trinity() -> void:
 	var music := get_node_or_null("/root/AxelMusic")
 	if music != null and music.has_method("notify_trinity"):
 		music.call("notify_trinity")
+
+
+func _music_notify_trinity_ended(keep_for_free_spins: bool) -> void:
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("notify_trinity_ended"):
+		music.call("notify_trinity_ended", keep_for_free_spins)
+
+
+func _music_notify_free_spins_ended() -> void:
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("notify_free_spins_ended"):
+		music.call("notify_free_spins_ended")
 
 
 func _music_reset_combat_encounter() -> void:

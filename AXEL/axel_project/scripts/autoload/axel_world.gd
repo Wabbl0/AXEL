@@ -3,11 +3,8 @@ extends Node
 const PickupScript := preload("res://scenes/world/world_item_pickup.gd")
 const InfoCardScript := preload("res://scenes/ui/world_item_info_card.gd")
 const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
-const PROMPT_SCENE := "res://scenes/ui/InteractPromptOverlay.tscn"
-const PROMPT_NODE_NAME := "WorldItemPromptOverlay"
 const INFO_CARD_NODE_NAME := "WorldItemInfoCard"
-const ITEM_PROMPT_SCREEN_OFFSET := Vector2(-4, 10)
-const ITEM_CARD_GAP_BELOW_CHIP := 20.0
+const ITEM_PROMPT_GAP_BELOW_HAND_PX := 10.0
 const PICKUP_HOST_NAME := "WorldItemScatter"
 const INTERACT_PAD_PX := 8.0
 const ITEM_SEPARATION_PX := 220.0
@@ -906,10 +903,7 @@ func _spawn_pickups(scene: Node, env: Node2D, path: String) -> void:
 		env.add_child(host)
 	for child in host.get_children():
 		child.queue_free()
-	var prompt := _ensure_prompt_overlay(scene)
 	var info_card := _ensure_info_card(scene)
-	if info_card != null and info_card.has_method("bind_chip_host"):
-		info_card.call("bind_chip_host", prompt)
 	for i in entries.size():
 		var entry: Dictionary = entries[i]
 		if bool(entry.get("taken", false)):
@@ -917,24 +911,8 @@ func _spawn_pickups(scene: Node, env: Node2D, path: String) -> void:
 		var pickup := PickupScript.new()
 		pickup.name = "WorldItem%d" % i
 		pickup.position = Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
-		pickup.setup(String(entry.get("id", "")), path, i, prompt, info_card)
+		pickup.setup(String(entry.get("id", "")), path, i, info_card)
 		host.add_child(pickup)
-
-
-func _ensure_prompt_overlay(scene: Node) -> Node:
-	var existing := scene.get_node_or_null(PROMPT_NODE_NAME)
-	if existing != null:
-		return existing
-	if not ResourceLoader.exists(PROMPT_SCENE):
-		return null
-	var packed := load(PROMPT_SCENE) as PackedScene
-	if packed == null:
-		return null
-	var overlay := packed.instantiate()
-	overlay.name = PROMPT_NODE_NAME
-	overlay.set("screen_offset", ITEM_PROMPT_SCREEN_OFFSET)
-	scene.add_child(overlay)
-	return overlay
 
 
 func _ensure_info_card(scene: Node) -> Node:

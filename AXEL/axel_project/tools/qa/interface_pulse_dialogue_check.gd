@@ -39,6 +39,8 @@ func _check_intro_source_order() -> void:
 	if src.is_empty():
 		_fail("could not read 1.1_SchoolExterior.gd")
 		return
+	if src.find("start_interface_distortion(true)") < 0:
+		_fail("1.1 intro wave must cross once")
 	var play_at := src.find("await _play_first_dialogue_line()")
 	var stop_at := src.find("await AxelEventFx.stop_interface_distortion()")
 	if play_at < 0 or stop_at < 0:
@@ -89,6 +91,8 @@ func _check_live_layers() -> void:
 	if not fx.has_method("start_interface_distortion"):
 		_fail("AxelEventFx.start_interface_distortion missing")
 		return
+	_assert_rest_pulse(pulse, "after room load")
+	_assert_overworld_crt(scene)
 	fx.call("start_interface_distortion")
 	if dialogue.has_method("show_line_nonblocking"):
 		dialogue.call("show_line_nonblocking", "Wave persist probe.")
@@ -105,6 +109,111 @@ func _check_live_layers() -> void:
 		_fail("pulse must stay above the live dialogue layer")
 	if fx.has_method("stop_interface_distortion"):
 		await fx.call("stop_interface_distortion")
+	_assert_rest_pulse(pulse, "after pulse")
+	await _check_intro_roll_once(fx, pulse)
 	if is_instance_valid(scene):
 		scene.queue_free()
 	await process_frame
+
+
+func _assert_rest_pulse(pulse: CanvasLayer, where: String) -> void:
+	if not pulse.visible:
+		_fail("%s: pulse overlay should stay visible" % where)
+	var rect := pulse.get_node_or_null("FilterRect") as ColorRect
+	if rect == null:
+		_fail("%s: pulse FilterRect missing" % where)
+		return
+	if absf(rect.modulate.a - 0.20) > 0.05:
+		_fail("%s: pulse alpha %.3f should stay near 0.20" % [where, rect.modulate.a])
+	var mat := rect.material as ShaderMaterial
+	if mat == null:
+		_fail("%s: pulse shader missing" % where)
+		return
+	var roll := float(mat.get_shader_parameter("roll_amount"))
+	if roll > 0.001:
+		_fail("%s: roll_amount %.3f should be 0 between waves" % [where, roll])
+	var glitch := float(mat.get_shader_parameter("glitch_shift"))
+	if glitch > 0.0001:
+		_fail("%s: glitch_shift %.4f should be 0 between waves" % [where, glitch])
+
+
+func _check_intro_roll_once(fx: Node, pulse: CanvasLayer) -> void:
+	fx.call("start_interface_distortion", true)
+	await create_timer(0.05).timeout
+	var early := _roll_amount(pulse)
+	if early < 0.1:
+		_fail("one-shot wave should start with the roll on (got %.3f)" % early)
+	var start_y := _shader_number(pulse, "roll_center")
+	if start_y < 1.0:
+		_fail("wave should start below the screen (center %.3f)" % start_y)
+	await create_timer(1.9).timeout
+	var mid_y := _shader_number(pulse, "roll_center")
+	if mid_y < 0.0 or mid_y > 1.0:
+		_fail("wave should cross the middle of the screen (center %.3f)" % mid_y)
+	await create_timer(2.3).timeout
+	var late := _roll_amount(pulse)
+	if late > 0.001:
+		_fail("one-shot wave should finish after one pass (roll %.3f)" % late)
+	if pulse.has_method("is_wave_active") and not bool(pulse.call("is_wave_active")):
+		_fail("pulse should stay up after the single roll")
+	var mat := _pulse_material(pulse)
+	if mat != null:
+		var raw: Variant = mat.get_shader_parameter("roll_color")
+		var red := 0.0
+		var green := 1.0
+		var blue := 1.0
+		if raw is Vector3:
+			red = raw.x
+			green = raw.y
+			blue = raw.z
+		elif raw is Color:
+			red = raw.r
+			green = raw.g
+			blue = raw.b
+		if red > 0.05 or green > 0.05 or blue > 0.05:
+			_fail("wave color should be black, got %s" % raw)
+		var strength := float(mat.get_shader_parameter("roll_color_strength"))
+		if absf(strength - 0.50) > 0.05:
+			_fail("wave opacity %.3f should stay near 0.50" % strength)
+		var warp := _shader_number(pulse, "roll_warp")
+		if absf(warp - 0.0045) > 0.0005:
+			_fail("wave warp %.4f should stay near 0.0045" % warp)
+	if fx.has_method("stop_interface_distortion"):
+		await fx.call("stop_interface_distortion")
+	_assert_rest_pulse(pulse, "after one-shot wave")
+
+
+func _roll_amount(pulse: CanvasLayer) -> float:
+	return _shader_number(pulse, "roll_amount")
+
+
+func _shader_number(pulse: CanvasLayer, param: String) -> float:
+	var mat := _pulse_material(pulse)
+	if mat == null:
+		return -1.0
+	var raw: Variant = mat.get_shader_parameter(param)
+	var kind := typeof(raw)
+	if kind != TYPE_FLOAT and kind != TYPE_INT:
+		return -1.0
+	return float(raw)
+
+
+func _pulse_material(pulse: CanvasLayer) -> ShaderMaterial:
+	var rect := pulse.get_node_or_null("FilterRect") as ColorRect
+	if rect == null:
+		return null
+	return rect.material as ShaderMaterial
+
+
+func _assert_overworld_crt(scene: Node) -> void:
+	var crt := scene.get_node_or_null("CrtPluginOverlay") as CanvasLayer
+	if crt == null:
+		_fail("overworld CrtPluginOverlay missing")
+		return
+	var rect := crt.get_node_or_null("FilterRect") as ColorRect
+	if rect == null or not rect.material is ShaderMaterial:
+		_fail("overworld CRT FilterRect missing")
+		return
+	var curv := float((rect.material as ShaderMaterial).get_shader_parameter("curvature"))
+	if curv <= 0.0:
+		_fail("overworld CRT curvature %.3f should stay above 0" % curv)

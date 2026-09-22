@@ -38,6 +38,12 @@ func _main() -> void:
 	if not await _check_locker_path(gm):
 		_finish()
 		return
+	if not await _check_move_right_keeps_hint(gm):
+		_finish()
+		return
+	if not await _check_overlap_hides(gm):
+		_finish()
+		return
 	await _check_visited_hides(gm)
 	_finish()
 
@@ -100,6 +106,77 @@ func _check_locker_path(gm: Node) -> bool:
 	else:
 		_assert_hint_pin(hint, "locker path")
 	scene.queue_free()
+	await process_frame
+	return true
+
+
+func _check_move_right_keeps_hint(gm: Node) -> bool:
+	gm.corridor_from_locker = true
+	gm.corridor_right_hint_done = false
+	change_scene_to_file(SCENE)
+	await _settle(16)
+	var scene := current_scene
+	scene.set("_enter_dialogue_pending", false)
+	var hint := _hint_of(scene)
+	if hint == null:
+		_fail("DirectionHint missing for move_right check")
+		return false
+	if scene.has_method("_update_direction_hint"):
+		scene.call("_update_direction_hint", 0.0)
+	await process_frame
+	if not hint.visible:
+		_fail("arrow should be visible before move_right")
+		return false
+	Input.action_press("move_right")
+	if scene.has_method("_update_direction_hint"):
+		scene.call("_update_direction_hint", 0.0)
+	await process_frame
+	Input.action_release("move_right")
+	if not hint.visible:
+		_fail("holding move_right must not hide the arrow")
+	if bool(gm.corridor_right_hint_done):
+		_fail("move_right must not mark the arrow done")
+	if is_instance_valid(scene):
+		scene.queue_free()
+	await process_frame
+	return true
+
+
+func _check_overlap_hides(gm: Node) -> bool:
+	gm.corridor_from_locker = true
+	gm.corridor_right_hint_done = false
+	change_scene_to_file(SCENE)
+	await _settle(16)
+	var scene := current_scene
+	scene.set("_enter_dialogue_pending", false)
+	var hint := _hint_of(scene)
+	if hint == null:
+		_fail("DirectionHint missing for overlap check")
+		return false
+	if scene.has_method("_update_direction_hint"):
+		scene.call("_update_direction_hint", 0.0)
+	await process_frame
+	if not hint.visible:
+		_fail("arrow should be visible before overlap")
+		return false
+	var player := scene.get_node_or_null("PlayerLayer/Player") as Node2D
+	var mike := player.get_node_or_null("AnimatedSprite") as AnimatedSprite2D if player != null else null
+	var arrow := hint.get_node_or_null("Sprite") as Sprite2D
+	if mike == null or arrow == null:
+		_fail("overlap check missing Mike or arrow sprite")
+		return false
+	mike.offset = Vector2.ZERO
+	var shift := arrow.global_position - mike.global_position
+	player.global_position += shift
+	if scene.has_method("_update_direction_hint"):
+		scene.call("_update_direction_hint", 0.0)
+	await process_frame
+	if hint.visible:
+		_fail("arrow must hide when Mike's sprite overlaps it")
+	if not bool(gm.corridor_right_hint_done):
+		_fail("overlapping the arrow must mark it done")
+	if is_instance_valid(scene):
+		scene.queue_free()
 	await process_frame
 	return true
 
