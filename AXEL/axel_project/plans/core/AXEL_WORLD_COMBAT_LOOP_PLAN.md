@@ -14,8 +14,8 @@ Canon still wins: `plans/core/AI_DOCS.md`. Catalog text changes only in
 - Memories start a fight after the still finishes.
 - Flashlight / key / shovel / name start a fight after their line.
 - Combat items lie on the floor in indoor rooms; picking one up starts a fight.
-- All item ranks start Common; picking up in one area upgrades the rooms you
-  have not touched yet.
+- All item ranks start Common; picking up in one area clears it and upgrades
+  the rooms you have not taken from yet (those hands change to the new rarity).
 - The locker is equip-only. `START RUN` is gone.
 - The school map shows unvisited rooms dark and refuses to travel there.
 - A full-screen wipe plays on the way into every fight.
@@ -125,16 +125,20 @@ fight's ITEMS list is live. Locker is still where you unequip.
 
 ## Rank progression (AXEL_notes §2.3)
 
-Every area starts at Common. The first time you take an active item from an
-area, that area is *engaged* and its rank freezes; every area that is neither
-engaged nor cleared moves up one rank (cap Legendary). Clearing an area (all
-its floor items taken) upgrades the untouched areas again.
+Every area starts at Common, including extended Commons. The same seed always
+shows the same Common board, whether you open `1.4` or `2.1` first. The first
+pickup in an area *clears* it and freezes its leftover items at that rarity.
+Every area that is neither engaged nor cleared moves up one rank (cap
+Legendary) and is rolled again from the same seed at the new rank. Hands stay;
+only the item changes. Taking the rest of a cleared area does not bump anyone
+again. `1.2` has no floor item, so taking the hand in `2.4` clears Halls.
 
 Item ids resolve as `TIER-FAMILY` from the live `.tres` files, or as a baseline
 line from `combat/scripts/item_lines.gd` (C1–C10 and their later rungs). Each
 area owns a short family list; the roll mixes those families with leftover
-baseline lines and walks down from the area rank until an id exists. It skips
-ids the player already owns and ids already placed on a floor.
+baseline lines and tries the area rank first, then walks down until an id
+exists. It skips ids the player already owns and leftover items still lying in
+a cleared area.
 
 ## Numbers (tuning constants at the top of `axel_world.gd`)
 
@@ -204,8 +208,8 @@ ids the player already owns and ids already placed on a floor.
 - Floor items show `[E]`, join the locker on pickup, and start a fight.
 - `1.1` and `1.2` never hold a floor item.
 - Fight goals climb 100, 150, 225, then ×1.5 (rounded to 25).
-- The first area's floor items are Common; untouched areas read one rank higher
-  after the first pickup.
+- The first area's floor items are Common; after that pickup, every area you
+  have not taken from reads one rank higher and its hands show the new rarity.
 - The locker has no START RUN button and no LOCKER overlay; items sit on shelves.
 - Unvisited map rooms are dark and unclickable; visiting once unlocks them.
 - A wipe plays before each fight; a win shows Round Complete!, fades, and returns to the same room and spot.
@@ -232,8 +236,8 @@ ids the player already owns and ids already placed on a floor.
   64 px or more instead of counting it. This also fixes the same flaw in the
   existing CRT pulse cadence.
 - One area only ever grants one rank upgrade to the untouched areas — the first
-  pickup there *or* clearing it, whichever comes first. Counting both would have
-  doubled the curve.
+  pickup there, which is also what clears it. Taking the rest of its items does
+  not bump anyone again.
 - Floor spots are searched on both axes with the **full 220 px interact
   circle**; they dodge walls/furniture for sure, and interact zones when a
   hole exists. If a room's whole floor is door boxes (`2.4`), the second pass

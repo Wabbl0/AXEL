@@ -41,6 +41,7 @@ func _main() -> void:
 	_check_step_curve(world)
 	_check_item_pools(world, run)
 	_check_take_item(world, run)
+	_check_floor_retier(world, run)
 	_check_save_round_trip(world)
 	_check_lore_guard(world)
 	_check_locker_has_no_start_run()
@@ -232,8 +233,11 @@ func _check_take_item(world: Node, run: Node) -> void:
 		_fail("the area you picked from must keep its rank")
 	if int(world.call("area_rank", "kitchen")) != 1:
 		_fail("untouched areas should be one rank up after a pickup")
-	if bool(world._cleared.get("cafeteria", false)):
-		_fail("area cleared with items still on the floor")
+	if not bool(world._cleared.get("cafeteria", false)):
+		_fail("first pickup in an area should clear it")
+	var leftover: Dictionary = (world._room_items[room] as Array)[1]
+	if String(leftover.get("id", "")) != "C-D" or bool(leftover.get("taken", false)):
+		_fail("leftover items in the looted area must keep their rarity")
 
 
 	world.call("take_item", room, 0)
@@ -242,11 +246,133 @@ func _check_take_item(world: Node, run: Node) -> void:
 
 	world.call("take_item", room, 1)
 	if not bool(world._cleared.get("cafeteria", false)):
-		_fail("area should be cleared once every floor item is taken")
+		_fail("area should stay cleared after later pickups")
 	if int(world.call("area_rank", "kitchen")) != 1:
-		_fail("clearing an already-engaged area must not upgrade again")
+		_fail("a second pickup in a cleared area must not upgrade again")
 	world.call("reset_world")
 	run.call("reset_run")
+
+
+func _check_floor_retier(world: Node, run: Node) -> void:
+	world.call("reset_world")
+	run.call("reset_run")
+	world.call("plan_floor_items", 4242)
+	var basement := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
+	var cafeteria := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
+	var halls := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
+	if not _ids_at_rank(world, cafeteria, 0) or _open_ids(world, cafeteria).is_empty():
+		_fail("cafeteria should start with Common floor items")
+		world.call("reset_world")
+		run.call("reset_run")
+		return
+	if not _ids_at_rank(world, basement, 0):
+		_fail("basement should start Common")
+
+	world.call("take_item", basement, 0)
+	if not bool(world._cleared.get("basement", false)):
+		_fail("taking the 1.4 item should clear basement")
+	if int(world.call("area_rank", "basement")) != 0:
+		_fail("looted basement must stay Common")
+	if int(world.call("area_rank", "cafeteria")) != 1:
+		_fail("2.1 should be Uncommon after a 1.4 pickup")
+	if not _ids_at_least_rank(world, cafeteria, 1):
+		_fail("2.1 floor items should become Uncommon after a 1.4 pickup")
+	var cafe_after_take := _open_ids(world, cafeteria)
+	var retiered: Dictionary = world.call("to_dict")
+	world.call("reset_world")
+	world.call("from_dict", retiered)
+	if _open_ids(world, cafeteria) != cafe_after_take:
+		_fail("loading a save must keep the same retiered floor ids")
+
+	world.call("reset_world")
+	run.call("reset_run")
+	world.call("plan_floor_items", 4242)
+	var cafe_before := _open_ids(world, cafeteria)
+	world.call("take_item", cafeteria, 0)
+	if not bool(world._cleared.get("cafeteria", false)):
+		_fail("taking a 2.1 item should clear cafeteria")
+	if int(world.call("area_rank", "basement")) != 1:
+		_fail("1.4 should step up when 2.1 is looted first")
+	if not _ids_at_least_rank(world, basement, 1):
+		_fail("1.4 floor item should become Uncommon when 2.1 is looted first")
+	var cafe_left := _open_ids(world, cafeteria)
+	if cafe_left.size() != cafe_before.size() - 1:
+		_fail("cafeteria should keep leftover items after the first pickup")
+	for item_id in cafe_left:
+		if not cafe_before.has(item_id):
+			_fail("leftover cafeteria item %s changed after the first pickup" % item_id)
+			break
+		if int(world.call("item_rank_of_id", item_id)) != 0:
+			_fail("leftover cafeteria item %s should stay Common" % item_id)
+			break
+
+	world.call("reset_world")
+	run.call("reset_run")
+	world.call("plan_floor_items", 4242)
+	world.call("take_item", halls, 0)
+	if not bool(world._cleared.get("halls", false)):
+		_fail("taking the 2.4 item should clear Halls")
+	if int(world.call("area_rank", "halls")) != 0:
+		_fail("Halls must keep its rank after the 2.4 pickup")
+	if int(world.call("area_rank", "basement")) != 1:
+		_fail("other areas should step up after Halls is cleared from 2.4")
+
+	world.call("reset_world")
+	run.call("reset_run")
+	world.call("plan_floor_items", 4242)
+	world.call("take_item", basement, 0)
+	var saved: Dictionary = world.call("to_dict")
+	var cafe_entries: Array = (saved.get("room_items", {}) as Dictionary).get(cafeteria, [])
+	var stale: Array = []
+	for i in cafe_entries.size():
+		stale.append({
+			"id": "C-A" if i == 0 else "C-D",
+			"x": 12.5 + float(i),
+			"y": 34.5,
+			"taken": false,
+		})
+	(saved.get("room_items", {}) as Dictionary)[cafeteria] = stale
+	world.call("reset_world")
+	world.call("from_dict", saved)
+	if not _ids_at_least_rank(world, cafeteria, 1):
+		_fail("load should retier stale Common ids in open areas")
+	var loaded: Array = world._room_items.get(cafeteria, [])
+	if loaded.is_empty() or not is_equal_approx(float((loaded[0] as Dictionary).get("x", 0.0)), 12.5):
+		_fail("retier on load must keep floor spots")
+	world.call("reset_world")
+	run.call("reset_run")
+
+
+func _open_ids(world: Node, room_path: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for entry in (world._room_items.get(room_path, []) as Array):
+		var d: Dictionary = entry
+		if bool(d.get("taken", false)):
+			continue
+		var item_id := String(d.get("id", ""))
+		if not item_id.is_empty():
+			out.append(item_id)
+	return out
+
+
+func _ids_at_least_rank(world: Node, room_path: String, want: int) -> bool:
+	var ids := _open_ids(world, room_path)
+	if ids.is_empty():
+		return false
+	for item_id in ids:
+		if int(world.call("item_rank_of_id", item_id)) < want:
+			return false
+	return true
+
+
+func _ids_at_rank(world: Node, room_path: String, want: int) -> bool:
+	var ids := _open_ids(world, room_path)
+	if ids.is_empty():
+		return false
+	for item_id in ids:
+		if int(world.call("item_rank_of_id", item_id)) != want:
+			return false
+	return true
 
 
 func _check_save_round_trip(world: Node) -> void:

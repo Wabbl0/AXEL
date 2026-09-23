@@ -24,7 +24,7 @@ func _main() -> void:
 	await process_frame
 	await process_frame
 	var scrim: ColorRect = fx.call("get_round_complete_scrim")
-	var label: Label = fx.call("get_round_complete_label")
+	var label := fx.call("get_round_complete_label") as Control
 	if scrim == null:
 		failures.append("RoundScrim missing after show_round_complete_card")
 	else:
@@ -44,8 +44,13 @@ func _main() -> void:
 			failures.append("Round Complete! should show before any click")
 		if absf(label.modulate.a - 1.0) > 0.02:
 			failures.append("label alpha %.3f should be 1" % label.modulate.a)
-		if String(label.text).findn("Round Complete") < 0:
-			failures.append("label text '%s' is not Round Complete!" % label.text)
+		var shown := ""
+		if label is RichTextLabel:
+			shown = (label as RichTextLabel).get_parsed_text()
+		elif label is Label:
+			shown = (label as Label).text
+		if shown.findn("Round Complete") < 0:
+			failures.append("label text '%s' is not Round Complete!" % shown)
 		var lab_rect := label.get_global_rect()
 		if lab_rect.size.x < WANT_W - SIZE_SLACK or lab_rect.size.y < WANT_H - SIZE_SLACK:
 			failures.append(

@@ -2,6 +2,7 @@ extends Node
 
 const PickupScript := preload("res://scenes/world/world_item_pickup.gd")
 const InfoCardScript := preload("res://scenes/ui/world_item_info_card.gd")
+const WheelScript := preload("res://scenes/ui/item_wheel.gd")
 const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
 const INFO_CARD_NODE_NAME := "WorldItemInfoCard"
 const ITEM_PROMPT_GAP_BELOW_HAND_PX := 10.0
@@ -69,6 +70,10 @@ const AREAS := {
 	},
 }
 
+const AREA_ROLL_ORDER: PackedStringArray = [
+	"basement", "cafeteria", "classroom", "halls", "kitchen", "lounge",
+]
+
 const REASON_WALK := "walk"
 const REASON_ITEM := "item_pickup"
 const REASON_LORE := "lore_pickup"
@@ -104,6 +109,9 @@ var _starting_fight := false
 func _ready() -> void:
 	_rng.randomize()
 	reset_world()
+	var wheel := WheelScript.new()
+	wheel.name = "ItemWheel"
+	add_child(wheel)
 	var tree := get_tree()
 	if tree != null and not tree.scene_changed.is_connected(_on_scene_changed):
 		tree.scene_changed.connect(_on_scene_changed)
@@ -338,6 +346,12 @@ func item_rank_for_scene(scene_path: String) -> int:
 	return area_rank(area_for_scene(scene_path))
 
 
+func item_rank_of_id(item_id: String) -> int:
+	if item_id.is_empty():
+		return -1
+	return RANK_PREFIXES.find(item_id.left(1))
+
+
 func take_item(scene_path: String, index: int) -> void:
 	var entries: Array = _room_items.get(scene_path, [])
 	if index < 0 or index >= entries.size():
@@ -356,8 +370,11 @@ func take_item(scene_path: String, index: int) -> void:
 		if not item_id.is_empty() and run.has_method("equip_owned_if_free"):
 			run.call("equip_owned_if_free", item_id)
 	var area_id := area_for_scene(scene_path)
+	var first_in_area := not bool(_cleared.get(area_id, false))
 	_engage_area(area_id)
 	_refresh_cleared(area_id)
+	if first_in_area and bool(_cleared.get(area_id, false)):
+		_retier_open_areas()
 	_save()
 
 
@@ -375,7 +392,7 @@ func _upgrade_untouched_areas(source_area: String) -> void:
 	for area_id in AREAS.keys():
 		if area_id == source_area:
 			continue
-		if bool(_engaged.get(area_id, false)) or bool(_cleared.get(area_id, false)):
+		if _area_is_frozen(area_id):
 			continue
 		_rank[area_id] = mini(int(_rank.get(area_id, 0)) + 1, MAX_RANK)
 
@@ -383,16 +400,32 @@ func _upgrade_untouched_areas(source_area: String) -> void:
 func _refresh_cleared(area_id: String) -> void:
 	if area_id.is_empty() or bool(_cleared.get(area_id, false)):
 		return
-	var rooms: Dictionary = AREAS[area_id]["rooms"]
-	for room_path in rooms.keys():
-		var entries: Array = _room_items.get(room_path, [])
-		if entries.is_empty():
-			return
-		for entry in entries:
-			if not bool((entry as Dictionary).get("taken", false)):
-				return
+	if not _area_has_taken_item(area_id):
+		return
 	_cleared[area_id] = true
 	_upgrade_untouched_areas(area_id)
+
+
+func _area_is_frozen(area_id: String) -> bool:
+	return bool(_engaged.get(area_id, false)) or bool(_cleared.get(area_id, false))
+
+
+func _area_has_taken_item(area_id: String) -> bool:
+	if area_id.is_empty() or not AREAS.has(area_id):
+		return false
+	var rooms: Dictionary = AREAS[area_id]["rooms"]
+	for room_path in rooms.keys():
+		for entry in (_room_items.get(String(room_path), []) as Array):
+			if bool((entry as Dictionary).get("taken", false)):
+				return true
+	return false
+
+
+func _sync_cleared_from_taken() -> void:
+	for area_id in AREAS.keys():
+		if _area_has_taken_item(String(area_id)):
+			_cleared[area_id] = true
+			_engaged[area_id] = true
 
 
 func to_dict() -> Dictionary:
@@ -431,6 +464,9 @@ func from_dict(data: Dictionary) -> void:
 			})
 		_room_items[String(room_path)] = out
 	_lore_fights = (data.get("lore_fights", {}) as Dictionary).duplicate(true)
+	_sync_cleared_from_taken()
+	if _any_area_frozen():
+		_retier_open_areas()
 
 
 func _save() -> void:
@@ -507,10 +543,38 @@ func _populate_room(scene: Node) -> void:
 func plan_floor_items(seed: int) -> void:
 	_item_seed = seed if seed != 0 else 1
 	_room_items.clear()
+	_roll_open_area_ids()
+
+
+func _retier_open_areas() -> void:
+	_roll_open_area_ids()
+
+
+func _any_area_frozen() -> bool:
+	for area_id in AREAS.keys():
+		if _area_is_frozen(String(area_id)):
+			return true
+	return false
+
+
+func _roll_open_area_ids() -> void:
+	var frozen_ids := _frozen_floor_ids()
+	var owned_ids := _owned_item_ids()
+	var blocked: Array = owned_ids.duplicate()
+	for item_id in frozen_ids:
+		_append_unique(blocked, item_id)
 	var used_lanes: Array = []
-	var area_ids: Array = AREAS.keys()
-	area_ids.sort()
-	for area_id in area_ids:
+	for item_id in frozen_ids:
+		var frozen_lane := _lane_of(item_id)
+		if not frozen_lane.is_empty() and not used_lanes.has(frozen_lane):
+			used_lanes.append(frozen_lane)
+	for item_id in owned_ids:
+		var owned_lane := _lane_of(item_id)
+		if not owned_lane.is_empty() and not used_lanes.has(owned_lane):
+			used_lanes.append(owned_lane)
+	for area_id in AREA_ROLL_ORDER:
+		if _area_is_frozen(String(area_id)):
+			continue
 		var rooms: Dictionary = AREAS[area_id]["rooms"]
 		var paths: Array = rooms.keys()
 		paths.sort()
@@ -519,13 +583,24 @@ func plan_floor_items(seed: int) -> void:
 			if want <= 0:
 				continue
 			var rng := _room_rng(String(path), ITEM_ROLL_SALT)
+			var existing: Array = _room_items.get(String(path), [])
 			var entries: Array = []
-			for _i in want:
-				var item_id := _roll_item(String(area_id), rng, used_lanes)
+			for i in want:
+				var prev: Dictionary = existing[i] if i < existing.size() else {}
+				if bool(prev.get("taken", false)):
+					entries.append(prev)
+					continue
+				var item_id := _roll_item(String(area_id), rng, used_lanes, blocked)
 				if item_id.is_empty():
 					continue
 				used_lanes.append(_lane_of(item_id))
-				entries.append({"id": item_id, "x": 0.0, "y": 0.0, "taken": false})
+				_append_unique(blocked, item_id)
+				entries.append({
+					"id": item_id,
+					"x": float(prev.get("x", 0.0)),
+					"y": float(prev.get("y", 0.0)),
+					"taken": false,
+				})
 			_room_items[String(path)] = entries
 
 
@@ -807,13 +882,23 @@ func _is_finite_spot(spot: Vector2) -> bool:
 	return is_finite(spot.x) and is_finite(spot.y)
 
 
-func _roll_item(area_id: String, rng: RandomNumberGenerator, used_lanes: Array) -> String:
+func _roll_item(
+	area_id: String,
+	rng: RandomNumberGenerator,
+	used_lanes: Array,
+	blocked_override: Variant = null,
+) -> String:
 	var ordered := _candidate_lanes(area_id, used_lanes)
 	if ordered.is_empty():
 		return ""
 	var start := rng.randi() % ordered.size()
 	var rank := area_rank(area_id)
-	var blocked := _blocked_item_ids()
+	var blocked: Array = blocked_override if blocked_override is Array else _blocked_item_ids()
+	for i in ordered.size():
+		var lane := String(ordered[(start + i) % ordered.size()])
+		var item_id := _resolve_lane_exact(lane, rank, blocked)
+		if not item_id.is_empty():
+			return item_id
 	for i in ordered.size():
 		var lane := String(ordered[(start + i) % ordered.size()])
 		var item_id := _resolve_lane(lane, rank, blocked)
@@ -839,6 +924,19 @@ func _candidate_lanes(area_id: String, used_lanes: Array) -> Array:
 	return unused + used_fallback
 
 
+func _resolve_lane_exact(lane: String, rank: int, blocked: Array) -> String:
+	var item_id := ""
+	if ItemLinesScript.is_baseline_lane(lane):
+		item_id = ItemLinesScript.rung_id(lane, rank)
+	elif rank >= 0 and rank < RANK_PREFIXES.size():
+		item_id = "%s-%s" % [RANK_PREFIXES[rank], lane]
+	if item_id.is_empty() or blocked.has(item_id):
+		return ""
+	if _item_exists(item_id):
+		return item_id
+	return ""
+
+
 func _resolve_lane(lane: String, rank: int, blocked: Array) -> String:
 	if ItemLinesScript.is_baseline_lane(lane):
 		for tier in range(rank, -1, -1):
@@ -857,19 +955,36 @@ func _resolve_lane(lane: String, rank: int, blocked: Array) -> String:
 	return ""
 
 
-func _blocked_item_ids() -> Array:
+func _owned_item_ids() -> Array:
 	var blocked: Array = []
 	var run := _run()
 	if run != null:
 		for item_id in Array(run.state.owned_item_ids):
-			var owned := String(item_id)
-			if not owned.is_empty() and not blocked.has(owned):
-				blocked.append(owned)
+			_append_unique(blocked, String(item_id))
+	return blocked
+
+
+func _frozen_floor_ids() -> Array:
+	var out: Array = []
+	for room_path in _room_items.keys():
+		if not _area_is_frozen(area_for_scene(String(room_path))):
+			continue
+		for entry in (_room_items[room_path] as Array):
+			_append_unique(out, String((entry as Dictionary).get("id", "")))
+	return out
+
+
+func _append_unique(arr: Array, value: String) -> void:
+	if value.is_empty() or arr.has(value):
+		return
+	arr.append(value)
+
+
+func _blocked_item_ids() -> Array:
+	var blocked := _owned_item_ids()
 	for room_path in _room_items.keys():
 		for entry in (_room_items[room_path] as Array):
-			var placed := String((entry as Dictionary).get("id", ""))
-			if not placed.is_empty() and not blocked.has(placed):
-				blocked.append(placed)
+			_append_unique(blocked, String((entry as Dictionary).get("id", "")))
 	return blocked
 
 

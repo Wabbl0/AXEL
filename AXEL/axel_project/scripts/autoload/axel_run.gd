@@ -381,7 +381,7 @@ func _on_root_finished(success: bool) -> void:
 	if success:
 		_finish_busy = true
 		capture_bankroll_from(_live_combat_root())
-		_show_round_complete_card()
+		await _show_round_complete_card()
 		var root := _live_combat_root()
 		if root != null and root.has_method("await_victory_confirm"):
 			await root.call("await_victory_confirm")
@@ -548,6 +548,9 @@ func _live_feel() -> Node:
 
 
 func _show_round_complete_card() -> void:
+	var root := _live_combat_root()
+	if root != null and root.has_method("play_goal_win_burst"):
+		await root.call("play_goal_win_burst")
 	var fx := get_node_or_null("/root/AxelEventFx")
 	if fx != null and fx.has_method("show_round_complete_card"):
 		fx.call("show_round_complete_card")

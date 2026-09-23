@@ -47,6 +47,12 @@ func set_symbol(sym: SymbolDefScript) -> void:
 		_icon.texture = null
 
 
+func show_win_skull(tex: Texture2D) -> void:
+	_ensure_icon()
+	_icon.texture = tex
+	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
 func play_drop(from_local: Vector2, to_local: Vector2, duration: float, delay: float = 0.0) -> void:
 	_ensure_icon()
 	_cancel_tween(_drop_tween)

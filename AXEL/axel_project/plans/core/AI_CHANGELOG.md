@@ -7267,4 +7267,102 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: `run_state_check.gd`, `powers_check.gd`.
 - Notes: A 10–20% fight-start top-up was simulated and did nothing useful, so it was not added.
 
+### Deleted save stays deleted
+
+- Request: After deleting a save and leaving the debug session, the save was back next time.
+- Implementation: Deleting a slot cancels a queued write and blocks that slot until New Game uses it again. Half-written `.tmp` files are removed too. A flush that is already running checks the block again before it writes.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_saves.gd`
+  - `AXEL/axel_project/tools/qa/save_slots_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: In-game Delete sticks across leaving and the next launch. Dev Tools still does not touch saves.
+- Verification: `save_slots_check.gd` exit 0.
+
+### Load Game seed hover and copy
+
+- Request: Hovering the seed on Load Game shows the full number. Clicking it copies the number.
+- Implementation: The seed is its own button between the slot row and Delete. Hover shows the full `seed N` line. Click copies the digits only and does not load the slot.
+- Files changed:
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd`
+  - `AXEL/axel_project/tools/qa/save_slots_check.gd`
+  - `AXEL/axel_project/tools/qa/menu_nav_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: The slot row no longer ends with the seed, so the room and time are what get cut off first. Pause `SEED N` is unchanged.
+- Verification: `save_slots_check.gd`, `menu_nav_check.gd` exit 0. Headless has no clipboard; copy is for a real window.
+
+### CRT wave 33% less opaque
+
+- Request: The CRT wave color should be 33% less opaque.
+- Implementation: Black-roll strength `roll_color_strength` went from `0.5` to `0.335`. Quiet pulse and surge alpha were left alone.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/InterfacePulseOverlay.tscn`
+  - `AXEL/axel_project/tools/qa/interface_pulse_dialogue_check.gd`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+- Behavior impact: The black roll on overworld and menus is fainter. Combat has no wave.
+- Verification: `interface_pulse_dialogue_check.gd` exit 0.
+
+### Round win skulls and fireworks
+
+- Request: A win flips the grid to skulls, glows, then explodes into the empty-item corner flames, doubling each wave. “Round Complete!” hops, with every other character white then red, and flames behind the words.
+- Implementation: The win is visual only and does not change the spin randomizer. Grid burst is 8, then 16, then 32 flames. The title burst is 8, then 16. Flames are capped at 96.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/flame_burst.gd`
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/tools/qa/round_complete_overlay_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Interact or click still leaves the fight after the card. Dev-skip visuals skips the skulls and flames.
+- Verification: `round_complete_overlay_check.gd`, `determinism_check.gd`, `combat_test_scaffold_check.gd` exit 0.
+
+### VICE ROUND on the grid
+
+- Request: “VICE ROUND” should appear in the middle of the grid.
+- Implementation: That banner is placed on the symbol grid. “FREE SPINS” and the loss line stay on the full screen. The font shrinks only if the words would be wider than the grid.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_feel.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Vice Round order is unchanged.
+- Verification: `combat_test_scaffold_check.gd` exit 0.
+
+### Power symbol sharpness stopgap
+
+- Request: Check whether the power pictures can be drawn sharper, or if higher-definition art is needed.
+- Implementation: The intro icon now uses nearest-neighbor so the 128×128 art stays pixels instead of a smear. New 512×512 files are still required for real detail. The grid icons were not changed.
+- Files changed:
+  - `AXEL/axel_project/combat/scenes/combat_root.tscn`
+- Behavior impact: Cigarette, alcohol, and bloody hand look blockier at the big size until new art is added.
+- Verification: Scene file sets `texture_filter` nearest. No new PNGs were generated.
+
+### Combat loss collapse
+
+- Request: On a loss, combat art explodes and falls off the screen. Then “GONE” or “IT TAKES YOU” fades in. Buttons wait for 3 seconds, a click, or interact.
+- Implementation: The save is still deleted when the loss starts. The line is a coin flip that does not use the spin randomizer. Reduce-flashing skips the little flame pops only.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_feel.gd`
+  - `AXEL/axel_project/tools/qa/loss_menu_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Retry, Return To Main Menu, and Exit appear only after the wait. The same press that reveals them does not activate Retry.
+- Verification: `loss_menu_check.gd` exit 0.
+
+### Overworld item wheel
+
+- Request: Remove items from the pause menu. Open a half-circle wheel on Mike with a click, or with Tab, Q, R, or I. Four bands for Common through Epic. Legendary stays off the wheel. Show the equip count only after the first owned item.
+- Implementation: The wheel follows Mike, scrolls three icons per band, and toggles equip on click. Equipped icons stay bright. Hover uses the walk-up card without `[E]`. Pause no longer lists items or `0/7`.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/item_wheel.gd`
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/scenes/ui/world_item_info_card.gd`
+  - `AXEL/axel_project/scenes/world/world_item_pickup.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/tools/qa/item_wheel_check.gd`
+  - `AXEL/axel_project/tools/qa/pause_contract_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/playtest/`
+- Behavior impact: A Legendary can still auto-equip when picked up, and it still counts toward the cap, but this wheel cannot show it or turn it off. The other playtest notes (centered pause, blank Options, Esc dialogue skip, card width, plain descriptions, hand outline, grey memory marker) are plans only.
+- Verification: `item_wheel_check.gd`, `pause_contract_check.gd`, and `world_item_card_check.gd` exit 0.
+
 

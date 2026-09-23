@@ -83,23 +83,11 @@ func _main() -> void:
 
 
 		var pause_menu := pause.get_node_or_null("AxelPauseMenu")
-		if pause_menu == null or not pause_menu.has_method("_fill_loadout"):
-			_fail("pause menu missing loadout")
+		if pause_menu == null:
+			_fail("pause menu missing")
 		else:
 			_assert_no_inventory_button(pause_menu)
-			pause_menu.call("_fill_loadout")
-			await process_frame
-			_assert_inventory_clean(pause_menu, "")
-			var run := root.get_node_or_null("AxelRun")
-			if run != null:
-				run.state.owned_item_ids = PackedStringArray(["C1", "C2"])
-				run.state.equipped_item_ids = PackedStringArray(["C1"])
-				pause_menu.call("_fill_loadout")
-				await process_frame
-				_assert_inventory_clean(pause_menu, "Ash Spin Token")
-				_assert_loadout_details(pause_menu)
-				run.state.owned_item_ids = PackedStringArray()
-				run.state.equipped_item_ids = PackedStringArray()
+			_assert_no_loadout(pause_menu)
 			if pause_menu.has_method("_show_main"):
 				pause_menu.call("_show_main")
 
@@ -145,30 +133,16 @@ func _main() -> void:
 		quit(1)
 
 
-func _assert_inventory_clean(menu: Node, must_contain: String) -> void:
-	var box := menu.find_child("LoadoutList", true, false) as Node
-	if box == null:
-		_fail("pause inventory box missing")
-		return
-	var texts: PackedStringArray = PackedStringArray()
-	_collect_labels(box, texts)
-	var blob := " ".join(texts)
-	for leak in ["missing", "Memories", "Flashlight", "Key", "Shovel", "Name"]:
-		if blob.contains(leak):
-			_fail("pause inventory leaked '%s'" % leak)
-	if not must_contain.is_empty() and not blob.contains(must_contain):
-		_fail("pause inventory missing owned item '%s'" % must_contain)
-	if not must_contain.is_empty():
-		var saw_full := false
-		for node in box.find_children("*", "TextureRect", true, false):
-			var icon := node as TextureRect
-			if icon == null or icon.texture == null:
-				continue
-			if icon.texture.get_width() == 1024 and icon.texture.get_height() == 1024:
-				saw_full = true
-				break
-		if not saw_full:
-			_fail("pause inventory icon resolution is not 1024x1024")
+func _assert_no_loadout(menu: Node) -> void:
+	if menu.find_child("LoadoutList", true, false) != null:
+		_fail("pause menu still lists items")
+	if menu.find_child("EquipCap", true, false) != null:
+		_fail("pause menu still shows the equip cap")
+	if menu.has_method("_fill_loadout"):
+		_fail("pause menu still builds a loadout")
+	for node in menu.find_children("*", "CheckBox", true, false):
+		if node != null and str(node.name) == "EquipBox":
+			_fail("pause menu still has an equip box")
 
 
 func _assert_no_inventory_button(menu: Node) -> void:
@@ -176,40 +150,6 @@ func _assert_no_inventory_button(menu: Node) -> void:
 		var button := node as Button
 		if button != null and button.text == "Inventory":
 			_fail("pause menu still has an Inventory button")
-
-
-func _assert_loadout_details(menu: Node) -> void:
-	var cap := menu.find_child("EquipCap", true, false) as Label
-	if cap == null or cap.text != "1/7":
-		_fail("equip cap should read 1/7, got %s" % (cap.text if cap != null else "missing"))
-	var box := menu.find_child("LoadoutList", true, false) as Node
-	if box == null:
-		return
-	var texts: PackedStringArray = PackedStringArray()
-	_collect_labels(box, texts)
-	var blob := " ".join(texts)
-	if not blob.contains("Chalk Dust"):
-		_fail("pause loadout missing second owned item")
-	if not blob.contains("paid spin"):
-		_fail("pause loadout missing item description")
-	var equipped_on := false
-	var boxes := 0
-	for node in box.find_children("*", "CheckBox", true, false):
-		var check := node as CheckBox
-		boxes += 1
-		if check.button_pressed:
-			equipped_on = true
-	if boxes < 2:
-		_fail("pause loadout should have an equip box per combat item")
-	if not equipped_on:
-		_fail("equipped item checkbox should be on")
-
-
-func _collect_labels(node: Node, texts: PackedStringArray) -> void:
-	if node is Label:
-		texts.append((node as Label).text)
-	for child in node.get_children():
-		_collect_labels(child, texts)
 
 
 func _tap_escape() -> void:

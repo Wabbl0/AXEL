@@ -15,6 +15,7 @@ var _info_card: Node
 var _player_inside := false
 var _taken := false
 var _marker: Node2D = null
+var _wheel_was_open := false
 
 
 func setup(
@@ -108,6 +109,20 @@ func description() -> String:
 	return String(item.get("description"))
 
 
+func _process(_delta: float) -> void:
+	var open := _wheel_is_open()
+	if _player_inside and not _taken and _wheel_was_open and not open:
+		_show_info_card()
+	_wheel_was_open = open
+
+
+func _wheel_is_open() -> bool:
+	var wheel := get_node_or_null("/root/AxelWorld/ItemWheel")
+	if wheel == null or not wheel.has_method("is_wheel_open"):
+		return false
+	return bool(wheel.call("is_wheel_open"))
+
+
 func _on_body_entered(body: Node) -> void:
 	if _taken or not _is_player(body):
 		return
@@ -156,6 +171,8 @@ func _take() -> void:
 
 
 func _show_info_card() -> void:
+	if _wheel_is_open():
+		return
 	if _info_card == null or not is_instance_valid(_info_card):
 		return
 	if _info_card.has_method("show_item"):

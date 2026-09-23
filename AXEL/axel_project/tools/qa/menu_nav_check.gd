@@ -209,17 +209,24 @@ func _check_interact_and_back() -> void:
 		return
 	await _settle()
 	var slot := current_scene.find_child("Slot1", true, false) as Button
+	var seed_btn := current_scene.find_child("SeedSlot1", true, false) as Button
 	var delete_btn := current_scene.find_child("DeleteSlot1", true, false) as Button
-	if slot == null or delete_btn == null:
-		_fail("Load Saves missing Slot1 or Delete")
+	if slot == null or seed_btn == null or delete_btn == null:
+		_fail("Load Saves missing Slot1, seed, or Delete")
 	else:
 		if not slot.has_focus():
 			_fail("Load Saves did not focus Slot1 (owner=%s)" % _focus_name())
 			slot.grab_focus()
 			await process_frame
 		await _tap(KEY_D)
+		if not seed_btn.has_focus():
+			_fail("D did not move Load Saves focus to the seed (owner=%s)" % _focus_name())
+		await _tap(KEY_D)
 		if not delete_btn.has_focus():
 			_fail("D did not move Load Saves focus to Delete (owner=%s)" % _focus_name())
+		await _tap(KEY_A)
+		if not seed_btn.has_focus():
+			_fail("A did not move Load Saves focus back to the seed (owner=%s)" % _focus_name())
 		await _tap(KEY_A)
 		if not slot.has_focus():
 			_fail("A did not move Load Saves focus back to Slot1 (owner=%s)" % _focus_name())

@@ -126,6 +126,29 @@ func _main() -> void:
 				for leak in ["mem ", "Flashlight", "Key", "Shovel", "Name", "missing"]:
 					if label.contains(leak):
 						failures.append("Load label leaked '%s': %s" % [leak, label])
+				if label.contains("seed"):
+					failures.append("slot button still contains the seed: %s" % label)
+			var header_seed := int(saves.call("read_header", 0).get("seed", 0))
+			var seed_btn := screen.find_child("SeedSlot1", true, false) as Button
+			if header_seed == 0:
+				failures.append("living slot 0 is missing a seed")
+			elif seed_btn == null:
+				failures.append("living slot missing seed button")
+			elif not seed_btn.text.contains(str(header_seed)):
+				failures.append("seed button '%s' missing header seed %d" % [seed_btn.text, header_seed])
+			else:
+				seed_btn.mouse_entered.emit()
+				await process_frame
+				var hover := screen.find_child("SeedHover", true, false) as Label
+				if hover == null or not hover.visible or not hover.text.contains(str(header_seed)):
+					failures.append("seed hover did not show the full seed")
+				elif hover.get_visible_line_count() < 1:
+					failures.append("seed hover has no visible line")
+				seed_btn.pressed.emit()
+				await process_frame
+				var copied := screen.find_child("SavesStatus", true, false) as Label
+				if copied == null or copied.text != "Seed copied.":
+					failures.append("seed click did not report a copy")
 			var del := screen.find_child("DeleteSlot1", true, false) as Button
 			if host == null or del == null:
 				failures.append("load saves UI missing host or Delete")
@@ -180,6 +203,43 @@ func _main() -> void:
 			new_screen.queue_free()
 			await process_frame
 			saves_script.open_mode = "load"
+
+	if not bool(saves.call("new_game", 0)):
+		failures.append("new_game(0) before delete-stick failed")
+	var stick_tmp := String(saves._body_path(0)) + ".tmp"
+	var tmp_file := FileAccess.open(stick_tmp, FileAccess.WRITE)
+	if tmp_file == null:
+		failures.append("could not plant a slot tmp")
+	else:
+		tmp_file.store_string("{}")
+		tmp_file.close()
+	if not bool(saves.call("delete_slot", 0)):
+		failures.append("delete_slot(0) for stick test failed")
+	if FileAccess.file_exists(stick_tmp):
+		failures.append("delete left a tmp that can restore the slot")
+	saves.active_slot = 0
+	saves.call("save_active_now")
+	saves.call("save_active")
+	await process_frame
+	saves._flush_save("res://scenes/Arc_1/1.1_SchoolExterior.tscn")
+	if not bool(saves.call("is_empty", 0)) or FileAccess.file_exists(String(saves._body_path(0))):
+		failures.append("deleted slot 0 was rewritten from memory")
+	saves.active_slot = -1
+	if not bool(saves.call("new_game", 0)):
+		failures.append("new_game after a blocked delete failed")
+	if bool(saves.call("is_empty", 0)):
+		failures.append("new_game did not recreate a blocked slot")
+	saves.call("deactivate")
+
+	if not bool(saves.call("new_game", 1)):
+		failures.append("new_game(1) before mid-flush delete failed")
+	saves._before_slot_write = func(slot: int) -> void:
+		saves.call("delete_slot", slot)
+	saves._flush_save("res://scenes/Arc_1/1.1_SchoolExterior.tscn")
+	saves._before_slot_write = Callable()
+	if not bool(saves.call("is_empty", 1)) or FileAccess.file_exists(String(saves._body_path(1))):
+		failures.append("mid-flush delete recreated slot 1")
+	saves.active_slot = -1
 
 	for i in 3:
 		saves._delete_slot_files(i)

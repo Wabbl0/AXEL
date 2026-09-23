@@ -3,6 +3,7 @@ extends CanvasLayer
 const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 
 const CARD_LAYER := 109
+const HOVER_LAYER := 110
 const ICON_PX := 64.0
 const NAME_FONT := 26
 const DESC_FONT := 20
@@ -22,6 +23,8 @@ var _desc_label: Label
 var _key_label: Label
 var _world_anchor := Vector2.ZERO
 var _anchor: Node
+var _screen_lock := false
+var _screen_pos := Vector2.ZERO
 var _shown := false
 var _crt_settled := false
 var _anim_token := 0
@@ -171,13 +174,46 @@ func show_item(
 	icon: Texture2D,
 	anchor: Node = null,
 ) -> void:
+	_screen_lock = false
+	layer = CARD_LAYER
 	_world_anchor = world_pos
 	_anchor = anchor
+	_apply_payload(item_name, description, icon, true)
+	_reveal()
+
+
+func nudge_screen_item(screen_pos: Vector2) -> void:
+	if not _screen_lock or not _shown:
+		return
+	_screen_pos = screen_pos
+	_update_screen_position()
+
+
+func show_screen_item(
+	screen_pos: Vector2,
+	item_name: String,
+	description: String,
+	icon: Texture2D,
+) -> void:
+	_screen_lock = true
+	_screen_pos = screen_pos
+	_anchor = null
+	layer = HOVER_LAYER
+	_apply_payload(item_name, description, icon, false)
+	_reveal()
+
+
+func _apply_payload(item_name: String, description: String, icon: Texture2D, show_key: bool) -> void:
 	_name_label.text = item_name
 	_desc_label.text = description
 	_icon.texture = icon
 	_icon.visible = icon != null
+	if _key_label != null:
+		_key_label.visible = show_key
 	_apply_scale()
+
+
+func _reveal() -> void:
 	if _shown and _crt_settled:
 		_refresh_panel_size()
 		_update_screen_position()
@@ -204,6 +240,10 @@ func hide_card_immediate() -> void:
 	_shown = false
 	_crt_settled = false
 	_anchor = null
+	_screen_lock = false
+	layer = CARD_LAYER
+	if _key_label != null:
+		_key_label.visible = true
 	if is_instance_valid(_root):
 		_root.visible = false
 		_root.modulate.a = 0.0
@@ -308,6 +348,9 @@ func _update_screen_position() -> void:
 	var viewport := get_viewport()
 	if viewport == null or _panel == null or _root == null:
 		return
+	if _screen_lock:
+		_place_at_screen(viewport)
+		return
 	var hand := _hand_rect()
 	_refresh_panel_size()
 	var card_size := _panel.size
@@ -318,6 +361,21 @@ func _update_screen_position() -> void:
 	var pos := Vector2(hand.get_center().x - card_w * 0.5, hand.end.y + gap)
 	var view_size := Vector2(viewport.get_visible_rect().size)
 	pos.x = clampf(pos.x, WINDOW_PAD, maxf(view_size.x - card_w - WINDOW_PAD, WINDOW_PAD))
+	_root.position = pos
+	_root.size = card_size
+
+
+func _place_at_screen(viewport: Viewport) -> void:
+	_refresh_panel_size()
+	var card_size := _panel.size
+	if card_size.x <= 0.0 or card_size.y <= 0.0:
+		card_size = _panel.get_combined_minimum_size()
+	var view_size := Vector2(viewport.get_visible_rect().size)
+	var pos := _screen_pos + Vector2(16.0, -card_size.y * 0.5)
+	if pos.x + card_size.x > view_size.x - WINDOW_PAD:
+		pos.x = _screen_pos.x - card_size.x - 16.0
+	pos.x = clampf(pos.x, WINDOW_PAD, maxf(view_size.x - card_size.x - WINDOW_PAD, WINDOW_PAD))
+	pos.y = clampf(pos.y, WINDOW_PAD, maxf(view_size.y - card_size.y - WINDOW_PAD, WINDOW_PAD))
 	_root.position = pos
 	_root.size = card_size
 

@@ -63,6 +63,8 @@ signal goal_victory_requested()
 @onready var power_intro_icon: TextureRect = $PowerIntroLayer/PowerIntroIcon
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
+const WIN_SKULL := preload("res://combat/art/grid_symbols/satanic_wild.png")
+const FLAME_BURST_SCRIPT := preload("res://combat/scripts/flame_burst.gd")
 const PowerControllerScript := preload("res://combat/scripts/power_controller.gd")
 const LineDetectorScript := preload("res://combat/scripts/line_detector.gd")
 const MeterScript := preload("res://combat/scripts/meter.gd")
@@ -1322,6 +1324,40 @@ func get_feel() -> Node:
 	return _feel
 
 
+func play_goal_win_burst() -> void:
+	if _dev_skip_visuals or grid_ui == null:
+		return
+	for child in grid_ui.get_children():
+		if child.has_method("show_win_skull"):
+			child.call("show_win_skull", WIN_SKULL)
+		if child.has_method("play_count_flash"):
+			child.call("play_count_flash", 0.4, 0.85)
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(0.4).timeout
+	var layer := CanvasLayer.new()
+	layer.name = "GoalFlameLayer"
+	layer.layer = 180
+	add_child(layer)
+	var host := Control.new()
+	host.name = "GoalFlameHost"
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var view := get_viewport_rect().size
+	host.position = Vector2.ZERO
+	host.size = view
+	layer.add_child(host)
+	var burst = FLAME_BURST_SCRIPT.new()
+	burst.name = "GoalFlameBurst"
+	add_child(burst)
+	burst.bind(host)
+	var rect := grid_ui.get_global_rect()
+	await burst.play_waves(rect.position + rect.size * 0.5, [8, 16, 32])
+	if tree != null:
+		await tree.create_timer(0.25).timeout
+
+
 func await_victory_confirm() -> void:
 	if _dev_skip_visuals:
 		return
@@ -1859,7 +1895,7 @@ func _play_meter_full_transition_async() -> void:
 	emit_signal("readouts_progressed")
 	sfx_requested.emit(&"trinity")
 	if _feel != null and not _dev_skip_visuals:
-		await _feel.play_banner("VICE ROUND", 1.8, 0.82)
+		await _feel.play_banner("VICE ROUND", 1.8, 0.82, false, grid_ui)
 		_feel.highlight_power(powers.current_id())
 	if _dev_skip_visuals or not enable_transition_fx:
 		await _pause_visual(pause_after_power_sec * 0.6)

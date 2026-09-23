@@ -2,6 +2,7 @@ class_name CombatFeel
 extends Node
 
 const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
+const FLAME_BURST_SCRIPT := preload("res://combat/scripts/flame_burst.gd")
 const BANNER_LAYER := 115
 const ENCOUNTER_BANNER_HOLD_SEC := 1.6
 const ENCOUNTER_BANNER_SCRIM := 0.85
@@ -22,6 +23,7 @@ var _shake_tween: Tween
 var _wobble_tween: Tween
 var _host_rest: Vector2 = Vector2.ZERO
 var _game_over_open := false
+var _banner_anchor: Control
 
 
 func setup(root: Node2D, grid_ui: Control) -> void:
@@ -85,6 +87,9 @@ func _build() -> void:
 	_menu_box.offset_bottom = 280
 	_menu_box.add_theme_constant_override("separation", 10)
 	_layer.add_child(_menu_box)
+	var vp := _root.get_viewport() if _root != null else null
+	if vp != null and not vp.size_changed.is_connected(_on_banner_viewport_resized):
+		vp.size_changed.connect(_on_banner_viewport_resized)
 
 
 func set_goal_progress(ratio: float) -> void:
@@ -109,10 +114,12 @@ func highlight_power(_id_name: StringName) -> void:
 	pass
 
 
-func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62, persist: bool = false) -> void:
+func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62, persist: bool = false, anchor: Control = null) -> void:
 	if _banner == null:
 		return
 	_banner.text = text
+	_banner_anchor = anchor
+	_place_banner()
 	_kill(_banner_tween)
 	_banner.modulate.a = 0.0
 	_banner_scrim.color = Color(0.0, 0.0, 0.0, 0.0)
@@ -124,6 +131,41 @@ func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62, pe
 		_banner_tween.tween_property(_banner, "modulate:a", 0.0, BANNER_FADE_OUT_SEC)
 		_banner_tween.parallel().tween_property(_banner_scrim, "color:a", 0.0, BANNER_FADE_OUT_SEC)
 	await _banner_tween.finished
+	if not persist:
+		_banner_anchor = null
+		_place_banner()
+
+
+func _on_banner_viewport_resized() -> void:
+	if _banner != null and _banner.modulate.a > 0.01:
+		_place_banner()
+
+
+func _place_banner() -> void:
+	if _banner == null:
+		return
+	if _banner_anchor == null or not is_instance_valid(_banner_anchor):
+		_banner.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_banner.offset_left = 0.0
+		_banner.offset_top = 0.0
+		_banner.offset_right = 0.0
+		_banner.offset_bottom = -180.0
+		_banner.add_theme_font_size_override("font_size", 96)
+		return
+	var rect := _banner_anchor.get_global_rect()
+	_banner.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_banner.position = rect.position
+	_banner.size = rect.size
+	_banner.offset_left = rect.position.x
+	_banner.offset_top = rect.position.y
+	_banner.offset_right = rect.position.x + rect.size.x
+	_banner.offset_bottom = rect.position.y + rect.size.y
+	var font := _banner.get_theme_font("font")
+	var size := 96
+	if font != null and rect.size.x > 8.0:
+		while size > 32 and font.get_string_size(_banner.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > rect.size.x - 8.0:
+			size -= 4
+	_banner.add_theme_font_size_override("font_size", size)
 
 
 func is_game_over_open() -> bool:
@@ -133,12 +175,148 @@ func is_game_over_open() -> bool:
 func show_game_over_menu(retry: Callable, to_menu: Callable, quit_app: Callable) -> void:
 	_game_over_open = true
 	_kill(_banner_tween)
+	_banner_anchor = null
+	_place_banner()
+	if _menu_box != null:
+		_menu_box.visible = false
 	if _banner != null:
-		_banner.text = "GONE"
-		_banner.modulate.a = 1.0
+		_banner.text = ""
+		_banner.modulate.a = 0.0
 	if _banner_scrim != null:
 		_banner_scrim.color = Color(0.0, 0.0, 0.0, ENCOUNTER_BANNER_SCRIM)
 		_banner_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	await _play_loss_collapse()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var line := "IT TAKES YOU" if rng.randi() % 2 == 1 else "GONE"
+	if _banner != null:
+		_banner.text = line
+		_banner.modulate.a = 0.0
+		var fade := create_tween()
+		fade.tween_property(_banner, "modulate:a", 1.0, 0.5)
+		await fade.finished
+	await _wait_for_loss_buttons()
+	_reveal_loss_buttons(retry, to_menu, quit_app)
+
+
+func _play_loss_collapse() -> void:
+	var pieces := _loss_pieces()
+	if pieces.is_empty():
+		return
+	var view := _loss_view_size()
+	var layer := CanvasLayer.new()
+	layer.name = "LossFallLayer"
+	layer.layer = 114
+	if _root != null:
+		_root.add_child(layer)
+	var host := Control.new()
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.position = Vector2.ZERO
+	host.size = view
+	layer.add_child(host)
+	var burst = null
+	if not _reduce_flashing():
+		burst = FLAME_BURST_SCRIPT.new()
+		burst.name = "LossFlameBurst"
+		if _root != null:
+			_root.add_child(burst)
+		burst.bind(host)
+	var spin := RandomNumberGenerator.new()
+	spin.randomize()
+	for i in pieces.size():
+		var piece := pieces[i] as Control
+		if piece == null or not is_instance_valid(piece):
+			continue
+		if burst != null:
+			var rect := piece.get_global_rect()
+			burst.play_waves(rect.position + rect.size * 0.5, [4])
+		var global_pos: Vector2 = piece.global_position
+		var parent := piece.get_parent()
+		if parent != null:
+			parent.remove_child(piece)
+		host.add_child(piece)
+		piece.global_position = global_pos
+		var drop := create_tween()
+		var delay := float(i) * 0.04
+		if delay > 0.0:
+			drop.tween_interval(delay)
+		drop.tween_property(piece, "global_position:y", view.y + 80.0, 0.8)
+		drop.parallel().tween_property(piece, "rotation", spin.randf_range(-0.6, 0.6), 0.8)
+		drop.finished.connect(_hide_loss_piece.bind(piece))
+	var tree := get_tree()
+	if tree != null:
+		await tree.create_timer(minf(float(pieces.size()) * 0.04, 0.4) + 0.15).timeout
+
+
+func _hide_loss_piece(piece: CanvasItem) -> void:
+	if is_instance_valid(piece):
+		piece.visible = false
+
+
+func _loss_pieces() -> Array[CanvasItem]:
+	var out: Array[CanvasItem] = []
+	var scene := get_tree().current_scene if get_tree() != null else null
+	if scene != null:
+		for piece_name in [
+			"NEW_Grid", "NEW_History", "NEW_Items", "NEW_Bets",
+			"NEW_Goal", "NEW_Multiplier", "NEW_Settings", "NEW_Execute",
+		]:
+			var node := scene.find_child(piece_name, true, false) as CanvasItem
+			if node != null and node.visible:
+				out.append(node)
+		var dvd := scene.find_child("EmptyItemDvd", true, false) as CanvasItem
+		if dvd != null and dvd.visible:
+			out.append(dvd)
+	if _grid_ui != null:
+		for child in _grid_ui.get_children():
+			if child is CanvasItem:
+				out.append(child as CanvasItem)
+	if _root != null:
+		var frame := _root.get_node_or_null("GridFrame") as CanvasItem
+		if frame != null and frame.visible:
+			out.append(frame)
+	return out
+
+
+func _loss_view_size() -> Vector2:
+	var vp := get_viewport()
+	if vp != null:
+		var vis := vp.get_visible_rect().size
+		if vis.x >= 64.0 and vis.y >= 64.0:
+			return vis
+	return Vector2(1920, 1280)
+
+
+func _reduce_flashing() -> bool:
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings != null and settings.has_method("get_value"):
+		return bool(settings.call("get_value", "access", "reduce_flashing", false))
+	return false
+
+
+func _wait_for_loss_buttons() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	var elapsed := 0.0
+	var reveal := false
+	while elapsed < 3.0:
+		if Input.is_action_just_pressed("interact") or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			reveal = true
+			var vp := get_viewport()
+			if vp != null:
+				vp.set_input_as_handled()
+			break
+		await tree.process_frame
+		var delta := get_process_delta_time()
+		elapsed += delta if delta > 0.0 else (1.0 / 60.0)
+	if reveal:
+		while Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			await tree.process_frame
+		await tree.process_frame
+
+
+func _reveal_loss_buttons(retry: Callable, to_menu: Callable, quit_app: Callable) -> void:
 	if _menu_box == null:
 		return
 	for child in _menu_box.get_children():

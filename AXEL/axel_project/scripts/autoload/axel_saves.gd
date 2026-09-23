@@ -14,6 +14,8 @@ var active_slot: int = -1
 var dir_override := ""
 var _playtime_sec: float = 0.0
 var _save_queued := false
+var _write_blocked: Dictionary = {}
+var _before_slot_write := Callable()
 var _pending_tex := Vector2.ZERO
 var _pending_tex_valid := false
 var _skip_intro_once := false
@@ -141,6 +143,8 @@ func begin_new_game_and_enter(slot: int) -> bool:
 func new_game(slot: int) -> bool:
 	if not _valid_slot(slot):
 		return false
+	_save_queued = false
+	_write_blocked.erase(slot)
 	_delete_slot_files(slot)
 	GameManager.reset_state()
 	var run := get_node_or_null("/root/AxelRun")
@@ -195,13 +199,13 @@ func continue_last() -> bool:
 
 
 func save_active() -> void:
-	if not is_active():
+	if not is_active() or _is_write_blocked(active_slot):
 		return
 	_queue_save()
 
 
 func save_active_now() -> void:
-	if not is_active():
+	if not is_active() or _is_write_blocked(active_slot):
 		return
 	var scene := get_tree().current_scene
 	var path := ""
@@ -213,7 +217,11 @@ func save_active_now() -> void:
 func delete_slot(slot: int) -> bool:
 	if not _valid_slot(slot) or is_empty(slot):
 		return false
-	_delete_slot_files(slot)
+	_save_queued = false
+	_write_blocked[slot] = true
+	if not _delete_slot_files(slot):
+		_write_blocked.erase(slot)
+		return false
 	if active_slot == slot:
 		active_slot = -1
 		active_slot_changed.emit(-1)
@@ -234,7 +242,7 @@ func deactivate() -> void:
 
 
 func _on_scene_changed() -> void:
-	if not is_active():
+	if not is_active() or _is_write_blocked(active_slot):
 		return
 	var scene := get_tree().current_scene
 	if scene == null or _is_menu_path(scene.scene_file_path):
@@ -267,7 +275,7 @@ func _queue_save() -> void:
 
 func _flush_save_deferred() -> void:
 	_save_queued = false
-	if not is_active():
+	if not is_active() or _is_write_blocked(active_slot):
 		return
 	var scene := get_tree().current_scene
 	var path := ""
@@ -277,10 +285,11 @@ func _flush_save_deferred() -> void:
 
 
 func _flush_save(scene_path: String) -> void:
-	if not is_active():
+	if not is_active() or _is_write_blocked(active_slot):
 		return
 	if _is_menu_path(scene_path):
 		return
+	var slot := active_slot
 	var body := GameManager.export_save_body()
 	body["playtime_sec"] = _playtime_sec
 	if not scene_path.is_empty():
@@ -293,10 +302,22 @@ func _flush_save(scene_path: String) -> void:
 			var tex := PlayerSpawnSync.capture_tex(env, player)
 			body["player_tex_x"] = tex.x
 			body["player_tex_y"] = tex.y
+	if not _can_write_slot(slot):
+		return
+	if _before_slot_write.is_valid():
+		_before_slot_write.call(slot)
+	if not _can_write_slot(slot):
+		return
 	var header := _header_from_body(body, scene_path)
-	_atomic_write(_meta_path(active_slot), header)
-	_atomic_write(_body_path(active_slot), body)
-	_write_index(active_slot)
+	_atomic_write(_meta_path(slot), header)
+	if not _can_write_slot(slot):
+		_delete_slot_files(slot)
+		return
+	_atomic_write(_body_path(slot), body)
+	if not _can_write_slot(slot):
+		_delete_slot_files(slot)
+		return
+	_write_index(slot)
 	slots_changed.emit()
 
 
@@ -377,11 +398,29 @@ func _purge_dead_slots() -> void:
 	slots_changed.emit()
 
 
-func _delete_slot_files(slot: int) -> void:
-	for path in [_meta_path(slot), _body_path(slot)]:
+func _delete_slot_files(slot: int) -> bool:
+	var paths: Array[String] = [
+		_meta_path(slot),
+		_body_path(slot),
+		_meta_path(slot) + ".tmp",
+		_body_path(slot) + ".tmp",
+	]
+	for path in paths:
 		var abs_path := ProjectSettings.globalize_path(path)
 		if FileAccess.file_exists(abs_path):
 			DirAccess.remove_absolute(abs_path)
+	for path in [_meta_path(slot), _body_path(slot)]:
+		if FileAccess.file_exists(ProjectSettings.globalize_path(path)):
+			return false
+	return true
+
+
+func _is_write_blocked(slot: int) -> bool:
+	return bool(_write_blocked.get(slot, false))
+
+
+func _can_write_slot(slot: int) -> bool:
+	return is_active() and active_slot == slot and not _is_write_blocked(slot)
 
 
 func _write_index(slot: int) -> void:

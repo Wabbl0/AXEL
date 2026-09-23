@@ -9,6 +9,7 @@ var _backdrop: TextureRect
 var _chrome: CanvasLayer
 var _time := 0.0
 var _status: Label
+var _seed_hover: Label
 var _confirm_slot := -1
 var _confirm_delete_slot := -1
 var _status_hold := ""
@@ -33,6 +34,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _build() -> void:
+	_hide_seed_hover()
 	for child in _chrome.get_children():
 		child.queue_free()
 	var host := Control.new()
@@ -91,6 +93,19 @@ func _make_slot_row(slot: int) -> Control:
 	button.clip_text = true
 	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_child(button)
+	var seed_n := _slot_seed(slot)
+	if seed_n != 0:
+		var seed_btn := Button.new()
+		seed_btn.name = "SeedSlot%d" % (slot + 1)
+		seed_btn.text = "seed %d" % seed_n
+		MenuLook.apply_button(seed_btn, MenuLook.scaled_font(self, 28), Control.SIZE_SHRINK_END)
+		seed_btn.clip_text = true
+		seed_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		seed_btn.custom_maximum_size = Vector2(220.0, -1.0)
+		seed_btn.mouse_entered.connect(func() -> void: _show_seed_hover(seed_btn, seed_n))
+		seed_btn.mouse_exited.connect(_hide_seed_hover)
+		seed_btn.pressed.connect(func() -> void: _on_seed_pressed(seed_n))
+		row.add_child(seed_btn)
 	var delete_btn := Button.new()
 	delete_btn.name = "DeleteSlot%d" % (slot + 1)
 	delete_btn.text = "Delete"
@@ -133,17 +148,64 @@ func _slot_label(slot: int) -> String:
 	if stamp > 0:
 		when = Time.get_datetime_string_from_unix_time(stamp, true)
 	var dead := "  DIED" if bool(header.get("dead", false)) else ""
-	var seed_n := int(header.get("seed", 0))
-	var seed_txt := ("  |  seed %d" % seed_n) if seed_n != 0 else ""
-	return "Slot %d%s  —  %s  |  %dm %ds  |  %s%s" % [
+	return "Slot %d%s  —  %s  |  %dm %ds  |  %s" % [
 		slot + 1,
 		dead,
 		String(header.get("last_room", "?")),
 		mins,
 		secs,
 		when,
-		seed_txt,
 	]
+
+
+func _slot_seed(slot: int) -> int:
+	var header := AxelSaves.read_header(slot)
+	if header.is_empty():
+		return 0
+	return int(header.get("seed", 0))
+
+
+func _on_seed_pressed(seed_n: int) -> void:
+	DisplayServer.clipboard_set(str(seed_n))
+	_confirm_delete_slot = -1
+	if _status != null:
+		_status.text = "Seed copied."
+
+
+func _show_seed_hover(button: Button, seed_n: int) -> void:
+	_ensure_seed_hover()
+	_seed_hover.text = "seed %d" % seed_n
+	_seed_hover.visible = true
+	var size := _seed_hover.get_combined_minimum_size()
+	if size.x < 1.0 or size.y < 1.0:
+		size = Vector2(220.0, 36.0)
+	var btn_rect := button.get_global_rect()
+	var view := get_viewport_rect().size
+	var x := btn_rect.position.x
+	var y := btn_rect.position.y - size.y - 4.0
+	if y < 0.0:
+		y = btn_rect.end.y + 4.0
+	x = clampf(x, 0.0, maxf(view.x - size.x, 0.0))
+	y = clampf(y, 0.0, maxf(view.y - size.y, 0.0))
+	_seed_hover.global_position = Vector2(x, y)
+	_seed_hover.size = size
+
+
+func _hide_seed_hover() -> void:
+	if _seed_hover != null and is_instance_valid(_seed_hover):
+		_seed_hover.visible = false
+
+
+func _ensure_seed_hover() -> void:
+	if _seed_hover != null and is_instance_valid(_seed_hover):
+		return
+	_seed_hover = Label.new()
+	_seed_hover.name = "SeedHover"
+	_seed_hover.visible = false
+	_seed_hover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_seed_hover.z_index = 20
+	MenuLook.apply_label(_seed_hover, MenuLook.scaled_font(self, 28), MenuLook.TEXT)
+	add_child(_seed_hover)
 
 
 func _on_slot_pressed(slot: int) -> void:

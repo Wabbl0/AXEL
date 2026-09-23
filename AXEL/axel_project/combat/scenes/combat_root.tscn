@@ -84,6 +84,7 @@ offset_right = 48.0
 offset_bottom = 48.0
 pivot_offset = Vector2(48, 48)
 mouse_filter = 2
+texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
 

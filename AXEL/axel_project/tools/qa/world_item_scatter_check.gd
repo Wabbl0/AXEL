@@ -165,6 +165,11 @@ func _check_item_seed_differs(world: Node) -> void:
 	world.call("plan_floor_items", 111)
 	var a: Dictionary = world.call("to_dict")
 	world.call("reset_world")
+	world.call("plan_floor_items", 111)
+	var same: Dictionary = world.call("to_dict")
+	if _planned_ids(a) != _planned_ids(same):
+		_fail("the same item seed must plan the same Common board")
+	world.call("reset_world")
 	world.call("plan_floor_items", 99991)
 	var b: Dictionary = world.call("to_dict")
 	if int(a.get("item_seed", 0)) == int(b.get("item_seed", 0)):

@@ -33,11 +33,15 @@ var _pulse_in_progress := false
 var _enter_glitch_pending := false
 var _skip_next_enter_glitch := false
 const ROUND_COMPLETE_SCRIM_A := 0.72
+const ROUND_COMPLETE_TEXT := "Round Complete!"
+const FLAME_BURST_SCRIPT := preload("res://combat/scripts/flame_burst.gd")
 
 var _round_fade: CanvasLayer
 var _round_root: Control
 var _round_scrim: ColorRect
-var _round_label: Label
+var _round_flames: Control
+var _round_label: RichTextLabel
+var _round_hop: Tween
 
 
 func _ready() -> void:
@@ -205,11 +209,15 @@ func show_round_complete_card() -> void:
 		_round_root.visible = true
 	_round_scrim.color = Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A)
 	_round_scrim.visible = true
+	_round_label.text = _round_complete_bbcode()
 	_round_label.modulate.a = 1.0
 	_round_label.visible = true
+	_start_round_hop()
+	_start_round_flames()
 
 
 func play_round_complete_fade() -> void:
+	_stop_round_hop()
 	skip_next_enter_glitch()
 	if _event_fx_disabled():
 		return
@@ -250,7 +258,7 @@ func get_round_complete_scrim() -> ColorRect:
 	return _round_scrim
 
 
-func get_round_complete_label() -> Label:
+func get_round_complete_label() -> RichTextLabel:
 	_ensure_round_complete_overlay()
 	return _round_label
 
@@ -262,9 +270,12 @@ func _hide_round_complete() -> void:
 		_round_root.visible = false
 	if _round_scrim != null:
 		_round_scrim.color = Color(0, 0, 0, 0)
+	_stop_round_hop()
+	_clear_round_flames()
 	if _round_label != null:
 		_round_label.visible = false
 		_round_label.modulate.a = 0.0
+		_round_label.position = Vector2.ZERO
 
 
 func _viewport_size() -> Vector2:
@@ -287,6 +298,9 @@ func _layout_round_complete() -> void:
 	if _round_scrim != null:
 		_round_scrim.position = Vector2.ZERO
 		_round_scrim.size = size
+	if _round_flames != null:
+		_round_flames.position = Vector2.ZERO
+		_round_flames.size = size
 	if _round_label != null:
 		_round_label.position = Vector2.ZERO
 		_round_label.size = size
@@ -308,15 +322,22 @@ func _build_round_complete_overlay() -> void:
 	_round_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_round_scrim.color = Color(0, 0, 0, 0)
 	_round_root.add_child(_round_scrim)
-	_round_label = Label.new()
+	_round_flames = Control.new()
+	_round_flames.name = "RoundFlames"
+	_round_flames.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_round_root.add_child(_round_flames)
+	_round_label = RichTextLabel.new()
 	_round_label.name = "RoundCompleteLabel"
-	_round_label.text = "Round Complete!"
+	_round_label.bbcode_enabled = true
+	_round_label.scroll_active = false
+	_round_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_round_label.text = _round_complete_bbcode()
 	_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_round_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_round_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_round_label.add_theme_font_override("font", load("res://combat/ui/fonts/VT323-Regular.ttf"))
-	_round_label.add_theme_font_size_override("font_size", 64)
-	_round_label.add_theme_color_override("font_color", Color.WHITE)
+	_round_label.add_theme_font_override("normal_font", load("res://combat/ui/fonts/VT323-Regular.ttf"))
+	_round_label.add_theme_font_size_override("normal_font_size", 64)
+	_round_label.add_theme_color_override("default_color", Color.WHITE)
 	_round_label.modulate.a = 0.0
 	_round_label.visible = false
 	_round_root.add_child(_round_label)
@@ -324,6 +345,51 @@ func _build_round_complete_overlay() -> void:
 	if vp != null and not vp.size_changed.is_connected(_layout_round_complete):
 		vp.size_changed.connect(_layout_round_complete)
 	_layout_round_complete()
+
+
+func _round_complete_bbcode() -> String:
+	var out := ""
+	for i in ROUND_COMPLETE_TEXT.length():
+		var ch := ROUND_COMPLETE_TEXT.substr(i, 1)
+		var color := "white" if i % 2 == 0 else "red"
+		out += "[color=%s]%s[/color]" % [color, ch]
+	return out
+
+
+func _start_round_hop() -> void:
+	_stop_round_hop()
+	if _round_label == null:
+		return
+	var rest_y := _round_label.position.y
+	_round_hop = create_tween()
+	_round_hop.set_loops()
+	_round_hop.tween_property(_round_label, "position:y", rest_y - 24.0, 0.225)
+	_round_hop.tween_property(_round_label, "position:y", rest_y, 0.225)
+
+
+func _stop_round_hop() -> void:
+	if _round_hop != null and is_instance_valid(_round_hop):
+		_round_hop.kill()
+	_round_hop = null
+
+
+func _start_round_flames() -> void:
+	if _round_root == null or _round_flames == null:
+		return
+	_clear_round_flames()
+	var burst = FLAME_BURST_SCRIPT.new()
+	burst.name = "RoundFlameBurst"
+	_round_root.add_child(burst)
+	burst.bind(_round_flames)
+	burst.play_waves(_round_root.size * 0.5, [8, 16])
+
+
+func _clear_round_flames() -> void:
+	if _round_root == null:
+		return
+	var old := _round_root.get_node_or_null("RoundFlameBurst")
+	if old != null:
+		old.queue_free()
 
 
 func _ensure_round_complete_overlay() -> void:
