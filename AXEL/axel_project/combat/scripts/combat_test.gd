@@ -30,7 +30,7 @@ const BANKROLL_READOUT_FONT := 36
 const ECON_BAR_FONT_FILL := 0.9
 const ECON_BAR_FONT_MIN := 24
 const ECON_BAR_FONT_MAX := 200
-const ECON_BAR_FIT_SAMPLE := "BALANCE: 0000/0000"
+const ECON_BAR_FIT_SAMPLE := "BALANCE: 0000"
 const BET_STRIP_SEPARATOR_FONT_RATIO := 0.875
 const EXECUTE_BUTTON_MIN_HEIGHT := 72.0
 const BOTTOM_WINDOW_MARGIN := 18.0
@@ -130,6 +130,7 @@ var mult_label: Label
 var goal_label: Label
 var budget_label: Label
 var bankroll_label: Label
+var _balance_fit_text := ""
 var combat: CombatRootScript
 var encounter_win_overlay: Control
 var encounter_win_label: Label
@@ -194,7 +195,6 @@ var _editor_tree_ready_attempts: int = 0
 var _runtime_tree_ready_attempts: int = 0
 
 const EDITOR_FALLBACK_BANKROLL := 1000
-const EDITOR_FALLBACK_BANKROLL_CAP := 1000
 const EDITOR_FALLBACK_BET := 100
 const EDITOR_FALLBACK_MAX_ITEM_SLOTS := 7
 
@@ -265,11 +265,6 @@ func _safe_get_bankroll() -> float:
 	if _can_use_combat_api():
 		return combat.get_bankroll()
 	return float(EDITOR_FALLBACK_BANKROLL)
-
-func _safe_get_bankroll_cap() -> float:
-	if _can_use_combat_api():
-		return combat.get_bankroll_cap()
-	return float(EDITOR_FALLBACK_BANKROLL_CAP)
 
 func _safe_get_goal_label() -> String:
 	if _can_use_combat_api():
@@ -1695,10 +1690,9 @@ func _refresh_readouts() -> void:
 		if _displayed_round_winnings == combat_total and _target_round_winnings == combat_total:
 			_apply_winnings_readout_text()
 	_refresh_cascade_multiplier_readout()
-	var cap_units := int(_safe_get_bankroll_cap())
 	var bankroll_units := int(_safe_get_bankroll())
 	if bankroll_label != null:
-		bankroll_label.text = "BALANCE: %d/%d" % [bankroll_units, cap_units]
+		bankroll_label.text = "BALANCE: %d" % bankroll_units
 	if goal_label != null:
 		goal_label.text = "GOAL:\n%s" % _goal_progress_only(_safe_get_goal_label())
 	_refresh_bet_strip()
@@ -1709,6 +1703,9 @@ func _refresh_readouts() -> void:
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
 	_refresh_skull_first_spin_hint()
+	if bankroll_label != null and bankroll_label.text != _balance_fit_text:
+		_balance_fit_text = bankroll_label.text
+		_apply_economics_typography()
 
 func _refresh_editor_placeholder_readouts() -> void:
 	if not _cache_scene_refs():
@@ -1722,7 +1719,7 @@ func _refresh_editor_placeholder_readouts() -> void:
 		_cascade_mult_label.text = "1X"
 	_last_displayed_cascade_mult = 1
 	if bankroll_label != null:
-		bankroll_label.text = "BALANCE: %d/%d" % [EDITOR_FALLBACK_BANKROLL, EDITOR_FALLBACK_BANKROLL_CAP]
+		bankroll_label.text = "BALANCE: %d" % EDITOR_FALLBACK_BANKROLL
 	if goal_label != null:
 		goal_label.text = "GOAL:\n0 / 0"
 	_refresh_bet_strip()
@@ -2631,9 +2628,12 @@ func _fitted_balance_bet_font() -> int:
 	var height_limit := bar_h * ECON_BAR_FONT_FILL
 	if font == null:
 		return clampi(int(round(height_limit)), ECON_BAR_FONT_MIN, ECON_BAR_FONT_MAX)
+	var fit_text := ECON_BAR_FIT_SAMPLE
+	if bankroll_label != null and bankroll_label.text.length() > fit_text.length():
+		fit_text = bankroll_label.text
 	for font_size in range(ECON_BAR_FONT_MAX, ECON_BAR_FONT_MIN - 1, -1):
 		var text_size := font.get_string_size(
-			ECON_BAR_FIT_SAMPLE, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+			fit_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 		)
 		if text_size.y > height_limit:
 			continue

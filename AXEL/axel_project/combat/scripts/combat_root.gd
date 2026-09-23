@@ -483,7 +483,7 @@ func get_bankroll_cap() -> float:
 	return float(CHIP_BAR_FULL_CENTS)
 
 func _clamp_bankroll() -> void:
-	_bankroll_cents = clampi(_bankroll_cents, 0, CHIP_BAR_FULL_CENTS)
+	_bankroll_cents = maxi(_bankroll_cents, 0)
 
 func get_last_spin_summary() -> Dictionary:
 	return _last_spin_summary.duplicate(true)

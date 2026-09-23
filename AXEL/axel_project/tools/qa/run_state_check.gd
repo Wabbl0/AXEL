@@ -44,9 +44,8 @@ func _main() -> void:
 	if int(run.state.bankroll_cents) != 1000:
 		failures.append("reset_run bankroll should be 1000")
 	run.state.bankroll_cents = 250
-	run.call("reset_encounter_bankroll")
-	if int(run.state.bankroll_cents) != 1000:
-		failures.append("reset_encounter_bankroll should restore 1000, leftover chips are later")
+	if int(run.state.bankroll_cents) != 250:
+		failures.append("save balance should stay at 250, fights do not reset it")
 	if int(run.state.act) != 1 or int(run.state.encounter_index) != 0:
 		failures.append("fresh run is not Act I encounter 0")
 	if not bool(run.call("can_start_encounter")):
@@ -77,6 +76,8 @@ func _main() -> void:
 		failures.append("from_dict lost seed")
 	if not bool(run.state.locker_stash_granted):
 		failures.append("from_dict lost locker_stash_granted")
+	if int(run.state.bankroll_cents) != 250:
+		failures.append("from_dict lost bankroll")
 
 	if absf(float(run.call("lore_goal_bonus")) - 0.0) > 0.001:
 		failures.append("lore bonus should be 0 with no flags")

@@ -34,6 +34,7 @@ func _main() -> void:
 	await _assert_free_spins_non_wild_clear_counts_as_grid_clear()
 	await _assert_free_spins_forces_all_three_powers_once()
 	await _assert_bankroll_empty_encounter_fail()
+	await _assert_bankroll_is_not_capped()
 	await _assert_live_spin_budget_does_not_end_fight()
 	await _assert_trinity_with_chips_does_not_end()
 	await _assert_free_spin_choice_does_not_end()
@@ -603,6 +604,18 @@ func _assert_bankroll_empty_encounter_fail() -> void:
 		return
 	if cr.did_win_encounter():
 		push_error("Encounter incorrectly marked as win.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_bankroll_is_not_capped() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.restore_run_bankroll(2500)
+	if int(cr.get_bankroll()) != 2500:
+		push_error("Balance must keep chips above 1000.")
 		quit(1)
 		return
 	cr.queue_free()

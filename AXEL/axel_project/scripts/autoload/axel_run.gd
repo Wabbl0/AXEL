@@ -83,10 +83,6 @@ func _make_run_seed(slot: int = -1) -> int:
 	return mixed
 
 
-func reset_encounter_bankroll() -> void:
-	state.bankroll_cents = STARTING_BANKROLL_CENTS
-
-
 func is_tutorial_last_spin_lock() -> bool:
 	if is_tutorial_encounter():
 		return true
@@ -210,7 +206,6 @@ func enter_world_encounter(
 	state.world_encounter_index = (int(state.world_encounter_index) + 1) % WORLD_ENCOUNTER_PATHS.size()
 	state.world_fight_count = int(state.world_fight_count) + 1
 	state.in_encounter = true
-	reset_encounter_bankroll()
 	_persist_now()
 	if is_instance_valid(AxelEventFx):
 		await AxelEventFx.play_combat_wipe()
@@ -226,7 +221,6 @@ func enter_combat() -> void:
 	if not can_start_encounter():
 		return
 	state.in_encounter = true
-	reset_encounter_bankroll()
 	_persist_now()
 	var music := get_node_or_null("/root/AxelMusic")
 	if music != null and music.has_method("to_combat"):
@@ -243,7 +237,7 @@ func on_encounter_finished(success: bool) -> void:
 		_delete_active_run()
 		_permadeath_to_title()
 		return
-	reset_encounter_bankroll()
+	capture_bankroll_from(_live_combat_root())
 	_apply_win_progress()
 	if state.world_encounter:
 		_return_to_world_room()
@@ -372,7 +366,8 @@ func _wire_combat_root() -> void:
 	if encounter != null and root.has_method("set_spin_budget"):
 		root.call("set_spin_budget", int(encounter.get("spin_budget")))
 	root.call("setup_new_grid", encounter_seed())
-	reset_encounter_bankroll()
+	if root.has_method("restore_run_bankroll"):
+		root.call("restore_run_bankroll", int(state.bankroll_cents))
 	if scene.has_method("refresh_player_item_box"):
 		scene.call("refresh_player_item_box")
 	if root.has_signal("encounter_finished"):
@@ -385,6 +380,7 @@ func _on_root_finished(success: bool) -> void:
 		return
 	if success:
 		_finish_busy = true
+		capture_bankroll_from(_live_combat_root())
 		_show_round_complete_card()
 		var root := _live_combat_root()
 		if root != null and root.has_method("await_victory_confirm"):
@@ -392,7 +388,7 @@ func _on_root_finished(success: bool) -> void:
 		await _fade_out_of_combat()
 		if get_tree() == null:
 			return
-		reset_encounter_bankroll()
+		capture_bankroll_from(_live_combat_root())
 		_apply_win_progress()
 		await _return_after_win()
 		return
@@ -409,7 +405,6 @@ func max_equip_slots() -> int:
 
 func _apply_win_progress() -> void:
 	state.in_encounter = false
-	reset_encounter_bankroll()
 	if state.world_encounter:
 
 		_persist_now()

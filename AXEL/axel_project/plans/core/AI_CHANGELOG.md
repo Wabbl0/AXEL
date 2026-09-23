@@ -7249,4 +7249,22 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Read-back against `1.2_Corridor.gd`, `marker_outline_style.gd`, `axel_event_fx.gd`, `1.1_SchoolExterior.gd`, `pause_menu.gd`, `options_panel.gd`, `combat_root.gd` goal ceil, `combat_feel.gd` grime band, and `axel_music.gd`. Headless checks were not re-run.
 - Notes: Older changelog rows may still say casino, `combat_run`, a red roll, or an Inventory button. Do not treat those as the live rule.
 
+## 2026-09-23
+
+### Save balance carries with no cap
+
+- Request: Keep the combat balance for the whole save. Do not hand out extra chips at fight start. Remove the 1000 cap. Show the amount as `X`, not `X/1000`.
+- Implementation: Fights no longer reset the balance to 1000. A win writes the combat balance back onto the save. The balance can grow past 1000. The HUD reads `BALANCE: X`.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/test/powers_check.gd`
+  - `AXEL/axel_project/tools/qa/run_state_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: A new save still starts at 1000. Later fights spend and keep whatever is left, including winnings above 1000. Losing still deletes that save.
+- Verification: `run_state_check.gd`, `powers_check.gd`.
+- Notes: A 10–20% fight-start top-up was simulated and did nothing useful, so it was not added.
+
 
