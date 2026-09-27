@@ -1,6 +1,7 @@
 extends Node2D
 class_name ExplorationRoom
 
+const IndicatorFitScript := preload("res://scenes/core/indicator_fit.gd")
 const ZONE_GRACE_SEC := 0.15
 
 @onready var _top_dialogue: Node = get_node_or_null("TopDialogueOverlay")
@@ -30,6 +31,23 @@ func memory_indicator() -> Node2D:
 	return get_node_or_null("PlayerLayer/MemoryIndicator") as Node2D
 
 
+func floor_item_marker_px() -> float:
+	return IndicatorFitScript.item_marker_px(
+		_player_cover_sync.authored_scale.x,
+		_player_cover_sync.authored_bg_baseline
+	)
+
+
+func _fit_memory_indicator(glow: Node2D) -> void:
+	if not is_instance_valid(_player):
+		return
+	var fitted := IndicatorFitScript.memory_from_player(_player_cover_sync.authored_scale.x)
+	if fitted <= 0.0:
+		return
+	glow.set("indicator_scale", fitted)
+	glow.scale = Vector2(fitted, fitted)
+
+
 func bind_player_cover(
 	background: Sprite2D = null,
 	extra: Node2D = null,
@@ -52,6 +70,7 @@ func bind_player_cover(
 		_player_cover_sync.bind_extra_node(extra)
 	var glow := memory_indicator()
 	if glow != null:
+		_fit_memory_indicator(glow)
 		if glow.has_method("capture_editor_tex"):
 			glow.call("capture_editor_tex")
 		_player_cover_sync.bind_extra_node(glow)

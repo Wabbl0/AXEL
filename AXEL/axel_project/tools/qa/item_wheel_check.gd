@@ -61,6 +61,29 @@ func _check_wheel(wheel: Node, run: Node) -> void:
 	var listed: PackedStringArray = wheel.call("listed_ids")
 	if not listed.is_empty():
 		_fail("empty inventory listed %s" % str(listed))
+	_expect_arcs(wheel, 1, "empty inventory")
+	run.state.owned_item_ids = PackedStringArray(["C1"])
+	run.state.equipped_item_ids = PackedStringArray()
+	await process_frame
+	_expect_arcs(wheel, 1, "commons only")
+	run.state.owned_item_ids = PackedStringArray(["C1", "U1"])
+	await process_frame
+	_expect_arcs(wheel, 2, "uncommon owned")
+	run.state.owned_item_ids = PackedStringArray(["C1", "U1", "R1"])
+	await process_frame
+	_expect_arcs(wheel, 3, "rare owned")
+	run.state.owned_item_ids = PackedStringArray(["C1", "U1", "R1", "E1"])
+	await process_frame
+	_expect_arcs(wheel, 4, "epic owned")
+	run.state.owned_item_ids = PackedStringArray(["C1", "R1"])
+	run.state.equipped_item_ids = PackedStringArray()
+	await process_frame
+	_expect_arcs(wheel, 2, "rare without uncommon")
+	listed = wheel.call("listed_ids")
+	if not listed.has("R1"):
+		_fail("rare without uncommon was not listed in %s" % str(listed))
+	if listed.has("U1"):
+		_fail("skipped uncommon was listed in %s" % str(listed))
 	run.state.owned_item_ids = PackedStringArray(["C1", "C2", "U1", "E1", "L1"])
 	run.state.equipped_item_ids = PackedStringArray(["C1", "L1"])
 	await process_frame
@@ -98,3 +121,9 @@ func _check_wheel(wheel: Node, run: Node) -> void:
 	wheel.call("close_wheel")
 	if bool(wheel.call("is_wheel_open")):
 		_fail("wheel stayed open after close")
+
+
+func _expect_arcs(wheel: Node, arcs: int, label: String) -> void:
+	var got := int(wheel.call("shown_band_count"))
+	if got != arcs:
+		_fail("%s should draw %d arcs, got %d" % [label, arcs, got])

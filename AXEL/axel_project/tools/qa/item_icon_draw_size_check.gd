@@ -1,13 +1,12 @@
 extends SceneTree
 
-const LockerShelfRowScript := preload("res://scenes/ui/locker_shelf_row.gd")
+const LockerShelvesScript := preload("res://scenes/ui/locker_shelves.gd")
 const PlayerItemPanelScript := preload("res://combat/scripts/player_item_panel.gd")
 const COMBAT_SCENE := "res://combat/combat_test.tscn"
 const ITEM_TRES := "res://combat/data/items/C1_ash_spin_token.tres"
 const WINDOW := Vector2i(1920, 1280)
 const COMBAT_SLOT := 144.0
 const COMBAT_RES := 120
-const LOCKER_SLOT := 120.0
 const FILE_RES := 1024
 
 
@@ -23,7 +22,7 @@ func _main() -> void:
 	if COMBAT_RES >= FILE_RES:
 		fails.append("combat icon res %d must be below file res %d" % [COMBAT_RES, FILE_RES])
 	if fails.is_empty():
-		print("Item icon draw size check OK (combat slot 144 res 120, locker 1024).")
+		print("Item icon draw size check OK (combat slot 144 res 120, shelves lore-only).")
 		quit(0)
 		return
 	for msg in fails:
@@ -106,28 +105,17 @@ func _find_meta_label(node: Node, meta: String) -> Label:
 
 
 func _check_locker(fails: PackedStringArray) -> void:
-	var locker := LockerShelfRowScript.new()
-	root.add_child(locker)
-	if int(locker.ICON_PX) != int(LOCKER_SLOT):
-		fails.append("locker ICON_PX is %d not 120" % int(locker.ICON_PX))
-	var item := load(ITEM_TRES) as Resource
-	if item == null:
-		fails.append("could not load %s" % ITEM_TRES)
-		locker.queue_free()
-		return
-	var btn := locker.call("_make_item_button", item, PackedStringArray()) as Button
-	if btn == null:
-		fails.append("locker _make_item_button returned null")
-		locker.queue_free()
-		return
-	if btn.custom_minimum_size.x < LOCKER_SLOT or btn.custom_minimum_size.y < LOCKER_SLOT:
-		fails.append("locker button min size %s smaller than 120" % btn.custom_minimum_size)
-	if btn.expand_icon:
-		fails.append("locker button expand_icon must be false so the 1024 file is not squashed")
-	var src := btn.icon
-	if src == null or src.get_width() != FILE_RES or src.get_height() != FILE_RES:
-		fails.append("locker icon resolution is not 1024x1024")
-	var max_w := btn.get_theme_constant("icon_max_width")
-	if max_w != int(LOCKER_SLOT):
-		fails.append("locker icon_max_width is %d not 120" % max_w)
-	locker.queue_free()
+	var entries: Array = LockerShelvesScript.lore_entries_for_flags(PackedStringArray([
+		"hasFlashlight", "hasKey", "hasName", "hasShovel", "C1",
+	]))
+	var titles: PackedStringArray = PackedStringArray()
+	for entry in entries:
+		var title := String((entry as Dictionary).get("title", ""))
+		titles.append(title)
+		var tex_path := String((entry as Dictionary).get("texture", ""))
+		if tex_path.contains("combat/data/items") or tex_path.contains("item_icons"):
+			fails.append("shelf entry %s points at a combat icon" % title)
+		if title == "Shovel":
+			fails.append("shovel must not sit on the locker shelves")
+	if titles.size() != 3 or titles[0] != "Flashlight" or titles[1] != "Key" or titles[2] != "Name":
+		fails.append("shelf lore entries were %s" % str(titles))

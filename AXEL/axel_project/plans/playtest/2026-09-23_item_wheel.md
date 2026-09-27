@@ -10,10 +10,10 @@ Remove item rows from the pause menu. Open a half-circle wheel on Mike with a cl
 
 - Pause has no item list, no equip checkbox, and no `0/7` line.
 - `scenes/ui/item_wheel.gd` is created by `AxelWorld`. Click Mike, or press Tab, Q, R, or I (`item_wheel`). Tab still advances a line when the dialogue bar is up. Esc closes the wheel and does not pause on that press.
-- Four bands, inner to outer: Common, Uncommon, Rare, Epic. Legendary is not drawn. A pickup can still auto-equip a Legendary, and the cap count includes it.
-- Each band shows up to 3 owned items. Arrows and the mouse wheel scroll. The list wraps. Equipped icons are full color. The others are grey. Click toggles equip through `AxelRun.toggle_equip`.
-- The `n/cap` label is on the wheel, and only after the player owns at least one item.
-- Hover uses `world_item_info_card.gd` beside the icon, without `[E]`. Floor cards still show `[E]` under the hand.
+- Four ranks, inner to outer: Common, Uncommon, Rare, Epic. The fill is near-black. The Common arc is always drawn. Uncommon, Rare, and Epic arcs appear only after an item of that rank is owned, packed inward so a skipped rank leaves no empty hole. Legendary is not drawn. A pickup can still auto-equip a Legendary, and the cap count includes it.
+- Each drawn arc shows up to 3 owned items. Downward arrows at the lower ends, and the mouse wheel, scroll. The list wraps. Left still scrolls back and right still scrolls forward. Equipped icons are full color. The others are grey. Click toggles equip through `AxelRun.toggle_equip`. Hover grows the icon from 40px to 46px.
+- The `n/cap` label sits above the outermost drawn arc, and only after the player owns at least one item.
+- Hover uses `world_item_info_card.gd` with its top-left just outside the icon’s bottom-right corner, without `[E]`. Floor cards still show `[E]` under the hand.
 - The wheel closes on pause or when a fight starts. It is not on the title menu or in combat.
 
 ## Locked choices
@@ -22,13 +22,13 @@ Remove item rows from the pause menu. Open a half-circle wheel on Mike with a cl
 - New InputMap action `item_wheel`: Tab, Q, R, and I. No raw key checks. Tab still advances a line when the dialogue bar is up, because the bar handles that key first.
 - Esc (`pause` / `back`) closes the wheel and does not open pause on that press.
 - Clicking Mike toggles the wheel. Walking still works. The wheel follows Mike’s head.
-- Four arcs. Inner Common, then Uncommon, Rare, outer Epic. Fill is near-black grey. Outlines are red. The sketch colors were only to separate the bands.
-- Each arc shows up to 3 owned items of that rank. More than 3 scroll, and the list wraps. Fewer than 3 just show those. An empty rank still draws the empty arc. Arrows on the lower-left and lower-right of each arc scroll opposite ways. The mouse wheel scrolls the arc under the pointer.
+- Four ranks. Inner Common, then Uncommon, Rare, outer Epic. Fill is near-black. Outlines are red. The sketch colors were only to separate the bands.
+- The Common arc is always drawn. A higher arc is drawn only after the player owns an item of that rank. Skipped ranks pack inward and do not leave an empty hole. Each drawn arc shows up to 3 owned items of that rank. More than 3 scroll, and the list wraps. Fewer than 3 just show those. Arrows on the lower-left and lower-right of each drawn arc point down and scroll opposite ways. The mouse wheel scrolls the arc under the pointer.
 - Click an item to toggle equip. A full cap does not equip another item. Equipped icons stay full color. Owned but unequipped icons are grey.
 - Legendary items are not drawn and cannot be toggled here. The cap count still includes one that is equipped. Pickup auto-equip is unchanged.
 - The `n/7` label leaves the pause menu. It shows on the wheel only when the player owns at least one item (any rank, including Legendary).
 - Pause loses the item list, the checkboxes, and the story-item rows. Story items are not on this wheel.
-- Hover uses the existing walk-up card, without `[E]`, near the icon. Do not change the card’s width in this note.
+- Hover grows the icon a little and uses the existing walk-up card, without `[E]`, from the icon’s bottom-right corner. Do not change the card’s width in this note.
 - The wheel closes when a fight starts or the game pauses.
 
 ## Steps
@@ -43,11 +43,11 @@ Remove item rows from the pause menu. Open a half-circle wheel on Mike with a cl
 
 ## What you should see
 
-Click Mike, or press Q, R, I, or Tab (when no line is playing). A dark half-rainbow with red edges opens over his head. Commons are the inner band. Icons you have equipped are bright. The rest are grey. Hover shows the name and description and no `[E]`. Pause no longer lists items.
+Click Mike, or press Q, R, I, or Tab (when no line is playing). A near-black half-rainbow with red edges opens over his head. Only the Common arc shows until a higher rank is collected. Icons you have equipped are bright. The rest are grey. The end arrows point down. Hover grows the icon and shows the name and description from its bottom-right, with no `[E]`. Pause no longer lists items.
 
 ## How to test
 
-1. With no items, open the wheel. Four empty arcs. No `0/7`.
+1. With no items, open the wheel. One empty Common arc. No `0/7`. Owning an Uncommon adds the next arc. A Rare with no Uncommon adds that arc without a blank hole.
 2. Own a Common and a Legendary. The Common can appear. The Legendary does not. If the Legendary is equipped, the count includes it.
 3. Own four Commons. Only three show. The arrows and the mouse wheel change which three, and the list wraps.
 4. Click an icon until the cap is full. Another click does not equip. Clicking an equipped icon turns it off.

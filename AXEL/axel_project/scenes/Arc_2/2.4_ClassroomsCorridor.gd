@@ -8,6 +8,7 @@ const STUB_DOOR_LINES := {
 	"extra_1": "Try the next one.",
 	"extra_2": "No, the next one.",
 	"extra_3": "You missed it.",
+	"extra_4": "Not allowed.",
 }
 
 @export var vertical_far_scale: float = 1.5
@@ -19,6 +20,7 @@ var _future_area: Area2D
 var _extra_1_area: Area2D
 var _extra_2_area: Area2D
 var _extra_3_area: Area2D
+var _extra_4_area: Area2D
 var _size_ramp_area: Area2D
 var _pending_spawn_side := ""
 var _arrival_t := InteractArrival.DEFAULT_T
@@ -51,6 +53,9 @@ func _ready() -> void:
 	_extra_3_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/ExtraDoor3InteractArea"
 	) as Area2D
+	_extra_4_area = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/ExtraDoor4InteractArea"
+	) as Area2D
 	_size_ramp_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/VerticalSizeRampArea"
 	) as Area2D
@@ -62,7 +67,7 @@ func _ready() -> void:
 
 func zone_ids() -> PackedStringArray:
 	return PackedStringArray([
-		"cafeteria", "lounge", "classroom", "future", "extra_1", "extra_2", "extra_3"
+		"cafeteria", "lounge", "classroom", "future", "extra_1", "extra_2", "extra_3", "extra_4"
 	])
 
 
@@ -82,6 +87,8 @@ func zone_area(zone_id: String) -> Area2D:
 			return _extra_2_area
 		"extra_3":
 			return _extra_3_area
+		"extra_4":
+			return _extra_4_area
 		_:
 			return null
 
@@ -106,7 +113,7 @@ func on_zone_interact(zone_id: String) -> void:
 		"classroom":
 			GameManager.set_classroom_spawn_side("corridor_door")
 			begin_scene_change(CLASSROOM_SCENE)
-		"future", "extra_1", "extra_2", "extra_3":
+		"future", "extra_1", "extra_2", "extra_3", "extra_4":
 			_begin_stub_door(zone_id)
 
 

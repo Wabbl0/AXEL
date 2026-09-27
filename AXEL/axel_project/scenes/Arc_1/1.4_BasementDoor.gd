@@ -6,7 +6,8 @@ const DOOR_LINE := "Not yet."
 const CAFETERIA_PEEK_MARGIN_PX := 12.0
 const CORRIDOR_PEEK_MARGIN_PX := 12.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
-const _OLD_BG_SCALE := Vector2(0.546, 0.546)
+# 3508×2480 plate. Room baseline stays 0.352. Mike matches 1.2: scale 0.198, speed 185.3.
+const _OLD_BG_SCALE := Vector2(0.352, 0.352)
 
 var _door_interact_area: Area2D
 var _cafeteria_interact_area: Area2D

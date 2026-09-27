@@ -9,6 +9,9 @@ const ITEM_PROMPT_GAP_BELOW_HAND_PX := 10.0
 const PICKUP_HOST_NAME := "WorldItemScatter"
 const INTERACT_PAD_PX := 8.0
 const ITEM_SEPARATION_PX := 220.0
+const SPOT_SCAN_STEP_PX := 128.0
+const WALK_CELL_PX := 64.0
+const UNPLACED_EPS := 0.5
 
 const RANK_PREFIXES: PackedStringArray = ["C", "U", "R", "E", "L"]
 const RANK_NAMES: PackedStringArray = [
@@ -104,6 +107,7 @@ var _pending_return_scene: String = ""
 var _pending_return_tex := Vector2.ZERO
 var _pending_return_valid := false
 var _starting_fight := false
+var _populate_token: Dictionary = {}
 
 
 func _ready() -> void:
@@ -115,6 +119,7 @@ func _ready() -> void:
 	var tree := get_tree()
 	if tree != null and not tree.scene_changed.is_connected(_on_scene_changed):
 		tree.scene_changed.connect(_on_scene_changed)
+	_ensure_opening_room()
 
 
 func is_enabled() -> bool:
@@ -150,6 +155,13 @@ func area_for_scene(scene_path: String) -> String:
 		if (AREAS[area_id]["rooms"] as Dictionary).has(scene_path):
 			return String(area_id)
 	return ""
+
+
+func hand_reaches_player(scene: Node, tex_pos: Vector2) -> bool:
+	var env := _env_of(scene)
+	if env == null:
+		return false
+	return _cell_on_floor(_player_floor(scene, env), tex_pos)
 
 
 func is_indoor_scene(scene_path: String) -> bool:
@@ -517,6 +529,22 @@ func _apply_return_placement(scene: Node) -> void:
 	PlayerSpawnSync.apply_tex(env, player, tex)
 
 
+func _ensure_opening_room() -> void:
+	for _i in 60:
+		if get_tree() == null:
+			return
+		var scene := _current_scene()
+		if scene != null:
+			var path := scene.scene_file_path
+			if is_indoor_scene(path):
+				var area_id := area_for_scene(path)
+				var want: int = int((AREAS[area_id]["rooms"] as Dictionary).get(path, 0))
+				if want > 0:
+					_populate_room(scene)
+			return
+		await get_tree().process_frame
+
+
 func _populate_room(scene: Node) -> void:
 	var path := scene.scene_file_path
 	var area_id := area_for_scene(path)
@@ -525,19 +553,77 @@ func _populate_room(scene: Node) -> void:
 	var want: int = int((AREAS[area_id]["rooms"] as Dictionary).get(path, 0))
 	if want <= 0:
 		return
-	await _settle_frames(scene, 10)
-	if scene != _current_scene():
+	var token := int(_populate_token.get(path, 0)) + 1
+	_populate_token[path] = token
+	await _wait_for_item_physics(scene)
+	if not _populate_still(scene, path, token):
 		return
 	var env := _env_of(scene)
 	if env == null:
 		return
+	_apply_room_placements(scene, env, area_id, want, path)
+	_spawn_pickups(scene, env, path)
+	if not _room_has_unplaced(path):
+		return
+	for _i in 20:
+		if get_tree() == null or not is_instance_valid(scene):
+			return
+		await get_tree().physics_frame
+	if not _populate_still(scene, path, token):
+		return
+	env = _env_of(scene)
+	if env == null:
+		return
+	_apply_room_placements(scene, env, area_id, want, path)
+	_spawn_pickups(scene, env, path)
+
+
+func _apply_room_placements(
+	scene: Node, env: Node2D, area_id: String, want: int, path: String
+) -> void:
 	if not _room_items.has(path):
 		_room_items[path] = _decide_placements(scene, env, area_id, want, path)
 		_save()
 	else:
 		_fill_unplaced_spots(scene, env, path)
 		_repair_illegal_spots(scene, env, path)
-	_spawn_pickups(scene, env, path)
+
+
+func _populate_still(scene: Node, path: String, token: int) -> bool:
+	return (
+		is_instance_valid(scene)
+		and scene == _current_scene()
+		and scene.scene_file_path == path
+		and int(_populate_token.get(path, 0)) == token
+	)
+
+
+func _wait_for_item_physics(scene: Node) -> void:
+	for _i in 40:
+		if get_tree() == null or not is_instance_valid(scene):
+			return
+		var env := _env_of(scene)
+		var world := env.get_world_2d() if env != null else null
+		if world != null and world.direct_space_state != null:
+			await get_tree().physics_frame
+			await get_tree().physics_frame
+			return
+		await get_tree().physics_frame
+
+
+func _room_has_unplaced(path: String) -> bool:
+	for entry in _room_items.get(path, []):
+		var placed: Dictionary = entry
+		if bool(placed.get("taken", false)):
+			continue
+		var spot := Vector2(float(placed.get("x", 0.0)), float(placed.get("y", 0.0)))
+		if _is_unplaced_spot(spot):
+			return true
+	return false
+
+
+func _is_unplaced_spot(spot: Vector2) -> bool:
+	return absf(spot.x) < UNPLACED_EPS and absf(spot.y) < UNPLACED_EPS
 
 
 func plan_floor_items(seed: int) -> void:
@@ -651,7 +737,7 @@ func _fill_unplaced_spots(scene: Node, env: Node2D, path: String) -> void:
 		ids.append(String(d.get("id", "")))
 		if bool(d.get("taken", false)):
 			continue
-		if absf(float(d.get("x", 0.0))) < 0.5 and absf(float(d.get("y", 0.0))) < 0.5:
+		if _is_unplaced_spot(Vector2(float(d.get("x", 0.0)), float(d.get("y", 0.0)))):
 			need = true
 	if not need:
 		return
@@ -673,27 +759,24 @@ func _spots_for_ids(scene: Node, env: Node2D, path: String, ids: Array) -> Array
 	var rng := _room_rng(path, PLACE_SALT)
 	var tex_size := _texture_size(scene)
 	var player := scene.find_child("Player", true, false) as Node2D
-	var player_tex := PlayerSpawnSync.capture_tex(env, player) if player != null else Vector2.ZERO
-	var floor_y: float = player_tex.y if player != null else tex_size.y * 0.72
 	var exclude: Array[RID] = []
 	if player is CollisionObject2D:
 		exclude.append((player as CollisionObject2D).get_rid())
-	var out: Array = []
-	var occupied: Array = []
 	var want: int = ids.size()
+	var candidates := _candidate_spots(scene, env, tex_size, exclude, want)
+	var picked := _pick_spots(candidates, want, rng)
+	var out: Array = []
 	for i in want:
-		var frac := (float(i) + 1.0) / (float(want) + 1.0)
-		frac = clampf(frac + rng.randf_range(-0.07, 0.07), 0.14, 0.86)
-		var wanted := Vector2(tex_size.x * frac, floor_y + rng.randf_range(-50.0, 50.0))
-		var away := 260.0 * (1.0 if i % 2 == 0 else -1.0) * float(i + 1)
-		var fallback := Vector2(
-			clampf(player_tex.x + away, tex_size.x * 0.08, tex_size.x * 0.92), player_tex.y
-		)
-		var spot := _find_free_spot(env, wanted, tex_size, fallback, exclude, occupied)
-		if not _is_finite_spot(spot):
+		var spot := picked[i] if i < picked.size() else Vector2.INF
+		if not _is_finite_spot(spot) or _is_unplaced_spot(spot):
 			push_warning("AxelWorld: no wall-clear floor for an item in %s" % path)
+			out.append({
+				"id": String(ids[i]),
+				"x": 0.0,
+				"y": 0.0,
+				"taken": false,
+			})
 			continue
-		occupied.append(spot)
 		out.append({
 			"id": String(ids[i]),
 			"x": spot.x,
@@ -701,6 +784,110 @@ func _spots_for_ids(scene: Node, env: Node2D, path: String, ids: Array) -> Array
 			"taken": false,
 		})
 	return out
+
+
+func _candidate_spots(
+	scene: Node, env: Node2D, tex_size: Vector2, exclude: Array[RID], want: int
+) -> Array[Vector2]:
+	var floor_cells := _player_floor(scene, env)
+	var authored := _authored_marker_spots(scene, env)
+	if not authored.is_empty():
+		var clear_marks := _filter_clear_spots(env, authored, exclude, true, floor_cells)
+		if clear_marks.is_empty():
+			clear_marks = _filter_clear_spots(env, authored, exclude, false, floor_cells)
+		if not clear_marks.is_empty():
+			return _thin_spots(clear_marks)
+	var strict := _scan_clear_spots(env, tex_size, exclude, true, floor_cells)
+	if strict.size() >= want:
+		return strict
+	var loose := _scan_clear_spots(env, tex_size, exclude, false, floor_cells)
+	if loose.size() > strict.size():
+		return loose
+	return strict
+
+
+func _authored_marker_spots(scene: Node, env: Node2D) -> Array[Vector2]:
+	var root := scene.find_child("ItemSpawnPoints", true, false)
+	if root == null:
+		return []
+	var spots: Array[Vector2] = []
+	for child in root.get_children():
+		if child is Marker2D:
+			spots.append(env.to_local((child as Node2D).global_position))
+	return spots
+
+
+func _filter_clear_spots(
+	env: Node2D,
+	spots: Array[Vector2],
+	exclude: Array[RID],
+	avoid_zones: bool,
+	floor_cells: Dictionary,
+) -> Array[Vector2]:
+	var clear: Array[Vector2] = []
+	for spot in spots:
+		if not _spot_rejected(env, spot, exclude, avoid_zones, clear, floor_cells):
+			clear.append(spot)
+	return clear
+
+
+func _scan_clear_spots(
+	env: Node2D,
+	tex_size: Vector2,
+	exclude: Array[RID],
+	avoid_zones: bool,
+	floor_cells: Dictionary,
+) -> Array[Vector2]:
+	var bounds := _search_bounds(tex_size)
+	var raw: Array[Vector2] = []
+	var y := bounds.position.y
+	while y <= bounds.end.y + 0.01:
+		var x := bounds.position.x
+		while x <= bounds.end.x + 0.01:
+			var candidate := Vector2(x, y)
+			if not _spot_rejected(env, candidate, exclude, avoid_zones, [], floor_cells):
+				raw.append(candidate)
+			x += SPOT_SCAN_STEP_PX
+		y += SPOT_SCAN_STEP_PX
+	return _thin_spots(raw)
+
+
+func _thin_spots(raw: Array[Vector2]) -> Array[Vector2]:
+	var kept: Array[Vector2] = []
+	for spot in raw:
+		var too_close := false
+		for other in kept:
+			if spot.distance_to(other) < ITEM_SEPARATION_PX:
+				too_close = true
+				break
+		if not too_close:
+			kept.append(spot)
+	return kept
+
+
+func _pick_spots(
+	candidates: Array[Vector2], count: int, rng: RandomNumberGenerator
+) -> Array[Vector2]:
+	var order: Array[Vector2] = []
+	for spot in candidates:
+		order.append(spot)
+	for i in range(order.size() - 1, 0, -1):
+		var j := posmod(rng.randi(), i + 1)
+		var tmp := order[i]
+		order[i] = order[j]
+		order[j] = tmp
+	var picked: Array[Vector2] = []
+	for spot in order:
+		if picked.size() >= count:
+			break
+		var too_close := false
+		for other in picked:
+			if spot.distance_to(other) < ITEM_SEPARATION_PX:
+				too_close = true
+				break
+		if not too_close:
+			picked.append(spot)
+	return picked
 
 
 func _texture_size(scene: Node) -> Vector2:
@@ -719,17 +906,22 @@ func _find_free_spot(
 	fallback: Vector2,
 	exclude: Array[RID],
 	occupied: Array = [],
+	floor_cells: Dictionary = {},
 ) -> Vector2:
 	for avoid_zones in [true, false]:
 		for use_occupied in [true, false]:
 			var sep: Array = occupied if use_occupied else []
-			var near := _search_near(env, wanted, tex_size, exclude, avoid_zones, sep)
+			var near := _search_near(
+				env, wanted, tex_size, exclude, avoid_zones, sep, floor_cells
+			)
 			if _is_finite_spot(near):
 				return near
 			var fallback_spot := _clamp_spot(fallback, tex_size)
-			if not _circle_blocked(env, fallback_spot, exclude, avoid_zones, sep):
+			if not _spot_rejected(env, fallback_spot, exclude, avoid_zones, sep, floor_cells):
 				return fallback_spot
-			var grid := _search_grid(env, wanted, tex_size, exclude, avoid_zones, sep)
+			var grid := _search_grid(
+				env, wanted, tex_size, exclude, avoid_zones, sep, floor_cells
+			)
 			if _is_finite_spot(grid):
 				return grid
 	return Vector2.INF
@@ -745,6 +937,7 @@ func _repair_illegal_spots(scene: Node, env: Node2D, path: String) -> void:
 	var exclude: Array[RID] = []
 	if player is CollisionObject2D:
 		exclude.append((player as CollisionObject2D).get_rid())
+	var floor_cells := _player_floor(scene, env)
 	var occupied: Array = []
 	var changed := false
 	for i in entries.size():
@@ -753,12 +946,14 @@ func _repair_illegal_spots(scene: Node, env: Node2D, path: String) -> void:
 			continue
 		var spot := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
 
-		if _circle_blocked(env, spot, exclude, false, []):
+		if _spot_rejected(env, spot, exclude, false, [], floor_cells):
 			var away := 260.0 * (1.0 if i % 2 == 0 else -1.0) * float(i + 1)
 			var fallback := Vector2(
 				clampf(player_tex.x + away, tex_size.x * 0.08, tex_size.x * 0.92), player_tex.y
 			)
-			var neu := _find_free_spot(env, spot, tex_size, fallback, exclude, occupied)
+			var neu := _find_free_spot(
+				env, spot, tex_size, fallback, exclude, occupied, floor_cells
+			)
 			if _is_finite_spot(neu):
 				entry["x"] = neu.x
 				entry["y"] = neu.y
@@ -782,12 +977,13 @@ func _search_near(
 	exclude: Array[RID],
 	avoid_zones: bool,
 	occupied: Array,
+	floor_cells: Dictionary,
 ) -> Vector2:
 	var step := 40.0
 	for ring in 25:
 		if ring == 0:
 			var origin := _clamp_spot(wanted, tex_size)
-			if not _circle_blocked(env, origin, exclude, avoid_zones, occupied):
+			if not _spot_rejected(env, origin, exclude, avoid_zones, occupied, floor_cells):
 				return origin
 			continue
 		var reach := float(ring) * step
@@ -801,7 +997,9 @@ func _search_near(
 			]
 			for raw in ring_spots:
 				var candidate := _clamp_spot(raw, tex_size)
-				if not _circle_blocked(env, candidate, exclude, avoid_zones, occupied):
+				if not _spot_rejected(
+					env, candidate, exclude, avoid_zones, occupied, floor_cells
+				):
 					return candidate
 	return Vector2.INF
 
@@ -813,6 +1011,7 @@ func _search_grid(
 	exclude: Array[RID],
 	avoid_zones: bool,
 	occupied: Array,
+	floor_cells: Dictionary,
 ) -> Vector2:
 	var bounds := _search_bounds(tex_size)
 	var step := 64.0
@@ -826,7 +1025,7 @@ func _search_grid(
 		var x := bounds.position.x
 		while x <= bounds.end.x + 0.01:
 			var candidate := Vector2(x, row_y)
-			if not _circle_blocked(env, candidate, exclude, avoid_zones, occupied):
+			if not _spot_rejected(env, candidate, exclude, avoid_zones, occupied, floor_cells):
 				return candidate
 			x += step
 	return Vector2.INF
@@ -880,6 +1079,198 @@ func _clamp_spot(spot: Vector2, tex_size: Vector2) -> Vector2:
 
 func _is_finite_spot(spot: Vector2) -> bool:
 	return is_finite(spot.x) and is_finite(spot.y)
+
+
+func _spot_rejected(
+	env: Node2D,
+	tex_pos: Vector2,
+	exclude: Array[RID],
+	avoid_zones: bool,
+	occupied: Array,
+	floor_cells: Dictionary,
+) -> bool:
+	if not _cell_on_floor(floor_cells, tex_pos):
+		return true
+	return _circle_blocked(env, tex_pos, exclude, avoid_zones, occupied)
+
+
+func _cell_on_floor(floor_cells: Dictionary, tex_pos: Vector2) -> bool:
+	if not _is_finite_spot(tex_pos):
+		return false
+	return floor_cells.has(_cell_key(tex_pos))
+
+
+func _player_floor(scene: Node, env: Node2D) -> Dictionary:
+	var player := scene.find_child("Player", true, false) as CharacterBody2D
+	if player == null:
+		return {}
+	var front := player.get_node_or_null("CollisionFront") as CollisionShape2D
+	if front == null or front.shape == null:
+		return {}
+	var tex_size := _texture_size(scene)
+	var exclude: Array[RID] = [player.get_rid()]
+	var seed := _open_seed_cell(env, player, PlayerSpawnSync.capture_tex(env, player), exclude, tex_size)
+	if seed.x == 0x7FFFFFFF:
+		return {}
+	return _flood_floor(env, player, seed, exclude, tex_size)
+
+
+func _open_seed_cell(
+	env: Node2D,
+	player: CharacterBody2D,
+	tex: Vector2,
+	exclude: Array[RID],
+	tex_size: Vector2,
+) -> Vector2i:
+	var origin := _cell_key(tex)
+	for ring in 8:
+		for y in range(-ring, ring + 1):
+			for x in range(-ring, ring + 1):
+				if ring != 0 and absi(x) != ring and absi(y) != ring:
+					continue
+				var cell := origin + Vector2i(x, y)
+				if not _cell_inside(cell, tex_size):
+					continue
+				if not _stand_blocked(env, player, _cell_center(cell), exclude):
+					return cell
+	return Vector2i(0x7FFFFFFF, 0)
+
+
+func _flood_floor(
+	env: Node2D,
+	player: CharacterBody2D,
+	seed: Vector2i,
+	exclude: Array[RID],
+	tex_size: Vector2,
+) -> Dictionary:
+	var open := {}
+	var seen := {}
+	var queue: Array[Vector2i] = [seed]
+	seen[seed] = true
+	open[seed] = true
+	var head := 0
+	var dirs: Array[Vector2i] = [
+		Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+	]
+	while head < queue.size():
+		var here: Vector2i = queue[head]
+		head += 1
+		for dir in dirs:
+			var nxt: Vector2i = here + dir
+			if seen.has(nxt):
+				continue
+			seen[nxt] = true
+			if not _cell_inside(nxt, tex_size):
+				continue
+			if not _cells_connect(env, player, here, nxt, exclude):
+				continue
+			open[nxt] = true
+			queue.append(nxt)
+	return open
+
+
+func _cells_connect(
+	env: Node2D,
+	player: CharacterBody2D,
+	a: Vector2i,
+	b: Vector2i,
+	exclude: Array[RID],
+) -> bool:
+	var center_b := _cell_center(b)
+	if _stand_blocked(env, player, center_b, exclude):
+		return false
+	var mid := (_cell_center(a) + center_b) * 0.5
+	if _stand_blocked(env, player, mid, exclude):
+		return false
+	return not _stand_ray_blocked(env, player, _cell_center(a), center_b, exclude)
+
+
+func _cell_key(tex_pos: Vector2) -> Vector2i:
+	return Vector2i(
+		int(floor(tex_pos.x / WALK_CELL_PX)),
+		int(floor(tex_pos.y / WALK_CELL_PX)),
+	)
+
+
+func _cell_center(cell: Vector2i) -> Vector2:
+	return Vector2(
+		(float(cell.x) + 0.5) * WALK_CELL_PX,
+		(float(cell.y) + 0.5) * WALK_CELL_PX,
+	)
+
+
+func _cell_inside(cell: Vector2i, tex_size: Vector2) -> bool:
+	var center := _cell_center(cell)
+	return (
+		center.x >= -WALK_CELL_PX
+		and center.y >= -WALK_CELL_PX
+		and center.x <= tex_size.x + WALK_CELL_PX
+		and center.y <= tex_size.y + WALK_CELL_PX
+	)
+
+
+func _stand_blocked(
+	env: Node2D,
+	player: CharacterBody2D,
+	tex_pos: Vector2,
+	exclude: Array[RID],
+) -> bool:
+	var collision := player.get_node_or_null("CollisionFront") as CollisionShape2D
+	if collision == null or collision.shape == null or collision.disabled:
+		return true
+	var world := env.get_world_2d()
+	if world == null:
+		return true
+	var space := world.direct_space_state
+	if space == null:
+		return true
+	var params := PhysicsShapeQueryParameters2D.new()
+	params.shape = collision.shape
+	params.transform = _stand_transform(env, player, collision, tex_pos)
+	params.collision_mask = player.collision_mask
+	params.exclude = exclude
+	params.collide_with_bodies = true
+	params.collide_with_areas = false
+	return not space.intersect_shape(params, 8).is_empty()
+
+
+func _stand_ray_blocked(
+	env: Node2D,
+	player: CharacterBody2D,
+	from_tex: Vector2,
+	to_tex: Vector2,
+	exclude: Array[RID],
+) -> bool:
+	var collision := player.get_node_or_null("CollisionFront") as CollisionShape2D
+	if collision == null:
+		return true
+	var world := env.get_world_2d()
+	if world == null:
+		return true
+	var space := world.direct_space_state
+	if space == null:
+		return true
+	var from := _stand_transform(env, player, collision, from_tex).origin
+	var to := _stand_transform(env, player, collision, to_tex).origin
+	if from.distance_squared_to(to) < 0.01:
+		return false
+	var query := PhysicsRayQueryParameters2D.create(from, to)
+	query.collision_mask = player.collision_mask
+	query.exclude = exclude
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+	return not space.intersect_ray(query).is_empty()
+
+
+func _stand_transform(
+	env: Node2D,
+	player: CharacterBody2D,
+	collision: CollisionShape2D,
+	tex_pos: Vector2,
+) -> Transform2D:
+	var basis := player.global_transform
+	basis.origin = env.to_global(tex_pos)
+	return basis * collision.transform
 
 
 func _roll_item(
@@ -1023,9 +1414,12 @@ func _spawn_pickups(scene: Node, env: Node2D, path: String) -> void:
 		var entry: Dictionary = entries[i]
 		if bool(entry.get("taken", false)):
 			continue
+		var spot := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
+		if _is_unplaced_spot(spot):
+			continue
 		var pickup := PickupScript.new()
 		pickup.name = "WorldItem%d" % i
-		pickup.position = Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
+		pickup.position = spot
 		pickup.setup(String(entry.get("id", "")), path, i, info_card)
 		host.add_child(pickup)
 

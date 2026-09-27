@@ -2,13 +2,15 @@
 
 [ext_resource type="Script" path="res://scenes/fx/memory_indicator.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/sprites/memory_glow-Sheet.png" id="2_sheet"]
-[ext_resource type="Shader" path="res://scenes/fx/memory_outer_glow.gdshader" id="3_glow"]
+[ext_resource type="Shader" path="res://scenes/fx/marker_silhouette_outline.gdshader" id="3_glow"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_halo"]
 shader = ExtResource("3_glow")
-shader_parameter/spread = 10.0
-shader_parameter/intensity = 0.42
-shader_parameter/glow_color = Color(1, 1, 1, 1)
+shader_parameter/spread = 0.96
+shader_parameter/frame_px = Vector2(48, 48)
+shader_parameter/sheet_px = Vector2(240, 48)
+shader_parameter/region_pos = Vector2(0, 0)
+shader_parameter/glow_color = Color(1, 1, 1, 0.75)
 
 [node name="MemoryIndicator" type="Node2D"]
 script = ExtResource("1_script")
@@ -16,7 +18,7 @@ sprite_sheet = ExtResource("2_sheet")
 
 [node name="Halo" type="AnimatedSprite2D" parent="."]
 z_index = -1
-texture_filter = 2
+texture_filter = 1
 material = SubResource("ShaderMaterial_halo")
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]

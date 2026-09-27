@@ -16,6 +16,11 @@ const _OVERLAY_NAME_SCANLINE := "ScanlineOverlay"
 const _OVERLAY_NAME_CRT := "CrtPluginOverlay"
 const _OVERLAY_NAME_CRT_COMBAT := "CrtCombatOverlay"
 
+# Gradient starts this many pixels outside the background texture, at 0% opacity.
+const EDGE_START_PX := 3.0
+const EDGE_SPAN_PX := 40.0
+const EDGE_OPACITY := 0.8
+
 var _attached_scene: Node = null
 var _noir: CanvasLayer = null
 var _scanline: CanvasLayer = null
@@ -32,6 +37,8 @@ func _ready() -> void:
 	var settings := get_node_or_null("/root/AxelSettings")
 	if settings != null and settings.has_signal("setting_changed"):
 		settings.setting_changed.connect(_on_setting_changed)
+	process_priority = -128
+	set_process(true)
 	call_deferred("_on_scene_changed")
 
 
@@ -232,6 +239,94 @@ func apply_to_scene(scene: Node) -> void:
 	_attach_to_scene(scene)
 
 
+func _process(_delta: float) -> void:
+	_apply_texture_edge()
+
+
+func _apply_texture_edge() -> void:
+	if _attached_scene == null or not is_instance_valid(_attached_scene):
+		return
+	if is_combat_scene(_attached_scene):
+		return
+	var bounds := _background_screen_bounds()
+	_set_texture_edge_shader(bounds)
+
+
+func _find_background() -> CanvasItem:
+	var camera := _attached_scene.get_node_or_null("Camera2D")
+	if camera != null and camera.get("background_path") != null:
+		var path := camera.get("background_path") as NodePath
+		if path != null and not path.is_empty():
+			var from_camera := camera.get_node_or_null(path) as CanvasItem
+			if from_camera != null:
+				return from_camera
+	for candidate in ["WalkableWorld/Background", "Background", "Background_1_1"]:
+		var node := _attached_scene.get_node_or_null(candidate) as CanvasItem
+		if node != null:
+			return node
+	return null
+
+
+func _background_screen_bounds() -> Rect2:
+	var item := _find_background()
+	if item == null:
+		return Rect2()
+	if item is Sprite2D:
+		var sprite := item as Sprite2D
+		if sprite.texture == null:
+			return Rect2()
+		var local := sprite.get_rect()
+		if local.size.x <= 1.0 or local.size.y <= 1.0:
+			return Rect2()
+		var xf := sprite.get_global_transform_with_canvas()
+		var p0 := xf * local.position
+		var p1 := xf * Vector2(local.position.x + local.size.x, local.position.y)
+		var p2 := xf * (local.position + local.size)
+		var p3 := xf * Vector2(local.position.x, local.position.y + local.size.y)
+		var min_x := minf(minf(p0.x, p1.x), minf(p2.x, p3.x))
+		var min_y := minf(minf(p0.y, p1.y), minf(p2.y, p3.y))
+		var max_x := maxf(maxf(p0.x, p1.x), maxf(p2.x, p3.x))
+		var max_y := maxf(maxf(p0.y, p1.y), maxf(p2.y, p3.y))
+		return Rect2(min_x, min_y, max_x - min_x, max_y - min_y)
+	if item is Control:
+		var rect := (item as Control).get_global_rect()
+		if rect.size.x <= 1.0 or rect.size.y <= 1.0:
+			return Rect2()
+		return rect
+	return Rect2()
+
+
+func _set_texture_edge_shader(bounds: Rect2) -> void:
+	if _crt == null or not is_instance_valid(_crt):
+		return
+	var crt_rect := _crt.get_node_or_null("FilterRect") as ColorRect
+	if crt_rect == null or not (crt_rect.material is ShaderMaterial):
+		return
+	var crt_mat := crt_rect.material as ShaderMaterial
+	_apply_overworld_edge_rim(crt_mat, false)
+	if bounds.size.x <= 1.0 or bounds.size.y <= 1.0:
+		crt_mat.set_shader_parameter("texture_bounds_px", Vector4.ZERO)
+		return
+	crt_mat.set_shader_parameter(
+		"texture_bounds_px",
+		Vector4(bounds.position.x, bounds.position.y, bounds.end.x, bounds.end.y)
+	)
+
+
+func _apply_overworld_edge_rim(crt_mat: ShaderMaterial, combat: bool) -> void:
+	if combat:
+		return
+	# Same edge in every non-combat scene. No TV bend, so the border is not mirrored.
+	crt_mat.set_shader_parameter("curvature", 0.0)
+	crt_mat.set_shader_parameter("mirror_edges", 0.0)
+	crt_mat.set_shader_parameter("vignette", 0.0)
+	crt_mat.set_shader_parameter("edge_fade_px", 0.0)
+	crt_mat.set_shader_parameter("corner_darkness", 0.0)
+	crt_mat.set_shader_parameter("edge_start_px", EDGE_START_PX)
+	crt_mat.set_shader_parameter("edge_span_px", EDGE_SPAN_PX)
+	crt_mat.set_shader_parameter("edge_opacity", EDGE_OPACITY)
+
+
 func get_noir_filter_rect() -> ColorRect:
 	if _noir != null and is_instance_valid(_noir):
 		return _noir.get_node_or_null("FilterRect") as ColorRect
@@ -266,6 +361,8 @@ func _apply_graphics_quality() -> void:
 	if _crt != null:
 		crt_rect = _crt.get_node_or_null("FilterRect") as ColorRect
 	if crt_rect != null and crt_rect.material is ShaderMaterial:
+		# Copy so a 2.4 rim tweak cannot stick to the shared overlay material.
+		crt_rect.material = (crt_rect.material as ShaderMaterial).duplicate()
 		var crt_mat := crt_rect.material as ShaderMaterial
 		var combat := is_combat_scene(_attached_scene)
 		match quality:
@@ -287,3 +384,4 @@ func _apply_graphics_quality() -> void:
 				crt_mat.set_shader_parameter("scanline_strength", 0.12)
 				crt_mat.set_shader_parameter("mask_strength", 0.35)
 				crt_mat.set_shader_parameter("vignette", 0.0 if combat else 0.45)
+		_apply_overworld_edge_rim(crt_mat, combat)

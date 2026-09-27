@@ -7365,4 +7365,222 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: A Legendary can still auto-equip when picked up, and it still counts toward the cap, but this wheel cannot show it or turn it off. The other playtest notes (centered pause, blank Options, Esc dialogue skip, card width, plain descriptions, hand outline, grey memory marker) are plans only.
 - Verification: `item_wheel_check.gd`, `pause_contract_check.gd`, and `world_item_card_check.gd` exit 0.
 
+## 2026-09-27
+
+### Darker item wheel and rarity arcs
+
+- Request: Make the wheel fill closer to black. Show only the Common arc until an Uncommon is collected, then the next arc only after a Rare, and so on. Point the end arrows down. Grow a hovered icon a little. Open the description from the icon’s bottom-right corner.
+- Implementation: The fill is near-black. Higher arcs draw only when that rank is owned and pack inward, so a skipped rank leaves no empty hole. Both end arrows point down. Hover grows the icon from 40px to 46px. The hover card’s top-left sits just outside the icon’s bottom-right. The floor card under the hand is unchanged.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/item_wheel.gd`
+  - `AXEL/axel_project/scenes/ui/world_item_info_card.gd`
+  - `AXEL/axel_project/tools/qa/item_wheel_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/playtest/2026-09-23_item_wheel.md`
+- Behavior impact: An empty higher rank no longer draws a blank arc. Legendary is still not listed. Left still scrolls back and right still scrolls forward.
+- Verification: `item_wheel_check.gd` exit 0.
+
+### Bold memory outline, solid item outline
+
+- Request: The overworld memory marker and the floor-item hand still had no real outline. Memories need a bold white outline. Items need a red one. Leave `[E]` alone.
+- Implementation: Replaced the faint additive glow on those two markers with an opaque silhouette stroke (`marker_silhouette_outline.gdshader`). Memory spread is 3 texture pixels, white. Item spread is 6, red `Color(0.9, 0, 0)`. The 1.2 arrow keeps the old glow shader.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/marker_silhouette_outline.gdshader`
+  - `AXEL/axel_project/scenes/fx/marker_outline_style.gd`
+  - `AXEL/axel_project/scenes/fx/memory_indicator.gd`
+  - `AXEL/axel_project/scenes/fx/MemoryIndicator.tscn`
+  - `AXEL/axel_project/scenes/world/item_marker.gd`
+  - `AXEL/axel_project/scenes/world/ItemMarker.tscn`
+  - `AXEL/axel_project/tools/qa/playtest_fix_groups_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+- Behavior impact: Memory crosses read as red with a thick white edge. Floor hands stay white with a solid red edge. Door and item-card `[E]` text is unchanged.
+- Verification: Windowed cafeteria capture shows a white stroke on the memory cross and a red stroke on the floor hands. `[E]` is unchanged. `playtest_fix_groups_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### New 1.4 and 2.4 background drawings
+
+- Request: Use the new hallway and corridor drawings, rename them to the scene-plan filenames, and keep the CRT edge vignette / darkened rim on those rooms.
+- Implementation: Replaced `1.4_BasementDoor.png` (now 3508×2480) and `2.4_ClassroomsCorridor.png` (still 7016×4960) in place and dropped the extra `1.4_Hallway` / `2.4_Corridor` names. Import `size_limit` stays 0 and the texture uids are unchanged. 1.4 walls, floor line, door `[E]`, and side exits were moved onto the new ink; the old door polygon and floor line were removed because the drawing has them. 1.4 `_OLD_BG_SCALE` is `0.352` so Mike stays the same size on screen as in 1.2. Both rooms still use the shared CRT overlay (`vignette` 0.45, `edge_fade_px` 26, `corner_darkness` 0.45, `corner_radius` 0.7). 1.4 stays static-locked with the shared edge reveal and `margin_px` 12. 2.4 stays follow-camera with `margin_px` 12. 2.4 walk boxes were not dragged onto the new ink.
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/1.4_BasementDoor.png`
+  - `AXEL/axel_project/exports/Drawings/2.4_ClassroomsCorridor.png`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+- Behavior impact: 1.4 shows the chained-door hallway. 2.4 shows the new corridor drawing. The TV dark rim is still the screen effect, not painted into the PNGs. 2.4 walls and door boxes can sit off the new lines until they are dragged.
+- Verification: Headless probe after reimport: 1.4 texture 3508×2480, cover 0.516, Mike scale 0.290, `edge_reveal` default, `margin_px` 12, no CRT node in the scene. 2.4 texture 7016×4960, follow camera, `margin_px` 12. CRT preset read back as vignette 0.45 / edge fade 26 / corner darkness 0.45.
+
+### Floor hands, thinner outlines, bigger Mike in 1.4
+
+- Request: Keep floor items off ground Mike cannot walk to, in 1.4 and the other item rooms. Make the marker outlines 60% thinner. Double Mike’s size in 1.4 and set the matching walk speed.
+- Implementation: A spot is kept only when its 220 px circle misses walls and its cell is on the walkable floor connected to the Player node (Front hitbox flood; neighbors must stay clear at the midpoint and along the ray). A saved spot that fails that test moves the next time the room loads. Item outline spread is 2.4 texture pixels (was 6). Memory outline spread is 1.2 (was 3). 1.4 Player scale is `0.396` and speed is `339.6` (`PlayerWalkSpeed.from_scale`; the small-scale boost does not apply above `0.3`). 1.4 Top, Right, and Bottom walls grew inward so the bigger drawing stays on the PNG. `LeftWall` stays the walk-off. The room baseline `_OLD_BG_SCALE` `0.352` is unchanged, so Mike is twice the 1.2 size instead of matching it.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/tools/qa/world_item_scatter_check.gd`
+  - `AXEL/axel_project/scenes/fx/marker_outline_style.gd`
+  - `AXEL/axel_project/scenes/fx/marker_silhouette_outline.gdshader`
+  - `AXEL/axel_project/scenes/world/ItemMarker.tscn`
+  - `AXEL/axel_project/scenes/fx/MemoryIndicator.tscn`
+  - `AXEL/axel_project/tools/qa/playtest_fix_groups_check.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+- Behavior impact: Hands in 1.4 no longer sit on the black wall above the floor line. The same rule covers 2.4, 2.1, 2.3, 4.1, and 5.1. 1.1, 1.2, and 3.1 still have no floor items. Mike in 1.4 is twice as tall as in 1.2 and walks at speed 339.6.
+- Verification: `world_item_scatter_check.gd` exit 0. `playtest_fix_groups_check.gd` exit 0. `player_walk_speed_check.gd` exit 0. 1.4 Top, Right, and Bottom pass `wall_sprite_clearance_check.gd`. That full check still fails in other rooms this change did not touch.
+
+### 2.4 right wall polygon and extra door 4
+
+- Request: Change the 2.4 right-wall collision border into a polygon, and add an extra door 4 interact area that says "Not allowed."
+- Implementation: Replaced `RightWall`'s rectangle with a `CollisionPolygon2D` on the slanted ink (top `(6902, 0)` to bottom `(6678, 4960)`, solid to the right edge). Added `ExtraDoor4InteractArea` on the leftmost south-wall door (the heart-note door), same floor line as ExtraDoor3. `[E]` plays `"Not allowed."` and stays in the room.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+- Behavior impact: The upper part of the vertical hall is no longer blocked by a straight wall left of the drawing. The leftmost south door shows `[E]` and the line "Not allowed."
+- Verification: Scene smoke after the edit.
+
+### 1.4 v2 drawing and Mike back to corridor size
+
+- Request: Use `1.4_BasementDoor_v2.png` as the basement-door background, and put Mike's size and walk speed back to the previous values.
+- Implementation: The scene background now points at `exports/Drawings/1.4_BasementDoor_v2.png` (same 3508×2480 plate). Player scale is `0.198` and speed is `185.3` again, matching 1.2. `_OLD_BG_SCALE` stays `0.352`. Right and Bottom inner faces moved in a little so the smaller drawing still stays on the PNG. Top stays thick. `LeftWall` stays the walk-off.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/exports/Drawings/1.4_BasementDoor_v2.png`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+- Behavior impact: 1.4 shows the v2 hallway drawing. Mike is the same authored size and speed as in the corridor, not twice as tall.
+- Verification: v2 import `size_limit` 0. Scene smoke exit 0. Walk-speed check exit 0. 1.4 Top, Right, and Bottom pass wall clearance. The full wall check still fails in other rooms this change did not touch.
+
+### Thinner, softer item and memory outlines
+
+- Request: Make the item and memory indicator outlines 20% thinner, and set their opacity to 75%.
+- Implementation: Memory stroke is 0.96 texture pixels (was 1.2). Item stroke is 1.92 (was 2.4). Both outline colors use alpha 0.75. The red memory blob and the white hand stay fully opaque. A spread under 1 texture pixel still searches 1 pixel so the thin memory stroke does not disappear.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/marker_outline_style.gd`
+  - `AXEL/axel_project/scenes/fx/marker_silhouette_outline.gdshader`
+  - `AXEL/axel_project/scenes/fx/MemoryIndicator.tscn`
+  - `AXEL/axel_project/scenes/world/ItemMarker.tscn`
+  - `AXEL/axel_project/tools/qa/playtest_fix_groups_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+- Behavior impact: Memory crosses keep a slightly thinner white edge. Floor hands keep a slightly thinner red edge. Both edges are 75% opaque. The 1.2 arrow outline is unchanged.
+- Verification: `playtest_fix_groups_check.gd` exit 0.
+
+### 2.4 CRT rim pulled outward
+
+- Request: The darkened CRT edge in scene 2.4 was covering too much of the corridor drawing. Push that shade further out from the picture.
+- Implementation: `2.4` still uses vignette strength `0.45`, but the falloff now starts later (`vignette_start` `0.72`, `corner_radius` `0.9`, `edge_fade_px` `10`) and the TV curve eases to `0.08` so the bend does not hide the drawing. Other rooms keep the shared overlay (`curvature` `0.16`, `edge_fade_px` `26`, `corner_radius` `0.7`). The CRT material is copied per scene so the corridor numbers do not stick to the next room.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/tools/qa/corridor_crt_rim_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+- Behavior impact: The classrooms corridor keeps a dark corner and a thin glass edge, and more of the drawing stays bright. Every other room looks the same.
+- Verification: `corridor_crt_rim_check.gd` exit 0 (2.4 uses the outward rim; 1.4 keeps the shared rim). `shader_builtin_scope_check.gd` exit 0. `scene_smoke_check.gd` exit 0. Windowed 2.4 capture: red ink reaches about 38 px from the side edges (was about 68 px).
+
+### 2.4 dark edge moved outside the picture
+
+- Request: Start the darkened edge outside the drawing, because the color behind the texture is the same black. Set that edge to 80% opacity.
+- Implementation: Scene 2.4 scales the view in by at least 48 px so black shows around the picture. The CRT shade fades only in that margin, up to 80% black at the window edge. The drawing is not darkened, and the TV curve is off in this room so it does not cover the art. Other rooms keep the shared rim.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/tools/qa/corridor_crt_rim_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+- Behavior impact: The classrooms corridor drawing stays full brightness out to its edge. A black margin around it holds the 80% dark edge. Every other room looks the same.
+- Verification: `corridor_crt_rim_check.gd` exit 0. `shader_builtin_scope_check.gd` exit 0. `scene_smoke_check.gd` exit 0. Windowed 2.4 capture: the drawing stays inside the inset (about 72 px on the sides, 48 px on the top and bottom) and that margin is black.
+
+### 2.4 dark edge follows the texture
+
+- Request: Do not hide the background edges. The dark gradient should start at 0% opacity a couple of pixels outside the background texture.
+- Implementation: Removed the view inset that pulled the hallway in from the window. Scene 2.4 no longer uses the screen vignette on the drawing. The gradient starts 3 px outside the live background texture at 0% opacity and reaches 80% over the next 40 px. Other rooms keep the shared rim.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/tools/qa/corridor_crt_rim_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+- Behavior impact: The classrooms corridor drawing fills the view again, edges included. The dark edge only appears in the black past the texture.
+- Verification: `corridor_crt_rim_check.gd` exit 0. Windowed 2.4 capture shows the hallway drawing again, including the right-edge border, with no inset black frame.
+
+### 2.4 edge mirror removed
+
+- Request: The edge was mirroring the picture. The earlier edge fixes were not what showed up.
+- Implementation: Scene 2.4 turns the TV curve off and clamps edge samples instead of folding them back in, so the border is not a mirror. The dark gradient still starts 3 px outside the texture.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/crt_plugin_overlay.gdshader`
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/tools/qa/corridor_crt_rim_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+- Behavior impact: The classrooms corridor edge shows the drawing, not a flipped copy. Other rooms still use the shared TV curve.
+- Verification: `corridor_crt_rim_check.gd` exit 0. Windowed 2.4 capture: the right border is the drawn stripes, and a flip test of that edge does not match a mirror.
+
+### Same texture edge in every scene
+
+- Request: The 2.4 edge looks right. Use that same edge in every scene.
+- Implementation: The outside-texture gradient (starts 3 px past the picture at 0% opacity, reaches 80% over 40 px, no TV curve, no mirror) now applies to every non-combat scene. Each scene measures its own background. Combat stays flat.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_post_fx_stack.gd`
+  - `AXEL/axel_project/tools/qa/corridor_crt_rim_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+- Behavior impact: Rooms, memories, the hub, and the map use the same edge as the classrooms corridor. Combat does not gain a TV rim.
+- Verification: `corridor_crt_rim_check.gd` exit 0 for 2.4, 1.4, and 1.1.
+
+### Item chances and percents rounded up to 5
+
+- Request: Round item chance and percent bonuses up to the next multiple of 5. (Logged late; the catalog plan already had the numbers.)
+- Implementation: Fifteen live item files were raised to the next 5% step. Examples: `C1` is `+0.10x` with cap `+0.40x`; `C3` / `C5` / `C9` / `C-H` are `+10%`; `C-G` payout is `+15%`; `U6` / `U7` / `U8` spawn chance and `U-H` goal percent are `15%`; `R4` normal value is `−10%`; `R-G` is `+30%`; `R-H` is `+20%`; `E4` power chance is `5%`; `E-G` is `+40%`. The catalog table and the common-tier note match those files.
+- Files changed:
+  - `AXEL/axel_project/combat/data/items/C1_ash_spin_token.tres`
+  - `AXEL/axel_project/combat/data/items/C3_locker_map_pin.tres`
+  - `AXEL/axel_project/combat/data/items/C5_burn_mark.tres`
+  - `AXEL/axel_project/combat/data/items/C9_dusty_battery.tres`
+  - `AXEL/axel_project/combat/data/items/C-G_locker_tape.tres`
+  - `AXEL/axel_project/combat/data/items/C-H_loose_thread.tres`
+  - `AXEL/axel_project/combat/data/items/U6_cigarette_charm.tres`
+  - `AXEL/axel_project/combat/data/items/U7_alcohol_charm.tres`
+  - `AXEL/axel_project/combat/data/items/U8_bloody_hand_charm.tres`
+  - `AXEL/axel_project/combat/data/items/U-H_torn_label.tres`
+  - `AXEL/axel_project/combat/data/items/R4_glitch_button.tres`
+  - `AXEL/axel_project/combat/data/items/R-G_basement_bar.tres`
+  - `AXEL/axel_project/combat/data/items/R-H_witness_slip.tres`
+  - `AXEL/axel_project/combat/data/items/E4_overflow_ledger.tres`
+  - `AXEL/axel_project/combat/data/items/E-G_mason_lock.tres`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+- Behavior impact: Those items pay the rounded numbers in a fight. Items that were already on a 5% step were left as they were.
+- Verification: Catalog plan common-tier note matches `C1` (`per_paid_spin` 0.1, cap 0.4) and the other listed files.
+
+### Docs matched to the live rim, scatter pad, and locker
+
+- Request: Update docs.
+- Implementation: Canon no longer lists the old TV curve, vignette, and edge fade as what you see in a room. Live non-combat play forces those to 0 and uses the outside-texture gradient (3 px, 40 px, 80%). Scatter clearance is the 220 px circle plus an 8 px pad. The locker is lore pictures only; equip and unequip are the item wheel. The item-wheel hover card sits on layer 110. `1.4` camera `static_center` is `(560, 0)`. Headless list names `corridor_crt_rim_check.gd` and the locker-shelf part of `item_icon_draw_size_check.gd`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None in the game. Future edits should follow the live rim and the item wheel, not the old locker-equip wording.
+- Verification: Compared the sentences to `axel_post_fx_stack.gd`, `axel_world.gd` (`INTERACT_PAD_PX`), `world_item_info_card.gd`, and `1.4_BasementDoor.tscn`.
+- Notes: `1.4` script still looks for `CafeteriaInteractArea`, and the scene plan still describes that door, but the working-tree scene file does not contain the node. Docs were left as written. Restore the door in the scene if the cafeteria exit should still work.
+
 

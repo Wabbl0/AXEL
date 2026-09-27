@@ -66,6 +66,8 @@ func _ready() -> void:
 	_sprite.play(_ANIM)
 	_shadow.play(_ANIM)
 	_halo.play(_ANIM)
+	_halo.frame = _sprite.frame
+	OutlineStyle.sync_frame(_halo)
 	_sync_to_pickup()
 	_fit_glyph_scale()
 	set_process(true)
@@ -73,6 +75,9 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_sync_to_pickup()
+	if _sprite.sprite_frames != null:
+		_halo.frame = _sprite.frame
+		OutlineStyle.sync_frame(_halo)
 
 
 func _sync_to_pickup() -> void:
@@ -152,7 +157,7 @@ func _build_frames() -> void:
 	_shadow.sprite_frames = sf
 	_shadow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_halo.sprite_frames = sf
-	_halo.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_halo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 func _measure_ink() -> void:

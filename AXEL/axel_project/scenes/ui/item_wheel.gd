@@ -13,9 +13,10 @@ const ICON_SLOTS := BAND_COUNT * VISIBLE_COUNT
 const BAND_THICK := 52.0
 const BAND_GAP := 8.0
 const ICON_PX := 40.0
+const ICON_HOVER_PX := 46.0
 const HIT_PX := 28.0
 const ARC_STEPS := 18
-const FILL := Color(0.09, 0.09, 0.09, 0.94)
+const FILL := Color(0.02, 0.02, 0.02, 0.98)
 const OUTLINE := Color(0.9, 0.0, 0.0, 1.0)
 const GREYED := Color(0.38, 0.38, 0.38, 1.0)
 const ARC_START := PI
@@ -45,6 +46,10 @@ func _ready() -> void:
 
 func band_count() -> int:
 	return BAND_COUNT
+
+
+func shown_band_count() -> int:
+	return _shown_bands().size()
 
 
 func is_wheel_open() -> bool:
@@ -240,8 +245,9 @@ func _layout() -> void:
 func paint_on(canvas: Control) -> void:
 	if not _open:
 		return
-	for band in BAND_COUNT:
-		var inner_edge := _inner + float(band) * (BAND_THICK + BAND_GAP)
+	var shown := _shown_bands()
+	for visual in shown.size():
+		var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
 		var outer_edge := inner_edge + BAND_THICK
 		for step in ARC_STEPS:
 			var a0 := lerpf(ARC_START, ARC_END, float(step) / float(ARC_STEPS))
@@ -252,8 +258,8 @@ func paint_on(canvas: Control) -> void:
 		canvas.draw_line(_point(_center, inner_edge, ARC_START), _point(_center, outer_edge, ARC_START), OUTLINE, 2.0, false)
 		canvas.draw_line(_point(_center, inner_edge, ARC_END), _point(_center, outer_edge, ARC_END), OUTLINE, 2.0, false)
 		var mid_r := (inner_edge + outer_edge) * 0.5
-		_paint_chevron(canvas, _point(_center, mid_r, ARC_START), -1.0)
-		_paint_chevron(canvas, _point(_center, mid_r, ARC_END), 1.0)
+		_paint_chevron(canvas, _point(_center, mid_r, ARC_START))
+		_paint_chevron(canvas, _point(_center, mid_r, ARC_END))
 
 
 func _quad(center: Vector2, inner_edge: float, outer_edge: float, a0: float, a1: float) -> PackedVector2Array:
@@ -273,11 +279,11 @@ func _arc_points(center: Vector2, radius: float, a0: float, a1: float) -> Packed
 	return pts
 
 
-func _paint_chevron(canvas: Control, at: Vector2, direction: float) -> void:
-	var tip := at + Vector2(direction * 9.0, 0.0)
-	var upper := at + Vector2(-direction * 7.0, -8.0)
-	var lower := at + Vector2(-direction * 7.0, 8.0)
-	canvas.draw_colored_polygon(PackedVector2Array([tip, upper, lower]), OUTLINE)
+func _paint_chevron(canvas: Control, at: Vector2) -> void:
+	var tip := at + Vector2(0.0, 9.0)
+	var left := at + Vector2(-8.0, -7.0)
+	var right := at + Vector2(8.0, -7.0)
+	canvas.draw_colored_polygon(PackedVector2Array([tip, left, right]), OUTLINE)
 
 
 func _can_open() -> bool:
@@ -367,6 +373,20 @@ func _metrics() -> Dictionary:
 	return {"center": center, "inner": inner}
 
 
+func _shown_bands() -> Array[int]:
+	var bands: Array[int] = []
+	bands.append(0)
+	for band in range(1, BAND_COUNT):
+		if _items_for_band(band).is_empty():
+			continue
+		bands.append(band)
+	return bands
+
+
+func _visual_index(band: int) -> int:
+	return _shown_bands().find(band)
+
+
 func _items_for_band(band: int) -> Array:
 	var out: Array = []
 	var run := _run()
@@ -412,8 +432,10 @@ func _place_icons() -> void:
 			slot += 1
 			var item: Resource = shown[i]
 			var item_id := str(item.get("id"))
+			var px := ICON_HOVER_PX if item_id == _hover_id else ICON_PX
 			icon.visible = true
-			icon.size = Vector2(ICON_PX, ICON_PX)
+			icon.custom_minimum_size = Vector2(px, px)
+			icon.size = Vector2(px, px)
 			icon.texture_normal = item.get("icon") as Texture2D
 			icon.modulate = Color.WHITE if _is_equipped(item_id) else GREYED
 			icon.set_meta("item_id", item_id)
@@ -427,12 +449,16 @@ func _place_icons() -> void:
 
 func _place_arrows() -> void:
 	var index := 0
+	var shown := _shown_bands()
 	for band in BAND_COUNT:
+		var visible := shown.has(band)
 		var mid_r := _mid_radius(band)
 		for direction in [-1, 1]:
 			var arrow := _arrows[index]
 			index += 1
-			arrow.visible = true
+			arrow.visible = visible
+			if not visible:
+				continue
 			arrow.size = Vector2(HIT_PX, HIT_PX)
 			arrow.set_meta("band", band)
 			arrow.set_meta("dir", direction)
@@ -456,7 +482,8 @@ func _place_cap() -> void:
 	_cap.text = "%d/%d" % [equipped, cap]
 	_cap.reset_size()
 	var label_size := _cap.get_combined_minimum_size()
-	var outer := _inner + float(BAND_COUNT) * (BAND_THICK + BAND_GAP) - BAND_GAP
+	var rings := _shown_bands().size()
+	var outer := _inner + float(rings) * (BAND_THICK + BAND_GAP) - BAND_GAP
 	_cap.position = Vector2(
 		_center.x - label_size.x * 0.5,
 		_center.y - outer - label_size.y - 8.0
@@ -464,7 +491,10 @@ func _place_cap() -> void:
 
 
 func _mid_radius(band: int) -> float:
-	var inner_edge := _inner + float(band) * (BAND_THICK + BAND_GAP)
+	var visual := _visual_index(band)
+	if visual < 0:
+		visual = 0
+	var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
 	return inner_edge + BAND_THICK * 0.5
 
 
@@ -490,11 +520,12 @@ func _band_at(screen_pos: Vector2) -> int:
 	var angle := atan2(delta.y, delta.x)
 	if angle > 0.08 and angle < PI - 0.08:
 		return -1
-	for band in BAND_COUNT:
-		var inner_edge := _inner + float(band) * (BAND_THICK + BAND_GAP)
+	var shown := _shown_bands()
+	for visual in shown.size():
+		var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
 		var outer_edge := inner_edge + BAND_THICK
 		if dist >= inner_edge - 4.0 and dist <= outer_edge + 4.0:
-			return band
+			return int(shown[visual])
 	return -1
 
 
@@ -556,7 +587,7 @@ func _on_icon_hover(icon: TextureButton) -> void:
 		return
 	card.call(
 		"show_screen_item",
-		icon.get_global_rect().get_center(),
+		_grown_corner(icon),
 		ItemDef.rarity_name(item),
 		str(item.get("description")),
 		item.get("icon")
@@ -574,8 +605,13 @@ func _follow_hover() -> void:
 			continue
 		if str(icon.get_meta("item_id", "")) != _hover_id:
 			continue
-		card.call("nudge_screen_item", icon.get_global_rect().get_center())
+		card.call("nudge_screen_item", _grown_corner(icon))
 		return
+
+
+func _grown_corner(icon: Control) -> Vector2:
+	var rect := icon.get_global_rect()
+	return rect.get_center() + Vector2(ICON_HOVER_PX, ICON_HOVER_PX) * 0.5
 
 
 func _on_icon_exit(icon: TextureButton) -> void:

@@ -4,9 +4,31 @@
 [ext_resource type="Texture2D" uid="uid://dhb1hfv26e0vx" path="res://exports/Drawings/1.3_Locker.png" id="2_hub_bg"]
 [ext_resource type="PackedScene" uid="uid://rr0msaat3au1" path="res://scenes/ui/TopDialogueOverlay.tscn" id="3_top_dialogue"]
 [ext_resource type="FontFile" uid="uid://bri16d3nb3jwx" path="res://combat/ui/fonts/VT323-Regular.ttf" id="4_font"]
+[ext_resource type="Shader" uid="uid://crypxpcflnu7r" path="res://scenes/ui/shelf_clip.gdshader" id="4_gdrfg"]
 [ext_resource type="Script" uid="uid://dlv3mwtkwxemi" path="res://scenes/ui/ui_polygon_hotspot.gd" id="5_map_hotspot"]
-[ext_resource type="Script" path="res://scenes/ui/locker_shelves.gd" id="6_shelves"]
-[ext_resource type="Script" path="res://scenes/ui/locker_shelf_row.gd" id="7_shelf_row"]
+[ext_resource type="Script" uid="uid://dk5qh1qqsrgn7" path="res://scenes/ui/locker_shelves.gd" id="6_shelves"]
+[ext_resource type="Texture2D" uid="uid://c6k1w5876ojl5" path="res://exports/Drawings/Flashlight.png" id="8_flashlight"]
+[ext_resource type="Texture2D" uid="uid://cp2wkci3dixeh" path="res://exports/Drawings/Key.png" id="9_key"]
+[ext_resource type="Texture2D" uid="uid://b86lcf1xvqfu" path="res://exports/Drawings/Nametag.png" id="10_nametag"]
+[ext_resource type="Script" uid="uid://b1lnsldwk2orf" path="res://scenes/ui/locker_shelf_clip.gd" id="11_clip"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qoly0"]
+shader = ExtResource("4_gdrfg")
+shader_parameter/clip_points = PackedVector2Array(-541.5082, -619.99316, -22.351685, -251.17139, 670.9132, 270.20947, 544.9999, 586, -359.93323, 641.7007, -688.3258, -308.01172, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/clip_count = 6
+shader_parameter/feather_px = 1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0vr0c"]
+shader = ExtResource("4_gdrfg")
+shader_parameter/clip_points = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/clip_count = 0
+shader_parameter/feather_px = 1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2hska"]
+shader = ExtResource("4_gdrfg")
+shader_parameter/clip_points = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/clip_count = 0
+shader_parameter/feather_px = 1.0
 
 [node name="LockerHub" type="Control" unique_id=1765057209]
 layout_mode = 3
@@ -29,7 +51,7 @@ texture = ExtResource("2_hub_bg")
 expand_mode = 1
 stretch_mode = 6
 
-[node name="LockerShelves" type="Control" parent="."]
+[node name="LockerShelves" type="Control" parent="." unique_id=911503158]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -38,34 +60,43 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("6_shelves")
-background_path = NodePath("../Background")
 
-[node name="ShelfTop" type="Control" parent="LockerShelves"]
-layout_mode = 0
-offset_right = 400.0
-offset_bottom = 80.0
-rotation = -0.06981317
-script = ExtResource("7_shelf_row")
-uv_rect = Rect2(0.18, 0.22, 0.62, 0.14)
-icon_px = 120.0
+[node name="ItemAnchor" type="Node2D" parent="LockerShelves" unique_id=1569637526]
+position = Vector2(0, -38.677307)
+scale = Vector2(0.5473204, 0.5473204)
 
-[node name="ShelfMid" type="Control" parent="LockerShelves"]
-layout_mode = 0
-offset_right = 400.0
-offset_bottom = 80.0
-rotation = -0.034906585
-script = ExtResource("7_shelf_row")
-uv_rect = Rect2(0.16, 0.42, 0.66, 0.15)
-icon_px = 120.0
+[node name="Flashlight" type="Sprite2D" parent="LockerShelves/ItemAnchor" unique_id=821238272]
+texture_filter = 1
+material = SubResource("ShaderMaterial_qoly0")
+position = Vector2(798.43536, 563.979)
+rotation = -3.5657077
+scale = Vector2(0.30544454, 0.2756589)
+texture = ExtResource("8_flashlight")
+region_enabled = true
+region_rect = Rect2(23, 52, 1090, 1172)
+script = ExtResource("11_clip")
 
-[node name="ShelfBot" type="Control" parent="LockerShelves"]
-layout_mode = 0
-offset_right = 400.0
-offset_bottom = 80.0
-rotation = 0.034906585
-script = ExtResource("7_shelf_row")
-uv_rect = Rect2(0.14, 0.62, 0.70, 0.16)
-icon_px = 120.0
+[node name="ClipPolygon" type="CollisionPolygon2D" parent="LockerShelves/ItemAnchor/Flashlight" unique_id=1944653338]
+polygon = PackedVector2Array(-541.50793, -619.99316, -22.351685, -251.17139, 670.9133, 270.20947, 545, 586, -359.93298, 641.7007, -688.3258, -308.01172)
+
+[node name="Key" type="Sprite2D" parent="LockerShelves/ItemAnchor" unique_id=1311533331]
+texture_filter = 1
+material = SubResource("ShaderMaterial_0vr0c")
+position = Vector2(822.18744, 1762.5457)
+rotation = -1.5009831
+scale = Vector2(0.22, 0.22)
+skew = 0.082030475
+texture = ExtResource("9_key")
+script = ExtResource("11_clip")
+
+[node name="Nametag" type="Sprite2D" parent="LockerShelves/ItemAnchor" unique_id=1594769015]
+texture_filter = 1
+material = SubResource("ShaderMaterial_2hska")
+position = Vector2(783.8187, 1007.96045)
+rotation = 0.035
+scale = Vector2(0.28, 0.28)
+texture = ExtResource("10_nametag")
+script = ExtResource("11_clip")
 
 [node name="MapHotspot" type="Control" parent="." unique_id=1504629887]
 layout_mode = 1

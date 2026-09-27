@@ -17,6 +17,9 @@ func _ready() -> void:
 	_menu = _PauseMenuScript.new()
 	_menu.name = "AxelPauseMenu"
 	add_child(_menu)
+	var saves := get_node_or_null("/root/AxelSaves")
+	if saves != null and saves.has_method("maybe_begin_play_scene"):
+		saves.call("maybe_begin_play_scene")
 
 
 func is_paused() -> bool:

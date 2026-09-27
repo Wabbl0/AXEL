@@ -3,9 +3,12 @@ extends Node
 const SAVE_VERSION := 1
 const SLOT_COUNT := 3
 const DIR := "user://saves"
+const PLAY_SCENE_DIR := "user://saves_play_scene"
 const NEW_GAME_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
+const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const MENU_PREFIX := "res://scenes/Main_Menu/"
 const MAP_MEMORY_KEY := "scene_3"
+const _SCENE_ARG := "--scene"
 
 signal slots_changed
 signal active_slot_changed(slot: int)
@@ -20,11 +23,20 @@ var _pending_tex := Vector2.ZERO
 var _pending_tex_valid := false
 var _skip_intro_once := false
 var _last_slot: int = -1
+var _play_scene_session := false
+var _play_scene_dir := ""
+var _flush_scene_override := ""
 
 
 func _enter_tree() -> void:
+	_purge_directory(PLAY_SCENE_DIR)
 	DirAccess.make_dir_recursive_absolute(_abs_dir())
 	_last_slot = _read_index_last_slot()
+
+
+func _exit_tree() -> void:
+	if _play_scene_session:
+		end_play_scene_session()
 
 
 func _ready() -> void:
@@ -164,6 +176,63 @@ func new_game(slot: int) -> bool:
 	return true
 
 
+func maybe_begin_play_scene() -> bool:
+	if not OS.is_debug_build():
+		return false
+	if _play_scene_session or is_active():
+		return false
+	if not dir_override.is_empty():
+		return false
+	var scene_path := _cmdline_scene_path()
+	if scene_path.is_empty() or _is_menu_path(scene_path):
+		return false
+	return begin_play_scene_session(scene_path)
+
+
+func begin_play_scene_session(scene_path: String, save_dir: String = "") -> bool:
+	if _play_scene_session or is_active():
+		return false
+	if scene_path.is_empty() or _is_menu_path(scene_path):
+		return false
+	if not ResourceLoader.exists(scene_path):
+		return false
+	var folder := PLAY_SCENE_DIR if save_dir.is_empty() else save_dir
+	if folder == DIR:
+		return false
+	_purge_directory(folder)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
+	dir_override = folder
+	if not new_game(0):
+		dir_override = ""
+		_purge_directory(folder)
+		return false
+	_play_scene_session = true
+	_play_scene_dir = folder
+	_stamp_play_scene_arrival(scene_path)
+	return true
+
+
+func end_play_scene_session() -> void:
+	if not _play_scene_session:
+		return
+	_save_queued = false
+	_flush_scene_override = ""
+	var slot := active_slot
+	if slot >= 0:
+		_write_blocked[slot] = true
+	var folder := _play_scene_dir
+	_play_scene_session = false
+	_play_scene_dir = ""
+	if dir_override == folder:
+		dir_override = ""
+	var was_active := active_slot >= 0
+	active_slot = -1
+	_pending_tex_valid = false
+	_purge_directory(folder)
+	if was_active:
+		active_slot_changed.emit(-1)
+
+
 func load_slot(slot: int) -> bool:
 	if not _valid_slot(slot) or is_empty(slot) or is_dead(slot):
 		return false
@@ -234,6 +303,9 @@ func write_tombstone(slot: int) -> void:
 
 
 func deactivate() -> void:
+	if _play_scene_session:
+		end_play_scene_session()
+		return
 	if is_active():
 		save_active_now()
 	active_slot = -1
@@ -242,9 +314,12 @@ func deactivate() -> void:
 
 
 func _on_scene_changed() -> void:
+	var scene := get_tree().current_scene
+	if _play_scene_session and scene != null and _is_menu_path(scene.scene_file_path):
+		end_play_scene_session()
+		return
 	if not is_active() or _is_write_blocked(active_slot):
 		return
-	var scene := get_tree().current_scene
 	if scene == null or _is_menu_path(scene.scene_file_path):
 		return
 	if _pending_tex_valid:
@@ -275,7 +350,12 @@ func _queue_save() -> void:
 
 func _flush_save_deferred() -> void:
 	_save_queued = false
+	var forced := _flush_scene_override
+	_flush_scene_override = ""
 	if not is_active() or _is_write_blocked(active_slot):
+		return
+	if not forced.is_empty():
+		_flush_save(forced)
 		return
 	var scene := get_tree().current_scene
 	var path := ""
@@ -465,6 +545,63 @@ func _is_menu_scene() -> bool:
 
 func _is_menu_path(path: String) -> bool:
 	return path.begins_with(MENU_PREFIX)
+
+
+func _stamp_play_scene_arrival(scene_path: String) -> void:
+	if scene_path == NEW_GAME_SCENE:
+		_flush_save(scene_path)
+		return
+	_flush_scene_override = scene_path
+	if scene_path != CORRIDOR_SCENE:
+		GameManager.set_corridor_spawn_line_seen(true)
+		GameManager.set_corridor_locker_line_seen(true)
+		GameManager.mark_room_visited(CORRIDOR_SCENE)
+	GameManager.mark_room_visited(NEW_GAME_SCENE)
+	GameManager.mark_room_visited(scene_path)
+	_flush_save(scene_path)
+
+
+func _cmdline_scene_path() -> String:
+	var args := OS.get_cmdline_args()
+	for i in args.size():
+		var arg := String(args[i])
+		if arg == _SCENE_ARG and i + 1 < args.size():
+			return _normalize_scene_arg(String(args[i + 1]))
+		if arg.begins_with(_SCENE_ARG + "="):
+			return _normalize_scene_arg(arg.substr(_SCENE_ARG.length() + 1))
+	return ""
+
+
+func _normalize_scene_arg(arg: String) -> String:
+	var text := arg.strip_edges()
+	if text.begins_with("uid://"):
+		var uid := ResourceUID.text_to_id(text)
+		if not ResourceUID.has_id(uid):
+			return ""
+		return ResourceUID.uid_to_path(text)
+	return text
+
+
+func _purge_directory(path: String) -> void:
+	if path.is_empty() or path == DIR:
+		return
+	var abs_path := ProjectSettings.globalize_path(path)
+	if not DirAccess.dir_exists_absolute(abs_path):
+		return
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	var names: Array[String] = []
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if entry != "." and entry != ".." and not dir.current_is_dir():
+			names.append(entry)
+		entry = dir.get_next()
+	dir.list_dir_end()
+	for entry_name in names:
+		dir.remove(entry_name)
+	DirAccess.remove_absolute(abs_path)
 
 
 func _dir() -> String:

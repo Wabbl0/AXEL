@@ -112,8 +112,8 @@ func _check_outlines() -> void:
 	var item_halo := item.get_node_or_null("RedHalo") as CanvasItem
 	var mem_sprite := memory.get_node_or_null("AnimatedSprite") as CanvasItem
 	var mem_halo := memory.get_node_or_null("Halo") as CanvasItem
-	_assert_glow(item_halo, 12.0, Color(0.9, 0, 0, 1), "item")
-	_assert_glow(mem_halo, 12.0, Color(1, 1, 1, 1), "memory halo")
+	_assert_glow(item_halo, 1.92, Color(0.9, 0, 0, 0.75), "item")
+	_assert_glow(mem_halo, 0.96, Color(1, 1, 1, 0.75), "memory halo")
 	if mem_sprite == null or mem_sprite.modulate.r < 0.8 or mem_sprite.modulate.g > 0.05:
 		_fail("memory sprite should be red")
 	item.queue_free()
@@ -125,11 +125,17 @@ func _assert_glow(node: CanvasItem, spread: float, color: Color, where: String) 
 		_fail("%s halo missing" % where)
 		return
 	var mat := node.material as ShaderMaterial
+	var shader := mat.shader
+	var shader_path := ""
+	if shader != null:
+		shader_path = shader.resource_path
+	if not shader_path.ends_with("marker_silhouette_outline.gdshader"):
+		_fail("%s should use the opaque silhouette outline, got %s" % [where, shader_path])
 	var got_spread := float(mat.get_shader_parameter("spread"))
 	if absf(got_spread - spread) > 0.01:
 		_fail("%s spread %.2f should be %.2f" % [where, got_spread, spread])
 	var got: Color = mat.get_shader_parameter("glow_color")
-	if got.r < color.r - 0.05 or absf(got.g - color.g) > 0.05:
+	if got.r < color.r - 0.05 or absf(got.g - color.g) > 0.05 or absf(got.a - color.a) > 0.02:
 		_fail("%s glow color %s should be %s" % [where, got, color])
 
 

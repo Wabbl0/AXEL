@@ -51,7 +51,7 @@ func _build_visual() -> void:
 		push_warning("WorldItemPickup: could not instantiate the item marker")
 		return
 	marker.name = MARKER_NODE
-	marker.set("marker_px", MARKER_PX)
+	marker.set("marker_px", _room_marker_px())
 	if marker.has_method("bind_pickup"):
 		marker.call("bind_pickup", self)
 	var layer := _player_layer()
@@ -63,6 +63,15 @@ func _build_visual() -> void:
 	_marker = marker
 	if marker.has_method("set_rarity_glyph"):
 		marker.call("set_rarity_glyph", ItemDef.rarity_glyph(_item_def()))
+
+
+func _room_marker_px() -> float:
+	var scene := get_tree().current_scene if get_tree() != null else null
+	if scene != null and scene.has_method("floor_item_marker_px"):
+		var px := float(scene.call("floor_item_marker_px"))
+		if px > 0.0:
+			return px
+	return MARKER_PX
 
 
 func _player_layer() -> Node:

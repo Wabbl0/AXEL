@@ -57,9 +57,35 @@ Live authored Player scale / speed at **1920×1280** (then `PlayerCoverSync` mul
 | 4.1 teachers’ lounge | `0.257` | `226.9` |
 | 5.1 classroom | `0.298` | `255.9` |
 
-Kitchen is above scale `0.3` (no small-scale extra). 2.1 / 5.1 are 50% larger than the shared `0.198`. 3.1 is 40% larger (`0.277`). 4.1 is 30% larger (`0.257`). 1.1 gets the most below-0.3 extra.
+Kitchen is above scale `0.3` (no small-scale extra). 1.4 matches the shared `0.198` / `185.3` (same as 1.2). 2.1 / 5.1 are 50% larger than the shared `0.198`. 3.1 is 40% larger (`0.277`). 4.1 is 30% larger (`0.257`). 1.1 gets the most below-0.3 extra.
 
 Old profile names (`classroom_large` `0.86`, `library_large` `0.78`) are retired — do not copy those numbers onto the new sheet.
+
+## Memory and item indicator sizes
+
+These numbers are authored at the same **1920×1280 cover-fit** as the player table. `PlayerCoverSync` still multiplies the memory glow by `live_cover / baseline`. The floor hand still multiplies its size by the room’s live cover scale.
+
+The glow stays the same size next to Mike as in **2.1** (player `0.298`, glow `2.25`). The hand stays the same size next to Mike as in **1.4** (player `0.198`, baseline `0.352`, hand `180`).
+
+`IndicatorFit.memory_from_player` (`scenes/core/indicator_fit.gd`): `2.25 × (player_scale / 0.298)`, rounded to three decimals.
+
+`IndicatorFit.item_marker_px`: `180 × (0.352 / 0.198) × (player_scale / room_baseline)`, rounded to one decimal. `180 × 0.352 / 0.198` is `320`. `room_baseline` is the baseline `PlayerCoverSync` already uses (`_OLD_BG_SCALE` on 1.1 / 1.2 / 1.4; otherwise plain 1920×1280 cover: `1920/3508` on the 3508×2480 plates, `1920/7016` on 2.4).
+
+Do not hand-tune these in the Inspector. `bind_player_cover()` sets the glow before cover-fit captures it. The floor pickup asks the room for the hand size. The 2.4 depth ramp still changes only Mike; the hand stays at the 100% end. The 1.2 arrow hint keeps its own scale.
+
+| Scene | Memory scale | Item size |
+| --- | --- | --- |
+| 1.1 exterior | `0.596` | `75.5` |
+| 1.2 corridor | `1.495` | `116.0` |
+| 1.4 basement door | `1.495` | `180.0` |
+| 2.1 cafeteria | `2.250` | `174.2` |
+| 2.3 kitchen | `2.499` | `193.5` |
+| 2.4 classrooms corridor | `1.495` | `231.5` |
+| 3.1 backyard | `2.091` | `162.0` |
+| 4.1 teachers’ lounge | `1.940` | `150.3` |
+| 5.1 classroom | `2.250` | `174.2` |
+
+Live glows: 2.1, 3.1, 4.1, 5.1. Live hands: rooms with a scatter count above 0 (1.4, 2.1, 2.3, 2.4, 4.1, 5.1). The other numbers are what a new glow or hand in that room would use. Regression: `scenes/core/test/indicator_fit_check.gd`.
 
 ## Exploration scene template (mandatory for new PNG scenes)
 
@@ -97,17 +123,17 @@ Root (`extends ExplorationRoom`)
 
 **Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; a fight keeps `p1` and fades in `B_Goes_Down_Drums_p1` over 10s; `B_Goes_Down_Drums_p2` fades in for Vice Round and stays through Free Spins if that round leads there). Loudness: `Music` bus in `default_bus_layout.tres`.
 
-**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Default `indicator_scale` `2.25`. The blob is red; the shared outer-glow `Halo` (`memory_outer_glow.gdshader`) stays white. The glow captures its editor position and remaps on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked. Set `memory_key` (or `collected_bool_property` for the desk) and `interact_area_path` on the instance so the glow hides itself and disables the walk-up box when collected. Do not copy `_sync_memory_indicator` / `_apply_collected_memory` into a new room.
+**Memory indicator:** instance `scenes/fx/MemoryIndicator.tscn` under `PlayerLayer` (above noir). Authored `indicator_scale` comes from § Memory and item indicator sizes (2.1 stays `2.25`; the packed scene default is that same number). The blob is red; the `Halo` behind it is a white outline 0.96 texture pixels thick at 75% opacity (`marker_silhouette_outline.gdshader`). The glow captures its editor position and remaps on `layout_applied` — do not derive from another node’s shape. `visual_offset` stays `(0, 0)` unless asked. Set `memory_key` (or `collected_bool_property` for the desk) and `interact_area_path` on the instance so the glow hides itself and disables the walk-up box when collected. Do not copy `_sync_memory_indicator` / `_apply_collected_memory` into a new room.
 
 **Player packed scene:** instance `scenes/player/Player.tscn` under `PlayerLayer`. Keep that room’s authored `position` / `scale` / `speed` (and collision extras if that room already had them). Do not paste a new AnimatedSprite + ShadowOutline tree. Silhouette numbers stay on the packed scene.
 
 **Room script trunk:** new walkable rooms `extends ExplorationRoom` (`scenes/core/exploration_room.gd`). Fill in `zone_ids` / `zone_area` / `on_zone_interact` (and peek/occlusion leaves). Doors use `leave_through` + `ExplorationTransition`. Lore pickups use `LorePickup.take` (flashlight and key are the same function, different flag/lines). Memory stills `extends MemoryStill`; picture crop uses `memory_frame.gd`. 1.1 intro and 1.2 locker/arrow keep `_use_default_interact_loop = false`. Frozen peeks, kitchen Y `90`, and 2.4 depth ramp stay in those room scripts.
 
-**Floor item marker:** runtime `scenes/world/ItemMarker.tscn` on `PlayerLayer` (white pointing hand, drop shadow, faint red outline). The pickup `Area2D` stays under `EnvironmentColliders`. Do not put a catalog icon on the floor. Scatter must keep the 220 px interact circle off walls and furniture.
+**Floor item marker:** runtime `scenes/world/ItemMarker.tscn` on `PlayerLayer` (white pointing hand, drop shadow, red outline 1.92 texture pixels thick at 75% opacity). Hand size comes from § Memory and item indicator sizes (1.4 stays `180`). The pickup `Area2D` stays under `EnvironmentColliders`. Do not put a catalog icon on the floor. Scatter must keep the 220 px interact circle plus an 8 px pad off walls and furniture, and the spot must sit on the walkable floor connected to Mike. The live Area2D radius stays 220.
 
 **1.2 right-arrow hint (1.2 only):** runtime `scenes/fx/DirectionHint.tscn` on `PlayerLayer`. Pin to the viewport right edge at scale `1.67`; do not pass it to `bind_player_cover` as an extra. Do not copy it into other rooms. Details: `AI_DOCS.md`.
 
-**1.3 locker shelves (hub only):** three crooked shelf rows (`scenes/ui/locker_shelves.gd` / `locker_shelf_row.gd`). No **LOCKER** button or overlay. Equip is `AxelRun.toggle_equip`. Tune UV boxes in the Inspector. Do not copy the shelf rows into other rooms.
+**1.3 locker shelves (hub only):** flashlight, key, and name tag pictures on `ItemAnchor` (`scenes/ui/locker_shelves.gd`). No **LOCKER** button or overlay. Each picture stays hidden until that item is picked up. The shovel is not on the locker. Drag `Flashlight`, `Key`, and `Nametag` in the 2D editor. Each picture has a `ClipPolygon`: inside the shape stays, outside is cut off, with a 1px edge (`locker_shelf_clip.gd`). Do not drag `ItemAnchor` — that node follows the picture. Combat items stay on the item wheel. Do not copy these pictures into other rooms.
 
 **1.4 chained door:** `[E]` plays `"Not yet."` and stays in `1.4`. Do not load a grey-box basement scene.
 
@@ -144,7 +170,7 @@ func _ready() -> void:
 - Camera: `scenes/core/background_camera_controller.gd`
 - Colliders: texture-pixel space under `WalkableWorld/EnvironmentColliders`
 - Player: world space under `PlayerLayer` (instance `scenes/player/Player.tscn`). Do not rewire 1.1/1.2 off `PlayerLayer` without approval.
-- Cover sync: `scenes/core/player_cover_sync.gd` — first layout uses the 1920×1280 (or legacy `_OLD_BG_SCALE`) baseline; later resizes keep the same Mike-vs-room ratio. 1.4 uses 1.2’s `0.546` (same 2400×1500 PNG size).
+- Cover sync: `scenes/core/player_cover_sync.gd` — first layout uses the 1920×1280 (or legacy `_OLD_BG_SCALE`) baseline; later resizes keep the same Mike-vs-room ratio. 1.4 uses `_OLD_BG_SCALE` `0.352` on the 3508×2480 plate. Authored Mike there is `0.198` / `185.3`, the same as 1.2.
 - Spawn: `scenes/core/player_spawn_sync.gd` — the Player node is the spawn. Capture with `env.to_local` **before** moving `EnvironmentColliders`, apply with `env.to_global` after. Do this on the **first** layout, not only later resizes. Regression: `scenes/core/test/player_spawn_sync_check.gd`.
 
 ### Rule: Mike walk sheet (12-cell)
@@ -168,7 +194,7 @@ If Mike looks wrong vs the furniture **at 1920×1280**, change the authored scal
 
 ### Rule: PlayerLayer extras share the cover ratio
 
-`bind_player_cover()` already binds `PlayerLayer/MemoryIndicator` to the cover ratio. Extra PlayerLayer nodes (not Mike, not the glow) use `bind_extra_node` + `apply`. Props under `EnvironmentColliders` (e.g. kitchen flashlight, 5.1 board glow) already follow `env.scale` — no second scaler.
+`bind_player_cover()` sets `PlayerLayer/MemoryIndicator` to that room’s authored glow scale, then binds it to the cover ratio. Extra PlayerLayer nodes (not Mike, not the glow) use `bind_extra_node` + `apply`. Props under `EnvironmentColliders` (e.g. kitchen flashlight, 5.1 board glow) already follow `env.scale` — no second scaler.
 
 ### Rule: first-visit enter lines play once
 
@@ -308,10 +334,10 @@ The Front circle is what `move_and_slide` stops. The walk cell (`439×971`) plus
 **Required inset** (from the picture edge to the wall’s inner face) = how far the drawing sticks past the circle in that facing, times live Player scale. The checker computes this; do not copy a one-size-fits-all texture width.
 
 - Grow `LeftWall` / `RightWall` / `TopWall` / `BottomWall` **from the PNG edge inward**. Give each wall its own `RectangleShape2D` (Make Unique) so one edit does not resize the opposite wall.
-- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play). `2.1`→`2.4` cafeteria arrival stands the Player node on the live box (skip clearance) so the model stays on the PNG. Do not thin walls that already pass.
+- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play). 2.4 `RightWall` is a `CollisionPolygon2D` on the slanted ink (top `(6902, 0)` to bottom `(6678, 4960)`, solid out to x `7016`) — do not turn it back into a vertical rectangle. `2.1`→`2.4` cafeteria arrival stands the Player node on the live box (skip clearance) so the model stays on the PNG. Do not thin walls that already pass.
 - Furniture / door blockers are not this rule.
 
-Live: 1.1 Top only; 1.2 / 1.4 / 2.1 / 2.3 / 3.1 / 4.1 / 5.1 edge walls that were too thin. Kitchen example: unique Left `200×2480` / Right `158×2480` / Top `3508×346` / Bottom `3508×193`. 3.1 after the 40% scale bump: Left `138×2480` / Right `132×2480` / Bottom `3508×162` (Top already thicker than required). Regression: `tools/qa/wall_sprite_clearance_check.gd` (`WALL_SPRITE_CLEARANCE OK`).
+Live: 1.1 Top only; 1.2 / 1.4 / 2.1 / 2.3 / 3.1 / 4.1 / 5.1 edge walls that were too thin. Kitchen example: unique Left `200×2480` / Right `158×2480` / Top `3508×346` / Bottom `3508×193`. 3.1 after the 40% scale bump: Left `138×2480` / Right `132×2480` / Bottom `3508×162` (Top already thicker than required). 1.4 at Mike `0.198`: Top `3508×646` still passes. Right and Bottom inner faces were moved in so the smaller drawing stays on the PNG (Right inset about 148, Bottom about 182). `LeftWall` stays the walk-off. Those three 1.4 walls pass `tools/qa/wall_sprite_clearance_check.gd`.
 
 ### Rule: interact-prompt "[E]" chip has no offset by default
 
@@ -338,7 +364,7 @@ After `_ready`, headless smoke MUST call:
 - `QaCanonValidators.collect_background_camera_findings(root, scene_path)`
 - `QaCanonValidators.collect_background_editor_lock_findings` (background must have `metadata/_edit_lock_`)
 
-New walkable scenes `extends ExplorationRoom`, call `bind_player_cover()`, and instance `Player.tscn`. That wires `PlayerCoverSync` + `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_walk_speed_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`. Room-edge walls: `tools/qa/wall_sprite_clearance_check.gd`. Independent colliders: `tools/qa/collision_shape_unique_check.gd`.
+New walkable scenes `extends ExplorationRoom`, call `bind_player_cover()`, and instance `Player.tscn`. That wires `PlayerCoverSync` + `PlayerSpawnSync` (Player node, first layout included). Regression: `scenes/core/test/player_cover_sync_check.gd`, `scenes/core/test/player_walk_speed_check.gd`, `scenes/core/test/indicator_fit_check.gd`, `scenes/core/test/player_spawn_sync_check.gd`. Room-edge walls: `tools/qa/wall_sprite_clearance_check.gd`. Independent colliders: `tools/qa/collision_shape_unique_check.gd`.
 
 ### Playtest variants (optional)
 
@@ -348,8 +374,8 @@ Do not duplicate a walkable room into a second `.tscn` just to skip the intro. O
 
 - Base `1920×1280` (3:2) in `project.godot`. Stretch stays **disabled** (no letterbox / Keep-aspect canvas stretch — that shrank dialogue fonts).
 - Game tab / OS window may be any size or aspect; `BackgroundCamera` cover-fits the PNG and recomputes on `size_changed`.
-- Static-locked `cover` rooms may reveal a thin clear-color strip instead of cropping as hard on wide monitors. Shared default comes from `BackgroundLayout.MAX_EDGE_REVEAL`; movable-follow rooms (1.1 / 2.4) stay on plain cover.
-- Mike, walls (`EnvironmentColliders`), and art share one cover scale via `PlayerCoverSync` from the 1920×1280 baseline (1.1/1.2: `_OLD_BG_SCALE`; 1.4: same `0.546` as 1.2).
+- Static-locked `cover` rooms may reveal a thin clear-color strip instead of cropping as hard on wide monitors. Shared default comes from `BackgroundLayout.MAX_EDGE_REVEAL`; movable-follow rooms (1.1 / 2.4) stay on plain cover. Every non-combat scene uses the same dark edge: it starts at 0% opacity 3 px outside that scene’s background texture and reaches 80% opacity over the next 40 px. The TV curve is off so the edge is not mirrored. Combat stays flat.
+- Mike, walls (`EnvironmentColliders`), and art share one cover scale via `PlayerCoverSync` from the 1920×1280 baseline (1.1/1.2: `_OLD_BG_SCALE`; 1.4: `0.352` room baseline; Mike is authored at `0.198` / `185.3`, same as 1.2).
 - Exploration clear color in `project.godot` stays pure white so any exposed strip turns dark under the shipped noir/CRT stack instead of grey or red.
 - `exploration_viewport.gd` is **inert** (kept so 1.1/1.2 still load).
 - **Fixed-pixel UI chrome must self-scale.** Corner `X` buttons (hub / map / memory stills), the 1.3 map travel buttons, the `[E]` chip, and the pause scrim rescale from the live window height via `UiViewportScale.factor` (`scenes/core/ui_viewport_scale.gd`; authored baseline 1920×1280, clamp 0.5–2.5, times the player `ui_scale` setting). New chrome applies it in `_ready` **and** on `get_viewport().size_changed` (bound method, not a lambda, so the connection dies with the scene). `TopDialogueOverlay` keeps its own font scaling; the `ui_scale` setting composes into both. Without this, chrome authored in pixels turns unreadably small at 3840×2160 (stretch stays disabled per canon).

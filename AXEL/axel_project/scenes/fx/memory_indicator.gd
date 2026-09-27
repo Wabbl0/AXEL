@@ -36,8 +36,17 @@ func _ready() -> void:
 	_build_frames()
 	_sprite.play(_ANIM)
 	_halo.play(_ANIM)
+	_halo.frame = _sprite.frame
+	OutlineStyle.sync_frame(_halo)
 	capture_editor_tex()
 	apply_collected()
+
+
+func _process(_delta: float) -> void:
+	if _sprite.sprite_frames == null:
+		return
+	_halo.frame = _sprite.frame
+	OutlineStyle.sync_frame(_halo)
 
 
 func _build_frames() -> void:
@@ -55,7 +64,7 @@ func _build_frames() -> void:
 	_sprite.sprite_frames = sf
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_halo.sprite_frames = sf
-	_halo.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_halo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 func capture_editor_tex() -> void:

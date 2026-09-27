@@ -15,6 +15,16 @@ uniform float player_white_boost : hint_range(0.0, 1.0) = 0.2;
 uniform float edge_fade_px : hint_range(0.0, 64.0) = 0.0;
 uniform float corner_darkness : hint_range(0.0, 1.0) = 0.0;
 uniform float corner_radius : hint_range(0.0, 1.0) = 0.45;
+// 0 = darken from the centre. Higher values keep the picture bright until closer to the window edge.
+uniform float vignette_start : hint_range(0.0, 0.95) = 0.0;
+// Screen pixels of the background texture: min x, min y, max x, max y. Empty keeps the shared rim.
+uniform vec4 texture_bounds_px = vec4(0.0);
+// Gradient begins this many pixels outside the texture, at 0% opacity.
+uniform float edge_start_px = 3.0;
+uniform float edge_span_px = 40.0;
+uniform float edge_opacity : hint_range(0.0, 1.0) = 1.0;
+// 1 folds samples that leave the screen back in. 0 clamps them so the edge is not mirrored.
+uniform float mirror_edges : hint_range(0.0, 1.0) = 1.0;
 
 // Aspect-corrected barrel: round glass on 3:2 (and any) window. amount 0 = identity.
 vec2 curve_uv(vec2 uv, float amount, float aspect) {
@@ -40,6 +50,9 @@ float rim_fade(vec2 warped_uv, float fade_px, vec2 px) {
 
 // Reflect chroma taps that would leave the picture so the rim never smears the last column.
 vec2 reflect_uv(vec2 uv) {
+	if (mirror_edges < 0.5) {
+		return clamp(uv, vec2(0.0), vec2(1.0));
+	}
 	uv = abs(uv);
 	uv = 1.0 - abs(uv - 1.0);
 	return clamp(uv, vec2(0.0), vec2(1.0));
@@ -93,13 +106,29 @@ void fragment() {
 	float white_body = player_white_body_mask(bent_src);
 	col = mix(col, vec3(1.0), white_body * player_white_boost);
 
-	// Darkening last, from raw window position — radius 0 at centre, 1 at corners.
-	vec2 d = (uv_screen - 0.5) * 2.0;
-	d.x *= aspect;
-	float r = length(d) / length(vec2(aspect, 1.0));
-	float vig = 1.0 - r * r * vignette;
-	float corner = 1.0 - smoothstep(corner_radius, 1.0, r) * corner_darkness;
-	col *= vig * corner * glass;
+	// Darkening last. Texture bounds keep the shade outside the drawing.
+	bool has_texture_bounds = texture_bounds_px.z > texture_bounds_px.x && texture_bounds_px.w > texture_bounds_px.y;
+	if (has_texture_bounds) {
+		vec2 screen_px = uv_screen / px;
+		float ax = max(texture_bounds_px.x - screen_px.x, screen_px.x - texture_bounds_px.z);
+		float ay = max(texture_bounds_px.y - screen_px.y, screen_px.y - texture_bounds_px.w);
+		float outside = max(ax, ay);
+		if (outside > edge_start_px) {
+			float fade = clamp((outside - edge_start_px) / max(edge_span_px, 0.001), 0.0, 1.0);
+			col = mix(col, vec3(0.0), fade * edge_opacity);
+		}
+	} else {
+		vec2 d = (uv_screen - 0.5) * 2.0;
+		d.x *= aspect;
+		float r = length(d) / length(vec2(aspect, 1.0));
+		float vig_r = r;
+		if (vignette_start > 0.0001) {
+			vig_r = smoothstep(vignette_start, 1.0, r);
+		}
+		float vig = 1.0 - vig_r * vig_r * vignette;
+		float corner = 1.0 - smoothstep(corner_radius, 1.0, r) * corner_darkness;
+		col *= vig * corner * glass;
+	}
 
 	COLOR = vec4(col, 1.0);
 }

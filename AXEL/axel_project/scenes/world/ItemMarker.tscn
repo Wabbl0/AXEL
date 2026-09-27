@@ -2,13 +2,15 @@
 
 [ext_resource type="Script" path="res://scenes/world/item_marker.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/sprites/item_hand-Sheet.png" id="2_sheet"]
-[ext_resource type="Shader" path="res://scenes/fx/memory_outer_glow.gdshader" id="3_glow"]
+[ext_resource type="Shader" path="res://scenes/fx/marker_silhouette_outline.gdshader" id="3_glow"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_red_halo"]
 shader = ExtResource("3_glow")
-shader_parameter/spread = 8.0
-shader_parameter/intensity = 0.28
-shader_parameter/glow_color = Color(0.9, 0, 0, 1)
+shader_parameter/spread = 1.92
+shader_parameter/frame_px = Vector2(48, 48)
+shader_parameter/sheet_px = Vector2(240, 48)
+shader_parameter/region_pos = Vector2(0, 0)
+shader_parameter/glow_color = Color(0.9, 0, 0, 0.75)
 
 [node name="ItemMarker" type="Node2D"]
 z_index = 1
@@ -24,7 +26,7 @@ texture_filter = 1
 
 [node name="RedHalo" type="AnimatedSprite2D" parent="."]
 z_index = -1
-texture_filter = 2
+texture_filter = 1
 material = SubResource("ShaderMaterial_red_halo")
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]

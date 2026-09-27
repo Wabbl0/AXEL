@@ -60,7 +60,7 @@ open with a random fight.
 
 ### Locker tutorial (first fight)
 
-Owned items sit on three crooked shelf rows in `1.3_LockerHub` (no LOCKER button).
+The flashlight, key, and name tag pictures sit in `1.3_LockerHub` (no LOCKER button). Each stays hidden until that item is picked up. The shovel is not on the locker. Combat items stay on the item wheel.
 First hub visit sets the opened-locker flag — no starter items. Leave the hub
 yourself with the red `X` or Esc. The **first** hub→`1.2` leave queues the tutorial.
 First-visit map lines block X/Esc. `1.3_LockerHub` calls
@@ -104,12 +104,13 @@ Every floor pickup draws the same white pointing-hand
 frames of 48×48). The pickup `Area2D` stays under `EnvironmentColliders` so
 the 220 px interact circle takes the room's cover-fit. The picture reparents
 to `PlayerLayer` (above noir, `z_index` `-8` so Mike draws in front) so the
-hand stays white. The memory blob is red with a white halo. A drop shadow and
-a faint red outline (`memory_outer_glow.gdshader`) keep the hand from looking
+hand stays white. The memory blob is red with a white outline (0.96 texture pixels, 75% opacity). A drop shadow and
+a red outline at 75% opacity (`marker_silhouette_outline.gdshader`, 1.92 texture pixels) keep the hand from looking
 like that blob.
 
-Scatter only accepts a spot whose **full** interact circle misses walls and
-furniture (shape query, not a point). Pass 1 still tries to dodge door
+Scatter only accepts a spot whose **220 px interact circle plus an 8 px pad** (`INTERACT_PAD_PX`; the live Area2D stays 220) misses walls and
+furniture (shape query, not a point) and whose cell is on the walkable floor
+connected to Mike (Front hitbox flood from the Player node). Pass 1 still tries to dodge door
 `Area2D`s; pass 2 may share a door box in a corridor whose floor is all
 zones (`2.4`) rather than skip the item.
 
@@ -121,7 +122,7 @@ hand. `[E]` is the bottom-right line of that card, at the description font
 size. The card is as wide as the icon plus the full title on one row.
 
 Floor pickups auto-equip into a free slot (`AxelRun.equip_owned_if_free`) so that
-fight's ITEMS list is live. Locker is still where you unequip.
+fight's ITEMS list is live. Unequip is on the overworld item wheel. The locker only shows lore pictures.
 
 ## Rank progression (AXEL_notes §2.3)
 
@@ -147,6 +148,7 @@ a cleared area.
 - `STEP_CHANCE_MAX` `0.01` (1% once all six areas are cleared)
 - `STEP_GRACE_AFTER_FIGHT` `200` steps with no step fight after any fight
 - `MAX_STEP_FIGHTS_PER_VISIT` `2` per room visit
+- `INTERACT_PAD_PX` `8` extra clearance around the 220 px pickup circle when choosing a spot (the live Area2D stays 220)
 
 ## Implementation steps
 
@@ -173,9 +175,9 @@ a cleared area.
    `has_visited()`; save body carries `visited_rooms` and the `AxelWorld` block.
 8. `scripts/Player.gd` — one call to `AxelWorld.register_walk_step()` next to
    the existing `AxelEventFx.register_walk_step()`.
-9. `scenes/ui/locker_shelves.gd` + `locker_shelf_row.gd` + `scenes/Arc_1/1.3_LockerHub.gd` —
-   no LOCKER button and no overlay. Three crooked in-scene shelf rows equip
-   owned items. First hub visit sets the opened-locker flag (no C1/C2/C3 grant).
+9. `scenes/ui/locker_shelves.gd` + `scenes/Arc_1/1.3_LockerHub.gd` —
+   no LOCKER button and no overlay. Flashlight, key, and name tag pictures
+   show only after pickup. The shovel is not on the locker. First hub visit sets the opened-locker flag (no C1/C2/C3 grant).
 10. `scenes/Arc_1/1.3_SchoolMap.gd` — travel needs `GameManager.has_visited()`.
     Unvisited rooms get a dark card, a `?????` label, and no click.
 11. Memory stills — `2.2_CafeteriaMemory.gd`, `3.2_BackyardMemory.gd`,
@@ -205,12 +207,12 @@ a cleared area.
 - Every memory still ends in a fight. The locker map paper (`scene_3`) does not.
 - Every floor item looks like the same white pointing hand from across the
   room; walking near one shows its real name, description and icon.
-- Floor items show `[E]`, join the locker on pickup, and start a fight.
+- Floor items show `[E]` on the walk-near card, join the item inventory (and auto-equip if a slot is free), and start a fight.
 - `1.1` and `1.2` never hold a floor item.
 - Fight goals climb 100, 150, 225, then ×1.5 (rounded to 25).
 - The first area's floor items are Common; after that pickup, every area you
   have not taken from reads one rank higher and its hands show the new rarity.
-- The locker has no START RUN button and no LOCKER overlay; items sit on shelves.
+- The locker has no START RUN button and no LOCKER overlay; flashlight, key, and name pictures sit on the locker. Combat equip is the item wheel.
 - Unvisited map rooms are dark and unclickable; visiting once unlocks them.
 - A wipe plays before each fight; a win shows Round Complete!, fades, and returns to the same room and spot.
 - The `1.4` chained door plays `"Not yet."` and stays in the room.
@@ -238,8 +240,8 @@ a cleared area.
 - One area only ever grants one rank upgrade to the untouched areas — the first
   pickup there, which is also what clears it. Taking the rest of its items does
   not bump anyone again.
-- Floor spots are searched on both axes with the **full 220 px interact
-  circle**; they dodge walls/furniture for sure, and interact zones when a
+- Floor spots are searched on both axes with the **220 px interact
+  circle plus an 8 px pad**; they dodge walls/furniture for sure, and interact zones when a
   hole exists. If a room's whole floor is door boxes (`2.4`), the second pass
   settles for open floor that shares a zone rather than putting the item in a
   wall.
@@ -252,8 +254,6 @@ a cleared area.
 - Save bodies gain two blocks. Missing keys default, so old slots still load.
 - Return placement runs a few frames after the room settles; if a room ever
   moves the player later than that, the spot can be off by a step.
-- Floor-item spots are picked at runtime from the room's floor line and stored
-  in the save. Add an `ItemSpawnPoints` node with `Marker2D` children to a room
-  later if a spot looks wrong.
+- Floor-item spots are picked on first visit from the room's clear spots (the full interact circle misses walls and furniture, and the cell is on Mike's connected walkable floor) using the run seed, then stored in the save. A saved spot that fails that test is moved the next time the room loads. A new game can put the hand somewhere else. The same save keeps the place when ranks change. A room can add an `ItemSpawnPoints` node of `Marker2D` children; a marker whose circle hits a wall is ignored.
 - Rollback: `AXEL_WORLD_COMBAT=0` disables every new trigger and hides floor
   items; the rooms stay playable. Restoring START RUN is a small revert.

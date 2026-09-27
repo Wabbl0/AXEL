@@ -10,6 +10,7 @@ const DESC_FONT := 20
 const KEY_TEXT := "[E]"
 const HAND_GAP_PX := 10.0
 const WINDOW_PAD := 8.0
+const SCREEN_CORNER_GAP := 6.0
 const ROW_SEP := 12.0
 
 var _root: Control
@@ -371,9 +372,9 @@ func _place_at_screen(viewport: Viewport) -> void:
 	if card_size.x <= 0.0 or card_size.y <= 0.0:
 		card_size = _panel.get_combined_minimum_size()
 	var view_size := Vector2(viewport.get_visible_rect().size)
-	var pos := _screen_pos + Vector2(16.0, -card_size.y * 0.5)
+	var pos := _screen_pos + Vector2(SCREEN_CORNER_GAP, SCREEN_CORNER_GAP)
 	if pos.x + card_size.x > view_size.x - WINDOW_PAD:
-		pos.x = _screen_pos.x - card_size.x - 16.0
+		pos.x = _screen_pos.x - card_size.x - SCREEN_CORNER_GAP
 	pos.x = clampf(pos.x, WINDOW_PAD, maxf(view_size.x - card_size.x - WINDOW_PAD, WINDOW_PAD))
 	pos.y = clampf(pos.y, WINDOW_PAD, maxf(view_size.y - card_size.y - WINDOW_PAD, WINDOW_PAD))
 	_root.position = pos
