@@ -7755,4 +7755,100 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared the sentences to `axel_world.gd` (`ensure_board_question`, `ROOM_ANSWER_ALIASES`, `map_can_travel`, `answered_item_equipped`), `5.1_Classroom.gd`, `greybox_choice.gd` (`6.8`), `locker_shelves.gd`, and `axel_cursor.gd`. `board_room_question_check.gd` exit 0.
 - Notes: The earlier 2026-09-28 board entry still says a correct answer is `AXEL`. That is out of date. This entry replaces it.
 
+### Map hands from the first moment
+
+- Request: The map should show item pins for every area as soon as the game starts.
+- Implementation: When a game starts, or an old save still has unplaced hands, each floor-item room is loaded off to the side in its own physics world just long enough to pick the same clear spots a visit would. Those spots are saved, so the locker map and pause Map can draw every remaining hand before you walk there. The room you are standing in is left to the normal visit placement. Enter lines do not play during this pass.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/scenes/ui/locker_map_overlay.gd`
+  - `AXEL/axel_project/tools/qa/locker_map_travel_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Opening the map at the start shows a pointing hand for every floor item, including rooms you have not visited. Picked-up items still leave the map. Travel rules are unchanged.
+- Verification: `locker_map_travel_check.gd` exit 0 (every floor-item room has its hands at start, and the map draws that many pins). `world_item_scatter_check.gd`, `world_combat_loop_check.gd`, `determinism_check.gd`, `powers_check.gd`, `combat_test_scaffold_check.gd`, and `scene_smoke_check.gd` exit 0.
+
+### Pixelated mouse cursor
+
+- Request: Make the in-game cursor look more pixelated.
+- Implementation: The cursor drawing is reduced to 16 pixels tall, painted as one solid red, and drawn with nearest-neighbor filtering so each pixel is a hard block at the same ~33 px size. White paper, including paper trapped inside the arrow, is cleared.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_cursor.gd`
+  - `AXEL/axel_project/tools/qa/axel_cursor_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The mouse mark is the same red arrow, with chunky pixels instead of a smooth edge. Click still shrinks it a little.
+- Verification: `axel_cursor_check.gd` exit 0. `determinism_check.gd`, `powers_check.gd`, `combat_test_scaffold_check.gd`, and `scene_smoke_check.gd` exit 0.
+- Notes: Blocks are about 2 screen pixels. A smaller grid would be chunkier and would break the arrow shape.
+
+### White cursor with red outline and shadow
+
+- Request: The pixel cursor should be white with a faint red outline, and it should have a small shadow.
+- Implementation: The arrow pixels are white. A faint red edge sits on the outside of that shape, and a one-pixel black shadow sits down and to the right. The arrow stays the same size. The hollow middle is left empty.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_cursor.gd`
+  - `AXEL/axel_project/tools/qa/axel_cursor_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The cursor is a white pixel arrow with a faint red rim and a small shadow. Click still shrinks it a little.
+- Verification: `axel_cursor_check.gd` exit 0. `determinism_check.gd`, `powers_check.gd`, `combat_test_scaffold_check.gd`, and `scene_smoke_check.gd` exit 0.
+
+### Map follows a rarity step
+
+- Request: After a pickup steps the other areas up a rarity, the map should show that new rarity.
+- Implementation: Taking a floor item tells the map to redraw. Each hand on the map carries that item's rarity mark, and a room you are pointing at rebuilds its cards from the new items.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/scenes/ui/locker_map_overlay.gd`
+  - `AXEL/axel_project/tools/qa/locker_map_travel_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The first pickup in an area removes that hand and switches every other map hand, and its card, to the next rarity. Later pickups in the same area only remove that hand.
+- Verification: `locker_map_travel_check.gd` exit 0 (cafeteria card and hand mark are Uncommon after the basement pickup).
+
+### Title picture glitch
+
+- Request: The title picture should warp and glitch, then stay quiet for a while.
+- Implementation: Only the main menu backdrop runs `menu_backdrop_glitch.gd`. A burst lasts about 0.85s. The next one waits a random 10–30s after that burst ends. Saves, Options, and Credits do not run it. Buttons stay on their own layer. Reduce flashing, glitch intensity at or under 0.05, and the event-fx / post-fx kill switches skip it.
+- Files changed:
+  - `AXEL/axel_project/scenes/Main_Menu/menu_backdrop_glitch.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/menu_backdrop_glitch.gdshader`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/tools/qa/menu_backdrop_glitch_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The title picture glitches on its own timer. The menu buttons do not warp.
+- Verification: Not re-run in this docs pass. Contract check: `menu_backdrop_glitch_check.gd`.
+- Notes: The canon sentence was already in `AI_DOCS.md`. This entry records the feature and the event-fx plan.
+
+### Exterior first line holds the rest of the intro
+
+- Request: Walking during the first exterior line was starting the next lines, or the left-edge ending, before that line finished.
+- Implementation: Walk-away watching stays off until `You promised, you'd never come back.` has played to the end. The left exit is ignored during that line. If Mike is already inside it when the line ends, Ending 1 starts. Otherwise the ~50 px walk-away watch arms.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/tools/qa/exterior_intro_dialogue_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/references/AXEL_OVERWORLD_EVENT_FX.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The first line stays up while you walk. The next two lines, and Ending 1, wait until it closes.
+- Verification: Not re-run in this docs pass. Contract check: `exterior_intro_dialogue_check.gd`. Compared the sentences to `1.1_SchoolExterior.gd`.
+
+### Docs matched to map hands at the start
+
+- Request: Update docs.
+- Implementation: The Arc 1 scene plan and the world-loop plan now say the map hands are placed when the game starts, each hand shows the rarity mark, and a rarity step redraws the hands and the hover cards. The headless list names `axel_cursor_check.gd`, `exterior_intro_dialogue_check.gd`, and `locker_map_travel_check.gd`.
+- Files changed:
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None in the game. Future edits should follow the live map and the first-line hold, not the old “second line after any movement” wording.
+- Verification: Compared the map sentences to `axel_world.gd` (`_queue_map_spots`) and `locker_map_overlay.gd` (`_pin_glyph`).
+
 

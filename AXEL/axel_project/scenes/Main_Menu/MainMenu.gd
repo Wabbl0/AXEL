@@ -14,7 +14,7 @@ var _overwrite_label: Label
 
 
 func _ready() -> void:
-	_backdrop = MenuLook.make_backdrop(self)
+	_backdrop = MenuLook.make_backdrop(self, true)
 	var chrome := MenuLook.make_chrome_layer(self)
 	$CenterBox.reparent(chrome)
 	_style_buttons()

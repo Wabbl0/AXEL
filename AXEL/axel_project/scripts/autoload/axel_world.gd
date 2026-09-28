@@ -1,6 +1,9 @@
 extends Node
 
+signal map_spots_updated
+
 const PickupScript := preload("res://scenes/world/world_item_pickup.gd")
+const LayoutScript := preload("res://scenes/core/background_layout.gd")
 const InfoCardScript := preload("res://scenes/ui/world_item_info_card.gd")
 const WheelScript := preload("res://scenes/ui/item_wheel.gd")
 const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
@@ -129,6 +132,8 @@ var _pending_return_valid := false
 var _starting_fight := false
 var _populate_token: Dictionary = {}
 var _encounters_suppressed := false
+var _spot_pass := 0
+var _spot_job_running := false
 
 
 func _ready() -> void:
@@ -160,6 +165,7 @@ func set_encounters_suppressed(on: bool) -> void:
 
 
 func reset_world() -> void:
+	_spot_pass += 1
 	_rank.clear()
 	_engaged.clear()
 	_cleared.clear()
@@ -466,6 +472,7 @@ func take_item(scene_path: String, index: int) -> void:
 	if first_in_area and bool(_cleared.get(area_id, false)):
 		_retier_open_areas()
 	_save()
+	map_spots_updated.emit()
 
 
 func _engage_area(area_id: String) -> void:
@@ -558,6 +565,7 @@ func from_dict(data: Dictionary) -> void:
 	_fill_missing_room_lists()
 	if _any_area_frozen():
 		_retier_open_areas()
+	_queue_map_spots()
 
 
 func _save() -> void:
@@ -709,6 +717,204 @@ func plan_floor_items(seed: int) -> void:
 	_item_seed = seed if seed != 0 else 1
 	_room_items.clear()
 	_roll_open_area_ids()
+	_queue_map_spots()
+
+
+func map_spots_settled() -> bool:
+	return not _spot_job_running and not _any_unplaced_floor_spots()
+
+
+func _queue_map_spots() -> void:
+	_spot_pass += 1
+	if _spot_job_running:
+		return
+	_spot_job_running = true
+	_run_spot_job()
+
+
+func _run_spot_job() -> void:
+	if get_tree() != null:
+		await get_tree().process_frame
+	while is_inside_tree():
+		var pass_id := _spot_pass
+		await _place_unplaced_rooms(pass_id)
+		if not is_inside_tree():
+			break
+		if pass_id != _spot_pass and _any_unplaced_floor_spots():
+			continue
+		break
+	_spot_job_running = false
+	if is_inside_tree():
+		map_spots_updated.emit()
+
+
+func _any_unplaced_floor_spots() -> bool:
+	return not _unplaced_room_paths().is_empty()
+
+
+func _unplaced_room_paths() -> Array[String]:
+	var paths: Array[String] = []
+	for area_id in AREA_ROLL_ORDER:
+		var rooms: Dictionary = AREAS[area_id]["rooms"]
+		var keys: Array = rooms.keys()
+		keys.sort()
+		for key in keys:
+			var path := String(key)
+			if int(rooms[key]) <= 0:
+				continue
+			if _room_has_unplaced(path):
+				paths.append(path)
+	return paths
+
+
+func _place_unplaced_rooms(pass_id: int) -> void:
+	for path in _unplaced_room_paths():
+		if pass_id != _spot_pass or not is_inside_tree():
+			return
+		if not _room_has_unplaced(path):
+			continue
+		var current := _current_scene()
+		if current != null and current.scene_file_path == path:
+			continue
+		await _probe_place_room(path, pass_id)
+		if pass_id != _spot_pass:
+			return
+		map_spots_updated.emit()
+
+
+func _probe_place_room(path: String, pass_id: int) -> void:
+	var packed := load(path) as PackedScene
+	if packed == null:
+		push_warning("AxelWorld: map spots could not load %s" % path)
+		return
+	var scene := packed.instantiate()
+	var player := scene.find_child("Player", true, false) as Node
+	var args := _camera_layout_args(scene)
+	args["view"] = _game_view_size()
+	# Room scripts would play enter lines and steal the camera. Collision stays.
+	_silence_probe(scene, player)
+	var vp := SubViewport.new()
+	vp.name = "MapSpotProbe"
+	var view: Vector2 = args["view"]
+	vp.size = Vector2i(maxi(int(view.x), 2), maxi(int(view.y), 2))
+	vp.world_2d = World2D.new()
+	vp.disable_3d = true
+	vp.gui_disable_input = true
+	vp.handle_input_locally = false
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(vp)
+	vp.add_child(scene)
+	if player != null:
+		player.set_process(false)
+		player.set_physics_process(false)
+		player.set_process_unhandled_input(false)
+	_layout_probe(scene, args)
+	var ready := await _await_probe_space(scene, pass_id)
+	if ready and pass_id == _spot_pass and _room_has_unplaced(path):
+		var env := _env_of(scene)
+		var area_id := area_for_scene(path)
+		var want := floor_slot_count(path)
+		if env != null and not area_id.is_empty() and want > 0:
+			_apply_room_placements(scene, env, area_id, want, path)
+	if is_instance_valid(vp):
+		vp.queue_free()
+
+
+func _camera_layout_args(scene: Node) -> Dictionary:
+	var cam := scene.find_child("Camera2D", true, false) as Camera2D
+	var fit: LayoutScript.FitMode = LayoutScript.FitMode.COVER
+	var background_y := 0.0
+	var edge := -1.0
+	if cam != null:
+		fit = cam.fit_mode as LayoutScript.FitMode
+		background_y = cam.background_y
+		edge = cam.edge_reveal
+	if edge < 0.0 and fit == LayoutScript.FitMode.COVER:
+		edge = LayoutScript.MAX_EDGE_REVEAL
+	else:
+		edge = clampf(edge, 0.0, 0.5)
+	return {"fit": fit, "y": background_y, "edge": edge}
+
+
+func _layout_probe(scene: Node, args: Dictionary) -> void:
+	var bg := scene.get_node_or_null("WalkableWorld/Background") as Sprite2D
+	if bg == null:
+		bg = scene.find_child("Background", true, false) as Sprite2D
+	var env := _env_of(scene)
+	var player := scene.find_child("Player", true, false) as CharacterBody2D
+	if bg == null or env == null or player == null:
+		return
+	var view: Vector2 = args["view"]
+	var fit: LayoutScript.FitMode = args["fit"]
+	var background_y: float = args["y"]
+	var edge: float = args["edge"]
+	var sync := PlayerCoverSync.new()
+	sync.bind_from_player(player)
+	sync.bind_design_from_background(bg, fit, background_y)
+	var layout := LayoutScript.apply(bg, view, fit, background_y, edge)
+	if layout.is_empty():
+		return
+	LayoutScript.apply_to_sprite(bg, layout)
+	var cover := float(layout["scale_factor"])
+	var pos: Vector2 = layout["position"]
+	var tex_pos := PlayerSpawnSync.capture_tex(env, player)
+	env.position = pos
+	env.scale = Vector2.ONE * cover
+	PlayerSpawnSync.apply_tex(env, player, tex_pos)
+	sync.apply(player, cover, pos)
+	for child in env.get_children():
+		if child is StaticBody2D or child is Area2D:
+			child.position = child.position
+
+
+func _await_probe_space(scene: Node, pass_id: int) -> bool:
+	for _i in 30:
+		if pass_id != _spot_pass or not is_instance_valid(scene):
+			return false
+		var env := _env_of(scene)
+		var world := env.get_world_2d() if env != null else null
+		if world != null and world.direct_space_state != null:
+			if get_tree() == null:
+				return false
+			await get_tree().physics_frame
+			await get_tree().physics_frame
+			return pass_id == _spot_pass and is_instance_valid(scene)
+		if get_tree() == null:
+			return false
+		await get_tree().physics_frame
+	return false
+
+
+func _game_view_size() -> Vector2:
+	var tree := get_tree()
+	if tree == null or tree.root == null:
+		return Vector2(1920, 1280)
+	var size := tree.root.get_visible_rect().size
+	if size.x < 320.0 or size.y < 240.0:
+		return Vector2(1920, 1280)
+	return size
+
+
+func _silence_probe(node: Node, player: Node) -> void:
+	var drop: Array[Node] = []
+	_silence_probe_walk(node, player, drop)
+	for extra in drop:
+		if is_instance_valid(extra):
+			extra.free()
+
+
+func _silence_probe_walk(node: Node, player: Node, drop: Array[Node]) -> void:
+	if node is CanvasLayer and node.name != "PlayerLayer":
+		drop.append(node)
+		return
+	if node is AudioStreamPlayer:
+		(node as AudioStreamPlayer).autoplay = false
+	elif node is AudioStreamPlayer2D:
+		(node as AudioStreamPlayer2D).autoplay = false
+	if node != player:
+		node.set_script(null)
+	for child in node.get_children():
+		_silence_probe_walk(child, player, drop)
 
 
 func _retier_open_areas() -> void:

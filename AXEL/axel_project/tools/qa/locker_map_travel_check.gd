@@ -37,6 +37,8 @@ func _main() -> void:
 	_check_unlock(world, run, gm)
 	_check_fill_keeps_existing(world, run)
 	await _check_pins_and_cards(world, run)
+	await _check_spots_at_start(world)
+	await _check_retier_on_map(world, run)
 
 	if _failures.is_empty():
 		print("Locker map travel check OK.")
@@ -160,13 +162,21 @@ func _check_pins_and_cards(world: Node, run: Node) -> void:
 	for _i in 3:
 		await process_frame
 	var screen: Vector2 = overlay.call("_screen_point", center)
-	var pin := overlay.find_child("ItemPin", true, false) as Control
-	if pin == null:
+	var pins := overlay.find_children("ItemPin*", "TextureRect", true, false)
+	if pins.is_empty():
 		_fail("map did not place an item hand")
 	else:
-		var pin_center: Vector2 = pin.position + pin.size * 0.5
-		if pin_center.distance_to(screen) > 1.5:
-			_fail("hand pin missed the highlight center (pin %s, want %s)" % [pin_center, screen])
+		var found := false
+		for node in pins:
+			var pin := node as Control
+			if pin == null:
+				continue
+			var pin_center: Vector2 = pin.position + pin.size * 0.5
+			if pin_center.distance_to(screen) <= 1.5:
+				found = true
+				break
+		if not found:
+			_fail("hand pin missed the highlight center (want %s)" % screen)
 	_check_card_text(overlay)
 	overlay.queue_free()
 	world.call("reset_world")
@@ -193,6 +203,103 @@ func _check_card_text(overlay: Node) -> void:
 		_fail("item name sits outside its card")
 	if not host.encloses(desc_label.get_global_rect()):
 		_fail("item description sits outside its card")
+
+
+func _check_spots_at_start(world: Node) -> void:
+	world.call("reset_world")
+	world.call("plan_floor_items", 4242)
+	var settled := false
+	for _i in 800:
+		await process_frame
+		if bool(world.call("map_spots_settled")):
+			settled = true
+			break
+	if not settled:
+		_fail("map spots were not ready at game start")
+		world.call("reset_world")
+		return
+	var areas: Dictionary = world.AREAS
+	for area_id in areas.keys():
+		var rooms: Dictionary = areas[area_id]["rooms"]
+		for path in rooms.keys():
+			var want := int(rooms[path])
+			if want <= 0:
+				continue
+			var shown: Array = world.call("placed_floor_items", String(path))
+			if shown.size() != want:
+				_fail("%s should have %d hands at start, got %d" % [path, want, shown.size()])
+	var expect := 0
+	for area in OverlayScript.AREAS:
+		var plate := String(area.get("plate", ""))
+		if plate.is_empty():
+			continue
+		var shown: Array = world.call("placed_floor_items", String(area.get("scene", "")))
+		expect += shown.size()
+		if shown.is_empty():
+			_fail("%s is on the map but has no pin" % String(area.get("name", "")))
+	var overlay := OverlayScript.new()
+	root.add_child(overlay)
+	if overlay.has_method("open"):
+		overlay.call("open")
+	for _i in 3:
+		await process_frame
+	var pins := overlay.find_children("ItemPin*", "TextureRect", true, false)
+	if pins.size() != expect:
+		_fail("map showed %d hands, want %d" % [pins.size(), expect])
+	overlay.queue_free()
+	world.call("reset_world")
+
+
+func _check_retier_on_map(world: Node, run: Node) -> void:
+	world.call("reset_world")
+	run.call("reset_run")
+	world.call("plan_floor_items", 4242)
+	var settled := false
+	for _i in 800:
+		await process_frame
+		if bool(world.call("map_spots_settled")):
+			settled = true
+			break
+	if not settled:
+		_fail("map was not ready before the rarity step")
+		world.call("reset_world")
+		run.call("reset_run")
+		return
+	var basement := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
+	var cafeteria := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
+	world.call("take_item", basement, 0)
+	var shown: Array = world.call("placed_floor_items", cafeteria)
+	if shown.is_empty():
+		_fail("cafeteria lost its map hands after a pickup")
+		world.call("reset_world")
+		run.call("reset_run")
+		return
+	for entry in shown:
+		var item_id := String((entry as Dictionary).get("id", ""))
+		if not item_id.begins_with("U"):
+			_fail("map still lists %s after the rarity step" % item_id)
+	var overlay := OverlayScript.new()
+	root.add_child(overlay)
+	if overlay.has_method("open"):
+		overlay.call("open")
+	var index := _area_index(overlay, "Cafeteria")
+	overlay.call("_on_part_enter", index, 0)
+	for _i in 3:
+		await process_frame
+	var name_label := overlay.find_child("ItemName", true, false) as Label
+	if name_label == null or not name_label.text.begins_with("◈"):
+		_fail("map card did not show the new rarity, got %s" % ["" if name_label == null else name_label.text])
+	var saw_mark := false
+	for node in overlay.find_children("PinGlyph", "Label", true, false):
+		var glyph := node as Label
+		if glyph != null and glyph.text == "◈":
+			saw_mark = true
+			break
+	if not saw_mark:
+		_fail("map hands did not show the new rarity mark")
+	overlay.queue_free()
+	world.call("reset_world")
+	run.call("reset_run")
 
 
 func _area_index(_overlay: Node, area_name: String) -> int:

@@ -55,6 +55,7 @@ const EXIT_TRIGGER_GRACE_SEC := 0.15
 var _unlock_position: Vector2 = Vector2.ZERO
 var _second_dialogue_fired := false
 var _watching_movement := false
+var _first_line_playing := false
 var _exit_trigger: Area2D
 var _exit_trigger_armed := true
 var _pending_corridor_door_spawn := false
@@ -194,12 +195,19 @@ func _run_forced_intro_sequence() -> void:
 	_unlock_position = _player.global_position
 	_enable_player_control()
 	_intro_state = IntroState.PLAYER_FREE
-	_watching_movement = true
 	_enter_dialogue_pending = true
 	_refresh_door_interact_prompt()
 	_arm_exit_trigger_grace()
 
+	# Walk-away lines and the left-edge ending wait until this one finishes.
+	_first_line_playing = true
 	await _play_first_dialogue_line()
+	_first_line_playing = false
+	if is_inside_tree() and not _is_transitioning:
+		if _player_in_exit_trigger():
+			call_deferred("_begin_ending_1_transition")
+		else:
+			_watching_movement = true
 	await AxelEventFx.stop_interface_distortion()
 	AxelEventFx.set_cadence_enabled(true)
 
@@ -446,9 +454,15 @@ func _begin_door_transition() -> void:
 func _on_exit_trigger_body_entered(body: Node) -> void:
 	if body != _player or _is_transitioning:
 		return
+	if _first_line_playing:
+		return
 	if _intro_state != IntroState.PLAYER_FREE or not _exit_trigger_armed:
 		return
 	call_deferred("_begin_ending_1_transition")
+
+
+func _player_in_exit_trigger() -> bool:
+	return InteractZoneGate.body_in_area(_exit_trigger, _player)
 
 
 func _arm_exit_trigger_grace() -> void:

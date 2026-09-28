@@ -11,6 +11,7 @@ const SAVES_SCENE := "res://scenes/Main_Menu/Saves.tscn"
 const OPTIONS_SCENE := "res://scenes/Main_Menu/Options.tscn"
 const CREDITS_SCENE := "res://scenes/Main_Menu/Credits.tscn"
 const BACKDROP_LAYER := 100
+const BACKDROP_GLITCH_SCRIPT := preload("res://scenes/Main_Menu/menu_backdrop_glitch.gd")
 const BACKDROP_ZOOM_OUT := 1.33
 const _FOCUS_PAD_X := 16.0
 const _FOCUS_PAD_Y := 10.0
@@ -126,7 +127,7 @@ static func make_chrome_layer(parent: Node) -> CanvasLayer:
 	return layer
 
 
-static func make_backdrop(parent: Control) -> TextureRect:
+static func make_backdrop(parent: Control, warp_glitch: bool = false) -> TextureRect:
 	var layer := CanvasLayer.new()
 	layer.name = "MenuBackdropLayer"
 	layer.layer = BACKDROP_LAYER
@@ -145,6 +146,8 @@ static func make_backdrop(parent: Control) -> TextureRect:
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.modulate = Color.WHITE
+	if warp_glitch:
+		bg.set_script(BACKDROP_GLITCH_SCRIPT)
 	layer.add_child(bg)
 	layout_backdrop(bg, 0.0)
 	return bg

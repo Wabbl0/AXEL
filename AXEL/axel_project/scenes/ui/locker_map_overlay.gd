@@ -112,6 +112,11 @@ func _ready() -> void:
 	_build()
 	_layout()
 	get_viewport().size_changed.connect(_layout)
+	var world := _world()
+	if world != null and world.has_signal("map_spots_updated"):
+		var spots_ready := Callable(self, "_on_map_spots_updated")
+		if not world.is_connected("map_spots_updated", spots_ready):
+			world.connect("map_spots_updated", spots_ready)
 
 
 func is_open() -> bool:
@@ -592,15 +597,34 @@ func _items_for(index: int) -> Array:
 	return world.call("placed_floor_items", String(AREAS[index].get("scene", "")))
 
 
+func _on_map_spots_updated() -> void:
+	_refresh_pins()
+	if _hover_index >= 0:
+		_refresh_cards()
+
+
+func _pin_glyph(item_id: String) -> String:
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not run.has_method("load_item"):
+		return ""
+	var item := run.call("load_item", item_id) as Resource
+	if item == null:
+		return ""
+	return ItemDef.rarity_glyph(item)
+
+
 func _refresh_pins() -> void:
 	if _pin_host == null:
 		return
-	for child in _pin_host.get_children():
-		child.queue_free()
+	var old_pins: Array = _pin_host.get_children()
+	for child in old_pins:
+		_pin_host.remove_child(child)
+		child.free()
 	var chrome := 1.0
 	if is_inside_tree():
 		chrome = UiViewportScale.factor(self)
 	var pin := PIN_PX * chrome
+	var pin_index := 0
 	for index in AREAS.size():
 		var measure := _measure_rect(index)
 		var plate := _plate_size_for(index)
@@ -615,7 +639,8 @@ func _refresh_pins() -> void:
 			)
 			var screen := _screen_point(tex_point)
 			var mark := TextureRect.new()
-			mark.name = "ItemPin"
+			mark.name = "ItemPin%d" % pin_index
+			pin_index += 1
 			mark.texture = _hand_frame()
 			mark.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -625,6 +650,17 @@ func _refresh_pins() -> void:
 			mark.size = Vector2(pin, pin)
 			mark.position = screen - mark.size * 0.5
 			_pin_host.add_child(mark)
+			var glyph_text := _pin_glyph(String(placed.get("id", "")))
+			if not glyph_text.is_empty():
+				var glyph := Label.new()
+				glyph.name = "PinGlyph"
+				glyph.text = glyph_text
+				glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				glyph.add_theme_font_override("font", UI_FONT)
+				glyph.add_theme_font_size_override("font_size", maxi(roundi(16.0 * chrome), 10))
+				glyph.add_theme_color_override("font_color", Color(0.92, 0.88, 0.88, 1.0))
+				glyph.position = Vector2(pin * 0.42, -pin * 0.2)
+				mark.add_child(glyph)
 
 
 func _clear_cards() -> void:

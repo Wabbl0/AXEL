@@ -84,6 +84,10 @@ Noir 90 → Scanline 105 → CRT 108 → InteractPrompt 110 → TopDialogue 111 
 | `AXEL_DISABLE_EVENT_FX=1` | Disables passive event FX only; manual API calls still work |
 | `AXEL_SKIP_INTRO=1` | Skips 1.1 forced intro; enter glitch plays on 1.1 load |
 
+## Title menu picture
+
+The title screen only (`0.1_MainMenu`) runs `menu_backdrop_glitch.gd` on the backdrop picture (layer 100). A short warp lasts about 0.85s. The next one waits a random 10–30s after the last one ends. Buttons stay on layer 110 and are not warped. Saves, Options, and Credits do not run it. Reduce flashing, glitch intensity at or under 0.05, and `AXEL_DISABLE_EVENT_FX=1` / `AXEL_DISABLE_POST_FX=1` skip it. Regression: `tools/qa/menu_backdrop_glitch_check.gd`.
+
 ## Pilot reference: Arc 1.1 intro
 
 Sequence in `1.1_SchoolExterior.gd`:
@@ -91,9 +95,9 @@ Sequence in `1.1_SchoolExterior.gd`:
 1. Disable cadence. Enter glitch is skipped for this intro (there is no separate intro glitch burst).
 2. Start interface distortion at once (`start_interface_distortion(true)`). The black roll crosses the screen **once**.
 3. 1 s wait, then the camera and the scripted walk to the stones.
-4. Unlock controls; first dialogue while the pulse is still up (layer 112 samples the bar).
-5. After the first line hides, stop distortion (back to the quiet pulse) and enable cadence.
-6. Second dialogue after ~50 px movement (scene-local, not event FX)
+4. Unlock controls. The first line plays while the pulse is still up (layer 112 samples the bar). Walk-away lines and Ending 1 wait until that line finishes. Walking during it does not start them.
+5. After the first line hides, stop distortion (back to the quiet pulse) and enable cadence. If Mike is already in the left exit, Ending 1 starts.
+6. Otherwise, the walk-away lines start after ~50 px of movement (scene-local, not event FX).
 7. `InteractPromptOverlay` when player overlaps `DoorInteractArea` (intro unlocked); E/Space/Enter → `1.2_Corridor`
 
 ## Adding future event / jumpscare beats
