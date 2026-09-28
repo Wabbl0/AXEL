@@ -1,13 +1,15 @@
 extends Control
 
 const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
-const MAP_SCENE := "res://scenes/Arc_1/1.3_SchoolMap.tscn"
 const MEMORY_KEY := "scene_3"
+const _MapOverlayScript := preload("res://scenes/ui/locker_map_overlay.gd")
 
 @onready var _map_hotspot = $MapHotspot
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _exit_button: Button = $ExitLayer/ExitButton
 @onready var _shelves: Node = get_node_or_null("LockerShelves")
+
+var _map_overlay: CanvasLayer
 
 var _is_transitioning := false
 var _first_visit_dialogue_running := false
@@ -18,6 +20,12 @@ func _ready() -> void:
 	_apply_chrome_scale()
 	get_viewport().size_changed.connect(_apply_chrome_scale)
 	_map_hotspot.activated.connect(_on_map_hotspot_activated)
+	_map_hotspot.mouse_entered.connect(_on_map_paper_hover.bind(true))
+	_map_hotspot.mouse_exited.connect(_on_map_paper_hover.bind(false))
+	_map_overlay = _MapOverlayScript.new()
+	_map_overlay.name = "LockerMapOverlay"
+	_map_overlay.connect("travel_requested", _on_map_travel)
+	add_child(_map_overlay)
 	set_process_input(true)
 	_grant_stash_flag()
 	call_deferred("_play_first_visit_dialogue")
@@ -41,20 +49,49 @@ func _play_first_visit_dialogue() -> void:
 	_first_visit_dialogue_running = false
 
 
+func _on_map_paper_hover(hovered: bool) -> void:
+	var paper := get_node_or_null("LockerShelves/ItemAnchor/Map")
+	if paper != null and paper.has_method("set_paper_hovered"):
+		paper.call("set_paper_hovered", hovered)
+
+
 func _on_map_hotspot_activated() -> void:
 	if _first_visit_dialogue_running:
 		return
-	_go_to_scene(MAP_SCENE)
+	if _map_overlay != null and _map_overlay.has_method("open"):
+		_map_overlay.call("open")
+
+
+func _on_map_travel(scene_path: String) -> void:
+	if _first_visit_dialogue_running or _is_transitioning:
+		return
+	if scene_path.is_empty():
+		return
+	_go_to_scene(scene_path)
 
 
 func _input(event: InputEvent) -> void:
 	if not _is_exit_key(event):
 		return
+	if _overlay_wants_advance(event):
+		return
 	if _first_visit_dialogue_running:
 		get_viewport().set_input_as_handled()
 		return
+	if _map_overlay != null and _map_overlay.has_method("is_open") and bool(_map_overlay.call("is_open")):
+		get_viewport().set_input_as_handled()
+		_map_overlay.call("close")
+		return
 	get_viewport().set_input_as_handled()
 	_on_exit_pressed()
+
+
+func _overlay_wants_advance(event: InputEvent) -> bool:
+	if not is_instance_valid(_top_dialogue):
+		return false
+	if not _top_dialogue.has_method("wants_advance_event"):
+		return false
+	return bool(_top_dialogue.call("wants_advance_event", event))
 
 
 func _is_exit_key(event: InputEvent) -> bool:
@@ -69,6 +106,9 @@ func _apply_chrome_scale() -> void:
 
 
 func _on_exit_pressed() -> void:
+	if _map_overlay != null and _map_overlay.has_method("is_open") and bool(_map_overlay.call("is_open")):
+		_map_overlay.call("close")
+		return
 	if _first_visit_dialogue_running or _is_transitioning:
 		return
 	GameManager.set_corridor_from_locker(true)

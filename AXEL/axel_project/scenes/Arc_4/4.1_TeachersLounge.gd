@@ -24,11 +24,14 @@ const _LEAF_GATE_SOFTNESS := 12.0
 const _BEHIND_ZONE_NAMES: PackedStringArray = [
 	"TableBlock_Behind",
 	"ChairBlock_Behind",
+	"LeftCabinetBlock_Behind",
 ]
 
 var _door_interact_area: Area2D
 var _key_near_area: Area2D
 var _key_interact_area: Area2D
+var _key_visual: Node2D
+var _key_glow_tween: Tween
 var _memory_area: Area2D
 var _key_near_pending := false
 var _pending_door_peek := false
@@ -47,6 +50,9 @@ func _ready() -> void:
 	_key_interact_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/KeyInteractArea"
 	) as Area2D
+	_key_visual = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/KeyVisual"
+	) as Node2D
 	_memory_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/MemoryInteractArea"
 	) as Area2D
@@ -127,7 +133,35 @@ func _restore_player_position_if_needed() -> void:
 
 func _apply_key_visibility() -> void:
 	if LorePickup.is_owned("hasKey"):
-		LorePickup.hide_owned(_key_interact_area)
+		LorePickup.hide_owned(_key_interact_area, _key_visual)
+		_stop_key_glow()
+		return
+	if is_instance_valid(_key_visual):
+		_key_visual.visible = true
+		_start_key_glow()
+
+
+func _start_key_glow() -> void:
+	_stop_key_glow()
+	if not is_instance_valid(_key_visual) or not _key_visual.visible:
+		return
+	var glow := _key_visual.get_node_or_null("Glow") as CanvasItem
+	if glow == null:
+		return
+	_key_glow_tween = create_tween()
+	_key_glow_tween.set_loops()
+	_key_glow_tween.tween_property(glow, "modulate:a", 0.22, 1.6).set_trans(
+		Tween.TRANS_SINE
+	).set_ease(Tween.EASE_IN_OUT)
+	_key_glow_tween.tween_property(glow, "modulate:a", 0.08, 1.6).set_trans(
+		Tween.TRANS_SINE
+	).set_ease(Tween.EASE_IN_OUT)
+
+
+func _stop_key_glow() -> void:
+	if _key_glow_tween != null and _key_glow_tween.is_valid():
+		_key_glow_tween.kill()
+	_key_glow_tween = null
 
 
 func _play_enter_dialogue() -> void:
@@ -274,6 +308,10 @@ func _configure_behind_occlusion_masks() -> void:
 		polys.append(poly)
 		feathers.append(feather)
 		cutoffs.append(_occlusion_y_cutoff(zone))
+	while polys.size() < 3:
+		polys.append(PackedVector2Array())
+		feathers.append(0.0)
+		cutoffs.append(1e9)
 	_player.call(
 		"configure_leaf_occlusion_polygons",
 		polys[0],
@@ -284,6 +322,9 @@ func _configure_behind_occlusion_masks() -> void:
 		cutoffs[0],
 		cutoffs[1],
 		_LEAF_GATE_SOFTNESS,
+		polys[2],
+		feathers[2],
+		cutoffs[2],
 	)
 
 

@@ -10,6 +10,7 @@ uniform float leaf_y_cutoff_2 = 1e9;
 uniform float leaf_y_cutoff_3 = 1e9;
 uniform float leaf_y_cutoff_4 = 1e9;
 uniform float leaf_y_cutoff_5 = 1e9;
+uniform float player_anchor_x = 0.0;
 uniform float player_anchor_y = -1.0e9;
 uniform int leaf_mask_use_anchor_y = 0;
 
@@ -129,6 +130,36 @@ float _part_cutoff_at(vec4 part_cutoffs, int part, float slot_cutoff) {
 	return c;
 }
 
+float _near_edge_y_at_x(vec2 points[LEAF_POLY_MAX], int start, int count, float at_x) {
+	float near_y = -1.0e9;
+	bool hit = false;
+	int last = start + count - 1;
+	for (int i = start; i <= last; i++) {
+		vec2 a = points[i];
+		int next_i = i + 1;
+		if (i == last) {
+			next_i = start;
+		}
+		vec2 b = points[next_i];
+		bool crosses = (a.x <= at_x && b.x >= at_x) || (b.x <= at_x && a.x >= at_x);
+		if (!crosses) {
+			continue;
+		}
+		float y = max(a.y, b.y);
+		float dx = b.x - a.x;
+		if (abs(dx) > 0.001) {
+			float t = clamp((at_x - a.x) / dx, 0.0, 1.0);
+			y = mix(a.y, b.y, t);
+		}
+		near_y = max(near_y, y);
+		hit = true;
+	}
+	if (!hit) {
+		return 1.0e9;
+	}
+	return near_y;
+}
+
 float _trunk_line_gate(float sample_y, float cutoff_y, float softness_px) {
 	// 1e9 = no trunk line (wall / unused). Allow the polygon mask to win.
 	if (cutoff_y > 1e8) {
@@ -165,11 +196,19 @@ float _polygon_parts_mask(
 			float mask = _polygon_feather_mask_range(sample_pos, points, offset, n, feather_px);
 			float gate = 1.0;
 			if (!skip_y_gate) {
-				gate = _trunk_line_gate(
-					sample_pos.y,
-					_part_cutoff_at(part_cutoffs, part, slot_cutoff),
-					softness_px
-				);
+				float gate_cutoff = _part_cutoff_at(part_cutoffs, part, slot_cutoff);
+				if (gate_cutoff < 1.0e8) {
+					float poly_max_y = -1.0e9;
+					int poly_last = offset + n - 1;
+					for (int pi = offset; pi <= poly_last; pi++) {
+						poly_max_y = max(poly_max_y, points[pi].y);
+					}
+					if (abs(gate_cutoff - poly_max_y) <= 4.0) {
+						float near_y = _near_edge_y_at_x(points, offset, n, player_anchor_x);
+						gate_cutoff = min(gate_cutoff, near_y);
+					}
+				}
+				gate = _trunk_line_gate(sample_pos.y, gate_cutoff, softness_px);
 			}
 			m = max(m, mask * gate);
 		}
@@ -187,7 +226,7 @@ void fragment() {
 	if (leaf_mask_use_anchor_y != 0) {
 		mask_pos = vec2(world_pos.x, player_anchor_y);
 	}
-	bool skip_y_gate = leaf_mask_use_anchor_y != 0;
+	bool skip_y_gate = false;
 	float m0 = _polygon_parts_mask(mask_pos, leaf_poly_0, leaf_poly_0_count, leaf_poly_0_parts, leaf_poly_0_part_cutoffs, leaf_y_cutoff_0, leaf_poly_0_feather, leaf_gate_softness, skip_y_gate);
 	float m1 = _polygon_parts_mask(world_pos, leaf_poly_1, leaf_poly_1_count, leaf_poly_1_parts, leaf_poly_1_part_cutoffs, leaf_y_cutoff_1, leaf_poly_1_feather, leaf_gate_softness, skip_y_gate);
 	float m2 = _polygon_parts_mask(world_pos, leaf_poly_2, leaf_poly_2_count, leaf_poly_2_parts, leaf_poly_2_part_cutoffs, leaf_y_cutoff_2, leaf_poly_2_feather, leaf_gate_softness, skip_y_gate);

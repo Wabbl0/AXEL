@@ -54,10 +54,10 @@ Live authored Player scale / speed at **1920×1280** (then `PlayerCoverSync` mul
 | 2.3 kitchen | `0.331` | `283.9` |
 | 2.4 classrooms corridor | `0.198` | `185.3` |
 | 3.1 backyard | `0.277` | `241.0` |
-| 4.1 teachers’ lounge | `0.257` | `226.9` |
+| 4.1 teachers’ lounge | `0.342` | `293.3` |
 | 5.1 classroom | `0.298` | `255.9` |
 
-Kitchen is above scale `0.3` (no small-scale extra). 1.4 matches the shared `0.198` / `185.3` (same as 1.2). 2.1 / 5.1 are 50% larger than the shared `0.198`. 3.1 is 40% larger (`0.277`). 4.1 is 30% larger (`0.257`). 1.1 gets the most below-0.3 extra.
+Kitchen is above scale `0.3` (no small-scale extra). 1.4 matches the shared `0.198` / `185.3` (same as 1.2). 2.1 / 5.1 are 50% larger than the shared `0.198`. 3.1 is 40% larger (`0.277`). 4.1 is `0.342` / `293.3` (33% above the previous lounge `0.257`; above `0.3`, so no small-scale extra). 1.1 gets the most below-0.3 extra.
 
 Old profile names (`classroom_large` `0.86`, `library_large` `0.78`) are retired — do not copy those numbers onto the new sheet.
 
@@ -82,7 +82,7 @@ Do not hand-tune these in the Inspector. `bind_player_cover()` sets the glow bef
 | 2.3 kitchen | `2.499` | `193.5` |
 | 2.4 classrooms corridor | `1.495` | `231.5` |
 | 3.1 backyard | `2.091` | `162.0` |
-| 4.1 teachers’ lounge | `1.940` | `150.3` |
+| 4.1 teachers’ lounge | `2.582` | `200.0` |
 | 5.1 classroom | `2.250` | `174.2` |
 
 Live glows: 2.1, 3.1, 4.1, 5.1. Live hands: rooms with a scatter count above 0 (1.4, 2.1, 2.3, 2.4, 4.1, 5.1). The other numbers are what a new glow or hand in that room would use. Regression: `scenes/core/test/indicator_fit_check.gd`.
@@ -119,7 +119,7 @@ Root (`extends ExplorationRoom`)
 
 **Layer order (UI):** dialogue above `[E]` prompt; both above CRT / baseline post-FX (108). The CRT interference wave (`InterfacePulseOverlay` 112) sits above dialogue 111 so the roll also hits the bar (viewport `BackBufferCopy`; glitch 113). Hub/map chrome (red `X`, travel choices) that must stay readable: CanvasLayer ~110 (above CRT 108, below dialogue 111) — do not rely on root Control `z_index`. See `AI_DOCS.md` § Style and FX.
 
-**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Stretch stays disabled; the overlay itself recomputes dialogue font size and outline from viewport height so the text-to-window ratio stays constant in a separate fullscreen window. Baseline scene value is `32`, but the live dialogue baseline is `48` at `1920×1280` (1.5x boost, rounded to an integer so VT323 stays crisp). Keep padding/margins authored; let the bar height grow to fit the full line instead of clipping bigger text. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Typing ticks use the `Typewriter` bus; open/close uses `TypewriterOpen` (Panner for the bar click only). Per-clip mix is `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players.
+**Dialogue:** `TopDialogueOverlay` API in `AI_DOCS.md` § Style and FX. Multi-line: `show_lines([...])`. In-bar swap: `cancel_pending_line()` → `type_line()` → `await_line_advance()` → `hide_line()`. Opt-in mid-line pause: `|beat:<seconds>|` inside the string (see AI_DOCS example); do not auto-insert. Other-speaker lines: prefix with `NAME:` (ALL CAPS) or `|other|` (marker never shown) so the overlay types them in bright red; player/narration stays white. Stretch stays disabled; the overlay itself recomputes dialogue font size and outline from viewport height so the text-to-window ratio stays constant in a separate fullscreen window. Baseline scene value is `32`, but the live dialogue baseline is `48` at `1920×1280` (1.5x boost, rounded to an integer so VT323 stays crisp). Keep padding/margins authored; let the bar height grow to fit the full line instead of clipping bigger text. Audio lives on the overlay scene (every room that instances it gets it): open WAV on bar on, same clip reversed on real hide, `axel_typewriter_v4.wav` only while letters type. Typing ticks use the `Typewriter` bus; open/close uses `TypewriterOpen` (Panner for the bar click only). Per-clip mix is `OpenClosePlayer` / `TypeLoopPlayer` `Volume Db` in `TopDialogueOverlay.tscn` — do not add per-room players. Board answer in 5.1: `show_lines_keep_bar` then `await_text_entry` — the same bar, a blinking caret that turns from white to red when the bar is pressed, then typing. Enter submits. Do not open `5.3_ClassroomBoard` for that field.
 
 **Music:** Do not instance soundtrack players in menu/overworld/combat `.tscn` files. Autoload `AxelMusic` owns BGM (`B_Goes_Down_p2` menu → 10s crossfade to `p1` on New Game; a fight keeps `p1` and fades in `B_Goes_Down_Drums_p1` over 10s; `B_Goes_Down_Drums_p2` fades in for Vice Round and stays through Free Spins if that round leads there). Loudness: `Music` bus in `default_bus_layout.tres`.
 
@@ -133,7 +133,7 @@ Root (`extends ExplorationRoom`)
 
 **1.2 right-arrow hint (1.2 only):** runtime `scenes/fx/DirectionHint.tscn` on `PlayerLayer`. Pin to the viewport right edge at scale `1.67`; do not pass it to `bind_player_cover` as an extra. Do not copy it into other rooms. Details: `AI_DOCS.md`.
 
-**1.3 locker shelves (hub only):** flashlight, key, and name tag pictures on `ItemAnchor` (`scenes/ui/locker_shelves.gd`). No **LOCKER** button or overlay. Each picture stays hidden until that item is picked up. The shovel is not on the locker. Drag `Flashlight`, `Key`, and `Nametag` in the 2D editor. Each picture has a `ClipPolygon`: inside the shape stays, outside is cut off, with a 1px edge (`locker_shelf_clip.gd`). Do not drag `ItemAnchor` — that node follows the picture. Combat items stay on the item wheel. Do not copy these pictures into other rooms.
+**1.3 locker shelves (hub only):** flashlight, key, and name tag pictures on `ItemAnchor` (`scenes/ui/locker_shelves.gd`). No **LOCKER** button or overlay. Each picture stays hidden until that item is picked up. After a correct board answer, the name tag picture becomes that floor item's icon. The shovel is not on the locker. Drag `Flashlight`, `Key`, and `Nametag` in the 2D editor. Each picture has a `ClipPolygon`: inside the shape stays, outside is cut off, with a 1px edge (`locker_shelf_clip.gd`). Do not drag `ItemAnchor` — that node follows the picture. Combat items stay on the item wheel. Do not copy these pictures into other rooms. The school map drawing (`exports/Drawings/axel_map_v2.png`) is `ItemAnchor/Map`, a 4-point `Polygon2D`. With Map selected, use the viewport **Edit Points** tool and drag a corner to warp the picture. Do not add points, and do not move the UV points — that slides the picture inside the shape instead of bending the corners. In play, `locker_map_above_noir.gd` redraws that same polygon above the noir layer so the black fill and red lines stay as drawn. Hovering the paper lays a faint red tint on the drawing. The open map rocks slowly about 1 degree side to side. Clicking that paper opens `locker_map_overlay.gd` on CanvasLayer 110: a full-screen black rect at 75% opacity, the same drawing centered on top, and hover boxes (texture pixels in `AREAS`) that grow a little, fill red, and center the section name. The hover also lists that room's remaining floor items to the right of the highlight, and a small pointing hand sits on the highlight where the item is in the room drawing. A click travels only after a visit, plus one floor-item pickup when that room has hands. Entrance travels after a visit. `X` / Esc / Backspace / Delete closes the overlay and stays on the locker. Pause Map uses that same overlay on `1.3_SchoolMap`.
 
 **1.4 chained door:** `[E]` plays `"Not yet."` and stays in `1.4`. Do not load a grey-box basement scene.
 
@@ -202,7 +202,7 @@ Scene enter / discovery lines use a GameManager `*_seen` flag. They must not rep
 
 ### Rule: memory still leave (after the bar closes)
 
-Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialogue finished, or already-seen skip), leave with: red `[X]`, left-click, tap, or Tab/E/Space/Enter. Same keys during lines still skip/advance — they must not leave until the bar is closed. Shared controller: `scenes/core/memory_still.gd`. Picture crop: `scenes/core/memory_frame.gd`. Live: `2.2`, `3.2`, `4.2`, `5.2` (desk keeps local shake).
+Still-image memories have no player and no `[E]` chip. After `_can_exit` (dialogue finished, or already-seen skip), leave with: red `[X]`, left-click, tap, or Tab/E/Space/Enter. Same keys during lines still skip/advance, and Esc does too. They must not leave until the bar is closed. Shared controller: `scenes/core/memory_still.gd`. Picture crop: `scenes/core/memory_frame.gd`. Live: `2.2`, `3.2`, `4.2`, `5.2` (desk keeps local shake).
 
 ### Rule: always measure the live dest box this Play
 
@@ -411,8 +411,8 @@ Do not copy to new scenes without a design pass.
 
 - Zones: `TreeLine_Bottom_Behind` / `TreeLine_Top_Behind` / `RightWall_Behind` / `Stump_Left_Behind` / `Rocks_Left_Behind` / `Rocks_Right_Behind` + `leaf_occlusion_zone.gd`
 - Wired in `1.1_SchoolExterior.gd` → `Player.configure_leaf_occlusion_polygons` → `white_sprite.gdshader`
-- Trees, stump, and rocks use a collision-front Y-gate (same as the tree trunk line): fade only when standing behind the object, not when overlapping from the front. `RightWall_Behind` uses cutoff `1e9` (no Y-gate) so only the polygon matters. `RightWall_Behind` may include a `Roof_Behind` child polygon for the school roof (editor-placed). Shader: cutoff `> 1e8` means “allow,” not “off.” Extra `CollisionPolygon2D` children under one behind zone all count (max 4 per zone). Each extra polygon uses the nearest rock/stump collision as its own front line. Furniture behind zones (2.1 / 4.1) cover the **back** of the object — not a copy of the full walk-blocker — so standing in front does not fade.
-- Shader has 6 behind slots. Canon `feather_px = 2.0` on all behind zones (1.1 trees + wall + stump + rocks, 2.1 tables/chairs, 3.1 wall/bush/well, 4.1 table/chair, 5.1 furniture 6–9)
+- Trees use a collision-front Y-gate (the trunk line): fade only when standing behind the trunk, not when overlapping the canopy from the front. Stump and rocks use each green polygon’s own lowest point, so a slanted front follows Mike’s feet. `RightWall_Behind` uses cutoff `1e9` (no Y-gate) so only the polygon matters. `RightWall_Behind` may include a `Roof_Behind` child polygon for the school roof (editor-placed). Shader: cutoff `> 1e8` means “allow,” not “off.” Extra `CollisionPolygon2D` children under one behind zone all count (max 4 per zone). Tree extras still use the nearest trunk collision as their front line. Stump and rock extras each use that polygon’s own lowest point. Furniture and yard behind zones (2.1 / 3.1 / 4.1 / 5.1 furniture 6–9) use that same polygon-front line, so standing in front of the green shape stays solid. 3.1’s wall still samples the fade at Mike’s feet, so his whole sprite fades above `TopWall` when his feet are inside the wall shape.
+- Shader has 6 behind slots. Canon `feather_px = 2.0` on all behind zones (1.1 trees + wall + stump + rocks, 2.1 tables/chairs, 3.1 wall/bush/well, 4.1 table/chair/left cabinet, 5.1 furniture 6–9)
 
 ## What is walkable / shipped
 

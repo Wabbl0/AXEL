@@ -71,11 +71,31 @@ const AREAS := {
 			"res://scenes/Arc_1/1.4_BasementDoor.tscn": 1,
 		},
 	},
+	"backyard": {
+		"label": "BACKYARD",
+		"families": ["C", "F", "G"],
+		"walk": false,
+		"rooms": {
+			"res://scenes/Arc_3/3.1_Backyard.tscn": 2,
+		},
+	},
 }
 
 const AREA_ROLL_ORDER: PackedStringArray = [
-	"basement", "cafeteria", "classroom", "halls", "kitchen", "lounge",
+	"basement", "cafeteria", "classroom", "halls", "kitchen", "lounge", "backyard",
 ]
+
+const ROOM_ANSWER_ALIASES := {
+	"res://scenes/Arc_2/2.1_Cafeteria.tscn": ["cafeteria"],
+	"res://scenes/Arc_2/2.3_Kitchen.tscn": ["kitchen"],
+	"res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn": [
+		"hallway", "hall", "halls", "classrooms corridor",
+	],
+	"res://scenes/Arc_4/4.1_TeachersLounge.tscn": ["teachers lounge", "lounge"],
+	"res://scenes/Arc_5/5.1_Classroom.tscn": ["classroom"],
+	"res://scenes/Arc_1/1.4_BasementDoor.tscn": ["basement", "basement door"],
+	"res://scenes/Arc_3/3.1_Backyard.tscn": ["backyard"],
+}
 
 const REASON_WALK := "walk"
 const REASON_ITEM := "item_pickup"
@@ -108,6 +128,7 @@ var _pending_return_tex := Vector2.ZERO
 var _pending_return_valid := false
 var _starting_fight := false
 var _populate_token: Dictionary = {}
+var _encounters_suppressed := false
 
 
 func _ready() -> void:
@@ -126,6 +147,16 @@ func is_enabled() -> bool:
 	if OS.has_environment("AXEL_WORLD_COMBAT"):
 		return OS.get_environment("AXEL_WORLD_COMBAT") != "0"
 	return true
+
+
+func encounters_suppressed() -> bool:
+	return OS.is_debug_build() and _encounters_suppressed
+
+
+func set_encounters_suppressed(on: bool) -> void:
+	if not OS.is_debug_build():
+		return
+	_encounters_suppressed = on
 
 
 func reset_world() -> void:
@@ -171,7 +202,54 @@ func is_indoor_scene(scene_path: String) -> bool:
 func can_walk_fight(scene_path: String) -> bool:
 	if GATED_WALK_SCENES.has(scene_path):
 		return walk_fights_unlocked()
-	return is_indoor_scene(scene_path)
+	var area_id := area_for_scene(scene_path)
+	if area_id.is_empty():
+		return false
+	return bool((AREAS[area_id] as Dictionary).get("walk", true))
+
+
+func floor_slot_count(scene_path: String) -> int:
+	var area_id := area_for_scene(scene_path)
+	if area_id.is_empty():
+		return 0
+	return int((AREAS[area_id]["rooms"] as Dictionary).get(scene_path, 0))
+
+
+func placed_floor_items(scene_path: String) -> Array:
+	var out: Array = []
+	for entry in (_room_items.get(scene_path, []) as Array):
+		var placed: Dictionary = entry
+		if bool(placed.get("taken", false)):
+			continue
+		var spot := Vector2(float(placed.get("x", 0.0)), float(placed.get("y", 0.0)))
+		if _is_unplaced_spot(spot):
+			continue
+		out.append({
+			"id": String(placed.get("id", "")),
+			"x": spot.x,
+			"y": spot.y,
+		})
+	return out
+
+
+func map_can_travel(scene_path: String) -> bool:
+	if scene_path.is_empty():
+		return false
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("has_visited"):
+		return false
+	if not bool(gm.call("has_visited", scene_path)):
+		return false
+	if floor_slot_count(scene_path) <= 0:
+		return true
+	return _scene_took_floor_item(scene_path)
+
+
+func _scene_took_floor_item(scene_path: String) -> bool:
+	for entry in (_room_items.get(scene_path, []) as Array):
+		if bool((entry as Dictionary).get("taken", false)):
+			return true
+	return false
 
 
 func walk_fights_unlocked() -> bool:
@@ -205,7 +283,7 @@ func step_chance() -> float:
 
 
 func register_walk_step() -> void:
-	if not is_enabled() or _starting_fight:
+	if not is_enabled() or _starting_fight or encounters_suppressed():
 		return
 	var run := _run()
 	if run == null or bool(run.call("is_in_encounter")):
@@ -228,7 +306,7 @@ func register_walk_step() -> void:
 
 
 func start_fight_here(reason: String) -> bool:
-	if not is_enabled() or _starting_fight:
+	if not is_enabled() or _starting_fight or encounters_suppressed():
 		return false
 	var scene := _current_scene()
 	if scene == null:
@@ -253,7 +331,7 @@ func start_fight_here(reason: String) -> bool:
 
 
 func start_fight_to_scene(reason: String, return_scene: String) -> bool:
-	if not is_enabled() or _starting_fight:
+	if not is_enabled() or _starting_fight or encounters_suppressed():
 		return false
 	var run := _run()
 	if run == null or bool(run.call("is_in_encounter")):
@@ -477,6 +555,7 @@ func from_dict(data: Dictionary) -> void:
 		_room_items[String(room_path)] = out
 	_lore_fights = (data.get("lore_fights", {}) as Dictionary).duplicate(true)
 	_sync_cleared_from_taken()
+	_fill_missing_room_lists()
 	if _any_area_frozen():
 		_retier_open_areas()
 
@@ -641,6 +720,50 @@ func _any_area_frozen() -> bool:
 		if _area_is_frozen(String(area_id)):
 			return true
 	return false
+
+
+func _fill_missing_room_lists() -> void:
+	var missing := false
+	for area_id in AREA_ROLL_ORDER:
+		var rooms: Dictionary = AREAS[area_id]["rooms"]
+		for path in rooms.keys():
+			if int(rooms[path]) > 0 and not _room_items.has(String(path)):
+				missing = true
+				break
+		if missing:
+			break
+	if not missing:
+		return
+	var blocked := _blocked_item_ids()
+	var used_lanes: Array = []
+	for item_id in blocked:
+		var lane := _lane_of(String(item_id))
+		if not lane.is_empty() and not used_lanes.has(lane):
+			used_lanes.append(lane)
+	for area_id in AREA_ROLL_ORDER:
+		var rooms: Dictionary = AREAS[area_id]["rooms"]
+		var paths: Array = rooms.keys()
+		paths.sort()
+		for path in paths:
+			var room_path := String(path)
+			var want: int = int(rooms[path])
+			if want <= 0 or _room_items.has(room_path):
+				continue
+			var rng := _room_rng(room_path, ITEM_ROLL_SALT)
+			var entries: Array = []
+			for _i in want:
+				var item_id := _roll_item(String(area_id), rng, used_lanes, blocked)
+				if item_id.is_empty():
+					continue
+				used_lanes.append(_lane_of(item_id))
+				_append_unique(blocked, item_id)
+				entries.append({
+					"id": item_id,
+					"x": 0.0,
+					"y": 0.0,
+					"taken": false,
+				})
+			_room_items[room_path] = entries
 
 
 func _roll_open_area_ids() -> void:
@@ -1453,6 +1576,146 @@ func _env_of(scene: Node) -> Node2D:
 	if env == null:
 		env = scene.find_child("EnvironmentColliders", true, false) as Node2D
 	return env
+
+
+func ensure_board_question() -> Dictionary:
+	var run := _run()
+	if run == null:
+		return {"ready": false}
+	var item_id := String(run.state.board_item_id)
+	var room := String(run.state.board_room_scene)
+	if item_id.is_empty() or room.is_empty():
+		_ensure_floor_plan()
+		var pick := _pick_board_item()
+		if pick.is_empty():
+			return {"ready": false}
+		item_id = String(pick.get("id", ""))
+		room = String(pick.get("room", ""))
+		run.state.board_item_id = item_id
+		run.state.board_room_scene = room
+		_save()
+	var taken := _board_item_was_taken(item_id, room)
+	var item_name := _item_plain_name(item_id)
+	var verb := "was" if taken else "is"
+	return {
+		"ready": true,
+		"item_id": item_id,
+		"room_scene": room,
+		"item_name": item_name,
+		"taken": taken,
+		"line": "In which room %s %s?" % [verb, item_name],
+		"guess_spent": bool(run.state.board_guess_spent),
+	}
+
+
+func board_answer_matches(typed: String) -> bool:
+	var run := _run()
+	if run == null:
+		return false
+	return _room_answer_matches(typed, String(run.state.board_room_scene))
+
+
+func spend_board_guess() -> void:
+	var run := _run()
+	if run == null:
+		return
+	run.state.board_guess_spent = true
+	_save()
+
+
+func answered_item_equipped() -> bool:
+	var run := _run()
+	if run == null:
+		return false
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("get_flag"):
+		return false
+	if not bool(gm.call("get_flag", "hasName")):
+		return false
+	var item_id := String(run.state.board_item_id)
+	if item_id.is_empty():
+		return false
+	return Array(run.state.equipped_item_ids).has(item_id)
+
+
+func _ensure_floor_plan() -> void:
+	if not _room_items.is_empty():
+		return
+	var run := _run()
+	if run == null:
+		return
+	var seed := int(run.state.seed)
+	if seed == 0:
+		seed = 1
+	plan_floor_items(seed)
+
+
+func _pick_board_item() -> Dictionary:
+	var candidates: Array = []
+	var rooms: Array = _room_items.keys()
+	rooms.sort()
+	for room_path in rooms:
+		var entries: Array = _room_items[room_path]
+		for i in entries.size():
+			var entry: Dictionary = entries[i]
+			var item_id := String(entry.get("id", ""))
+			if item_id.is_empty():
+				continue
+			candidates.append({
+				"id": item_id,
+				"room": String(room_path),
+				"index": i,
+			})
+	if candidates.is_empty():
+		return {}
+	var run := _run()
+	var rng := RandomNumberGenerator.new()
+	var seed := int(run.state.seed) if run != null else 1
+	rng.seed = seed if seed != 0 else 1
+	return candidates[rng.randi_range(0, candidates.size() - 1)]
+
+
+func _board_item_was_taken(item_id: String, room_scene: String) -> bool:
+	for entry in (_room_items.get(room_scene, []) as Array):
+		var placed: Dictionary = entry
+		if String(placed.get("id", "")) != item_id:
+			continue
+		return bool(placed.get("taken", false))
+	var run := _run()
+	if run == null:
+		return false
+	return Array(run.state.owned_item_ids).has(item_id)
+
+
+func _item_plain_name(item_id: String) -> String:
+	var run := _run()
+	if run != null and run.has_method("load_item"):
+		var item = run.call("load_item", item_id)
+		if item != null:
+			var item_name := str(item.get("display_name")).strip_edges()
+			if not item_name.is_empty():
+				return item_name
+	return item_id
+
+
+func _room_answer_matches(typed: String, scene_path: String) -> bool:
+	var norm := _normalize_room_answer(typed)
+	if norm.is_empty() or norm == "corridor":
+		return false
+	var aliases: Array = ROOM_ANSWER_ALIASES.get(scene_path, [])
+	return aliases.has(norm)
+
+
+func _normalize_room_answer(typed: String) -> String:
+	var text := typed.strip_edges().to_lower()
+	text = text.replace("'", "")
+	text = text.replace("’", "")
+	text = text.replace(".", "")
+	var words := text.split(" ", false)
+	# "in kitchen" / "inside hallway" / "on basement door" still name the room.
+	if words.size() >= 2 and words[0] in ["in", "inside", "on"]:
+		words.remove_at(0)
+	return " ".join(words)
 
 
 func _run() -> Node:

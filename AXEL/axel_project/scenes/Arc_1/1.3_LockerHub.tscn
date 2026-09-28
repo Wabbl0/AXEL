@@ -11,6 +11,8 @@
 [ext_resource type="Texture2D" uid="uid://cp2wkci3dixeh" path="res://exports/Drawings/Key.png" id="9_key"]
 [ext_resource type="Texture2D" uid="uid://b86lcf1xvqfu" path="res://exports/Drawings/Nametag.png" id="10_nametag"]
 [ext_resource type="Script" uid="uid://b1lnsldwk2orf" path="res://scenes/ui/locker_shelf_clip.gd" id="11_clip"]
+[ext_resource type="Texture2D" uid="uid://cbui21faffvgv" path="res://exports/Drawings/axel_map_v2.png" id="12_map"]
+[ext_resource type="Script" uid="uid://s50m5dx10pcd" path="res://scenes/ui/locker_map_above_noir.gd" id="14_map_above"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_qoly0"]
 shader = ExtResource("4_gdrfg")
@@ -65,6 +67,14 @@ script = ExtResource("6_shelves")
 position = Vector2(0, -38.677307)
 scale = Vector2(0.5473204, 0.5473204)
 
+[node name="Map" type="Polygon2D" parent="LockerShelves/ItemAnchor" unique_id=1890463388]
+texture_filter = 1
+position = Vector2(1521.9604, 1105.7092)
+texture = ExtResource("12_map")
+polygon = PackedVector2Array(-283.198, -212.85504, 210.1145, -265.84045, 226.55823, 269.495, -266.75427, 211.02832)
+uv = PackedVector2Array(0, 0, 1895, 0, 1895, 1460, 0, 1460)
+script = ExtResource("14_map_above")
+
 [node name="Flashlight" type="Sprite2D" parent="LockerShelves/ItemAnchor" unique_id=821238272]
 texture_filter = 1
 material = SubResource("ShaderMaterial_qoly0")
@@ -107,6 +117,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("5_map_hotspot")
 background_path = NodePath("../Background")
+hover_tint = Color(1, 0, 0, 0)
 
 [node name="PolygonAnchor" type="Node2D" parent="MapHotspot" unique_id=2090486329]
 position = Vector2(0, -38.677307)

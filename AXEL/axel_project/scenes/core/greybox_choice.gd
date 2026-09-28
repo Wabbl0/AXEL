@@ -141,6 +141,13 @@ func _flag(flag_name: String) -> bool:
 	return gm != null and bool(gm.call("get_flag", flag_name))
 
 
+func _answered_item_equipped() -> bool:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("answered_item_equipped"):
+		return false
+	return bool(world.call("answered_item_equipped"))
+
+
 func _choice_visible(choice: Dictionary) -> bool:
 	var need := String(choice.get("need", ""))
 	if not need.is_empty() and not _flag(need):
@@ -296,14 +303,14 @@ func _def() -> Dictionary:
 				"choices": [{"label": "FACE THE TRUTH", "to": "res://scenes/Arc_6/6.8_BasementCorpse.tscn"}],
 			}
 		"6.8":
+			var corpse_dest := "res://scenes/Endings/7.4_Ending4.tscn"
+			if _answered_item_equipped():
+				corpse_dest = "res://scenes/Endings/7.5_EndingTrue.tscn"
 			return {
 				"label": "CORPSE",
 				"lines": PackedStringArray(["The body is waiting for a name."]),
-				"input": true,
-				"on_correct": "res://scenes/Endings/7.5_EndingTrue.tscn" if _flag("hasName") else "res://scenes/Endings/7.4_Ending4.tscn",
-				"on_wrong": "res://scenes/Endings/7.3_Ending3.tscn",
 				"back": "res://scenes/Arc_6/6.4_BasementMain.tscn",
-				"choices": [],
+				"choices": [{"label": "Face it", "to": corpse_dest}],
 			}
 		"5.3":
 			return {

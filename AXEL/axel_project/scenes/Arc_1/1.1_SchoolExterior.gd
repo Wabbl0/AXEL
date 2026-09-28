@@ -33,6 +33,11 @@ const _BEHIND_GATE_BODIES: PackedStringArray = [
 	"Rocks_Left",
 	"Rocks_Right",
 ]
+const _POLYGON_FRONT_ZONES: PackedStringArray = [
+	"Stump_Left_Behind",
+	"Rocks_Left_Behind",
+	"Rocks_Right_Behind",
+]
 
 const _STONES_ARRIVE_DISTANCE := 36.0
 const _SCRIPTED_WALK_SPEED_SCALE := 0.5
@@ -591,6 +596,10 @@ func _behind_zone_y_cutoffs() -> Array[float]:
 	var colliders := get_node_or_null("EnvironmentColliders")
 	var cutoffs: Array[float] = []
 	for i in _BEHIND_ZONE_NAMES.size():
+		var zone_name: String = _BEHIND_ZONE_NAMES[i]
+		if _polygon_front_zone(zone_name):
+			cutoffs.append(_zone_polygon_front_y(colliders, zone_name))
+			continue
 		var body_name := _BEHIND_GATE_BODIES[i] if i < _BEHIND_GATE_BODIES.size() else ""
 		if body_name.is_empty() or colliders == null:
 			cutoffs.append(1e9)
@@ -600,6 +609,24 @@ func _behind_zone_y_cutoffs() -> Array[float]:
 	while cutoffs.size() < 6:
 		cutoffs.append(1e9)
 	return cutoffs
+
+
+func _polygon_front_zone(zone_name: String) -> bool:
+	return _POLYGON_FRONT_ZONES.has(zone_name)
+
+
+func _zone_polygon_front_y(colliders: Node, zone_name: String) -> float:
+	if colliders == null:
+		return 1e9
+	var zone := colliders.get_node_or_null(zone_name) as Area2D
+	if not is_instance_valid(zone) or not zone.has_method("get_shader_polygons"):
+		return 1e9
+	var max_y := -INF
+	for poly in zone.call("get_shader_polygons"):
+		max_y = maxf(max_y, _packed_max_y(poly))
+	if max_y == -INF:
+		return 1e9
+	return max_y
 
 
 func _collision_front_y_cutoff(body: StaticBody2D) -> float:
@@ -619,6 +646,12 @@ func _collision_front_y_cutoff(body: StaticBody2D) -> float:
 func _part_y_cutoffs_for_zone(
 	zone_index: int, shader_polys: Array, slot_cutoff: float
 ) -> Vector4:
+	if (
+		zone_index >= 0
+		and zone_index < _BEHIND_ZONE_NAMES.size()
+		and _polygon_front_zone(_BEHIND_ZONE_NAMES[zone_index])
+	):
+		return _part_fronts_from_shader_polys(shader_polys, slot_cutoff)
 	var cutoffs := Vector4(slot_cutoff, slot_cutoff, slot_cutoff, slot_cutoff)
 	var colliders := get_node_or_null("EnvironmentColliders")
 	if colliders == null or zone_index < 0 or zone_index >= _BEHIND_GATE_BODIES.size():
@@ -660,6 +693,32 @@ func _part_y_cutoffs_for_zone(
 			3:
 				cutoffs.w = best_y
 	return cutoffs
+
+
+func _part_fronts_from_shader_polys(shader_polys: Array, slot_cutoff: float) -> Vector4:
+	var cutoffs := Vector4(slot_cutoff, slot_cutoff, slot_cutoff, slot_cutoff)
+	for part_i in mini(shader_polys.size(), 4):
+		var poly: PackedVector2Array = shader_polys[part_i]
+		var front_y := _packed_max_y(poly)
+		if front_y == -INF:
+			continue
+		match part_i:
+			0:
+				cutoffs.x = front_y
+			1:
+				cutoffs.y = front_y
+			2:
+				cutoffs.z = front_y
+			3:
+				cutoffs.w = front_y
+	return cutoffs
+
+
+func _packed_max_y(poly: PackedVector2Array) -> float:
+	var max_y := -INF
+	for point in poly:
+		max_y = maxf(max_y, point.y)
+	return max_y
 
 
 func _polygon_node_front_y(polygon_node: CollisionPolygon2D) -> float:

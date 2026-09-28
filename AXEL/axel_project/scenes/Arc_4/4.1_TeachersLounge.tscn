@@ -8,16 +8,24 @@
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="PackedScene" path="res://scenes/fx/MemoryIndicator.tscn" id="10_memory_indicator"]
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="11_leaf_zone"]
+[ext_resource type="Texture2D" uid="uid://cp2wkci3dixeh" path="res://exports/Drawings/Key.png" id="12_key"]
+[ext_resource type="Shader" path="res://scenes/fx/prop_ink_halo.gdshader" id="13_key_glow"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player_packed"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
-size = Vector2(154, 612)
+size = Vector2(257, 608)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_key_near"]
 size = Vector2(1991.5, 1496.25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_key_interact"]
 size = Vector2(722, 621)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_key_glow"]
+shader = ExtResource("13_key_glow")
+shader_parameter/spread = 12.0
+shader_parameter/intensity = 0.32
+shader_parameter/glow_color = Color(0, 0, 0, 1)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_memory_interact"]
 size = Vector2(446, 436)
@@ -40,30 +48,32 @@ metadata/_edit_lock_ = true
 [node name="TopWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=449305054]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/TopWall" unique_id=282005960]
-position = Vector2(3, 32)
-polygon = PackedVector2Array(0, 0, 3508, 0, 3508, 269, 0, 269)
+position = Vector2(3, -46)
+polygon = PackedVector2Array(0, 0, 3508, 0, 3508, 326, 0, 326)
 
 [node name="BottomWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1097655148]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=1797683176]
 position = Vector2(0, 128)
-polygon = PackedVector2Array(0, 2330, 3508, 2330, 3508, 2480, 0, 2480)
+polygon = PackedVector2Array(0, 2152, 3508, 2152, 3508, 2480, 0, 2480)
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1753731718]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/LeftWall" unique_id=1106015736]
 position = Vector2(-126, 0)
-polygon = PackedVector2Array(0, 0, 128, 0, 128, 2480, 0, 2480)
+polygon = PackedVector2Array(0, 0, 296, 0, 296, 2480, 0, 2480)
 
 [node name="RightWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=35722453]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=2043471567]
 position = Vector2(83, 1)
-polygon = PackedVector2Array(3385, 0, 3508, 0, 3508, 2480, 3385, 2480)
+polygon = PackedVector2Array(3262, 0, 3508, 0, 3508, 2480, 3262, 2480)
 
 [node name="LeftUpperBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1617559011]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/LeftUpperBlock" unique_id=1617559012]
+position = Vector2(-2.0000143, -101.526276)
+scale = Vector2(1.5624995, 1.0361841)
 polygon = PackedVector2Array(0, 512, 64, 512, 64, 1120, 0, 1120)
 
 [node name="LeftCabinetBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1617559001]
@@ -72,11 +82,20 @@ polygon = PackedVector2Array(0, 512, 64, 512, 64, 1120, 0, 1120)
 position = Vector2(64, 128)
 polygon = PackedVector2Array(-64, 1184, 192, 1184, 352, 1280, 352, 2368, -64, 2368)
 
+[node name="LeftCabinetBlock_Behind" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2104105]
+monitoring = false
+monitorable = false
+script = ExtResource("11_leaf_zone")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/LeftCabinetBlock_Behind" unique_id=2104106]
+position = Vector2(64, 128)
+polygon = PackedVector2Array(-144, 1216, 176, 1200, 176, 1264, 304, 1328, 304, 1408, -144, 1328)
+
 [node name="TableBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1617559003]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/TableBlock" unique_id=1617559004]
 position = Vector2(448, 99)
-polygon = PackedVector2Array(768, 1277, 1184, 1085, 2048, 1469, 2048, 1629, 1600, 1821, 768, 1437)
+polygon = PackedVector2Array(768, 1277, 1184, 1085, 2048, 1469, 2048, 1581, 1616, 1757, 768, 1373)
 
 [node name="TableBlock_Behind" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2104101]
 monitoring = false
@@ -85,7 +104,7 @@ script = ExtResource("11_leaf_zone")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/TableBlock_Behind" unique_id=2104102]
 position = Vector2(448, 99)
-polygon = PackedVector2Array(1184, 1085, 768, 1277, 768, 1437, 861, 1480, 2048, 1480, 2048, 1469)
+polygon = PackedVector2Array(1184, 1085, 752, 1293, 768, 1437, 848, 1469, 832, 1357, 1616, 1677, 2048, 1485)
 
 [node name="ChairBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1617559005]
 
@@ -105,17 +124,20 @@ polygon = PackedVector2Array(2345, 640, 2409, 608, 2409, 512, 2601, 512, 2601, 6
 [node name="TrashCanBlock" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1617559007]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/TrashCanBlock" unique_id=1617559008]
-polygon = PackedVector2Array(2432, 1952, 2560, 2048, 2368, 2240, 2272, 2176, 2272, 2080)
+position = Vector2(-1184, -1168)
+scale = Vector2(1.4930558, 1.5277781)
+polygon = PackedVector2Array(2475.46, 1937.4541, 2550.474, 2010.7632, 2357.581, 2157.3813, 2314.7158, 2157.3813, 2218.2695, 2063.127)
 
 [node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=979878054]
 position = Vector2(1754, 220)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea" unique_id=2089357440]
-position = Vector2(-1639, 594)
+position = Vector2(-1641.5, 596)
 shape = SubResource("RectangleShape2D_door_interact")
 
 [node name="KeyNearArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=777366223]
+visible = false
 position = Vector2(2550, 2000)
 monitorable = false
 
@@ -130,6 +152,27 @@ monitorable = false
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/KeyInteractArea" unique_id=1838175058]
 position = Vector2(-208, -532)
 shape = SubResource("RectangleShape2D_key_interact")
+
+[node name="KeyVisual" type="Node2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2104301]
+z_index = 1
+position = Vector2(2272, 1568)
+rotation = -1.5009831
+scale = Vector2(0.12, 0.12)
+
+[node name="Glow" type="Sprite2D" parent="WalkableWorld/EnvironmentColliders/KeyVisual" unique_id=2104302]
+modulate = Color(1, 1, 1, 0.14)
+z_index = -1
+texture_filter = 1
+material = SubResource("ShaderMaterial_key_glow")
+position = Vector2(-105.10596, 408.3265)
+rotation = -0.4537856
+texture = ExtResource("12_key")
+
+[node name="Sprite" type="Sprite2D" parent="WalkableWorld/EnvironmentColliders/KeyVisual" unique_id=2104303]
+texture_filter = 1
+position = Vector2(-105.105934, 408.32648)
+rotation = -0.4537856
+texture = ExtResource("12_key")
 
 [node name="MemoryInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1269029044]
 position = Vector2(1800, 1200)
@@ -151,9 +194,9 @@ follow_viewport_enabled = true
 
 [node name="Player" parent="PlayerLayer" unique_id=1647216626 instance=ExtResource("player_packed")]
 z_index = 10
-position = Vector2(160.00012, 831.99994)
-scale = Vector2(0.257, 0.257)
-speed = 226.9
+position = Vector2(210, 831.99994)
+scale = Vector2(0.342, 0.342)
+speed = 293.3
 collision_polygon_epsilon = 4.0
 collision_alpha_shrink_pixels = 4
 collision_inward_margin = 4.0

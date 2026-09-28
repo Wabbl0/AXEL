@@ -2,7 +2,8 @@ extends ExplorationRoom
 
 const CORRIDOR_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
 const DESK_SCENE := "res://scenes/Arc_5/5.2_ClassroomDesk.tscn"
-const BOARD_SCENE := "res://scenes/Arc_5/5.3_ClassroomBoard.tscn"
+const BOARD_FAIL_LINE := "Nah."
+const BOARD_SUCCESS_LINE := "You know the name now. You wish you didn't."
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 const _BEHIND_ZONE_NAMES: PackedStringArray = [
@@ -11,21 +12,14 @@ const _BEHIND_ZONE_NAMES: PackedStringArray = [
 	"FurnitureBlock8_Behind",
 	"FurnitureBlock9_Behind",
 ]
-const _BEHIND_GATE_BODIES: PackedStringArray = [
-	"FurnitureBlock6",
-	"FurnitureBlock7",
-	"FurnitureBlock8",
-	"FurnitureBlock9",
-]
 const ENTER_LINES := [
 	"This is where the shit went down.",
 	"If shit going down is you, highly caffinated, ignoring your teachers and usually skipping class to go for a smoke.",
 	"How did you ever get anywhere in life?",
 ]
-const BOARD_LINES := [
+const BOARD_INTRO := [
 	"On the board there are weird ass symbols and equations.",
 	"You can only make out one question:",
-	"\"[something relevant that is only learned through playing the slots]\"",
 ]
 
 var _door_interact_area: Area2D
@@ -136,11 +130,76 @@ func _look_at_board() -> void:
 		return
 	_line_running = true
 	hide_interact_prompt_immediate()
-	await _top_dialogue.show_lines(BOARD_LINES)
-	_line_running = false
-	if GameManager.get_flag("hasName"):
+	var question := _board_question()
+	var lines := _board_lines(question)
+	var can_guess := (
+		bool(question.get("ready", false))
+		and not bool(question.get("guess_spent", false))
+		and not GameManager.get_flag("hasName")
+	)
+	if not can_guess:
+		await _top_dialogue.show_lines(lines)
+		if is_instance_valid(self):
+			_line_running = false
 		return
-	begin_scene_change(BOARD_SCENE)
+	await _top_dialogue.show_lines_keep_bar(lines)
+	if not is_instance_valid(self) or not is_instance_valid(_top_dialogue):
+		return
+	if not _top_dialogue.is_bar_visible():
+		_line_running = false
+		return
+	_set_player_typing(false)
+	var result: Dictionary = await _top_dialogue.await_text_entry()
+	_set_player_typing(true)
+	if not is_instance_valid(self):
+		return
+	if bool(result.get("cancelled", true)):
+		_line_running = false
+		return
+	await _resolve_board_answer(String(result.get("text", "")))
+	if is_instance_valid(self):
+		_line_running = false
+
+
+func _set_player_typing(enabled: bool) -> void:
+	if is_instance_valid(_player) and _player.has_method("set_input_enabled"):
+		_player.set_input_enabled(enabled)
+
+
+func _board_question() -> Dictionary:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("ensure_board_question"):
+		return world.call("ensure_board_question")
+	return {"ready": false}
+
+
+func _board_lines(question: Dictionary) -> Array:
+	var lines: Array = BOARD_INTRO.duplicate()
+	if bool(question.get("ready", false)):
+		lines.append("\"%s\"" % String(question.get("line", "")))
+	return lines
+
+
+func _resolve_board_answer(typed: String) -> void:
+	var world := get_node_or_null("/root/AxelWorld")
+	var correct := false
+	if world != null and world.has_method("board_answer_matches"):
+		correct = bool(world.call("board_answer_matches", typed))
+	if world != null and world.has_method("spend_board_guess"):
+		world.call("spend_board_guess")
+	if correct:
+		GameManager.set_flag("hasName", true)
+		GameManager.set_flag("knowsName", true)
+		GameManager.add_inventory_item("hasName", "Name")
+		if is_instance_valid(_top_dialogue):
+			await _top_dialogue.show_line(BOARD_SUCCESS_LINE)
+		if not is_instance_valid(self):
+			return
+		if world != null and world.has_method("start_lore_fight"):
+			world.call("start_lore_fight", "hasName", scene_file_path, true)
+		return
+	if is_instance_valid(_top_dialogue):
+		await _top_dialogue.show_line(BOARD_FAIL_LINE)
 
 
 func _ensure_desk_area_live() -> void:
@@ -217,9 +276,9 @@ func _configure_behind_occlusion_masks() -> void:
 	var polys: Array[PackedVector2Array] = []
 	var feathers: Array[float] = []
 	var cutoffs: Array[float] = []
-	for i in _BEHIND_ZONE_NAMES.size():
+	for zone_name in _BEHIND_ZONE_NAMES:
 		var zone := get_node_or_null(
-			"WalkableWorld/EnvironmentColliders/%s" % _BEHIND_ZONE_NAMES[i]
+			"WalkableWorld/EnvironmentColliders/%s" % zone_name
 		) as Area2D
 		var poly := PackedVector2Array()
 		var feather := 0.0
@@ -228,7 +287,7 @@ func _configure_behind_occlusion_masks() -> void:
 			feather = float(zone.get("feather_px"))
 		polys.append(poly)
 		feathers.append(feather)
-		cutoffs.append(_occlusion_y_cutoff(_BEHIND_GATE_BODIES[i]))
+		cutoffs.append(_occlusion_y_cutoff(zone))
 	while polys.size() < 4:
 		polys.append(PackedVector2Array())
 		feathers.append(0.0)
@@ -253,19 +312,15 @@ func _configure_behind_occlusion_masks() -> void:
 	)
 
 
-func _occlusion_y_cutoff(block_name: String) -> float:
-	var body := get_node_or_null(
-		"WalkableWorld/EnvironmentColliders/%s" % block_name
-	) as StaticBody2D
-	if not is_instance_valid(body):
+func _occlusion_y_cutoff(behind: Area2D) -> float:
+	if not is_instance_valid(behind):
+		return 1e9
+	var polygon_node := behind.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
+	if polygon_node == null or polygon_node.polygon.is_empty():
 		return 1e9
 	var max_y := -INF
-	for child in body.get_children():
-		var polygon_node := child as CollisionPolygon2D
-		if polygon_node == null or polygon_node.polygon.is_empty():
-			continue
-		for local_point in polygon_node.polygon:
-			max_y = maxf(max_y, polygon_node.to_global(local_point).y)
+	for local_point in polygon_node.polygon:
+		max_y = maxf(max_y, polygon_node.to_global(local_point).y)
 	if max_y == -INF:
 		return 1e9
 	return max_y

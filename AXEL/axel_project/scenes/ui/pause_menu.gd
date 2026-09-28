@@ -2,6 +2,7 @@ extends CanvasLayer
 
 const MAP_SCENE := "res://scenes/Arc_1/1.3_SchoolMap.tscn"
 const TITLE_SCENE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
+const MENU_LAYER := 250
 
 var _root: Control
 var _menu: VBoxContainer
@@ -12,7 +13,7 @@ var _seed_label: Label
 
 
 func _ready() -> void:
-	layer = 120
+	layer = MENU_LAYER
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
 	_build()
@@ -59,16 +60,22 @@ func _build() -> void:
 	scrim.mouse_filter = Control.MOUSE_FILTER_STOP
 	_root.add_child(scrim)
 
+	var host := CenterContainer.new()
+	host.name = "PauseCenter"
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(host)
+	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
 	_menu = VBoxContainer.new()
-	_menu.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_menu.offset_left = 160
-	_menu.offset_right = -160
-	_menu.offset_top = 36
-	_menu.offset_bottom = -36
+	_menu.name = "PauseColumn"
+	_menu.alignment = BoxContainer.ALIGNMENT_CENTER
+	_menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_menu.add_theme_constant_override("separation", 8)
-	_root.add_child(_menu)
+	host.add_child(_menu)
 
 	var title := Label.new()
+	title.name = "PausedTitle"
 	title.text = "PAUSED"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	MenuLook.apply_label(title, 64, MenuLook.ACCENT)
@@ -186,19 +193,11 @@ func _refresh_map() -> void:
 func _refresh_dev_tools() -> void:
 	if _dev_button == null:
 		return
-	_dev_button.visible = OS.is_debug_build() and _is_combat_scene()
-
-
-func _is_combat_scene() -> bool:
-	var scene := get_tree().current_scene if get_tree() != null else null
-	if scene == null:
-		return false
-	var path := String(scene.scene_file_path)
-	return path.begins_with("res://combat/")
+	_dev_button.visible = OS.is_debug_build()
 
 
 func _open_dev_tools() -> void:
-	if not OS.is_debug_build() or not _is_combat_scene():
+	if not OS.is_debug_build():
 		return
 	var tools := get_node_or_null("/root/AxelCombatDevTools")
 	if tools != null and tools.has_method("open_dev_menu"):

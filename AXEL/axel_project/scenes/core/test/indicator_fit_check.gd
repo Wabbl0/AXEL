@@ -15,7 +15,7 @@ const ROOMS := [
 	{"name": "2.3", "player": 0.331, "baseline": 1920.0 / 3508.0, "memory": 2.499, "item": 193.5},
 	{"name": "2.4", "player": 0.198, "baseline": 1920.0 / 7016.0, "memory": 1.495, "item": 231.5},
 	{"name": "3.1", "player": 0.277, "baseline": 1920.0 / 3508.0, "memory": 2.091, "item": 162.0},
-	{"name": "4.1", "player": 0.257, "baseline": 1920.0 / 3508.0, "memory": 1.940, "item": 150.3},
+	{"name": "4.1", "player": 0.342, "baseline": 1920.0 / 3508.0, "memory": 2.582, "item": 200.0},
 	{"name": "5.1", "player": 0.298, "baseline": 1920.0 / 3508.0, "memory": 2.25, "item": 174.2},
 ]
 
@@ -40,8 +40,8 @@ const LIVE_ROOMS := [
 	},
 	{
 		"path": "res://scenes/Arc_4/4.1_TeachersLounge.tscn",
-		"memory": 1.940,
-		"item": 150.3,
+		"memory": 2.582,
+		"item": 200.0,
 		"glow": true,
 	},
 	{

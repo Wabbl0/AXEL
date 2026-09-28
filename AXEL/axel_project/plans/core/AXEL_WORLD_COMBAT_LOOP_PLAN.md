@@ -16,8 +16,8 @@ Canon still wins: `plans/core/AI_DOCS.md`. Catalog text changes only in
 - Combat items lie on the floor in indoor rooms; picking one up starts a fight.
 - All item ranks start Common; picking up in one area clears it and upgrades
   the rooms you have not taken from yet (those hands change to the new rarity).
-- The locker is equip-only. `START RUN` is gone.
-- The school map shows unvisited rooms dark and refuses to travel there.
+- The locker shows lore pictures only. Equip and unequip live on the item wheel. `START RUN` is gone. After a correct board answer the name-tag picture becomes that floor item's icon.
+- The locker map and pause Map are the same overlay. A room with floor items travels after a visit and one pickup. Entrance travels after a visit.
 - A full-screen wipe plays on the way into every fight.
 - Winning puts you back in the room you left, on the spot you left.
 - Losing deletes that slot’s save files (no tombstone) and keeps **GONE** up with **Retry** / **Return To Main Menu** / **Exit**. Retry starts a new run from `1.1` on the slot that died. `AxelWorld.notify_fight_ended()` clears `_starting_fight` on a loss so New Game can fight again.
@@ -28,7 +28,7 @@ Narrative decides *when* a fight starts. `AxelRun` is still the only thing that
 starts one, and combat still never reads a story flag. The new autoload
 `AxelWorld` sits on the narrative side of that line.
 
-## Areas (6 written areas → live rooms)
+## Areas (7 written areas → live rooms)
 
 | Area id | Rooms | Floor items | Step fights |
 | --- | --- | --- | --- |
@@ -38,9 +38,9 @@ starts one, and combat still never reads a story flag. The new autoload
 | `lounge` | `4.1_TeachersLounge` | 2 | yes |
 | `classroom` | `5.1_Classroom` | 2 | yes |
 | `basement` | `1.4_BasementDoor` | 1 | yes |
+| `backyard` | `3.1_Backyard` | 2 | no |
 
-`3.1_Backyard` is outdoors and is in no area table: no step fights, no floor
-items, ever. Greybox rooms (`6.x`, `5.3`, `5.4`) have no Player node, so they
+`3.1_Backyard` has floor items and does not walk-fight (`walk` false). Greybox rooms (`6.x`, `5.3`, `5.4`) have no Player node, so they
 get no step fights either — only their lore pickups start fights.
 
 ### Gated rooms: `1.1_SchoolExterior` and `1.2_Corridor`
@@ -60,7 +60,7 @@ open with a random fight.
 
 ### Locker tutorial (first fight)
 
-The flashlight, key, and name tag pictures sit in `1.3_LockerHub` (no LOCKER button). Each stays hidden until that item is picked up. The shovel is not on the locker. Combat items stay on the item wheel.
+The flashlight, key, and name tag pictures sit in `1.3_LockerHub` (no LOCKER button). Each stays hidden until that item is picked up. After a correct board answer the name-tag picture becomes that floor item's icon. The shovel is not on the locker. Combat items stay on the item wheel.
 First hub visit sets the opened-locker flag — no starter items. Leave the hub
 yourself with the red `X` or Esc. The **first** hub→`1.2` leave queues the tutorial.
 First-visit map lines block X/Esc. `1.3_LockerHub` calls
@@ -177,16 +177,19 @@ a cleared area.
    the existing `AxelEventFx.register_walk_step()`.
 9. `scenes/ui/locker_shelves.gd` + `scenes/Arc_1/1.3_LockerHub.gd` —
    no LOCKER button and no overlay. Flashlight, key, and name tag pictures
-   show only after pickup. The shovel is not on the locker. First hub visit sets the opened-locker flag (no C1/C2/C3 grant).
-10. `scenes/Arc_1/1.3_SchoolMap.gd` — travel needs `GameManager.has_visited()`.
-    Unvisited rooms get a dark card, a `?????` label, and no click.
+   show only after pickup. After a correct board answer the name tag uses that
+   floor item's icon. The shovel is not on the locker. First hub visit sets the opened-locker flag (no C1/C2/C3 grant).
+10. `scenes/ui/locker_map_overlay.gd` — locker and pause Map share this overlay.
+    Travel uses `AxelWorld.map_can_travel()`: a visit, plus one floor-item pickup
+    when that room has hands. Entrance travels after a visit.
 11. Memory stills — `2.2_CafeteriaMemory.gd`, `3.2_BackyardMemory.gd`,
     `4.2_TeachersMemory.gd`, `5.2_ClassroomDesk.gd`: leave through
     `AxelWorld.start_memory_fight()` instead of `change_scene_to_file`. `5.2`
     fights but stays *not* a 5/5 memory.
 12. Lore pickups — `2.3_Kitchen.gd` (flashlight), `4.1_TeachersLounge.gd` (key),
-    `scenes/core/greybox_choice.gd` (shovel, name): fight after the line, once
-    per flag.
+    `scenes/core/greybox_choice.gd` (shovel): fight after the line, once
+    per flag. The name fight starts from `5.1` after a correct board answer.
+    The basement corpse checks that answered item is equipped.
 13. Docs — name the six areas in the catalog plan's Area / Rarity Progression
     section, gate `L-G Iron Lung` to the basement, add `AxelWorld` to `AI_DOCS`,
     log the D7 replacement in `AI_CHANGELOG`.
@@ -198,7 +201,7 @@ a cleared area.
 
 ## Acceptance criteria
 
-- Walking indoors sometimes starts a fight; `3.1` never does, and `1.1` / `1.2`
+- Walking indoors sometimes starts a fight; `3.1` still never does, and `1.1` / `1.2`
   only after the tutorial gate opens.
 - Leaving the hub yourself starts one fight on
   arrival in `1.2`: 100 goal, empty loadout, last affordable paid spin (including
@@ -208,12 +211,12 @@ a cleared area.
 - Every floor item looks like the same white pointing hand from across the
   room; walking near one shows its real name, description and icon.
 - Floor items show `[E]` on the walk-near card, join the item inventory (and auto-equip if a slot is free), and start a fight.
-- `1.1` and `1.2` never hold a floor item.
+- `1.1` and `1.2` never hold a floor item. `3.1` holds two.
 - Fight goals climb 100, 150, 225, then ×1.5 (rounded to 25).
 - The first area's floor items are Common; after that pickup, every area you
   have not taken from reads one rank higher and its hands show the new rarity.
 - The locker has no START RUN button and no LOCKER overlay; flashlight, key, and name pictures sit on the locker. Combat equip is the item wheel.
-- Unvisited map rooms are dark and unclickable; visiting once unlocks them.
+- The locker map and pause Map are the same picture. A room with floor items travels only after a visit and one pickup there. Entrance travels after a visit. Hallway on the map is `2.4`.
 - A wipe plays before each fight; a win shows Round Complete!, fades, and returns to the same room and spot.
 - The `1.4` chained door plays `"Not yet."` and stays in the room.
 
@@ -226,9 +229,8 @@ a cleared area.
 3. Walk to `1.4`, walk near the hand: its real name, description and icon
    show before you press `[E]`. Take it → fight (next ladder rung, 150) → win.
    The chained door only plays `"Not yet."` and stays in the room.
-4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot.
-5. Open the map before visiting `2.3`: kitchen is dark and dead. Walk there,
-   reopen: it works.
+4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot walk-fight, but it does have floor hands.
+5. Open the locker map before visiting `2.3`: kitchen does not travel. Walk there, pick up one hand, reopen: the click works. Hover shows the remaining hands and their cards.
 
 ## Found while building
 

@@ -722,8 +722,8 @@ func _apply_collision_horizontal_flip(collision: CollisionShape2D, face_right: b
 	collision.position = Vector2(authored.x * sign_x, authored.y)
 
 
-func _get_collision_feet_anchor_y() -> float:
-	var anchor_y := -1.0e9
+func _get_collision_feet_anchor() -> Vector2:
+	var anchor := Vector2(0.0, -1.0e9)
 	for child in get_children():
 		if child is CollisionShape2D:
 			var collision := child as CollisionShape2D
@@ -733,18 +733,24 @@ func _get_collision_feet_anchor_y() -> float:
 			if shape is ConvexPolygonShape2D:
 				var poly := shape as ConvexPolygonShape2D
 				for point in poly.points:
-					anchor_y = maxf(anchor_y, collision.to_global(point).y)
+					var world_point := collision.to_global(point)
+					if world_point.y > anchor.y:
+						anchor = world_point
 			elif shape is CircleShape2D:
 				var circle := shape as CircleShape2D
-				anchor_y = maxf(anchor_y, collision.to_global(Vector2(0.0, circle.radius)).y)
-	return anchor_y
+				var world_point := collision.to_global(Vector2(0.0, circle.radius))
+				if world_point.y > anchor.y:
+					anchor = world_point
+	return anchor
 
 
 func _update_leaf_occlusion_anchor() -> void:
 	var mat := animated_sprite.material as ShaderMaterial
 	if mat == null:
 		return
-	mat.set_shader_parameter("player_anchor_y", _get_collision_feet_anchor_y())
+	var anchor := _get_collision_feet_anchor()
+	mat.set_shader_parameter("player_anchor_x", anchor.x)
+	mat.set_shader_parameter("player_anchor_y", anchor.y)
 
 
 func _pose_nudge_resource() -> Resource:
@@ -1044,7 +1050,7 @@ func _physics_process(_delta: float) -> void:
 func _apply_locked_feet_y() -> void:
 	if locked_feet_y < 0.0:
 		return
-	var feet_y := _get_collision_feet_anchor_y()
+	var feet_y := _get_collision_feet_anchor().y
 	if feet_y <= -1.0e9:
 		return
 	var offset := feet_y - global_position.y

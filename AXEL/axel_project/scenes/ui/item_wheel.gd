@@ -175,6 +175,8 @@ func _process(_delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _open or event.is_echo():
 		return
+	if _dialogue_busy():
+		return
 	if event.is_action_pressed("pause") or event.is_action_pressed("back"):
 		close_wheel()
 		get_viewport().set_input_as_handled()

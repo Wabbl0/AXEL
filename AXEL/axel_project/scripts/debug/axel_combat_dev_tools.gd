@@ -2,7 +2,7 @@ extends CanvasLayer
 
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const LAYER := 2100
-const MENU_MIN_WIDTH := 260.0
+const MENU_MIN_WIDTH := 300.0
 const BANKROLL_STEP := 100
 const GOAL_STEP := 1000
 const PANEL_BG := Color(0.06, 0.0, 0.0, 0.92)
@@ -69,13 +69,10 @@ func _is_combat_scene() -> bool:
 
 
 func _update_visibility_for_scene() -> void:
-	var on_combat := _is_combat_scene()
 	if _root != null:
-		_root.visible = on_combat
-	if not on_combat:
-		_close_menu()
-		if _combat != null:
-			_unbind_combat()
+		_root.visible = true
+	if not _is_combat_scene() and _combat != null:
+		_unbind_combat()
 
 
 func _refresh_combat_binding() -> void:
@@ -156,6 +153,10 @@ func _build_ui() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
 	_menu.add_child(vbox)
+
+	_add_section_label(vbox, "WORLD")
+	_add_toggle_row(vbox, "encounters", "Disable combat encounters")
+	vbox.add_child(HSeparator.new())
 
 	_add_section_label(vbox, "GUARANTEES")
 	_add_toggle_row(vbox, "trinity", "Guarantee Vice Round")
@@ -311,6 +312,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_toggle_pressed(key: String) -> void:
+	if key == "encounters":
+		_toggle_encounters()
+		return
 	if _combat == null or not is_instance_valid(_combat):
 		_refresh_combat_binding()
 	if _combat == null:
@@ -328,7 +332,21 @@ func _on_toggle_pressed(key: String) -> void:
 	_refresh_toggle_labels()
 
 
+func _toggle_encounters() -> void:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("set_encounters_suppressed"):
+		return
+	var on := not bool(world.call("encounters_suppressed"))
+	world.call("set_encounters_suppressed", on)
+	_refresh_toggle_labels()
+
+
 func _refresh_toggle_labels() -> void:
+	var blocked := false
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("encounters_suppressed"):
+		blocked = bool(world.call("encounters_suppressed"))
+	_set_toggle_text("encounters", "Disable combat encounters", blocked)
 	var trinity := false
 	var fs_clear := false
 	var payout := false

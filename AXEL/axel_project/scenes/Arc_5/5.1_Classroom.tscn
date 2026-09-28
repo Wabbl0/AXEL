@@ -27,7 +27,7 @@ size = Vector2(90, 2480)
 size = Vector2(3484, 77)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
-size = Vector2(609, 289)
+size = Vector2(624, 793)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_desk_interact"]
 size = Vector2(396, 330)
@@ -87,7 +87,7 @@ shape = SubResource("RectangleShape2D_wall_vertical_right")
 position = Vector2(40, 950)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorWall" unique_id=130491347]
-position = Vector2(1722, -599.5)
+position = Vector2(1722, -653.5)
 shape = SubResource("RectangleShape2D_door_block")
 
 [node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=673914663]
@@ -95,48 +95,50 @@ position = Vector2(220, 950)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/DoorInteractArea" unique_id=1936399810]
-position = Vector2(2904.5, -469.5)
+position = Vector2(2912, -721.5)
 shape = SubResource("RectangleShape2D_door_interact")
 
 [node name="FurnitureBlock1" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2099666733]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock1" unique_id=60084956]
-position = Vector2(-394, -74.75)
-scale = Vector2(0.93333334, 0.9125)
+position = Vector2(-396, 173.25041)
+scale = Vector2(0.93333334, 0.71249974)
 polygon = PackedVector2Array(900, 1400, 1200, 1400, 1200, 1600, 900, 1600)
 
 [node name="FurnitureBlock2" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2010153999]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock2" unique_id=714519642]
-position = Vector2(-78.45825, 8.25)
-scale = Vector2(0.9458333, 0.8625)
-polygon = PackedVector2Array(1300, 1400, 1600, 1400, 1600, 1600, 1300, 1600)
+position = Vector2(-84, 95.374756)
+scale = Vector2(0.9458333, 0.7726564)
+polygon = PackedVector2Array(1294.0969, 1391.3044, 1598.5903, 1391.3044, 1600, 1600, 1300, 1600)
 
 [node name="FurnitureBlock3" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1705943164]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock3" unique_id=1476034703]
-position = Vector2(720.49695, 796.08997)
-scale = Vector2(0.94904435, 0.9662109)
+position = Vector2(720, 978.1232)
+scale = Vector2(0.94904435, 0.7914921)
 polygon = PackedVector2Array(1700, 1400, 2000, 1400, 2000, 1600, 1700, 1600)
 
 [node name="FurnitureBlock4" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1403731633]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock4" unique_id=406103989]
-position = Vector2(-216, 372)
-polygon = PackedVector2Array(900, 1728, 1212, 1572, 1776, 1824, 1524, 2004)
+position = Vector2(-323.99997, -24.000004)
+scale = Vector2(1.0787671, 1.2152781)
+polygon = PackedVector2Array(856.53345, 1747.7482, 1212, 1572, 1835.4288, 1806.9939, 1524, 2004)
 
 [node name="FurnitureBlock5" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1154658211]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock5" unique_id=1320981389]
-position = Vector2(1763.1459, 391)
+position = Vector2(1764, 312)
 scale = Vector2(0.93541664, 1.025)
 polygon = PackedVector2Array(1300, 1700, 1600, 1700, 1600, 1900, 1300, 1900)
 
 [node name="FurnitureBlock6" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=62507423]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock6" unique_id=932135054]
-position = Vector2(-1360, -880)
-polygon = PackedVector2Array(1700, 1700, 2240, 1712, 2240, 2016, 1696, 2016)
+position = Vector2(-1637.9991, -1563.2749)
+scale = Vector2(1.1363631, 1.3569071)
+polygon = PackedVector2Array(1716, 1716, 2240, 1712, 2244, 2016, 1716, 2016)
 
 [node name="FurnitureBlock6_Behind" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2105606]
 monitoring = false
@@ -144,14 +146,16 @@ monitorable = false
 script = ExtResource("10_leaf_zone")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock6_Behind" unique_id=2105616]
-position = Vector2(-1360, -880)
-polygon = PackedVector2Array(1700, 1700, 2240, 1712, 2240, 2016, 1696, 2016)
+position = Vector2(-1355.9993, -741.8263)
+scale = Vector2(0.99999964, 0.9256332)
+polygon = PackedVector2Array(1700, 1700, 2232, 1704, 2220, 2016, 1696, 2016)
 
 [node name="FurnitureBlock7" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=880484881]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock7" unique_id=1990377531]
-position = Vector2(-1056, -384)
-polygon = PackedVector2Array(2100, 1200, 2592, 1216, 2592, 1520, 2096, 1520)
+position = Vector2(-1376.0007, -468.00024)
+scale = Vector2(1.1309526, 1.0000002)
+polygon = PackedVector2Array(2100, 1212, 2606.6528, 1212, 2604, 1644, 2100, 1644)
 
 [node name="FurnitureBlock7_Behind" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2105607]
 monitoring = false
@@ -159,14 +163,15 @@ monitorable = false
 script = ExtResource("10_leaf_zone")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock7_Behind" unique_id=2105617]
-position = Vector2(-1056, -384)
-polygon = PackedVector2Array(2100, 1200, 2592, 1216, 2592, 1520, 2096, 1520)
+position = Vector2(-1308, -684)
+scale = Vector2(1.1189511, 1.1953126)
+polygon = PackedVector2Array(2101.9685, 1254.9019, 2541.666, 1264.941, 2541.666, 1515.9214, 2096, 1520)
 
 [node name="FurnitureBlock8" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1330758847]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock8" unique_id=1536479665]
-position = Vector2(-496.0299, 640.00037)
-scale = Vector2(1.0400386, 0.99999964)
+position = Vector2(-662.90625, 247.07208)
+scale = Vector2(1.0986328, 1.3149347)
 polygon = PackedVector2Array(2600, 1100, 3100, 1100, 3104, 1408, 2592, 1408)
 
 [node name="FurnitureBlock8_Behind" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2105608]
@@ -182,9 +187,9 @@ polygon = PackedVector2Array(2600, 1100, 3100, 1100, 3104, 1408, 2592, 1408)
 [node name="FurnitureBlock9" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2080597719]
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock9" unique_id=1877076947]
-position = Vector2(356.52173, 144)
-scale = Vector2(1.0380117, 1)
-polygon = PackedVector2Array(2400, 1600, 2913, 1616, 2913, 1904, 2401, 1904)
+position = Vector2(296.76068, -475.30164)
+scale = Vector2(1.0597873, 1.3569072)
+polygon = PackedVector2Array(2400, 1600, 2916.613, 1597.2365, 2913, 1904, 2401, 1904)
 
 [node name="FurnitureBlock9_Behind" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2105609]
 monitoring = false
@@ -192,8 +197,8 @@ monitorable = false
 script = ExtResource("10_leaf_zone")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="WalkableWorld/EnvironmentColliders/FurnitureBlock9_Behind" unique_id=2105619]
-position = Vector2(356.52173, 144)
-scale = Vector2(1.0380117, 1)
+position = Vector2(389.35925, 144)
+scale = Vector2(1.0233918, 1)
 polygon = PackedVector2Array(2400, 1600, 2913, 1616, 2913, 1904, 2401, 1904)
 
 [node name="DeskInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=505360998]
@@ -252,5 +257,6 @@ collected_bool_property = "classroom_desk_seen"
 interact_area_path = NodePath("../../WalkableWorld/EnvironmentColliders/DeskInteractArea")
 
 [node name="TopDialogueOverlay" parent="." unique_id=1525273252 instance=ExtResource("5_top_dialogue")]
+visible = false
 
 [node name="InteractPromptOverlay" parent="." unique_id=789816105 instance=ExtResource("6_interact_prompt")]

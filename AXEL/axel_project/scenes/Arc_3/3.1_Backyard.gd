@@ -153,6 +153,7 @@ func _configure_behind_occlusion_masks() -> void:
 		return
 	var polys: Array[PackedVector2Array] = []
 	var feathers: Array[float] = []
+	var cutoffs: Array[float] = []
 	for zone_name in ["Wall_Behind", "Bush_Behind", "Well_Behind"]:
 		var zone := get_node_or_null(
 			"WalkableWorld/EnvironmentColliders/%s" % zone_name
@@ -164,6 +165,7 @@ func _configure_behind_occlusion_masks() -> void:
 			feather = float(zone.get("feather_px"))
 		polys.append(poly)
 		feathers.append(feather)
+		cutoffs.append(_occlusion_y_cutoff(zone))
 	_player.call(
 		"configure_leaf_occlusion_polygons",
 		polys[0],
@@ -171,11 +173,25 @@ func _configure_behind_occlusion_masks() -> void:
 		feathers[0],
 		feathers[1],
 		_LEAF_FADE_ALPHA,
-		1e9,
-		1e9,
+		cutoffs[0],
+		cutoffs[1],
 		_LEAF_GATE_SOFTNESS,
 		polys[2],
 		feathers[2],
-		1e9,
+		cutoffs[2],
 		true,
 	)
+
+
+func _occlusion_y_cutoff(behind: Area2D) -> float:
+	if not is_instance_valid(behind):
+		return 1e9
+	var polygon_node := behind.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
+	if polygon_node == null or polygon_node.polygon.is_empty():
+		return 1e9
+	var max_y := -INF
+	for local_point in polygon_node.polygon:
+		max_y = maxf(max_y, polygon_node.to_global(local_point).y)
+	if max_y == -INF:
+		return 1e9
+	return max_y

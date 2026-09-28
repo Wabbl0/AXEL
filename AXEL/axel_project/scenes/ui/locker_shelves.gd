@@ -4,6 +4,7 @@ extends Control
 
 # Drag Flashlight, Key, and Nametag. ItemAnchor follows the locker picture.
 # Each picture stays hidden until that item is picked up. The shovel is not here.
+# After a correct board answer, the name tag picture becomes that item's icon.
 
 const LORE_PROPS: Array[Dictionary] = [
 	{
@@ -114,6 +115,40 @@ func _apply_visibility() -> void:
 		if gm != null and gm.has_method("get_flag"):
 			owned = bool(gm.call("get_flag", String(spec.get("flag", ""))))
 		sprite.visible = owned
+		if String(spec.get("node", "")) == "Nametag":
+			_apply_nametag_icon(sprite as Sprite2D)
+
+
+func _apply_nametag_icon(sprite: Sprite2D) -> void:
+	if sprite == null:
+		return
+	if not sprite.has_meta(&"authored_texture"):
+		sprite.set_meta(&"authored_texture", sprite.texture)
+	var icon := _answered_item_icon()
+	if icon != null:
+		sprite.texture = icon
+		return
+	var authored: Texture2D = sprite.get_meta(&"authored_texture")
+	if authored != null:
+		sprite.texture = authored
+
+
+func _answered_item_icon() -> Texture2D:
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("get_flag"):
+		return null
+	if not bool(gm.call("get_flag", "hasName")):
+		return null
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not run.has_method("load_item"):
+		return null
+	var item_id := String(run.state.board_item_id)
+	if item_id.is_empty():
+		return null
+	var item = run.call("load_item", item_id)
+	if item == null:
+		return null
+	return item.get("icon") as Texture2D
 
 
 func _bind_inventory() -> void:

@@ -39,6 +39,8 @@ const TEXT_BOOST := 1.5
 const PLAYER_LINE_COLOR := Color(1, 1, 1, 1)
 const OTHER_SPEAKER_COLOR := Color(1, 0, 0, 1)
 const GREY_SPEAKER_COLOR := Color(0.72, 0.72, 0.72, 1)
+const ENTRY_MAX_CHARS := 24
+const ENTRY_CARET_BLINK_MS := 500
 
 static var _type_loop_pos_sec := 0.0
 static var _reversed_open_stream: AudioStreamWAV = null
@@ -80,6 +82,13 @@ var _cursor_text := ""
 var _rest_offset_bottom := 0.0
 var _rest_offset_top := 0.0
 var _type_loop_wanted := false
+var _caret: ColorRect
+var _entry_active := false
+var _entry_armed := false
+var _entry_done := false
+var _entry_cancelled := false
+var _entry_text := ""
+var _entry_blink_origin_ms := 0
 
 
 func _ready() -> void:
@@ -94,6 +103,13 @@ func _ready() -> void:
 	_inner_style = _inner_panel.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
 	_inner_style_empty = StyleBoxEmpty.new()
 	_apply_chrome()
+	_caret = ColorRect.new()
+	_caret.name = "AnswerCaret"
+	_caret.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_caret.color = PLAYER_LINE_COLOR
+	_caret.visible = false
+	_caret.z_index = 5
+	$ViewportRoot.add_child(_caret)
 	_set_ignore_mouse_recursive(self)
 	set_process_input(true)
 	set_process(fx_cursor)
@@ -199,23 +215,36 @@ func _apply_slide_start_offsets() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _entry_active:
+		_place_entry_caret()
+		return
 	if _cursor_active and fx_cursor:
 		_label.text = _compose(_cursor_text)
 
 
 func _input(event: InputEvent) -> void:
-	if not _fade_root.visible or not _skip_input_enabled:
+	if _entry_active:
+		_handle_text_entry(event)
+		get_viewport().set_input_as_handled()
 		return
-	if not _is_advance_event(event):
+	if not wants_advance_event(event):
 		return
-	if not _handle_line_input():
-		return
+	_handle_line_input()
 	get_viewport().set_input_as_handled()
 
 
-func _is_advance_event(event: InputEvent) -> bool:
+func wants_advance_event(event: InputEvent) -> bool:
+	if not is_instance_valid(_fade_root) or not _fade_root.visible or not _skip_input_enabled:
+		return false
+	if not _is_advance_event(event):
+		return false
+	return _line_phase == LinePhase.TYPING or _line_phase == LinePhase.READY
 
+
+func _is_advance_event(event: InputEvent) -> bool:
 	if event.is_action_pressed("dialogue_advance"):
+		return true
+	if event.is_action_pressed("pause"):
 		return true
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
@@ -615,6 +644,7 @@ func _set_typing_label(visible_text: String) -> void:
 
 
 func interrupt_line() -> void:
+	_cancel_text_entry()
 	_line_token += 1
 	_line_phase = LinePhase.NONE
 	_sequence_active = false
@@ -650,7 +680,15 @@ func is_bar_visible() -> bool:
 
 
 func is_sequence_busy() -> bool:
-	return _sequence_active or _line_phase != LinePhase.NONE or is_bar_visible()
+	return _sequence_active or _entry_active or _line_phase != LinePhase.NONE or is_bar_visible()
+
+
+func is_text_entry_active() -> bool:
+	return _entry_active
+
+
+func is_text_entry_armed() -> bool:
+	return _entry_armed
 
 
 func _line_alive(token: int) -> bool:
@@ -694,10 +732,15 @@ func show_line(
 	await show_lines([text], _settings_cps(chars_per_sec), allow_skip)
 
 
+func show_lines_keep_bar(texts: Array) -> void:
+	await show_lines(texts, DEFAULT_CHARS_PER_SEC, true, true)
+
+
 func show_lines(
 	texts: Array,
 	chars_per_sec: float = DEFAULT_CHARS_PER_SEC,
 	allow_skip: bool = true,
+	keep_bar: bool = false,
 ) -> void:
 	chars_per_sec = _settings_cps(chars_per_sec)
 	if texts.is_empty():
@@ -735,6 +778,15 @@ func show_lines(
 		await _wait_for_advance(token, _compute_advance_deadline_ms())
 		if not _line_alive(token):
 			return
+
+	if keep_bar:
+		_line_phase = LinePhase.NONE
+		_skip_input_enabled = false
+		_sequence_active = true
+		_label.text = ""
+		_active_line_text = ""
+		_lock_bottom_layout()
+		return
 
 	await hide_line()
 
@@ -890,6 +942,190 @@ func _run_typewriter(
 
 	_active_line_start_ms = Time.get_ticks_msec()
 	_line_phase = LinePhase.READY
+
+
+func await_text_entry() -> Dictionary:
+	visible = true
+	_line_token += 1
+	var token := _line_token
+	_sequence_active = true
+	_entry_active = true
+	_entry_armed = false
+	_entry_done = false
+	_entry_cancelled = false
+	_entry_text = ""
+	_entry_blink_origin_ms = Time.get_ticks_msec()
+	_line_phase = LinePhase.NONE
+	_skip_input_enabled = false
+	_advance_requested = false
+	_skip_requested = false
+	_reset_line_color()
+	if is_instance_valid(_label):
+		_label.text = ""
+	_active_line_text = ""
+	set_process(true)
+	if not is_bar_visible():
+		await _fade_in()
+		if not _line_alive(token):
+			_end_text_entry_visual()
+			return {"text": "", "cancelled": true}
+	_lock_bottom_layout()
+	_place_entry_caret()
+	while _line_alive(token) and not _entry_done:
+		if not await _await_process_frame():
+			break
+	var cancelled := _entry_cancelled or not _line_alive(token)
+	var text := "" if cancelled else _entry_text
+	_end_text_entry_visual()
+	if _line_alive(token):
+		await hide_line()
+	return {"text": text, "cancelled": cancelled}
+
+
+func _handle_text_entry(event: InputEvent) -> void:
+	if _is_entry_cancel(event):
+		_finish_text_entry(true)
+		return
+	if not _entry_armed:
+		if _is_entry_box_press(event):
+			_entry_armed = true
+			_entry_blink_origin_ms = Time.get_ticks_msec()
+			_place_entry_caret()
+			return
+		if _is_entry_delete(event):
+			_finish_text_entry(true)
+		return
+	if _is_entry_delete(event):
+		if _entry_text.is_empty():
+			_finish_text_entry(true)
+		else:
+			_entry_text = _entry_text.left(_entry_text.length() - 1)
+			_label.text = _entry_text
+		return
+	if _is_entry_submit(event):
+		if _entry_text.strip_edges().is_empty():
+			return
+		_finish_text_entry(false)
+		return
+	_append_entry_char(event)
+
+
+func _is_entry_cancel(event: InputEvent) -> bool:
+	if event.is_echo() or not event.is_pressed():
+		return false
+	if event.is_action("pause"):
+		return true
+	return event is InputEventJoypadButton and event.is_action("back")
+
+
+func _is_entry_delete(event: InputEvent) -> bool:
+	if not (event is InputEventKey) or not event.is_pressed():
+		return false
+	if event.is_action("pause"):
+		return false
+	return event.is_action("back")
+
+
+func _is_entry_submit(event: InputEvent) -> bool:
+	if event.is_echo() or not event.is_pressed():
+		return false
+	if event is InputEventJoypadButton and event.is_action("interact"):
+		return true
+	if event is InputEventKey and event.is_action("interact"):
+		return (event as InputEventKey).unicode < 32
+	return false
+
+
+func _is_entry_box_press(event: InputEvent) -> bool:
+	if event.is_echo():
+		return false
+	if event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		if not mouse.pressed or mouse.button_index != MOUSE_BUTTON_LEFT:
+			return false
+		return is_instance_valid(_panel) and _panel.get_global_rect().has_point(mouse.position)
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		return (
+			touch.pressed
+			and is_instance_valid(_panel)
+			and _panel.get_global_rect().has_point(touch.position)
+		)
+	return event.is_action_pressed("interact")
+
+
+func _append_entry_char(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var key := event as InputEventKey
+	if not key.pressed:
+		return
+	if key.ctrl_pressed or key.alt_pressed or key.meta_pressed:
+		return
+	if _entry_text.length() >= ENTRY_MAX_CHARS:
+		return
+	var code := key.unicode
+	var ok := (
+		code == 32
+		or (code >= 48 and code <= 57)
+		or (code >= 65 and code <= 90)
+		or (code >= 97 and code <= 122)
+	)
+	if not ok:
+		return
+	_entry_text += char(code)
+	_label.text = _entry_text
+
+
+func _finish_text_entry(cancelled: bool) -> void:
+	if _entry_done:
+		return
+	_entry_cancelled = cancelled
+	_entry_done = true
+
+
+func _cancel_text_entry() -> void:
+	if not _entry_active:
+		return
+	_finish_text_entry(true)
+	_end_text_entry_visual()
+
+
+func _end_text_entry_visual() -> void:
+	_entry_active = false
+	_entry_armed = false
+	if is_instance_valid(_caret):
+		_caret.visible = false
+	set_process(fx_cursor)
+
+
+func _place_entry_caret() -> void:
+	if not is_instance_valid(_caret) or not is_instance_valid(_label):
+		return
+	var font := _label.get_theme_font("font")
+	var font_size := _label.get_theme_font_size("font_size")
+	if font == null or font_size <= 0:
+		_caret.visible = false
+		return
+	var text_w := font.get_string_size(
+		_entry_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+	).x
+	var caret_h := font.get_string_size(
+		"M", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+	).y
+	var label_rect := _label.get_global_rect()
+	if label_rect.size.x <= 1.0 or label_rect.size.y <= 1.0:
+		_caret.visible = false
+		return
+	var caret_w := maxf(3.0, round(float(font_size) * 0.1))
+	var gap := 0.0 if _entry_text.is_empty() else caret_w
+	var caret_x := label_rect.position.x + (label_rect.size.x - text_w) * 0.5 + text_w + gap
+	var caret_y := label_rect.position.y + (label_rect.size.y - caret_h) * 0.5
+	_caret.global_position = Vector2(caret_x, caret_y)
+	_caret.size = Vector2(caret_w, caret_h)
+	_caret.color = OTHER_SPEAKER_COLOR if _entry_armed else PLAYER_LINE_COLOR
+	var elapsed := Time.get_ticks_msec() - _entry_blink_origin_ms
+	_caret.visible = int(elapsed / ENTRY_CARET_BLINK_MS) % 2 == 0
 
 
 func hide_line() -> void:

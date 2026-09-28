@@ -148,12 +148,8 @@
 
 **Dialogue:**
 
-> [instead of the name, the game just runs a check if the puzzle was completed in the classroom]
+> The body is waiting for a name.
 
-**Input:** Text field — correct answer: `AXEL` (case-insensitive)
-
-**On correct + has Name flag:** → Ending True
-**On correct + no Name flag:** → Ending 4
-**On wrong answer:** → Ending 3 (auto-routed after 2 seconds)
+**Implemented (Godot):** Grey-box `6.8` does not ask you to type. **Face it** opens the true ending when the classroom board was answered and that floor item is equipped. Otherwise it opens Ending 4. Ending 3 is not opened from here.
 
 ---

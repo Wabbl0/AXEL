@@ -29,7 +29,7 @@ size = Vector2(765, 1426.5)
 size = Vector2(464, 1982)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_top_left_shelves"]
-size = Vector2(862, 280)
+size = Vector2(827, 240)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_door_interact"]
 size = Vector2(516, 351.5)
@@ -104,7 +104,7 @@ shape = SubResource("RectangleShape2D_right_shelves")
 position = Vector2(645, 250)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TopLeftShelvesBlock" unique_id=1809542865]
-position = Vector2(47, -98)
+position = Vector2(29.5, -130)
 shape = SubResource("RectangleShape2D_top_left_shelves")
 
 [node name="DoorInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1841412176]

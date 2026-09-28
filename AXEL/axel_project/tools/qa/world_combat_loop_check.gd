@@ -61,16 +61,22 @@ func _main() -> void:
 
 func _check_area_table(world: Node) -> void:
 	var areas: Dictionary = world.AREAS
-	if areas.size() != 6:
-		_fail("expected 6 areas, got %d" % areas.size())
+	if areas.size() != 7:
+		_fail("expected 7 areas, got %d" % areas.size())
+	if not areas.has("backyard"):
+		_fail("backyard area missing")
+	else:
+		var backyard_rooms: Dictionary = areas["backyard"]["rooms"]
+		if int(backyard_rooms.get(NEVER_FIGHTS[0], -1)) != 2:
+			_fail("backyard should hold 2 floor items")
+		if bool(areas["backyard"].get("walk", true)):
+			_fail("backyard must not walk-fight")
 	for room_path in _all_rooms(areas):
 		if not ResourceLoader.exists(room_path):
 			_fail("area room missing on disk: %s" % room_path)
 		if not bool(world.call("is_indoor_scene", room_path)):
 			_fail("area room not reported indoor: %s" % room_path)
 	for path in NEVER_FIGHTS:
-		if bool(world.call("is_indoor_scene", path)):
-			_fail("outdoor scene must not allow step fights: %s" % path)
 		if bool(world.call("can_walk_fight", path)):
 			_fail("outdoor scene must never walk-fight: %s" % path)
 

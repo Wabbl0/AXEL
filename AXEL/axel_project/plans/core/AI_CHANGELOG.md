@@ -7583,4 +7583,176 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared the sentences to `axel_post_fx_stack.gd`, `axel_world.gd` (`INTERACT_PAD_PX`), `world_item_info_card.gd`, and `1.4_BasementDoor.tscn`.
 - Notes: `1.4` script still looks for `CafeteriaInteractArea`, and the scene plan still describes that door, but the working-tree scene file does not contain the node. Docs were left as written. Restore the door in the scene if the cafeteria exit should still work.
 
+## 2026-09-28
+
+### Scene 4.1 — left cabinet behind filter
+
+- Request: Add a behind filter for the left cabinet block in scene 4.1.
+- Implementation: Added `LeftCabinetBlock_Behind` (`leaf_occlusion_zone.gd`, feather 2) under `EnvironmentColliders`. The green polygon is the upper part of `LeftCabinetBlock`, not the full floor-length blocker, so standing in front of the lower doors does not fade Mike. `4.1_TeachersLounge.gd` sends it as the third shader slot after the table and chair. The fade line is the bottom of that green polygon.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Walking behind the upper left cabinet fades Mike. Drag the green polygon in the editor to match the drawing. The walk blocker is unchanged.
+- Verification: Headless load of `4.1_TeachersLounge.tscn` exit 0. No script error.
+- Notes: Shader still has a free slot (6 max; this room uses 3).
+
+### Scene 4.1 — Mike 33% larger
+
+- Request: Increase the scene 4.1 player model size and speed by 33%.
+- Implementation: Authored Player scale `0.257` → `0.342` (`0.257 × 1.33`, three decimals). Speed comes from `PlayerWalkSpeed.from_scale` and is `293.3` (above scale `0.3`, so the small-scale extra no longer applies). Memory glow and floor-hand size follow that scale (`2.582` / `200.0`). Edge walls grew inward to the new inset (Left 170, Right 163, Top 358, Bottom 200). Player node moved from x `160` to `210` so the feet circle is not inside the thicker left wall.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/core/test/indicator_fit_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Mike is a third bigger in the lounge and walks faster. Other rooms are unchanged.
+- Verification: `indicator_fit_check.gd` exit 0. Lounge walls in `wall_sprite_clearance_check.gd` all PASS (other rooms still fail that check; they already did).
+- Notes: A flat 33% on the old speed `226.9` would be `301.8`. Live speed is the scale formula, which drops the below-`0.3` bonus.
+
+### Scene 4.1 — table behind filter front edge
+
+- Request: The center table behind filter still fades Mike when he stands in front of it.
+- Implementation: The fade line was one flat row at the polygon’s lowest corner. The table front slants, so the higher part of that front still counted as “behind.” When a zone’s fade line is that polygon’s own lowest point, the shader now uses the near edge at Mike’s feet. Trunk lines that are not the polygon bottom (trees) stay as they were.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/scripts/Player.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Standing in front of a slanted behind polygon stays solid. Walking behind it still fades. The green table polygon is unchanged.
+- Verification: Windowed lounge load, no `SHADER ERROR`.
+
+### Scene 4.1 — locker key picture on the pickup
+
+- Request: Use the same key PNG from scene 1.3 as the interactable key.
+- Implementation: Added `KeyVisual` under `EnvironmentColliders` using `exports/Drawings/Key.png` (the locker shelf key). It sits on the key `[E]` box, lies on its side like the shelf, and pulses a faint black halo so noir turns it red. Taking the key hides the picture and the interact box.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.tscn`
+  - `AXEL/axel_project/scenes/Arc_4/4.1_TeachersLounge.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC4.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The lounge key is a picture you can walk up to and take. After pickup it is gone. Drag `KeyVisual` if it is not on the right spot of the table.
+- Verification: Windowed load of `4.1_TeachersLounge.tscn`, no `SHADER ERROR`.
+
+### Pause menu centered in every scene
+
+- Request: The pause menu is not centered in every scene.
+- Implementation: The pause column sits in a full-window `CenterContainer` instead of starting 36 px from the top. The pause layer is 250 so combat overlays (up to 220) cannot cover it. The seed label stays bottom-right. Title screens still have no pause menu.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/tools/qa/pause_contract_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Esc in a room or a fight shows the PAUSED column in the middle of the window, above the fight art.
+- Verification: `pause_contract_check.gd` exit 0 (column center in 1.2 and combat, layer above 220). `menu_nav_check.gd` exit 0.
+- Notes: Options opened from pause is still a full-page list, not this centered column.
+
+### Pause Dev Tools in rooms, plus no encounters
+
+- Request: Show Dev Tools from pause while walking, with the same fight buttons as before, plus a switch that stops walking and picking items from starting combat.
+- Implementation: In a debug build, pause shows Dev Tools in rooms and fights. The panel stays open outside combat. **Disable combat encounters** is a session switch on `AxelWorld` that blocks `start_fight_here`, `start_fight_to_scene`, and walk-step rolls. Floor items still appear and can be picked. The switch is not saved and starts off. Release builds hide the button.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/pause_menu.gd`
+  - `AXEL/axel_project/scripts/debug/axel_combat_dev_tools.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/tools/qa/pause_contract_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Esc, then Dev Tools, then the switch. Walk steps, floor pickups, lore pickups, memory stills, and the locker tutorial do not start a fight until the switch is turned off or the game is restarted. A lore item taken while the switch is on does not fight later.
+- Verification: `pause_contract_check.gd` exit 0. `world_combat_loop_check.gd` exit 0.
+- Notes: Fight buttons (guarantees, bankroll, skip spin) still only change the fight you are already in.
+
+### Esc skips dialogue lines
+
+- Request: Esc should also skip dialogue lines.
+- Implementation: While a line is typing or waiting, the pause key (Esc, and gamepad Start) does the same thing as Tab / E / Space / Enter. The locker hub no longer eats that press during a line, so Esc advances the text instead of doing nothing or leaving. The item wheel does not take the press while dialogue is busy. After the bar closes, Esc still pauses or leaves as before.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`
+  - `AXEL/axel_project/scenes/ui/item_wheel.gd`
+  - `AXEL/axel_project/tools/qa/pause_contract_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: One Esc shows the rest of the current line. Another Esc goes to the next line. That press does not pause and does not leave the locker or a memory still.
+- Verification: `pause_contract_check.gd` exit 0 (Esc skips a 1.2 line and the locker first line, and does not pause or leave). `determinism_check.gd`, `powers_check.gd`, `combat_test_scaffold_check.gd`, and `scene_smoke_check.gd` exit 0.
+- Notes: Backspace and Delete still do not skip lines.
+
+### Scene 5.1 — board answer in the dialogue bar
+
+- Request: The written answer in 5.1 should not be its own scene. It should be a text box in the dialogue bar, with a blinking line that turns from white to red when the box is pressed, and only then accept typing.
+- Implementation: After the board lines, the same dialogue bar stays up. A caret blinks white in that bar. Clicking the bar, tapping it, or pressing interact turns the caret red and typing starts. Enter submits. `AXEL` sets the name flags, plays the success line, and starts the name fight. Any other answer plays `Nah.` Esc (or Backspace before you type) leaves the field. The classroom no longer opens `5.3_ClassroomBoard`.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/tools/qa/board_text_entry_check.gd`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Looking at the board keeps you in the classroom. The answer is typed in the dialogue bar. A correct name still grants the name and can start that lore fight.
+- Verification: `board_text_entry_check.gd` exit 0 (caret stays in the bar, white until pressed, then red, then `AXEL` submits). `determinism_check.gd`, `powers_check.gd`, `combat_test_scaffold_check.gd`, `scene_smoke_check.gd`, and `pause_contract_check.gd` exit 0.
+- Notes: Grey-box scenes `5.3` and `5.4` are still on disk for the old flow check. Gameplay does not open them.
+
+### Behind filters — front edge in every room
+
+- Request: Scene 5.1 still fades Mike when he stands in front of a behind filter, the same bug other rooms had. Apply the 4.1 front-edge fix across every scene.
+- Implementation: 5.1’s fade line is now each `FurnitureBlock*_Behind` polygon’s own lowest point, not the walk blocker. 3.1 wall, bush, and well use that same line. Feet-sampling stays on the wall only, so Mike still fades above `TopWall` when his feet are in the wall shape; bush and well no longer skip the front check. 1.1 stump and rocks use each green polygon’s own lowest point. Tree trunk lines and the right wall (shape only) are unchanged. 2.1 and 4.1 already used this line. When the fade line is the polygon’s own lowest point, a slanted front still follows Mike’s feet.
+- Files changed:
+  - `AXEL/axel_project/scenes/Arc_5/5.1_Classroom.gd`
+  - `AXEL/axel_project/scenes/Arc_3/3.1_Backyard.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/fx/white_sprite.gdshader`
+  - `AXEL/axel_project/tools/qa/behind_front_edge_check.gd`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC3.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Standing in front of a green behind shape stays solid in 5.1, 3.1, and on the 1.1 stump and rocks. Walking behind it still fades. Trees still fade only past the trunk.
+- Verification: `behind_front_edge_check.gd` exit 0 (5.1 furniture 6–9, 3.1 wall/bush/well, and 1.1 stump/rocks cutoffs match each green polygon’s lowest point; 1.1 trees stay on the trunk; right wall stays open). `scene_smoke_check.gd`, `determinism_check.gd`, `powers_check.gd`, and `combat_test_scaffold_check.gd` exit 0.
+- Notes: Furniture 1–5 in 5.1 still have no behind filter.
+
+### Locker map travel, item cards, and pins
+
+- Request: On the locker map, travel to a room only after visiting it and picking up at least one item. Highlighting a room should list that room's items the way the overworld does, and small item-hand marks should sit on the map where those items are in the room. Backyard should spawn items. Pause Map should be the same map.
+- Implementation: Both maps use the locker overlay. A room with floor items travels after a visit and one pickup. Entrance travels after a visit. Hallway is `2.4`. Hover lists remaining items to the right of the highlight (icon, rarity name, description, no `[E]`). A small pointing hand is placed by mapping the item's pixel on the room drawing into that highlight. `3.1` now rolls 2 floor items and still never walk-fights. An old save gains backyard items only when that room has no saved list. Pause Map drops the old 3D room buttons. Its `X` still returns to the saved spot. A travel click still uses the Player node. The basement is not a button on this map.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/scenes/ui/locker_map_overlay.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_LockerHub.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_SchoolMap.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.3_SchoolMap.tscn`
+  - `AXEL/axel_project/tools/qa/locker_map_travel_check.gd`
+  - `AXEL/axel_project/tools/qa/world_combat_loop_check.gd`
+  - `AXEL/axel_project/tools/qa/world_item_scatter_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Clicking a locked room does nothing. Picked-up items leave the map. Leaving the locker with `X` still starts the tutorial fight. Travel from the map does not.
+- Verification: `locker_map_travel_check.gd` exit 0 (entrance after a visit, hallway and cafeteria only after one pickup, center pin, card text visible). `world_combat_loop_check.gd`, `world_item_scatter_check.gd` (backyard has 2 hands and does not walk-fight), `pause_map_restore_check.gd`, `determinism_check.gd`, `powers_check.gd`, `combat_test_scaffold_check.gd`, and `scene_smoke_check.gd` exit 0.
+- Notes: Backyard walk fights stay off on purpose.
+
+### Docs matched to the board question, corpse, and cursor
+
+- Request: Update docs.
+- Implementation: Canon now says the classroom board asks which room one seed-picked floor item is in (or was in, if already taken), with one guess. A right answer sets the name flags, starts the name fight, and swaps the locker name-tag picture to that item's icon. The basement corpse does not ask you to type `AXEL`. **Face it** opens the true ending only when that item is equipped; otherwise Ending 4. Ending 3 is not opened from the corpse. The custom mouse is `AxelCursor` (hidden system cursor, `axel_cursor.png`, about 33 px, CanvasLayer 400). The world-loop plan no longer says the locker is equip-only or that the map uses dark `?????` cards.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC5.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC6.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC7.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None in the game. Future edits should follow the room question and the equipped-item corpse check, not a typed name.
+- Verification: Compared the sentences to `axel_world.gd` (`ensure_board_question`, `ROOM_ANSWER_ALIASES`, `map_can_travel`, `answered_item_equipped`), `5.1_Classroom.gd`, `greybox_choice.gd` (`6.8`), `locker_shelves.gd`, and `axel_cursor.gd`. `board_room_question_check.gd` exit 0.
+- Notes: The earlier 2026-09-28 board entry still says a correct answer is `AXEL`. That is out of date. This entry replaces it.
+
 

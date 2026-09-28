@@ -27,6 +27,9 @@ extends Resource
 @export var tutorial_fight_pending: bool = false
 @export var tutorial_fight_done: bool = false
 @export var fought_rooms: PackedStringArray = PackedStringArray()
+@export var board_item_id: String = ""
+@export var board_room_scene: String = ""
+@export var board_guess_spent: bool = false
 
 
 func to_dict() -> Dictionary:
@@ -57,6 +60,9 @@ func to_dict() -> Dictionary:
 		"tutorial_fight_pending": tutorial_fight_pending,
 		"tutorial_fight_done": tutorial_fight_done,
 		"fought_rooms": Array(fought_rooms),
+		"board_item_id": board_item_id,
+		"board_room_scene": board_room_scene,
+		"board_guess_spent": board_guess_spent,
 	}
 
 
@@ -90,4 +96,7 @@ static func from_dict(data: Dictionary) -> RunState:
 	state.tutorial_fight_pending = bool(data.get("tutorial_fight_pending", false))
 	state.tutorial_fight_done = bool(data.get("tutorial_fight_done", false))
 	state.fought_rooms = PackedStringArray(data.get("fought_rooms", []))
+	state.board_item_id = String(data.get("board_item_id", ""))
+	state.board_room_scene = String(data.get("board_room_scene", ""))
+	state.board_guess_spent = bool(data.get("board_guess_spent", false))
 	return state

@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 AxelSettings="*res://scripts/autoload/axel_settings.gd"
+AxelCursor="*res://scripts/autoload/axel_cursor.gd"
 AxelSaves="*res://scripts/autoload/axel_saves.gd"
 GameManager="*res://exports/GameManager.gd"
 AxelRun="*res://scripts/autoload/axel_run.gd"

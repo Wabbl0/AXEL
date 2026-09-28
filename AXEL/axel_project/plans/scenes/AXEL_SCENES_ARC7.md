@@ -12,7 +12,7 @@
 
 > Coward.
 >
-> *(repeat `"Coward."` 100 times)*
+> *(repeat* `"Coward."` *100 times)*
 
 **Choices:**
 
@@ -24,8 +24,9 @@
 
 **Implemented (Godot):** `7.1_Ending1.tscn` + `.gd` — white void fill + `TopDialogueOverlay`; plays `"Coward."` 100 times via `show_lines` (skip/auto-advance allowed), then `change_scene_to_file` to `0.1_MainMenu.tscn`. Reachable by walking left off `1.1_SchoolExterior` after the intro. No embedded post-FX.
 
-
 ---
+
+
 
 ### 7.2 Ending 2 — Darkness (`ending_2`)
 
@@ -51,17 +52,19 @@
 >
 > Maybe it's in the kitchen. I don't know.
 >
-> Your dumb.
+> You're dumb.
 
 **Choices:**
 
 
 | Button label | Target                       |
-| ------------ | ----------------------------- |
+| ------------ | ---------------------------- |
 | Start again  | School Exterior (full reset) |
 
 
 ---
+
+
 
 ### 7.3 Ending 3 — Wrong Answer (`ending_3`)
 
@@ -77,11 +80,14 @@
 
 
 | Button label | Target                       |
-| ------------ | ----------------------------- |
+| ------------ | ---------------------------- |
 | Start again  | School Exterior (full reset) |
 
+**Implemented (Godot):** Gameplay does not open this scene. A wrong board answer stays in the classroom (`Nah.`). The corpse uses Ending 4 or the true ending.
 
 ---
+
+
 
 ### 7.4 Ending 4 — No Name (`ending_4`)
 
@@ -89,7 +95,7 @@
 
 **Dialogue:**
 
-> [instead of the name, the game just runs a check if the puzzle was completed in the classroom]
+> [the basement corpse checks that the answered floor item is equipped; if not, this ending]
 >
 > You hear sirens.
 >
@@ -101,11 +107,13 @@
 
 
 | Button label | Target                       |
-| ------------ | ----------------------------- |
+| ------------ | ---------------------------- |
 | Start again  | School Exterior (full reset) |
 
 
 ---
+
+
 
 ### 7.5 True Ending (`ending_true`)
 
@@ -137,6 +145,8 @@
 
 ---
 
+
+
 ### 7.6 Epilogue (`epilogue`)
 
 **Location label:** `EPILOGUE`
@@ -157,8 +167,9 @@
 
 
 | Button label | Target                       |
-| ------------ | ----------------------------- |
+| ------------ | ---------------------------- |
 | Exit         | School Exterior (full reset) |
 
 
 ---
+

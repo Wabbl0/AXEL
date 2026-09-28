@@ -3,7 +3,6 @@ extends SceneTree
 const NO_FLOOR_ITEMS := [
 	"res://scenes/Arc_1/1.1_SchoolExterior.tscn",
 	"res://scenes/Arc_1/1.2_Corridor.tscn",
-	"res://scenes/Arc_3/3.1_Backyard.tscn",
 ]
 const BASEMENT := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 
