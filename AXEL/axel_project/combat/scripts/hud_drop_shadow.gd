@@ -1,12 +1,16 @@
 extends TextureRect
 
 # Screen pixels. The free-spin bars use this same shift and softness.
-const COLOR := Color(0.22, 0.22, 0.22, 1.0)
+const COLOR := Color(0.15, 0.15, 0.15, 1.0)
 const OFFSET := Vector2(2.0, 3.0)
 const SHADER := preload("res://combat/shaders/piece_drop_shadow.gdshader")
 const SELF_PATH := "res://combat/scripts/hud_drop_shadow.gd"
+const SHADOW_LAYER := 92
 
 var _art: TextureRect
+var _locked := false
+var _locked_xform := Transform2D.IDENTITY
+var _screen_offset := OFFSET
 
 
 static func softness_px(art_scale: float) -> int:
@@ -16,29 +20,26 @@ static func softness_px(art_scale: float) -> int:
 static func attach_beside(art: TextureRect) -> TextureRect:
 	if art == null:
 		return null
-	var canvas := _canvas_of(art)
-	if canvas == null:
+	var host := _shadow_host(art)
+	if host == null:
 		return null
 	var shadow_name := "DropShadow_" + _piece_key(art)
-	var existing := canvas.get_node_or_null(shadow_name) as TextureRect
+	var existing := host.get_node_or_null(shadow_name) as TextureRect
 	if existing != null and existing.has_method("set_art"):
 		existing.call("set_art", art)
 		return existing
-	if not canvas.is_node_ready():
-		canvas.ready.connect(func() -> void: attach_beside(art), CONNECT_ONE_SHOT)
+	if not host.is_node_ready():
+		host.ready.connect(func() -> void: attach_beside(art), CONNECT_ONE_SHOT)
 		return null
 	var shadow := _make()
 	shadow.name = shadow_name
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shadow.stretch_mode = TextureRect.STRETCH_SCALE
-	canvas.add_child(shadow)
-	if shadow.get_parent() != canvas:
+	host.add_child(shadow)
+	if shadow.get_parent() != host:
 		shadow.free()
 		return null
-	var plate := canvas.get_node_or_null("HudArt")
-	if plate != null:
-		canvas.move_child(shadow, plate.get_index() + 1)
 	shadow.call("setup", art)
 	return shadow
 
@@ -47,13 +48,44 @@ static func _make() -> TextureRect:
 	return (load(SELF_PATH) as GDScript).new() as TextureRect
 
 
-static func _canvas_of(node: Node) -> Control:
+static func _shadow_host(art: Node) -> Control:
+	var root := _scene_root(art)
+	if root == null:
+		return null
+	var layer := root.get_node_or_null("HudShadowLayer") as CanvasLayer
+	if layer == null:
+		if not root.is_node_ready():
+			if not root.ready.is_connected(_attach_when_ready.bind(art)):
+				root.ready.connect(_attach_when_ready.bind(art), CONNECT_ONE_SHOT)
+			return null
+		layer = CanvasLayer.new()
+		layer.name = "HudShadowLayer"
+		layer.layer = SHADOW_LAYER
+		root.add_child(layer)
+	var host := layer.get_node_or_null("ShadowRoot") as Control
+	if host == null:
+		host = Control.new()
+		host.name = "ShadowRoot"
+		host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		layer.add_child(host)
+		host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return host
+
+
+static func _attach_when_ready(art: TextureRect) -> void:
+	if is_instance_valid(art):
+		attach_beside(art)
+
+
+static func _scene_root(node: Node) -> Node:
+	var tree := node.get_tree()
+	if tree == null:
+		return null
 	var current := node
-	while current != null:
-		if current.name == "HudCanvas" and current is Control:
-			return current as Control
+	while current.get_parent() != null and current.get_parent() != tree.root:
 		current = current.get_parent()
-	return null
+	return current
 
 
 static func _piece_key(art: Node) -> String:
@@ -82,6 +114,13 @@ func setup(art: TextureRect) -> void:
 	_sync()
 
 
+func set_locked_global(xform: Transform2D, offset: Vector2) -> void:
+	_locked = true
+	_locked_xform = xform
+	_screen_offset = offset
+	_sync()
+
+
 func set_art(art: TextureRect) -> void:
 	_art = art
 	_sync()
@@ -98,19 +137,20 @@ func _sync() -> void:
 	if _art.size.x < 2.0 or _art.size.y < 2.0:
 		visible = false
 		return
-	var canvas := _canvas_of(self)
-	if canvas == null:
+	var xform := _art.get_global_transform()
+	if _locked:
+		xform = _locked_xform
+	var host := get_parent() as Control
+	if host == null:
 		visible = false
 		return
 	visible = true
-	var rel := canvas.get_global_transform().affine_inverse() * _art.get_global_transform()
-	var origin := rel * Vector2.ZERO
-	var scale_now := rel.get_scale()
+	var origin := host.get_global_transform().affine_inverse() * xform.origin
+	var scale_now := xform.get_scale()
 	var local_size := Vector2(_art.size.x * absf(scale_now.x), _art.size.y * absf(scale_now.y))
-	var canvas_scale := _parent_scale()
-	var screen_soft := float(softness_px(maxf(canvas_scale.x, 0.01)))
-	var pad := Vector2(screen_soft / canvas_scale.x, screen_soft / canvas_scale.y)
-	var off := Vector2(OFFSET.x / canvas_scale.x, OFFSET.y / canvas_scale.y)
+	var screen_soft := float(softness_px(maxf(absf(scale_now.x), 0.01)))
+	var pad := Vector2(screen_soft, screen_soft)
+	var off := _screen_offset
 	_place(origin + off - pad, local_size + pad * 2.0)
 	texture = _art.texture
 	var mat := material as ShaderMaterial
@@ -119,6 +159,7 @@ func _sync() -> void:
 	mat.set_shader_parameter("art_size_px", local_size)
 	mat.set_shader_parameter("pad_px", pad)
 	mat.set_shader_parameter("blur_px", maxf(pad.x, pad.y))
+	mat.set_shader_parameter("shift_px", off)
 	mat.set_shader_parameter("shadow_color", COLOR)
 
 
@@ -132,11 +173,3 @@ func _place(rect_pos: Vector2, rect_size: Vector2) -> void:
 	anchor_bottom = 0.0
 	position = rect_pos
 	size = rect_size
-
-
-func _parent_scale() -> Vector2:
-	var parent := get_parent() as CanvasItem
-	if parent == null:
-		return Vector2.ONE
-	var scale_now := parent.get_global_transform().get_scale()
-	return Vector2(maxf(absf(scale_now.x), 0.01), maxf(absf(scale_now.y), 0.01))

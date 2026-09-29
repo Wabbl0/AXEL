@@ -8247,4 +8247,55 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: Those frames and the skull read as sitting slightly off the plate. Clicks still land on the frames, not the shadow.
 - Verification: `hud_piece_placement_check.gd` exit 0 (8 pieces on plate).
 
+### Louder default mix
+
+- Request: The overall mix is quiet. Use the Master compressor in `default_bus_layout.tres` so the game is louder by default.
+- Implementation: The Master compressor now starts compressing at -14 dB with ratio 2, then adds +12 dB. A hard limiter sits after it with no extra gain, so peaks stay under 0 dB. Options sliders and bus volume knobs are unchanged. Master stays unmuted.
+- Files changed:
+  - `AXEL/axel_project/default_bus_layout.tres`
+  - `AXEL/axel_project/tools/qa/audio_bus_layout_check.gd`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Music, typing, and every other sound are louder at the same Options sliders. Loud hits are held back so they do not crackle. Restart the game to hear it.
+- Verification: `audio_bus_layout_check.gd` exit 0.
+
+### Playtest fixes: options, load cover, continue, shadows, goal
+
+- Request: Smaller centered option sliders with one text column and larger type. Fade to black before a new game loads, then fade in the intro. Make the typewriter open click louder without raising Master. Continue and Load must not start the coward ending from a bad 1.1 position. Combat drop shadows should be very dark grey, and the skull shadow should stay on the lower left. Grid wins should add the same amount to balance and the goal.
+- Implementation: Option bars are one sixth of the window, captions share one left column, and the type is about 33% larger. New Game fades a black cover, waits for floor-item spots, then reveals the 1.1 intro. The open/close click is -6 dB on its own player. Saves skip exit and intro positions, and a load that lands in an exit snap back to the scene spawn. Shadows draw above noir as a dark grey lip. The skull shadow is locked to the lower left. Every grid win, including Vice Round and Free Spins, credits the goal when it credits the spin.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/options_panel.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/MainMenu.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/Saves.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.tscn`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_saves.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/combat/scripts/hud_drop_shadow.gd`
+  - `AXEL/axel_project/combat/shaders/piece_drop_shadow.gdshader`
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/test/free_spins_round_check.gd`
+  - `AXEL/axel_project/tools/qa/playtest_fix_groups_check.gd`
+  - `AXEL/axel_project/tools/qa/hud_piece_placement_check.gd`
+  - `AXEL/axel_project/tools/qa/continue_exit_spawn_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Options text lines up and the bars are shorter. New Game hides the load hitch behind black. The dialogue bar click is louder. Continue from 1.1 no longer plays Ending 1. Combat shadows stay grey, and the skull shadow sits still on the lower left. The goal counter rises with each grid win by the same amount as the balance.
+- Verification: Headless checks listed in the playtest plan.
+
+### Docs matched to the louder mix, load cover, and live goal
+
+- Request: Update docs.
+- Implementation: Canon and the combat plans no longer say Vice or Free Spin wins wait until the bar closes before they hit GOAL. Each grid win is credited as it lands, the same number added to balance; the bar still shows the running total until that round ends. New Game’s black cover, the Continue/Load exit snap, and the Master compressor (+12 dB after -14 dB, then a limiter) are now in the rulebook. Combat frame shadows are the very dark grey lip above noir, with the skull shadow locked to the lower left. The headless list names `continue_exit_spawn_check.gd`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None in the game. Future edits should credit GOAL on each grid win, keep the Master compressor, and snap a bad 1.1 load off the left exit.
+- Verification: Compared the goal sentences to `combat_root.gd` `_add_round_winnings`. Compared the shadow sentences to `hud_drop_shadow.gd` and `premium_skull_meter.gd`. Compared the load-cover and exit-snap sentences to `axel_saves.gd` and `axel_event_fx.gd`. Compared the compressor sentence to `default_bus_layout.tres`.
+
 

@@ -93,7 +93,7 @@ mouse_filter = 2
 color = Color(1, 0, 0, 1)
 
 [node name="OpenClosePlayer" type="AudioStreamPlayer" parent="." unique_id=1746432097]
-volume_db = -16.0
+volume_db = -6.0
 bus = &"TypewriterOpen"
 
 [node name="TypeLoopPlayer" type="AudioStreamPlayer" parent="." unique_id=2028026301]

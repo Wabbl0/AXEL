@@ -144,12 +144,50 @@ func living_slot_count() -> int:
 
 
 func begin_new_game_and_enter(slot: int) -> bool:
+	var fx := get_node_or_null("/root/AxelEventFx")
+	if fx != null and fx.has_method("fade_to_black"):
+		await fx.fade_to_black()
+	if not new_game(slot):
+		if fx != null and fx.has_method("fade_from_black"):
+			await fx.fade_from_black()
+		return false
+	await _wait_floor_spots()
+	_play_overworld_music()
+	if not _change_scene(NEW_GAME_SCENE):
+		if fx != null and fx.has_method("fade_from_black"):
+			await fx.fade_from_black()
+		return false
+	if fx != null and fx.has_method("reveal_after_intro_pose"):
+		await fx.reveal_after_intro_pose()
+	return true
+
+
+func begin_new_game_immediate(slot: int) -> bool:
 	if not new_game(slot):
 		return false
+	_play_overworld_music()
+	return _change_scene(NEW_GAME_SCENE)
+
+
+func _play_overworld_music() -> void:
 	var music := get_node_or_null("/root/AxelMusic")
 	if music != null and music.has_method("to_overworld"):
 		music.call("to_overworld")
-	return _change_scene(NEW_GAME_SCENE)
+
+
+func _wait_floor_spots() -> void:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("map_spots_settled"):
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	var spins := 0
+	while is_inside_tree() and not bool(world.call("map_spots_settled")):
+		spins += 1
+		if spins > 1800:
+			break
+		await tree.process_frame
 
 
 func new_game(slot: int) -> bool:
@@ -337,8 +375,13 @@ func _restore_player_tex(scene: Node) -> void:
 	var env := scene.get_node_or_null("EnvironmentColliders") as Node2D
 	var player := scene.find_child("Player", true, false) as Node2D
 	if env != null and player != null:
+		var spawn_tex := PlayerSpawnSync.capture_tex(env, player)
 		PlayerSpawnSync.apply_tex(env, player, _pending_tex)
+		if _player_in_named_exit(scene, player):
+			PlayerSpawnSync.apply_tex(env, player, spawn_tex)
 	_pending_tex_valid = false
+	if scene.scene_file_path != "":
+		_flush_save(scene.scene_file_path)
 
 
 func _queue_save() -> void:
@@ -364,6 +407,29 @@ func _flush_save_deferred() -> void:
 	_flush_save(path)
 
 
+func _tex_save_allowed(scene: Node, player: Node2D) -> bool:
+	if scene.has_method("blocks_player_tex_save") and bool(scene.call("blocks_player_tex_save")):
+		return false
+	return not _player_in_named_exit(scene, player)
+
+
+func _player_in_named_exit(scene: Node, player: Node2D) -> bool:
+	var exit := scene.find_child("ExitTrigger", true, false) as Area2D
+	if exit == null or player == null:
+		return false
+	return InteractZoneGate.body_in_area(exit, player)
+
+
+func _keep_previous_tex(body: Dictionary, slot: int, scene_path: String) -> void:
+	var previous := _read_body(slot)
+	if String(previous.get("current_scene", "")) != scene_path:
+		return
+	if not previous.has("player_tex_x") or not previous.has("player_tex_y"):
+		return
+	body["player_tex_x"] = previous["player_tex_x"]
+	body["player_tex_y"] = previous["player_tex_y"]
+
+
 func _flush_save(scene_path: String) -> void:
 	if not is_active() or _is_write_blocked(active_slot):
 		return
@@ -375,13 +441,18 @@ func _flush_save(scene_path: String) -> void:
 	if not scene_path.is_empty():
 		body["current_scene"] = scene_path
 	var scene := get_tree().current_scene
-	if scene != null and scene.scene_file_path == scene_path:
+	if _pending_tex_valid:
+		body["player_tex_x"] = _pending_tex.x
+		body["player_tex_y"] = _pending_tex.y
+	elif scene != null and scene.scene_file_path == scene_path:
 		var env := scene.get_node_or_null("EnvironmentColliders") as Node2D
 		var player := scene.find_child("Player", true, false) as Node2D
-		if env != null and player != null:
+		if env != null and player != null and _tex_save_allowed(scene, player):
 			var tex := PlayerSpawnSync.capture_tex(env, player)
 			body["player_tex_x"] = tex.x
 			body["player_tex_y"] = tex.y
+		else:
+			_keep_previous_tex(body, slot, scene_path)
 	if not _can_write_slot(slot):
 		return
 	if _before_slot_write.is_valid():

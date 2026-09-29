@@ -59,7 +59,7 @@ static func apply_slider(slider: HSlider) -> void:
 
 
 static func apply_check(box: CheckBox) -> void:
-	apply_button(box, 24, Control.SIZE_SHRINK_CENTER)
+	apply_button(box, 32, Control.SIZE_SHRINK_CENTER)
 	box.add_theme_icon_override("checked", _checkbox_icon(true, ACCENT))
 	box.add_theme_icon_override("unchecked", _checkbox_icon(false, ACCENT))
 	box.add_theme_icon_override("checked_disabled", _checkbox_icon(true, DIM))

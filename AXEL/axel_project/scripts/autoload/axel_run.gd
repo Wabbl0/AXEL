@@ -488,8 +488,8 @@ func _retry_new_run() -> void:
 	var slot := _retry_slot
 	if slot < 0 and saves != null and saves.has_method("first_free_slot"):
 		slot = int(saves.call("first_free_slot"))
-	if saves != null and slot >= 0 and saves.has_method("begin_new_game_and_enter"):
-		if bool(saves.call("begin_new_game_and_enter", slot)):
+	if saves != null and slot >= 0 and saves.has_method("begin_new_game_immediate"):
+		if bool(saves.call("begin_new_game_immediate", slot)):
 			_finish_busy = false
 			return
 	_to_overworld_music()

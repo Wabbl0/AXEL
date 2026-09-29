@@ -10,7 +10,9 @@ const _SIZE_CANDIDATES: PackedStringArray = [
 	"1280x720", "1366x768", "1600x900", "1920x1080",
 	"1920x1200", "1920x1280", "2560x1440", "3840x2160",
 ]
-const _BAR_SCREEN_FRACTION := 1.0 / 3.0
+const _BAR_SCREEN_FRACTION := 1.0 / 6.0
+const _CAPTION_WIDTH := 376
+const _ROW_GAP := 6
 const _SettingsScript := preload("res://scripts/autoload/axel_settings.gd")
 
 var _sliders: Array[HSlider] = []
@@ -56,13 +58,13 @@ func _build() -> void:
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	col.add_theme_constant_override("separation", 10)
+	col.add_theme_constant_override("separation", 4)
 	center.add_child(col)
 
 	var title := Label.new()
 	title.text = "OPTIONS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	MenuLook.apply_label(title, 48, MenuLook.ACCENT)
+	MenuLook.apply_label(title, 64, MenuLook.ACCENT)
 	_center(title)
 	col.add_child(title)
 
@@ -83,7 +85,7 @@ func _build() -> void:
 	var back := Button.new()
 	back.name = "BackButton"
 	back.text = "Back"
-	MenuLook.apply_button(back, 32)
+	MenuLook.apply_button(back, 43)
 	_center(back)
 	back.pressed.connect(func() -> void: closed.emit())
 	col.add_child(back)
@@ -94,20 +96,31 @@ func _build() -> void:
 func _section(col: VBoxContainer, text: String) -> void:
 	var label := Label.new()
 	label.text = text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	MenuLook.apply_label(label, 28, MenuLook.ACCENT)
-	_center(label)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	MenuLook.apply_label(label, 37, MenuLook.ACCENT)
 	col.add_child(label)
 
 
-func _slider(col: VBoxContainer, caption: String, section: String, key: String, lo := 0.0, hi := 1.0) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	_center(row)
+func _caption(text: String) -> Label:
 	var caption_label := Label.new()
-	caption_label.text = caption
-	caption_label.custom_minimum_size.x = 280
-	MenuLook.apply_label(caption_label, 24)
+	caption_label.text = text
+	caption_label.custom_minimum_size.x = _CAPTION_WIDTH
+	caption_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	caption_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	MenuLook.apply_label(caption_label, 32)
+	return caption_label
+
+
+func _row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", _ROW_GAP)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return row
+
+
+func _slider(col: VBoxContainer, caption: String, section: String, key: String, lo := 0.0, hi := 1.0) -> void:
+	var row := _row()
+	var caption_label := _caption(caption)
 	var slider := HSlider.new()
 	slider.min_value = lo
 	slider.max_value = hi
@@ -124,26 +137,26 @@ func _slider(col: VBoxContainer, caption: String, section: String, key: String, 
 
 
 func _toggle(col: VBoxContainer, caption: String, section: String, key: String) -> void:
+	var row := _row()
+	row.add_child(_caption(caption))
 	var box := CheckBox.new()
-	box.text = caption
+	box.name = caption
+	box.text = ""
 	MenuLook.apply_check(box)
-	_center(box)
+	box.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	box.button_pressed = bool(AxelSettings.get_value(section, key))
 	box.toggled.connect(func(on: bool) -> void:
 		AxelSettings.set_value(section, key, on)
 	)
-	col.add_child(box)
+	row.add_child(box)
+	col.add_child(row)
 
 
 func _option(col: VBoxContainer, caption: String, section: String, key: String, values: PackedStringArray) -> OptionButton:
-	var row := HBoxContainer.new()
-	_center(row)
-	var caption_label := Label.new()
-	caption_label.text = caption
-	caption_label.custom_minimum_size.x = 280
-	MenuLook.apply_label(caption_label, 24)
+	var row := _row()
+	row.add_child(_caption(caption))
 	var opt := OptionButton.new()
-	MenuLook.apply_button(opt, 24, Control.SIZE_SHRINK_BEGIN)
+	MenuLook.apply_button(opt, 32, Control.SIZE_SHRINK_BEGIN)
 	var current := String(AxelSettings.get_value(section, key))
 	for i in values.size():
 		opt.add_item(values[i], i)
@@ -152,7 +165,6 @@ func _option(col: VBoxContainer, caption: String, section: String, key: String, 
 	opt.item_selected.connect(func(idx: int) -> void:
 		AxelSettings.set_value(section, key, values[idx])
 	)
-	row.add_child(caption_label)
 	row.add_child(opt)
 	col.add_child(row)
 	return opt

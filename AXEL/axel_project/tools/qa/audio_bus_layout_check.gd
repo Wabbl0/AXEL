@@ -32,6 +32,8 @@ func _main() -> void:
 		failures.append("missing Master bus")
 	elif AudioServer.is_bus_mute(master_idx):
 		failures.append("Master ships MUTED — un-mute it in the Audio panel before committing default_bus_layout.tres")
+	else:
+		_check_master_loudness(master_idx, failures)
 
 
 	var settings := root.get_node_or_null("AxelSettings")
@@ -75,3 +77,19 @@ func _main() -> void:
 		for f in failures:
 			push_error("audio_bus_layout_check: %s" % f)
 		quit(1)
+
+
+func _check_master_loudness(master_idx: int, failures: Array[String]) -> void:
+	if AudioServer.get_bus_effect_count(master_idx) < 2:
+		failures.append("Master needs a compressor, then a limiter")
+		return
+	var compressor := AudioServer.get_bus_effect(master_idx, 0)
+	if not compressor is AudioEffectCompressor or not AudioServer.is_bus_effect_enabled(master_idx, 0):
+		failures.append("Master effect 0 must be an enabled compressor")
+	elif absf((compressor as AudioEffectCompressor).gain - 12.0) > 0.05:
+		failures.append("Master compressor gain is %.2f dB, expected +12 dB" % (compressor as AudioEffectCompressor).gain)
+	var limiter := AudioServer.get_bus_effect(master_idx, 1)
+	if not limiter is AudioEffectHardLimiter or not AudioServer.is_bus_effect_enabled(master_idx, 1):
+		failures.append("Master effect 1 must be an enabled hard limiter after the compressor")
+	elif absf((limiter as AudioEffectHardLimiter).pre_gain_db) > 0.05:
+		failures.append("Master limiter pre-gain is %.2f dB, expected 0" % (limiter as AudioEffectHardLimiter).pre_gain_db)

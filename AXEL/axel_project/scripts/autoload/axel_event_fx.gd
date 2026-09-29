@@ -43,6 +43,13 @@ var _round_flames: Control
 var _round_label: RichTextLabel
 var _round_hop: Tween
 
+const LOAD_COVER_LAYER := 120
+const LOAD_FADE_SEC := 0.35
+var _load_cover: CanvasLayer
+var _load_scrim: ColorRect
+var _load_cover_holding := false
+var _intro_pose_ready := false
+
 
 func _ready() -> void:
 	_glitch = _instantiate_overlay(GLITCH_SCENE) as CanvasLayer
@@ -55,6 +62,7 @@ func _ready() -> void:
 	_combat_wipe.name = "CombatWipeOverlay"
 	add_child(_combat_wipe)
 	_build_round_complete_overlay()
+	_ensure_load_cover()
 
 	var tree := get_tree()
 	if tree == null:
@@ -256,6 +264,104 @@ func finish_round_complete_fade() -> void:
 func get_round_complete_scrim() -> ColorRect:
 	_ensure_round_complete_overlay()
 	return _round_scrim
+
+
+func is_load_cover_up() -> bool:
+	return _load_cover_holding
+
+
+func notify_intro_pose_ready() -> void:
+	_intro_pose_ready = true
+
+
+func fade_to_black() -> void:
+	_ensure_load_cover()
+	_intro_pose_ready = false
+	_load_cover_holding = true
+	_load_cover.visible = true
+	_layout_load_cover()
+	if _load_fade_instant():
+		_load_scrim.color = Color(0, 0, 0, 1)
+		if get_tree() != null:
+			await get_tree().process_frame
+		return
+	_load_scrim.color = Color(0, 0, 0, 0)
+	var fade_in := create_tween()
+	fade_in.tween_property(_load_scrim, "color:a", 1.0, LOAD_FADE_SEC)
+	await fade_in.finished
+	if get_tree() != null:
+		await get_tree().process_frame
+
+
+func fade_from_black() -> void:
+	if _load_scrim == null:
+		_load_cover_holding = false
+		return
+	if _load_fade_instant():
+		_load_scrim.color = Color(0, 0, 0, 0)
+		if _load_cover != null:
+			_load_cover.visible = false
+		_load_cover_holding = false
+		if get_tree() != null:
+			await get_tree().process_frame
+		return
+	var fade_out := create_tween()
+	fade_out.tween_property(_load_scrim, "color:a", 0.0, LOAD_FADE_SEC)
+	await fade_out.finished
+	if _load_cover != null:
+		_load_cover.visible = false
+	_load_cover_holding = false
+
+
+func reveal_after_intro_pose() -> void:
+	var guard := 0
+	while not _intro_pose_ready and guard < 180:
+		guard += 1
+		if get_tree() == null:
+			return
+		await get_tree().process_frame
+	await fade_from_black()
+
+
+func wait_load_cover_clear() -> void:
+	var guard := 0
+	while _load_cover_holding and guard < 600:
+		guard += 1
+		if get_tree() == null:
+			return
+		await get_tree().process_frame
+
+
+func _load_fade_instant() -> bool:
+	return DisplayServer.get_name() == "headless"
+
+
+func _ensure_load_cover() -> void:
+	if _load_cover != null:
+		return
+	_load_cover = CanvasLayer.new()
+	_load_cover.name = "LoadCover"
+	_load_cover.layer = LOAD_COVER_LAYER
+	_load_cover.process_mode = Node.PROCESS_MODE_ALWAYS
+	_load_cover.visible = false
+	add_child(_load_cover)
+	_load_scrim = ColorRect.new()
+	_load_scrim.name = "LoadScrim"
+	_load_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_load_scrim.color = Color(0, 0, 0, 0)
+	_load_cover.add_child(_load_scrim)
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_layout_load_cover):
+		vp.size_changed.connect(_layout_load_cover)
+	_layout_load_cover()
+
+
+func _layout_load_cover() -> void:
+	if _load_scrim == null:
+		return
+	var size := _viewport_size()
+	_load_scrim.position = Vector2.ZERO
+	_load_scrim.size = size
 
 
 func get_round_complete_label() -> RichTextLabel:

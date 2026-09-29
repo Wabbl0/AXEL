@@ -246,10 +246,6 @@ func _on_delete_pressed(slot: int) -> void:
 
 
 func _start_new(slot: int) -> void:
-	if not AxelSaves.new_game(slot):
-		_status.text = "Could not start a new game."
-		return
-	var music := get_node_or_null("/root/AxelMusic")
-	if music != null and music.has_method("to_overworld"):
-		music.call("to_overworld")
-	get_tree().change_scene_to_file(AxelSaves.NEW_GAME_SCENE)
+	if not await AxelSaves.begin_new_game_and_enter(slot):
+		if is_inside_tree():
+			_status.text = "Could not start a new game."

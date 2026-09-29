@@ -60,8 +60,9 @@ func _on_new_game() -> void:
 	_hide_overwrite()
 	var free := AxelSaves.first_free_slot()
 	if free >= 0:
-		if not AxelSaves.begin_new_game_and_enter(free):
-			_refresh_continue()
+		if not await AxelSaves.begin_new_game_and_enter(free):
+			if is_inside_tree():
+				_refresh_continue()
 		return
 	_show_overwrite()
 
@@ -119,8 +120,9 @@ func _confirm_overwrite_oldest() -> void:
 	if oldest < 0:
 		_on_new_game()
 		return
-	if not AxelSaves.begin_new_game_and_enter(oldest):
-		_refresh_continue()
+	if not await AxelSaves.begin_new_game_and_enter(oldest):
+		if is_inside_tree():
+			_refresh_continue()
 
 
 func _refresh_continue() -> void:

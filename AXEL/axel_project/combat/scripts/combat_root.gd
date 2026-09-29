@@ -1646,10 +1646,9 @@ func _add_round_winnings(amount_cents: int) -> void:
 	if amount_cents <= 0:
 		return
 	_round_winnings_cents += amount_cents
+	_encounter_goal_winnings_cents += amount_cents
 	if _feature_hold != &"":
 		_feature_held_cents += amount_cents
-	else:
-		_encounter_goal_winnings_cents += amount_cents
 	_refresh_round_winnings_label()
 	emit_signal("readouts_progressed")
 
@@ -1675,8 +1674,6 @@ func _begin_vice_winnings_hold() -> void:
 func _commit_feature_hold() -> void:
 	if _feature_hold == &"":
 		return
-	if _feature_held_cents > 0:
-		_encounter_goal_winnings_cents += _feature_held_cents
 	_feature_held_cents = 0
 	_feature_hold = &""
 	emit_signal("readouts_progressed")
@@ -1850,10 +1847,10 @@ func _apply_dev_payout_override(spin_summary: Dictionary) -> void:
 	var delta := forced - already
 	spin_summary["payout"] = forced
 	_round_winnings_cents = forced
+	if delta != 0:
+		_encounter_goal_winnings_cents = maxi(_encounter_goal_winnings_cents + delta, 0)
 	if _feature_hold != &"":
 		_feature_held_cents = forced
-	elif delta != 0:
-		_encounter_goal_winnings_cents = maxi(_encounter_goal_winnings_cents + delta, 0)
 	_refresh_round_winnings_label()
 	emit_signal("readouts_progressed")
 

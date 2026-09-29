@@ -3,13 +3,19 @@ shader_type canvas_item;
 uniform vec2 art_size_px = vec2(1.0, 1.0);
 uniform vec2 pad_px = vec2(4.0, 4.0);
 uniform float blur_px = 4.0;
-uniform vec4 shadow_color = vec4(0.22, 0.22, 0.22, 1.0);
+uniform vec2 shift_px = vec2(2.0, 3.0);
+uniform vec4 shadow_color = vec4(0.15, 0.15, 0.15, 1.0);
 
 void fragment() {
 	vec2 safe_size = max(art_size_px, vec2(1.0));
 	vec2 node_size = safe_size + pad_px * 2.0;
 	vec2 local_px = UV * node_size;
 	vec2 art_px = local_px - pad_px;
+	vec2 covered_uv = (art_px + shift_px) / safe_size;
+	bool on_frame = false;
+	if (covered_uv.x >= 0.0 && covered_uv.y >= 0.0 && covered_uv.x <= 1.0 && covered_uv.y <= 1.0) {
+		on_frame = texture(TEXTURE, covered_uv).a > 0.2;
+	}
 	float blur_len = max(blur_px, 0.5);
 	float step_px = max(blur_len / 4.0, 1.0);
 	float a = 0.0;
@@ -36,8 +42,7 @@ void fragment() {
 			a = max(a, sample_a * fall);
 		}
 	}
-	// A soft edge over the white plate disappears in the combat color filter.
-	if (a < 0.08) {
+	if (on_frame || a < 0.08) {
 		COLOR = vec4(0.0, 0.0, 0.0, 0.0);
 	} else {
 		COLOR = vec4(shadow_color.rgb, 1.0);

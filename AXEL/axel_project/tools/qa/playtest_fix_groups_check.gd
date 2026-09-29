@@ -323,7 +323,7 @@ func _check_options_theme() -> void:
 	var vsync: CheckBox = null
 	for node in panel.find_children("*", "CheckBox", true, false):
 		var box := node as CheckBox
-		if box != null and box.text == "VSync":
+		if box != null and (box.text == "VSync" or box.name == "VSync"):
 			vsync = box
 	if vsync == null:
 		_fail("VSync checkbox missing")

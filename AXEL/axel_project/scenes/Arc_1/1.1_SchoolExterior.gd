@@ -92,13 +92,13 @@ func _ready() -> void:
 	_configure_leaf_occlusion_masks()
 	if _pending_corridor_door_spawn or _should_skip_intro():
 		_intro_state = IntroState.PLAYER_FREE
+		_arm_exit_trigger_grace()
 
 		if is_instance_valid(_left_wall_collision):
 			_left_wall_collision.set_deferred("disabled", true)
 		if _pending_corridor_door_spawn:
 
 			call_deferred("_apply_corridor_door_peek_if_pending")
-			_arm_exit_trigger_grace()
 		_enable_player_control()
 		_refresh_door_interact_prompt()
 		return
@@ -115,6 +115,10 @@ func _exit_tree() -> void:
 func _begin_forced_intro_after_layout() -> void:
 	_sync_environment_colliders_from_current_background()
 	_run_forced_intro_sequence()
+
+
+func blocks_player_tex_save() -> bool:
+	return _intro_state == IntroState.FORCED_SEQUENCE
 
 
 func _should_skip_intro() -> bool:
@@ -178,6 +182,10 @@ func _run_forced_intro_sequence() -> void:
 		_player.global_position = _intro_offscreen_left_spawn(
 			_resolve_intro_target_from_tex(spawn_target_tex)
 		)
+
+	if AxelEventFx.is_load_cover_up():
+		AxelEventFx.notify_intro_pose_ready()
+		await AxelEventFx.wait_load_cover_clear()
 
 	await get_tree().create_timer(INTRO_START_WAIT_SEC).timeout
 	if cam != null:

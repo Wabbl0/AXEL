@@ -25,6 +25,7 @@ const FLAME_CROWN_ARC := 0.22
 const FLAME_CROWN_POS := Vector2(40.0, -46.0)
 const FLAME_CROWN_SIZE := Vector2(612.0, 240.0)
 const PUNCH_BLACK := 0.08
+const SKULL_SHADOW_OFFSET := Vector2(-16.0, 18.0)
 
 @onready var _glow: TextureRect = $Glow
 @onready var _stage1: TextureRect = $SkullStage1
@@ -41,6 +42,9 @@ var _first_spin_hint := false
 var _full_face_locked := false
 var _full_face_lifted := false
 var _drop_shadow: Control
+var _rest_position := Vector2.ZERO
+var _rest_scale := Vector2.ONE
+var _motion_locks := 0
 var _flame_crown: ColorRect
 var _flame_crown_on := false
 var _flame_frame := 0.0
@@ -305,6 +309,50 @@ func _ensure_drop_shadow() -> void:
 			_drop_shadow = made
 	elif _drop_shadow.has_method("set_art"):
 		_drop_shadow.set_art(stage)
+	if _motion_locks == 0:
+		_rest_position = position
+		_rest_scale = scale
+	_push_shadow_rest()
+
+
+func _remember_rest() -> void:
+	if _motion_locks > 0:
+		return
+	_rest_position = position
+	_rest_scale = scale
+	_push_shadow_rest()
+
+
+func _push_shadow_rest() -> void:
+	var stage := _visible_stage()
+	if stage == null or _drop_shadow == null or not is_instance_valid(_drop_shadow):
+		return
+	if not _drop_shadow.has_method("set_locked_global"):
+		return
+	var saved_pos := position
+	var saved_scale := scale
+	var saved_rot := rotation
+	position = _rest_position
+	scale = _rest_scale
+	rotation = 0.0
+	var xform := stage.get_global_transform()
+	position = saved_pos
+	scale = saved_scale
+	rotation = saved_rot
+	_drop_shadow.call("set_locked_global", xform, SKULL_SHADOW_OFFSET)
+
+
+func _lock_motion() -> void:
+	if _motion_locks == 0:
+		_remember_rest()
+	_motion_locks += 1
+
+
+func _unlock_motion() -> void:
+	_motion_locks = maxi(_motion_locks - 1, 0)
+	if _motion_locks == 0:
+		position = _rest_position
+		_remember_rest()
 
 
 func _stage_index_for_fill(f: float) -> int:
@@ -352,6 +400,7 @@ func _apply_fill_feel() -> void:
 		glow_alpha = maxf(glow_alpha, GLOW_HOVER_ALPHA)
 
 	scale = target_scale
+	_remember_rest()
 	_set_glow(glow_on, glow_alpha)
 
 	if shake_amp > 0.0 and not _pressing:
@@ -376,17 +425,22 @@ func _set_glow(on: bool, alpha: float) -> void:
 func _play_shake(amplitude: float, pulses: int) -> void:
 	if _shake_tween != null and _shake_tween.is_valid():
 		_shake_tween.kill()
-	var origin := position
+		_unlock_motion()
+	_lock_motion()
+	var origin := _rest_position
 	_shake_tween = CombatPace.bind(create_tween())
 	for i in range(pulses):
 		var dir := 1.0 if (i % 2) == 0 else -1.0
 		_shake_tween.tween_property(self, "position", origin + Vector2(dir * amplitude, 0.0), 0.03)
 	_shake_tween.tween_property(self, "position", origin, 0.04)
+	_shake_tween.finished.connect(_unlock_motion, CONNECT_ONE_SHOT)
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		pivot_offset = size * 0.5
+		if _motion_locks == 0:
+			_remember_rest()
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -410,11 +464,14 @@ func _gui_input(event: InputEvent) -> void:
 func _play_press_jitter() -> void:
 	if _press_tween != null and _press_tween.is_valid():
 		_press_tween.kill()
-	var origin := position
+		_unlock_motion()
+	_lock_motion()
+	var origin := _rest_position
 	_press_tween = create_tween()
 	_press_tween.tween_property(self, "position", origin + Vector2(3.0, 2.0), 0.03)
 	_press_tween.tween_property(self, "position", origin + Vector2(-2.0, -1.0), 0.03)
 	_press_tween.tween_property(self, "position", origin, 0.04)
+	_press_tween.finished.connect(_unlock_motion, CONNECT_ONE_SHOT)
 
 
 func _on_mouse_entered() -> void:

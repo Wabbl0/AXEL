@@ -93,20 +93,23 @@ func _check_native_art_size(piece: Control, name: String) -> void:
 
 
 func _check_piece_shadow(piece: Control, name: String) -> void:
-	var canvas := piece.get_parent()
-	while canvas != null and canvas.name != "HudCanvas":
-		canvas = canvas.get_parent()
-	var shadow := canvas.get_node_or_null("DropShadow_" + name) as Control if canvas != null else null
+	var top: Node = piece
+	var tree := piece.get_tree()
+	if tree == null:
+		_fail("%s has no drop shadow" % name)
+		return
+	while top.get_parent() != null and top.get_parent() != tree.root:
+		top = top.get_parent()
+	var layer := top.get_node_or_null("HudShadowLayer") as CanvasLayer
+	if layer == null or layer.layer != 92:
+		_fail("%s drop shadow is not above the noir filter" % name)
+		return
+	var shadow := layer.get_node_or_null("ShadowRoot/DropShadow_" + name) as Control
 	if shadow == null:
 		_fail("%s has no drop shadow" % name)
 		return
 	if shadow.mouse_filter != Control.MOUSE_FILTER_IGNORE:
 		_fail("%s drop shadow takes the click" % name)
-	var piece_top := piece
-	while piece_top.get_parent() != canvas:
-		piece_top = piece_top.get_parent() as Control
-	if shadow.get_index() >= piece_top.get_index():
-		_fail("%s drop shadow draws on top of the picture" % name)
 	var mat := shadow.material as ShaderMaterial
 	if mat == null:
 		_fail("%s drop shadow has no material" % name)
@@ -117,9 +120,9 @@ func _check_piece_shadow(piece: Control, name: String) -> void:
 		return
 	var shadow_color := col as Color
 	if (
-		absf(shadow_color.r - 0.22) > 0.04
-		or absf(shadow_color.g - 0.22) > 0.04
-		or absf(shadow_color.b - 0.22) > 0.04
+		absf(shadow_color.r - 0.15) > 0.04
+		or absf(shadow_color.g - 0.15) > 0.04
+		or absf(shadow_color.b - 0.15) > 0.04
 		or shadow_color.a < 0.9
 	):
 		_fail("%s drop shadow color is %s" % [name, shadow_color])
@@ -132,7 +135,10 @@ func _check_piece_shadow(piece: Control, name: String) -> void:
 		return
 	var art_rect := _plate_rect(picture)
 	var shadow_rect := _plate_rect(shadow)
-	if shadow_rect.end.x < art_rect.end.x + 0.5 or shadow_rect.end.y < art_rect.end.y + 0.5:
+	if name == "NEW_Execute":
+		if shadow_rect.position.x > art_rect.position.x - 0.5 or shadow_rect.end.y < art_rect.end.y + 0.5:
+			_fail("%s skull shadow is not lower-left (%s vs %s)" % [name, shadow_rect, art_rect])
+	elif shadow_rect.end.x < art_rect.end.x + 0.5 or shadow_rect.end.y < art_rect.end.y + 0.5:
 		_fail("%s drop shadow does not sit down-right (%s vs %s)" % [name, shadow_rect, art_rect])
 
 

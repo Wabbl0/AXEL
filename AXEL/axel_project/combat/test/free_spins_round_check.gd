@@ -203,8 +203,8 @@ func _assert_winnings_wait_for_round_end() -> void:
 		push_error("First free spin paid nothing, so the bar test is empty.")
 		quit(1)
 		return
-	if cr.get_chip_bar_goal_progress_cents() != goal_before:
-		push_error("GOAL moved during Free Spins, before the round ended.")
+	if cr.get_chip_bar_goal_progress_cents() != goal_before + first:
+		push_error("GOAL should gain the free-spin payout, got %d." % cr.get_chip_bar_goal_progress_cents())
 		quit(1)
 		return
 	if int(cr.get_round_winnings()) != first:
@@ -213,6 +213,10 @@ func _assert_winnings_wait_for_round_end() -> void:
 		return
 	if int(cr.get_bankroll()) != bank_before + first:
 		push_error("Balance should still rise on each free spin.")
+		quit(1)
+		return
+	if cr.get_chip_bar_goal_progress_cents() - goal_before != int(cr.get_bankroll()) - bank_before:
+		push_error("GOAL and balance did not rise by the same free-spin payout.")
 		quit(1)
 		return
 	cr.spin_sync()
@@ -227,7 +231,7 @@ func _assert_winnings_wait_for_round_end() -> void:
 		quit(1)
 		return
 	if cr.get_chip_bar_goal_progress_cents() != goal_before + bar:
-		push_error("GOAL should receive the whole Free Spin bar when the round ends.")
+		push_error("GOAL should match the free-spin payouts without a second jump, got %d." % cr.get_chip_bar_goal_progress_cents())
 		quit(1)
 		return
 	cr.queue_free()
@@ -394,13 +398,14 @@ func _assert_vice_winnings_wait() -> void:
 		push_error("Vice Round test line paid nothing.")
 		quit(1)
 		return
-	if cr.get_chip_bar_goal_progress_cents() != 0:
-		push_error("GOAL moved before the Vice Round ended.")
+	if cr.get_chip_bar_goal_progress_cents() != bar:
+		push_error("GOAL should match the Vice Round grid win, got %d vs bar %d." % [cr.get_chip_bar_goal_progress_cents(), bar])
 		quit(1)
 		return
+	var goal_after_win := cr.get_chip_bar_goal_progress_cents()
 	cr._finish_trinity_round()
-	if cr.get_chip_bar_goal_progress_cents() != bar:
-		push_error("GOAL should receive the Vice Round bar when Vice ends.")
+	if cr.get_chip_bar_goal_progress_cents() != goal_after_win:
+		push_error("GOAL jumped again when Vice Round ended.")
 		quit(1)
 		return
 	cr.queue_free()
