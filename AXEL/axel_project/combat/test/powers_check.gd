@@ -841,7 +841,7 @@ func _assert_super_fs_spin_does_not_repopulate_at_start() -> void:
 	cr._begin_spin_round()
 	var after := _snapshot_ids(cr)
 	if before != after:
-		push_error("Super Free Spins spin start should not repopulate; only handoff entry does.")
+		push_error("The first free spin should keep the grid from the power choice.")
 		quit(1)
 		return
 	cr.queue_free()
@@ -866,6 +866,18 @@ func _assert_free_spins_non_wild_clear_counts_as_grid_clear() -> void:
 	cr.spin_sync()
 	if not cr._is_grid_cleared_for_current_mode():
 		push_error("Free Spins should mark grid_cleared when only wild symbols remain.")
+		quit(1)
+		return
+	var summary := cr.get_last_spin_summary()
+	if int(summary.get("clear_bonus_payout", 0)) != 0:
+		push_error("Grid clear paid a bonus of %d." % int(summary.get("clear_bonus_payout", 0)))
+		quit(1)
+		return
+	if int(summary.get("payout", 0)) != int(summary.get("line_payout", 0)):
+		push_error(
+			"Grid clear added extra winnings: payout %d, line wins %d."
+			% [int(summary.get("payout", 0)), int(summary.get("line_payout", 0))]
+		)
 		quit(1)
 		return
 	cr.queue_free()

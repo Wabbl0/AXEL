@@ -1,5 +1,7 @@
 # AXEL — Combat System Design
 
+**Reference only.** This file is a design sketch, not the rules of the live game. The real combat code can differ from it quite a bit. When this doc and the game disagree, the game wins.
+
 Design recap for the combat layer. Captures the narrative framing, the chosen mechanical base (a reskinned Moon Princess 100), the symbol map, encounter design, and the roguelite item layer. Paired with `AXEL_combat_implementation.md` for the code-facing plan.
 
 ---
@@ -46,8 +48,8 @@ Kept verbatim as the mechanical spine so we know what we're reskinning.
   - **Alcohol:** adds 1–2 wilds with intelligent placement.
   - **Cigarette:** removes two sets of symbols from the grid.
 - **Vice meter:** princess-symbol wins fill a 3-section meter (x3 fills 1 section, x4 fills 2 sections, x5 fills 3 sections). Wilds can contribute to princess wins. When the meter is full and no further wins are achieved, a Vice Round starts: meter-full transition, then a **fresh 5×5 grid**, then multiplier resets and bloody hand / alcohol / cigarette Girl Powers are performed in fixed order on non-winning drops.
-- **Clear the Grid:** fully emptying the grid pays `50 × total bet × active multiplier` (except during Vice Round, where grid clear triggers Free Spins instead of paying the instant prize).
-- **Free Spins (Super Free Spins):** triggered by clearing the grid during Vice Round (non-wild symbols gone). Player chooses bloody hand (4 spins), alcohol (5), or cigarette (8), then receives a **fresh 5×5 grid** before the first Super Free Spin round. Chosen Girl Power triggers on every non-winning spin. Each subsequent Super Free Spin continues from the depleted entry grid (no per-spin repopulate). Winning symbols are removed and gravity collapses remaining symbols, but no new symbols are spawned from the top (depletion mode). The progression target is to clear all non-wild symbols from the grid; wild-only leftovers still count as cleared for this purpose. Vice Round cannot retrigger. Meter fills grant extra spins (bloody hand +4, alcohol +3, cigarette +2), up to 100 total.
+- **Clear the Grid:** fully emptying the grid pays nothing extra. The line wins that removed those symbols already paid. During Vice Round, a grid clear still starts Free Spins.
+- **Free Spins:** triggered by clearing the grid during Vice Round (non-wild symbols gone). Player chooses bloody hand (4 spins), alcohol (5), or cigarette (8), then receives a **fresh 5×5 grid** that is spin **1/X**. The rest of the Free Spin round plays by itself. The player does not press Execute again until it ends. If that grid has no winning lines, the chosen power always fires, then matches pay. If it does have wins, the power fires only on the same small chance as a normal spin. Each later free spin starts on a new full 5×5 before it is judged. Cascades inside one free spin still do not drop new symbols from the top. The counter shows the spin you are on, such as **2/X**. Filling the premium meter on that spin adds extra spins immediately (bloody hand +4, alcohol +3, cigarette +2, up to 100) so the next spin is **2/X+Y**. Wild-only leftovers still count as cleared. Vice Round cannot retrigger. Vice wins and Free Spin wins each stay on the round-winnings bar until that round ends, then the whole bar is added to the goal. The balance still rises as each spin pays.
 - **RTP:** 94.20%, high volatility. **Max win:** 15,000× stake.
 
 Source references are listed at the bottom of this doc.

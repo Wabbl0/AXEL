@@ -7851,4 +7851,317 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: None in the game. Future edits should follow the live map and the first-line hold, not the old “second line after any movement” wording.
 - Verification: Compared the map sentences to `axel_world.gd` (`_queue_map_spots`) and `locker_map_overlay.gd` (`_pin_glyph`).
 
+## 2026-09-29
+
+### New 2.1 cafeteria background
+
+- Request: Note the new cafeteria drawing at `exports/Drawings/2.1_Cafeteria.png`.
+- Implementation: The scene already pointed at that file. The new plate is 3508×2480 (same pixel size as before), white fill with black ink. Texture uid `uid://dglircrrpmjr4` is unchanged and `process/size_limit` stays 0. Godot’s imported copy was refreshed so the room shows the new pixels. Walls, furniture, door zones, and the grey door placeholders were left where they were.
+- Files changed:
+  - `AXEL/axel_project/exports/Drawings/2.1_Cafeteria.png`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The cafeteria shows the new drawing at the same cover scale. Walk boxes can sit off the new lines until they are dragged.
+- Verification: PNG header is 3508×2480. Import sidecar source md5 matches the new file after `--import`.
+
+### Cafeteria down arrow
+
+- Request: Put the same kind of arrow as the 1.2 hallway hint in the cafeteria, pointing down just above the classrooms door. Show it after 30 seconds in the room, or once both the backyard and the kitchen have been visited.
+- Implementation: `2.1` instances `DirectionHint` on `PlayerLayer`, rotated a quarter turn so it points and nudges down, at the same scale `1.67`. Each frame it measures the live `ClassroomsInteractArea` and sits a small gap above that box. The clock pauses during dialogue and pause. Overlapping Mike marks `cafeteria_down_hint_done` and hides it. Holding down does not. Entering `2.4` marks it done, and a save that already visited that corridor keeps it off. The old “1.2 only” line now names this cafeteria arrow as the one extra room.
+- Files changed:
+  - `AXEL/axel_project/scenes/fx/direction_hint.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.gd`
+  - `AXEL/axel_project/scenes/Arc_2/2.1_Cafeteria.tscn`
+  - `AXEL/axel_project/scenes/Arc_2/2.4_ClassroomsCorridor.gd`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/tools/qa/cafeteria_down_hint_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC2.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The cafeteria shows a white down arrow above the classrooms door after 30 seconds there, or immediately after both the kitchen and the backyard have been walked. Walking onto the arrow, or entering the classrooms corridor, turns it off for the rest of the save.
+- Verification: `cafeteria_down_hint_check.gd` exit 0. `corridor_right_hint_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### Centered pixel options
+
+- Request: Center the options list like the pause menu, make the bars and checkboxes chunky red pixels, and remove FPS cap, CRT, UI scale, dialogue speed, auto-advance, reduce flashing, screen shake, glitch intensity, and controls.
+- Implementation: Options (title scene and pause) is a centered column. Volume bars use a 4px red border and a pixel grabber. VSync is a red pixel checkbox. Those removed rows are gone. Reads of those settings stay on the built-in defaults, and saved key rebinds are not applied.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/options_panel.gd`
+  - `AXEL/axel_project/scenes/Main_Menu/menu_look.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_settings.gd`
+  - `AXEL/axel_project/tools/qa/settings_persistence_check.gd`
+  - `AXEL/axel_project/tools/qa/playtest_fix_groups_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The options list sits in the middle of the window. CRT stays on, shake and glitch stay full, dialogue stays at the built-in speed, and keys stay on the project defaults. Volume, window, VSync, and graphics quality still save.
+- Verification: `settings_persistence_check.gd` exit 0. `menu_nav_check.gd` exit 0. `pause_contract_check.gd` exit 0. `playtest_fix_groups_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### Choose Your Vice
+
+- Request: On the free-spins picker, the title should say “Choose Your Vice”. Show the three vice icons. A large invisible box around each column should pick that power, and hovering an icon should grow it a little. Words sit on black in white type, over a full-screen dark scrim like Round Complete.
+- Implementation: The picker moves to its own canvas layer above the slot grid, with a 72% black scrim. The red card is gone. Each column shows the grid icon (nearest-neighbor) and the same spin lines on a black block. The button is an invisible hit box around the icon and the words. Hover scales the icon to 1.15 from its center.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/combat_test.tscn`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/tools/qa/qa_canon_validators.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Choosing a vice still grants the same spins and meter bonus. The screen is readable and the columns can be clicked, including the padding around the words.
+- Verification: `free_spins_choice_ui_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0. `determinism_check.gd` exit 0. `powers_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### Combat settings gear
+
+- Request: Make the combat settings icon larger, barely touching the square edges, and use a real gear character.
+- Implementation: VT323 has no gear. The mark is now Unicode U+2699 (⚙), from Segoe UI Symbol or DejaVu Sans, in red. It is sized to the square with a 3px gap so it nearly touches the frame. Clicks still land on the square, not the letters.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/tools/qa/hud_piece_placement_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The settings square shows a large red gear. Clicking it still opens pause.
+- Verification: `hud_piece_placement_check.gd` exit 0.
+
+### Smaller combat gear
+
+- Request: The gear icon is too large.
+- Implementation: The red U+2699 mark is now 70% of the settings square, centered, so the frame shows around it.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/tools/qa/hud_piece_placement_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The gear no longer reaches the square’s edges. Clicking the square still opens pause.
+- Verification: `hud_piece_placement_check.gd` exit 0.
+
+### Gear 5% smaller
+
+- Request: Make the combat gear 5% smaller.
+- Implementation: The mark is 66.5% of the settings square (70% times 0.95), still centered.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The gear is slightly smaller inside the square.
+- Verification: `hud_piece_placement_check.gd` exit 0.
+
+### Bold settings cog
+
+- Request: Make the gear look like a typical bold game settings icon.
+- Implementation: Replaced the thin text gear with a filled red cog: eight short thick teeth and a round hole. Size stays about two thirds of the square.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The settings mark reads as a chunky cog. Clicking the square still opens pause.
+- Verification: `hud_piece_placement_check.gd` exit 0.
+
+### Gear color and size
+
+- Request: Make the gear 5% smaller and the same color as the square around it.
+- Implementation: Fill is now 63.175% of the square (the previous size times 0.95). The cog uses the frame’s most common ink, `Color8(7, 7, 7)`, instead of red.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The gear is slightly smaller and matches the dark square frame.
+- Verification: `hud_piece_placement_check.gd` exit 0.
+
+### Shared vice choice card
+
+- Request: Keep the current vice colors and icons, and put the three Free Spins choices back on one shared black background.
+- Implementation: The title, hint, and three columns sit together on one centered black card. Each column no longer paints its own black box. Icons, white type, hover grow, and the full-screen scrim stay.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Choosing a vice still grants the same spins and meter bonus. The three choices read as one card instead of three separate black blocks.
+- Verification: `free_spins_choice_ui_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0. `determinism_check.gd` exit 0. `powers_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### Smoother vice choice hover
+
+- Request: Grow the Free Spins choices more smoothly, add a small white highlight on hover, and fade the black card into the background.
+- Implementation: Icon grow eases in and out over 0.28s. A small white outline fades in around the hovered choice, icon and words together. The icon does not block the mouse, so the whole section hovers and clicks. The shared card is a black gradient that stays solid behind the words and fades out at the edges.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Choosing a vice still grants the same spins and meter bonus. Hover no longer snaps the icon larger, and the card no longer ends in a hard black edge.
+- Verification: `free_spins_choice_ui_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0.
+
+### Pixelated combat gear
+
+- Request: Make the gear icon in the combat phase more pixelated.
+- Implementation: The same eight-tooth cog is painted on a 16×16 grid, then each cell is a hard block scaled up to the same size inside the square. The color and the click box stay the same.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The settings mark is a chunky pixel cog. Clicking the square still opens pause.
+- Verification: `hud_piece_placement_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0. `determinism_check.gd` exit 0. `powers_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### Red vice names
+
+- Request: Make the Vice, Alcohol, Cigarette, and Bloody Hand text red.
+- Implementation: The word Vice in the choice title is red. The three power names are red. The hint and the spin lines stay white.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The choice names read in red. Choosing a vice still grants the same spins and meter bonus.
+- Verification: `free_spins_choice_ui_check.gd` exit 0.
+
+### Faded icon highlight
+
+- Request: Make the Free Spins hover highlight a softer gradient, only behind the icon.
+- Implementation: The white outline around the whole choice is gone. Hover fades in a soft white glow behind that power’s icon. The words stay outside it.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Hover still grows the icon. The highlight is a faded glow behind the picture only.
+- Verification: `free_spins_choice_ui_check.gd` exit 0.
+
+### Free spin round count
+
+- Request: After the power choice, show spin 1/X on a new grid. Fire the chosen power when that grid has no wins, and also on the normal small chance. If the premium meter fills, add the extra spins before the next number. Keep Free Spin and Vice winnings on the bar until that round ends, then add them to the goal.
+- Implementation: The chosen power is decided before matches. A dead free-spin grid always fires it; a winning one uses the real 1% roll. Meter bonus is granted after that spin’s matches, before the count advances. Vice and Free Spins each hold a winnings pile off the goal until that round ends. The spin-money bar shows `1/4` style text while Free Spins are running.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_round_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Guarantee Free Spins still only opens the choice. The round after the choice now counts spins, fires the power on the rules above, and waits to move the goal.
+- Verification: `free_spins_round_check.gd` exit 0. `powers_check.gd` exit 0. `dev_tools_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0.
+
+### Free Spins play themselves
+
+- Request: During Free Spins, the player should not have to press Execute. The whole round should play on its own.
+- Implementation: After the vice choice, the fight plays every free spin in order, including when the player has no chips left for a paid bet. Execute is ignored until that round ends.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_round_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Picking a power starts the Free Spin round immediately. The winnings bar and 1/X counter still update on each spin.
+- Verification: `free_spins_round_check.gd` exit 0.
+
+### No grid-clear prize
+
+- Request: Clearing the grid should not give any extra winnings.
+- Implementation: Removed the `50 × bet × multiplier` bonus from both spin paths. The board still counts as cleared, and a Vice Round clear still starts Free Spins. Line wins that emptied the board still pay.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/test/powers_check.gd`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: An empty board adds 0 chips on its own. Matching lines still pay. Vice Round still opens Free Spins when the board clears.
+- Verification: `powers_check.gd` exit 0. `determinism_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### Skull spin bars
+
+- Request: Keep the skull on its full face through Vice Round and Free Spins. Under it, show white blocks for the spins still left, a drip from the mouth when more spins are added, and an `X/Y spins` count. The blocks may run off the screen.
+- Implementation: The skull locks on stage 3 for the whole bonus, then follows the meter again. Free Spins draw one fixed white block per spin left under the skull, unclipped. A short white drip plays before extra blocks appear. The count moved off the winnings number.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_round_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: During Vice Round and Free Spins the skull stays on the third picture. The spin blocks and `1/8 spins` text sit under it only while Free Spins are running.
+- Verification: `free_spins_round_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0.
+
+### Fresh grid on every free spin
+
+- Request: After the power choice, each free spin should open on its own new grid. If that grid matches, the chosen power is very unlikely. If nothing matches, that power is guaranteed. Then the next free spin does the same on another new grid.
+- Implementation: Spin 1 still uses the full board built when the power is chosen. Each later free spin fills a new 5×5 before it looks for matches, using the same board swap as the first one. A dead opening grid always fires the chosen power. A winning one still uses the 1% roll. Cascades inside one spin still do not drop new symbols from the top. The multiplier still carries and still stops at 100×.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/test/free_spins_round_check.gd`
+  - `AXEL/axel_project/combat/test/powers_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Free Spins no longer keep playing the leftover symbols. Every counted spin starts full, then the same power rule runs, then the next spin gets a new board.
+- Verification: `free_spins_round_check.gd` exit 0. `powers_check.gd` exit 0. `determinism_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0.
+
+### Free spin bars stay on screen
+
+- Request: The free-spin blocks and the `1/8 spins` count should be visible during Free Spins, including when that round is opened from dev tools.
+- Implementation: The row still sits under the full-face skull. If the count would leave the window, the row shifts up. Each block is white with a black edge, and the count uses the same grey shadow as the other white HUD text. Extra blocks may still run off the right.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Bloody Hand, Alcohol, and Cigarette still grant the same spins. The blocks and the count stay readable on the white plate.
+- Verification: `free_spins_choice_ui_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0. `determinism_check.gd` exit 0. `powers_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### Power activation visuals
+
+- Request: Show a short white-to-grey motion when a power changes symbols. Bloody hand glows and morphs, alcohol is eaten by the wild skull, and cigarette burns into ash. The fight should not get slower.
+- Implementation: Each changed cell plays that motion for 0.48s, all at once, instead of the old empty 0.25s pause. The power-icon hold is 0.31s so the icon plus the motion still totals 1.75s. Headless runs and the instant spin path skip the motion. The board result is unchanged.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/power_controller.gd`
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/shaders/power_symbol_fx.gdshader`
+  - `AXEL/axel_project/combat/test/power_act_fx_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Bloody hand, alcohol, and cigarette still change the same cells. Those cells now flash white, drain to grey, then morph, get eaten by the skull, or crumble to ash. Gravity starts when it did before.
+- Verification: `power_act_fx_check.gd` exit 0 (headless and windowed). `powers_check.gd` exit 0. `determinism_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0. `shader_builtin_scope_check.gd` exit 0. Windowed run printed no `SHADER ERROR`.
+
+### Free spin count stays white
+
+- Request: The free-spin count under the blocks should be white, because it could not be read.
+- Implementation: The count was already white in code. The combat color filter turns white into black, so that line vanished into the background. The count now draws above that filter and stays white.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The `1/8 spins` line stays white during Free Spins. The blocks are unchanged.
+- Verification: `free_spins_choice_ui_check.gd` exit 0. Windowed pixel grab showed white `1/4 spins` (225 white pixels) with the color filter on. `determinism_check.gd` exit 0. `powers_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0. `scene_smoke_check.gd` exit 0.
+
+### Free spin skull clearance
+
+- Request: Shrink the skull a little, move it up without touching the history frame, and keep the free-spin bars in front of it with a small shadow.
+- Implementation: The full-face skull is about 8% smaller and sits 70 art pixels higher, leaving a small gap under the history frame. The blocks and the count draw above the skull and the color filter, each with a short grey shadow.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: During Vice Round and Free Spins the skull is smaller and higher. The spin blocks and `1/8 spins` stay in front of the jaw. Normal spins still use the old skull size.
+- Verification: `free_spins_choice_ui_check.gd` exit 0. Windowed capture at 1600×900 showed a gap under the history frame, bars below the jaw, and a short grey shadow on the blocks and the count. `combat_test_scaffold_check.gd` exit 0. `hud_piece_placement_check.gd` exit 0.
+
+### Docs matched to the locker map and Free Spins
+
+- Request: Update docs.
+- Implementation: The world-loop plan and the scene-building map note now match the live overlay. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. The basement is not a travel button; its floor hand is pinned on the right half of Entrance. Canon now says a cleared grid pays nothing extra. The combat implementation plan’s Free Spins section matches the live round: it plays by itself, a dead opening grid always uses the chosen power, each later spin starts on a new grid, and the skull bars are the Free Spins HUD. The design recap no longer calls that round Super Free Spins. The headless list names `free_spins_choice_ui_check.gd`, `free_spins_round_check.gd`, `power_act_fx_check.gd`, and `dev_tools_check.gd`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_design.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None in the game. Future edits should follow the corridor entrance, the basement pin, and the no-prize clear, not the old 1.1 travel or the 50× clear bonus.
+- Verification: Compared the map sentences to `locker_map_overlay.gd` (`ENTRANCE_SCENE`, `ENTRANCE_PIN_RECT`, `_opened_from_room`) and `locker_map_travel_check.gd`. Compared the Free Spins sentences to `combat_root.gd` and `combat_test.gd`.
+- Notes: `AI_DOCS.md` and `AXEL_SCENES_ARC1.md` already said Entrance loads `1.2` and that the basement hand sits on the right half. This entry fills the plans that still said “Entrance travels after a visit.”
+
 

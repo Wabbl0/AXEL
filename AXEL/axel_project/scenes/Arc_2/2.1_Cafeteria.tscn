@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://cdwuuon15q6sh" path="res://scenes/core/locked_exploration_background.gd" id="8_bg_lock"]
 [ext_resource type="Script" uid="uid://ygw5eebu5riy" path="res://scenes/fx/leaf_occlusion_zone.gd" id="9_leaf_zone"]
 [ext_resource type="PackedScene" path="res://scenes/fx/MemoryIndicator.tscn" id="10_memory_indicator"]
+[ext_resource type="PackedScene" path="res://scenes/fx/DirectionHint.tscn" id="11_direction_hint"]
 [ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="player_packed"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_top"]
@@ -26,7 +27,7 @@ size = Vector2(94, 2600)
 size = Vector2(650, 996.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_table_block_right"]
-size = Vector2(640, 996.5)
+size = Vector2(640, 980.25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_foodline"]
 size = Vector2(1892, 240)
@@ -35,13 +36,13 @@ size = Vector2(1892, 240)
 size = Vector2(339.75, 377.25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_kitchen_interact"]
-size = Vector2(273, 569.6875)
+size = Vector2(308, 576.84375)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_return_interact"]
 size = Vector2(155, 818.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_backyard_interact"]
-size = Vector2(193.75, 765.5)
+size = Vector2(192.875, 816.75)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_classrooms_interact"]
 size = Vector2(721, 246)
@@ -111,7 +112,7 @@ polygon = PackedVector2Array(-83, 93, 465, 92, 466, 186, -86, 184)
 position = Vector2(2600, 800)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableBlockRight" unique_id=1025277886]
-position = Vector2(431, -199)
+position = Vector2(247, -190.125)
 shape = SubResource("RectangleShape2D_table_block_right")
 
 [node name="ChairBlockBottom" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=46163487]
@@ -162,7 +163,7 @@ position = Vector2(1754, 1300)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/TableInteractArea" unique_id=696839511]
-position = Vector2(872, -1090)
+position = Vector2(702, -1064)
 shape = SubResource("RectangleShape2D_table_interact")
 
 [node name="KitchenInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=201792129]
@@ -170,7 +171,7 @@ position = Vector2(3000, 880)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/KitchenInteractArea" unique_id=977331617]
-position = Vector2(-961, -802.15625)
+position = Vector2(-910, -804.4219)
 shape = SubResource("RectangleShape2D_kitchen_interact")
 
 [node name="ReturnInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1353098574]
@@ -186,7 +187,7 @@ position = Vector2(3300, 1440)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BackyardInteractArea" unique_id=191643595]
-position = Vector2(94, 72)
+position = Vector2(107.5625, -8.375)
 shape = SubResource("RectangleShape2D_backyard_interact")
 
 [node name="ClassroomsInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=622986680]
@@ -196,27 +197,6 @@ monitorable = false
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ClassroomsInteractArea" unique_id=851748786]
 position = Vector2(-1, -31)
 shape = SubResource("RectangleShape2D_classrooms_interact")
-
-[node name="Placeholders" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1977150767]
-
-[node name="Kitchen_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=441580876]
-position = Vector2(-2, -166.53505)
-scale = Vector2(1, 1.5094959)
-color = Color(0.32156864, 0.32156864, 0.32156864, 1)
-polygon = PackedVector2Array(1904, 182, 1905, 111, 2176, 109, 2178, 183)
-
-[node name="Backyard_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=438226570]
-position = Vector2(3474, 1325)
-scale = Vector2(1, 1.2868792)
-color = Color(0.32156864, 0.32156864, 0.32156864, 1)
-offset = Vector2(-2161, -272)
-polygon = PackedVector2Array(2101, 718, 2103, 110, 2197, 113.47699, 2195, 721.14856)
-
-[node name="Classrooms_Door" type="Polygon2D" parent="WalkableWorld/EnvironmentColliders/Placeholders" unique_id=452955483]
-position = Vector2(-202, 2104.0002)
-scale = Vector2(1.0027211, 1.4782588)
-color = Color(0.32156864, 0.32156864, 0.32156864, 1)
-polygon = PackedVector2Array(1904, 182, 1904, 116, 2643.9866, 116.041534, 2639, 185)
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=504722463]
 script = ExtResource("7_camera_script")
@@ -236,9 +216,15 @@ scale = Vector2(0.298, 0.298)
 speed = 255.9
 
 [node name="MemoryIndicator" parent="PlayerLayer" unique_id=99253428 instance=ExtResource("10_memory_indicator")]
-position = Vector2(2653, 220)
+position = Vector2(2450, 239)
 memory_key = "cafeteria_memory"
 interact_area_path = NodePath("../../WalkableWorld/EnvironmentColliders/TableInteractArea")
+
+[node name="DirectionHint" parent="PlayerLayer" unique_id=160052221 instance=ExtResource("11_direction_hint")]
+visible = false
+rotation = 1.5707964
+indicator_scale = 1.67
+point_down = true
 
 [node name="TopDialogueOverlay" parent="." unique_id=672473847 instance=ExtResource("5_top_dialogue")]
 visible = false

@@ -305,11 +305,18 @@ static func check_combat_hud_anchors(root_ui: Node, viewport_size: Vector2 = Vec
 			continue
 
 		var widget_layer := root_ui.find_child("WidgetLayer", true, false)
+		var choice_layer := root_ui.find_child("FreeSpinsChoiceLayer", true, false)
 		var under_widget_layer := widget_layer != null and widget_layer.is_ancestor_of(node)
-		if not under_widget_layer and not canvas.is_ancestor_of(node) and node != canvas:
+		var under_choice_layer := choice_layer != null and choice_layer.is_ancestor_of(node)
+		if (
+			not under_widget_layer
+			and not under_choice_layer
+			and not canvas.is_ancestor_of(node)
+			and node != canvas
+		):
 			violations.append("%s is not under HudCanvas" % unique_name)
 			continue
-		if under_widget_layer:
+		if under_widget_layer or under_choice_layer:
 			continue
 		if node is Control:
 			var control := node as Control
@@ -362,7 +369,7 @@ static func collect_combat_hud_layout_findings(
 			"REGRESSION",
 			scene_path,
 			violation,
-			"Keep required unique nodes under HudCanvas (3508x2480), or under WidgetLayer after live-widget bind (layer 115 above room FX)."
+			"Keep required unique nodes under HudCanvas (3508x2480), under WidgetLayer after live-widget bind, or on FreeSpinsChoiceLayer for the vice picker."
 		))
 	return findings
 

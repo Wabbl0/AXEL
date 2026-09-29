@@ -1203,7 +1203,7 @@ theme_override_constants/separation = 14
 [node name="SuperFSChoiceTitle" type="Label" parent="HudCanvas/SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=1108547191]
 layout_mode = 2
 theme_override_font_sizes/font_size = 44
-text = "Choose Free Spins Power"
+text = "Choose Your Vice"
 horizontal_alignment = 1
 
 [node name="SuperFSChoiceHint" type="Label" parent="HudCanvas/SuperFSChoiceOverlay/SuperFSChoicePanel/SuperFSChoiceVBox" unique_id=428089608]

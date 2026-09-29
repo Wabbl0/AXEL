@@ -60,6 +60,7 @@ func _run(scene: Node) -> void:
 		_expect(name, "size", got.size, Vector2(want[2], want[3]), SIZE_TOLERANCE)
 		_check_native_art_size(piece, name)
 
+	_check_pause_gear(scene)
 	_check_on_plate(canvas)
 	_check_grid_fills_box(scene)
 	_finish()
@@ -86,6 +87,29 @@ func _check_native_art_size(piece: Control, name: String) -> void:
 		return
 	var native := Vector2(art.texture.get_width(), art.texture.get_height())
 	_expect(name, "native art size", _plate_rect(art).size, native, SIZE_TOLERANCE)
+
+
+func _check_pause_gear(scene: Node) -> void:
+	var piece := scene.find_child("NEW_Settings", true, false) as Control
+	if piece == null:
+		_fail("NEW_Settings is missing")
+		return
+	var gear := piece.get_node_or_null("PauseGear") as Control
+	if gear == null or str(gear.get_meta("gear_char", "")) != "⚙":
+		_fail("pause square has no gear")
+		return
+	if gear.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		_fail("pause gear takes the click")
+	var gap_l := gear.position.x
+	var gap_t := gear.position.y
+	var gap_r := piece.size.x - (gear.position.x + gear.size.x)
+	var gap_b := piece.size.y - (gear.position.y + gear.size.y)
+	if gap_l < -1.0 or gap_t < -1.0 or gap_r < -1.0 or gap_b < -1.0:
+		_fail("pause gear sits outside the square (gaps %s %s %s %s, gear %s, piece %s)" % [gap_l, gap_t, gap_r, gap_b, gear.size, piece.size])
+	if gap_l < 12.0 or gap_t < 12.0 or gap_r < 12.0 or gap_b < 12.0:
+		_fail("pause gear is too close to the square edges (gaps %s %s %s %s)" % [gap_l, gap_t, gap_r, gap_b])
+	if gap_l > 40.0 or gap_t > 40.0 or gap_r > 40.0 or gap_b > 40.0:
+		_fail("pause gear is too small for the square (gaps %s %s %s %s)" % [gap_l, gap_t, gap_r, gap_b])
 
 
 func _check_on_plate(canvas: Control) -> void:

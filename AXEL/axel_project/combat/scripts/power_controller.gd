@@ -124,6 +124,7 @@ func _bloody_hand_transform(ctx: Dictionary) -> void:
 			var sym: SymbolDefScript = grid.get_cell(p)
 			if sym != null and sym.id == source_id:
 				if potency >= 1.0 or rng.randf() <= potency:
+					_note_power_fx(ctx, &"morph", p, sym, target)
 					grid.set_cell(p, target)
 	var extra_transform: float = float(ctx.get("extra_transform_chance", 0.0))
 	if extra_transform > 0.0 and rng.randf() <= extra_transform:
@@ -135,7 +136,9 @@ func _bloody_hand_transform(ctx: Dictionary) -> void:
 				if s2 != null and s2.id != target.id and s2.tier != SymbolDefScript.Tier.WILD:
 					candidates.append(p2)
 		if not candidates.is_empty():
-			grid.set_cell(candidates[rng.randi_range(0, candidates.size() - 1)], target)
+			var pick: Vector2i = candidates[rng.randi_range(0, candidates.size() - 1)]
+			_note_power_fx(ctx, &"morph", pick, grid.get_cell(pick), target)
+			grid.set_cell(pick, target)
 
 
 func _alcohol_add_wilds(ctx: Dictionary) -> void:
@@ -166,6 +169,7 @@ func _alcohol_add_wilds(ctx: Dictionary) -> void:
 					best_cell = p
 		if best_cell.x < 0:
 			return
+		_note_power_fx(ctx, &"eat", best_cell, grid.get_cell(best_cell), wild)
 		grid.set_cell(best_cell, wild)
 		blocked[best_cell] = true
 
@@ -210,7 +214,24 @@ func _cigarette_remove_lowpays(ctx: Dictionary) -> void:
 			if sym == null:
 				continue
 			if remove_ids.has(sym.id):
+				_note_power_fx(ctx, &"burn", p, sym, null)
 				grid.set_cell(p, null)
+
+
+func _note_power_fx(ctx: Dictionary, kind: StringName, cell: Vector2i, from_sym: SymbolDefScript, to_sym: SymbolDefScript) -> void:
+	if not ctx.has("fx_log"):
+		return
+	var log: Variant = ctx["fx_log"]
+	if typeof(log) != TYPE_ARRAY:
+		return
+	var from_tex: Texture2D = from_sym.texture if from_sym != null else null
+	var to_tex: Texture2D = to_sym.texture if to_sym != null else null
+	(log as Array).append({
+		"kind": kind,
+		"cell": cell,
+		"from_tex": from_tex,
+		"to_tex": to_tex,
+	})
 
 
 func _sort_lowpay_ids(a: Variant, b: Variant, counts: Dictionary, weights: Dictionary) -> bool:

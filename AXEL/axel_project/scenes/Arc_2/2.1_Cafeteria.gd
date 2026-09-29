@@ -11,6 +11,10 @@ const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 const BASEMENT_PEEK_MARGIN_PX := 12.0
 const KITCHEN_STAND_TEX_Y := 90.0
+const HINT_WAIT_SEC := 30.0
+const HINT_SCREEN_SCALE := 1.67
+const HINT_GAP_PX := 8.0
+const HINT_TIP_PX := 16.0
 
 var _table_area: Area2D
 var _kitchen_area: Area2D
@@ -23,9 +27,15 @@ var _pending_backyard_peek := false
 var _pending_classrooms_peek := false
 var _pending_table_peek := false
 var _arrival_t := InteractArrival.DEFAULT_T
+var _direction_hint: Node2D
+var _hint_elapsed := 0.0
+var _hint_hidden_this_visit := false
 
 
 func _ready() -> void:
+	_direction_hint = get_node_or_null("PlayerLayer/DirectionHint") as Node2D
+	if is_instance_valid(_direction_hint):
+		_direction_hint.visible = false
 	bind_player_cover()
 	_table_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/TableInteractArea"
@@ -48,6 +58,11 @@ func _ready() -> void:
 	if not GameManager.cafeteria_enter_line_seen:
 		_enter_dialogue_pending = true
 	call_deferred("_play_enter_dialogue")
+
+
+func _process(delta: float) -> void:
+	super._process(delta)
+	_update_direction_hint(delta)
 
 
 func zone_ids() -> PackedStringArray:
@@ -164,6 +179,7 @@ func on_world_space_synced(_cover_scale: float, _bg_position: Vector2) -> void:
 		call_deferred("_apply_inside_arrival_after_wake")
 	elif _pending_table_peek:
 		call_deferred("_apply_table_peek_if_pending")
+	_sync_direction_hint()
 
 
 func _apply_inside_arrival_after_wake() -> void:
@@ -349,3 +365,65 @@ func _occlusion_y_cutoff(behind: Area2D) -> float:
 	if max_y == -INF:
 		return 1e9
 	return max_y
+
+
+func _update_direction_hint(delta: float) -> void:
+	if not is_instance_valid(_direction_hint):
+		return
+	if _hint_should_stay_off():
+		_direction_hint.visible = false
+		return
+	var dialogue_holds := _enter_dialogue_pending or InteractZoneGate.dialogue_busy(_top_dialogue)
+	var pause_holds := get_tree() != null and get_tree().paused
+	if not dialogue_holds and not pause_holds:
+		_hint_elapsed += delta
+	var show := _cover_layout_ready and (
+		_hint_elapsed >= HINT_WAIT_SEC or _both_side_rooms_visited()
+	)
+	_direction_hint.visible = show
+	if not show:
+		return
+	_sync_direction_hint()
+	if _direction_hint.has_method("overlaps_player") and bool(_direction_hint.call("overlaps_player", _player)):
+		_hint_hidden_this_visit = true
+		GameManager.set_cafeteria_down_hint_done(true)
+		_direction_hint.visible = false
+
+
+func _sync_direction_hint() -> void:
+	if not is_instance_valid(_direction_hint) or not is_instance_valid(_classrooms_area):
+		return
+	_direction_hint.scale = Vector2(HINT_SCREEN_SCALE, HINT_SCREEN_SCALE)
+	_direction_hint.rotation = PI * 0.5
+	var top := _classrooms_top_center()
+	var lift := HINT_TIP_PX * HINT_SCREEN_SCALE + HINT_GAP_PX
+	_direction_hint.global_position = Vector2(top.x, top.y - lift)
+
+
+func _classrooms_top_center() -> Vector2:
+	var shape := _classrooms_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape == null:
+		return _classrooms_area.global_position
+	var center := shape.global_position
+	var rect := shape.shape as RectangleShape2D
+	if rect == null:
+		return center
+	var half_h := rect.size.y * 0.5 * absf(shape.global_transform.get_scale().y)
+	return Vector2(center.x, center.y - half_h)
+
+
+func _both_side_rooms_visited() -> bool:
+	return (
+		GameManager.has_visited(KITCHEN_SCENE)
+		and GameManager.has_visited(BACKYARD_SCENE)
+	)
+
+
+func _hint_should_stay_off() -> bool:
+	if _hint_hidden_this_visit or _is_transitioning:
+		return true
+	if GameManager.cafeteria_down_hint_done:
+		return true
+	if GameManager.has_visited(CLASSROOMS_CORRIDOR_SCENE):
+		return true
+	return false

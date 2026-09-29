@@ -17,7 +17,7 @@ Canon still wins: `plans/core/AI_DOCS.md`. Catalog text changes only in
 - All item ranks start Common; picking up in one area clears it and upgrades
   the rooms you have not taken from yet (those hands change to the new rarity).
 - The locker shows lore pictures only. Equip and unequip live on the item wheel. `START RUN` is gone. After a correct board answer the name-tag picture becomes that floor item's icon.
-- The locker map and pause Map are the same overlay. A room with floor items travels after a visit and one pickup. Entrance travels after a visit. Hands are placed when the game starts. Each map hand shows the rarity mark, and a rarity step redraws the hands and the hover cards.
+- The locker map and pause Map are the same overlay. A room with floor items travels after a visit and one pickup. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. The basement is not a travel button; its floor hand is pinned on the right half of Entrance. Hands are placed when the game starts. Each map hand shows the rarity mark, and a rarity step redraws the hands and the hover cards.
 - A full-screen wipe plays on the way into every fight.
 - Winning puts you back in the room you left, on the spot you left.
 - Losing deletes that slot’s save files (no tombstone) and keeps **GONE** up with **Retry** / **Return To Main Menu** / **Exit**. Retry starts a new run from `1.1` on the slot that died. `AxelWorld.notify_fight_ended()` clears `_starting_fight` on a loss so New Game can fight again.
@@ -181,7 +181,9 @@ a cleared area.
    floor item's icon. The shovel is not on the locker. First hub visit sets the opened-locker flag (no C1/C2/C3 grant).
 10. `scenes/ui/locker_map_overlay.gd` — locker and pause Map share this overlay.
     Travel uses `AxelWorld.map_can_travel()`: a visit, plus one floor-item pickup
-    when that room has hands. Entrance travels after a visit. Hands are placed
+    when that room has hands. Entrance loads `1.2` after a visit. A click on the
+    room you opened the map from does nothing. The basement is not a travel
+    button; its floor hand is pinned on the right half of Entrance. Hands are placed
     when the game starts. Each pin shows the rarity mark. A rarity step redraws
     the pins and the hover cards.
 11. Memory stills — `2.2_CafeteriaMemory.gd`, `3.2_BackyardMemory.gd`,
@@ -218,7 +220,7 @@ a cleared area.
 - The first area's floor items are Common; after that pickup, every area you
   have not taken from reads one rank higher and its hands show the new rarity.
 - The locker has no START RUN button and no LOCKER overlay; flashlight, key, and name pictures sit on the locker. Combat equip is the item wheel.
-- The locker map and pause Map are the same picture. A room with floor items travels only after a visit and one pickup there. Entrance travels after a visit. Hallway on the map is `2.4`. Hands are placed when the game starts. Each map hand shows the rarity mark, and a rarity step redraws the hands and the hover cards.
+- The locker map and pause Map are the same picture. A room with floor items travels only after a visit and one pickup there. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. Hallway on the map is `2.4`. The basement is not a travel button; its floor hand is pinned on the right half of Entrance. Hands are placed when the game starts. Each map hand shows the rarity mark, and a rarity step redraws the hands and the hover cards.
 - A wipe plays before each fight; a win shows Round Complete!, fades, and returns to the same room and spot.
 - The `1.4` chained door plays `"Not yet."` and stays in the room.
 
@@ -232,7 +234,7 @@ a cleared area.
    show before you press `[E]`. Take it → fight (next ladder rung, 150) → win.
    The chained door only plays `"Not yet."` and stays in the room.
 4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot walk-fight, but it does have floor hands.
-5. Open the locker map at the start: every floor-item room already has a hand. Before visiting `2.3`, kitchen does not travel. Walk there, pick up one hand, reopen: the click works. Hover shows the remaining hands and their cards. The other hands show the next rarity.
+5. Open the locker map at the start: every floor-item room already has a hand. The basement hand sits on the right half of Entrance. Clicking the room you are already in does nothing. Before visiting `2.3`, kitchen does not travel. Walk there, pick up one hand, reopen: the click works. Hover shows the remaining hands and their cards. The other hands show the next rarity.
 
 ## Found while building
 

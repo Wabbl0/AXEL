@@ -30,7 +30,6 @@ func show_menu() -> void:
 
 func hide_menu() -> void:
 	visible = false
-	_listening_clear()
 
 
 func is_submenu_open() -> bool:
@@ -231,8 +230,3 @@ func _refresh_seed() -> void:
 	_seed_label.visible = seed_n != 0
 	if seed_n != 0:
 		_seed_label.text = "SEED %d" % seed_n
-
-
-func _listening_clear() -> void:
-	if _options != null:
-		_options._listening_action = ""

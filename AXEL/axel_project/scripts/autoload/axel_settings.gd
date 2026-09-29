@@ -56,12 +56,16 @@ func _enter_tree() -> void:
 
 
 func get_value(section: String, key: String, default: Variant = null) -> Variant:
+	if _is_locked(section, key):
+		return (DEFAULTS[section] as Dictionary)[key]
 	if default == null and DEFAULTS.has(section) and (DEFAULTS[section] as Dictionary).has(key):
 		default = DEFAULTS[section][key]
 	return _config.get_value(section, key, default)
 
 
 func set_value(section: String, key: String, value: Variant) -> void:
+	if _is_locked(section, key):
+		return
 	if _config.has_section_key(section, key) and _config.get_value(section, key) == value:
 		return
 	_config.set_value(section, key, value)
@@ -228,12 +232,20 @@ func _set_bus_linear(bus_name: String, linear: float, respect_existing_mute: boo
 
 
 func _apply_input_overrides() -> void:
-	if _config.has_section("controls"):
-		for action in _config.get_section_keys("controls"):
-			var events: Variant = _config.get_value("controls", action, [])
-			if events is Array:
-				_apply_action_binding(String(action), events)
+	# Menu rebinds are gone. A saved [controls] block must not replace the project keys.
 	_mirror_ui_actions_from_gameplay()
+
+
+func _is_locked(section: String, key: String) -> bool:
+	match section:
+		"video":
+			return key == "fps_cap" or key == "crt_enabled" or key == "ui_scale"
+		"gameplay":
+			return key == "text_speed_cps" or key == "auto_advance"
+		"access":
+			return key == "reduce_flashing" or key == "screen_shake" or key == "glitch_intensity"
+		_:
+			return false
 
 
 func _mirror_ui_actions_from_gameplay() -> void:

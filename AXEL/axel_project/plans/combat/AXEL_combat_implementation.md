@@ -169,7 +169,7 @@ This is the beating heart. Implement it as an explicit state machine in `combat_
 IDLE → SPINNING → RESOLVING_LINES → CASCADING → (loop back to RESOLVING_LINES)
      → TRINITY_CHECK
      → GIRL_POWER_ROLL (only if entire spin had no wins, and not in Vice Round/FreeSpins-forced mode)
-     → CLEAR_GRID_PRIZE_CHECK
+     → GRID_CLEAR_CHECK
      → GOAL_CHECK → IDLE (or END_ENCOUNTER / ENTER_FREE_SPINS)
 ```
 
@@ -205,11 +205,9 @@ func spin() -> void:
         await powers.trigger_current_power(ctx)
         powers.advance_rotation()
 
-    if _is_grid_empty():
-        if _in_trinity_round:
-            _enter_free_spins_choose_state()
-        else:
-            _award_clear_grid_prize()       # 50x total bet x active multiplier
+    if _is_grid_empty() and _in_trinity_round:
+        _enter_free_spins_choose_state()
+    # A cleared grid pays no extra prize. Line wins already paid.
 
     goal_tracker.on_spin_completed(_last_spin_summary())
     if _in_trinity_round or _pending_free_spins or _awaiting_free_spin_choice or free_spins.active:
@@ -301,8 +299,9 @@ Trigger rules:
 - In the base game, Girl Power may trigger only on a spin that produced zero wins after full cascade resolution.
 - Trigger chance is probabilistic (`p_girl_power` data value), not guaranteed.
 - Rotation advances only after an actual Girl Power activation.
-- Free Spins overrides this (chosen power forced every non-winning spin).
+- Free Spins overrides this: the chosen power always fires when that spin's opening grid has no wins. A winning opening grid uses the normal small chance.
 - Vice Round overrides this (fixed bloody hand → alcohol → cigarette sequence, then restore previously active power).
+- When a power changes cells, those cells play a 0.48s white-to-grey motion (bloody hand morphs, alcohol is eaten by the wild skull, cigarette burns to ash). The power-icon hold is 0.31s so the activation stays 1.75s. Headless and sync spins skip the motion.
 
 ```gdscript
 func trigger_current_power(ctx: Dictionary) -> void:
@@ -338,7 +337,8 @@ Items can swap, amplify, or suppress these via hooks (see §9).
   4. Reset multiplier to x1.
   5. On each non-winning drop, trigger Girl Power in fixed order bloody hand -> alcohol -> cigarette.
   6. Exit after all three powers have triggered, restore saved active power.
-- If grid clears during Vice Round, transition to Free Spins (no instant clear-grid payout).
+- If grid clears during Vice Round, transition to Free Spins.
+- A cleared grid never pays an extra prize. Line wins that emptied the board already paid.
 
 ---
 
@@ -351,14 +351,15 @@ Create a dedicated `free_spins.gd` controller.
   - Bloody hand: 4 starting spins
   - Alcohol: 5 starting spins
   - Cigarette: 8 starting spins
-- On power choice: repopulate a fresh 5×5 grid (same encounter RNG stream; no reseed) before the first Free Spin.
+- On power choice: repopulate a fresh 5×5 grid (same encounter RNG stream; no reseed). That grid is spin 1/X. The rest of the round plays by itself. Execute is ignored until it ends.
+- Vice wins and Free Spin wins stay on the winnings bar until that round ends, then the whole bar is added to the goal. The balance still rises as each spin pays.
 - During Free Spins:
-  - chosen Girl Power triggers on every non-winning spin
-  - spin start does not repopulate; each spin continues from the entry grid state and depletes it
-  - cascade resolve is gravity-only (no top refill / no new symbol spawns)
+  - chosen Girl Power triggers on every non-winning opening grid; a winning opening grid uses the normal small chance
+  - the first free spin plays the grid from the power choice; each later free spin repopulates a fresh 5×5 before it is judged (same RNG stream, no reseed)
+  - cascade resolve inside one spin is gravity-only (no top refill / no new symbol spawns)
   - free-spin depletion/clear checks are based on non-wild symbols; wild-only board states count as cleared
   - Vice Round cannot trigger
-  - meter fills grant extra spins:
+  - meter fills grant extra spins before the count advances:
     - Bloody hand +4
     - Alcohol +3
     - Cigarette +2
@@ -439,7 +440,7 @@ Ship those before filling out the full table from design doc §6.
 
 - Grid: a `GridContainer` with 25 `TextureRect` children, each bound to a cell. Listen to `grid_populated`, `cells_cleared`, `symbols_fell`, `symbols_spawned` — animate from signal payloads. Keep animations short (≤200ms per step) so cascade chains don't drag. **One exception:** the ~1.9 s board swap on `grid_populated` (§5). It happens once per fresh board, never inside a cascade chain.
 - HUD: current goal text + progress (`%GoalLabel`, not `goal_hud.tscn`), current multiplier, stake, Vice **skull** meter (3 sections; `premium_skull_meter.gd` + `meter.gd`). No spin-budget readout. Limit spins / Budget / Used are stripped. The lower-grid `FeelGrimeBand` stays hidden. Round winnings, the cascade multiplier, and the selected bet are white. No ring widget. No match win-line overlay (`FeelWinLines` / `show_win_lines` gone). Paid spin uses the `interact` action (E/Space/Enter + pad A) and the EXECUTE piece. The acting power is named by the center power-intro flash, not by a portrait — the old dim corner icon row was removed.
-- Free Spins HUD: chosen power, spins remaining, carry multiplier, total-spin-cap progress.
+- Free Spins HUD: the skull stays on its full face through Vice Round and Free Spins, a little smaller and higher, with a gap under the history frame. Under it, one white block per spin still left, plus a white `1/8 spins` count. Both sit in front of the skull and above the color filter, each with a small shadow. Extra spins drip from the mouth. The choice card title is **Choose Your Vice**. The settings mark is a bold eight-tooth cog in the square’s ink (`Color8(7, 7, 7)`), about 63% of the square, painted on a 16×16 grid.
 - **Feel FX to ship early:** CRT scanline shader overlay (carry from prototype), glitch flash on big multipliers, screen shake scaled to multiplier value. Audio: muffled stab on power trigger, a quiet tone on grid clear. Big wins should feel *wrong* — see design doc §7.
 
 ---
@@ -461,7 +462,7 @@ Write headless tests (no scene tree) for:
 3. **Wild placement** — 3-line spawns in middle cell only; no spawns for 4/5 lines; overlap-spawn dedupe.
 4. **Powers** — mocked grid before/after for bloody hand, alcohol, cigarette and rotation changes only on activation. Live check: `combat/test/powers_check.gd`.
 5. **Vice meter** — power-symbol line meter increments (x3/x4/x5), cap at 3, save/restore active power behavior.
-6. **Free Spins** — initial spin awards by chosen power, extra-spin awards, Vice Round disabled in feature, x100 multiplier cap, no per-spin repopulation, and no refill spawns during free-spin cascades.
+6. **Free Spins** — initial spin awards by chosen power, extra-spin awards, Vice Round disabled in feature, x100 multiplier cap, a fresh grid on each free spin after the first, and no refill spawns during free-spin cascades.
 7. **Goal evaluation** — every goal type with synthetic spin summaries.
 8. **Determinism** — seed the RNG, run 100 spins on a fixed encounter, verify identical final grid on replay.
 

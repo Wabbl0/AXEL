@@ -20,7 +20,10 @@ const HOVER_GROW := 1.08
 const ROCK_DEGREES := 1.0
 const ROCK_PERIOD := 28.0
 
-const ENTRANCE_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
+const ENTRANCE_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
+const SCHOOL_MAP_SCENE := "res://scenes/Arc_1/1.3_SchoolMap.tscn"
+const BASEMENT_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
+const ENTRANCE_PIN_RECT := Rect2(487, 533, 475, 95)
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const KITCHEN_SCENE := "res://scenes/Arc_2/2.3_Kitchen.tscn"
 const HALLWAY_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
@@ -67,6 +70,10 @@ const AREAS: Array[Dictionary] = [
 		"rect": Rect2(13, 533, 949, 95),
 		"fit": true,
 		"scene": ENTRANCE_SCENE,
+		# Basement hand only. The click still travels the whole strip to 1.2.
+		"pin_scene": BASEMENT_SCENE,
+		"pin_plate": "res://exports/Drawings/1.4_BasementDoor_v2.png",
+		"pin_rect": ENTRANCE_PIN_RECT,
 	},
 	{
 		"name": "Classroom",
@@ -386,6 +393,8 @@ func _on_part_gui(event: InputEvent, index: int) -> void:
 	var viewport := get_viewport()
 	if viewport != null:
 		viewport.set_input_as_handled()
+	if scene_path == _opened_from_room():
+		return
 	travel_requested.emit(scene_path)
 
 
@@ -394,6 +403,19 @@ func _can_travel(scene_path: String) -> bool:
 	if world == null or not world.has_method("map_can_travel"):
 		return false
 	return bool(world.call("map_can_travel", scene_path))
+
+
+func _opened_from_room() -> String:
+	var tree := get_tree()
+	if tree == null or tree.current_scene == null:
+		return ""
+	var here := String(tree.current_scene.scene_file_path)
+	if here == SCHOOL_MAP_SCENE:
+		var gm := get_node_or_null("/root/GameManager")
+		if gm == null:
+			return ""
+		return String(gm.get("pause_map_return_path"))
+	return here
 
 
 func _apply_area_rects() -> void:
@@ -566,8 +588,21 @@ func _measure_rect(index: int) -> Rect2:
 	return bounds
 
 
-func _plate_size_for(index: int) -> Vector2:
-	var path := String(AREAS[index].get("plate", ""))
+func _pin_measure_rect(index: int) -> Rect2:
+	var pin_rect: Variant = AREAS[index].get("pin_rect", null)
+	if pin_rect is Rect2:
+		return pin_rect
+	return _measure_rect(index)
+
+
+func _pin_plate_size(index: int) -> Vector2:
+	var path := String(AREAS[index].get("pin_plate", ""))
+	if path.is_empty():
+		path = String(AREAS[index].get("plate", ""))
+	return _texture_size(path)
+
+
+func _texture_size(path: String) -> Vector2:
 	if path.is_empty():
 		return Vector2.ZERO
 	if _plate_size.has(path):
@@ -594,7 +629,13 @@ func _items_for(index: int) -> Array:
 	var world := _world()
 	if world == null or not world.has_method("placed_floor_items"):
 		return []
-	return world.call("placed_floor_items", String(AREAS[index].get("scene", "")))
+	var area: Dictionary = AREAS[index]
+	var scene_path := String(area.get("pin_scene", ""))
+	if scene_path.is_empty():
+		scene_path = String(area.get("scene", ""))
+	if scene_path.is_empty():
+		return []
+	return world.call("placed_floor_items", scene_path)
 
 
 func _on_map_spots_updated() -> void:
@@ -626,8 +667,8 @@ func _refresh_pins() -> void:
 	var pin := PIN_PX * chrome
 	var pin_index := 0
 	for index in AREAS.size():
-		var measure := _measure_rect(index)
-		var plate := _plate_size_for(index)
+		var measure := _pin_measure_rect(index)
+		var plate := _pin_plate_size(index)
 		if plate.x < 1.0 or plate.y < 1.0:
 			continue
 		for entry in _items_for(index):
@@ -640,6 +681,8 @@ func _refresh_pins() -> void:
 			var screen := _screen_point(tex_point)
 			var mark := TextureRect.new()
 			mark.name = "ItemPin%d" % pin_index
+			mark.set_meta("pin_area", String(AREAS[index].get("name", "")))
+			mark.set_meta("tex_point", tex_point)
 			pin_index += 1
 			mark.texture = _hand_frame()
 			mark.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

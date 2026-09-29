@@ -89,6 +89,33 @@ const HUD_WHITE_TEXT_SHADOW_COLOR := Color(0.22, 0.22, 0.22, 0.72)
 const HUD_WHITE_TEXT_SHADOW_OFFSET_Y := 1
 const TERMINAL_THEME := preload("res://combat/ui/terminal_theme.tres")
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
+const SPIN_BLOCK_W := 54.0
+const SPIN_BLOCK_H := 36.0
+const SPIN_BLOCK_GAP := 12.0
+const SPIN_BAR_SCREEN_PAD := 8.0
+# Mouth on the stage-3 skull. Nudge if the drip misses the teeth.
+const SKULL_MOUTH_FRAC := Vector2(0.50, 0.62)
+const FS_CHOICE_LAYER := 116
+# Noir (90), scanlines (105), and combat CRT (108) sit under this.
+# That filter turns white into black, which hides this count.
+const SPIN_COUNT_LAYER := 109
+const FS_SCRIM_ALPHA := 0.72
+const FS_ICON_PX := 128.0
+const FS_ICON_HOVER_SCALE := 1.15
+const FS_ICON_HOVER_SEC := 0.28
+const FS_FADE_PAD := 120.0
+const FS_FADE_INSET := 28.0
+const FS_HOVER_HIGHLIGHT_PAD := 16.0
+const FS_CHOICE_MARGIN := 40.0
+const FS_CHOICE_PAD_X := 28.0
+const FS_CHOICE_PAD_Y := 22.0
+const FS_CHOICE_COL_GAP := 12.0
+const FS_CHOICE_TITLE := "Choose Your Vice"
+const FS_CHOICE_HINT := "Fewer spins, higher potential"
+const FS_NAME_RED := Color(1, 0, 0, 1)
+const FS_ICON_BLOODY_HAND := preload("res://combat/art/grid_symbols/bloody_hand.png")
+const FS_ICON_ALCOHOL := preload("res://combat/art/grid_symbols/booze.png")
+const FS_ICON_CIGARETTE := preload("res://combat/art/grid_symbols/cigarette.png")
 const BET_STRIP_TWEEN_SEC := 0.15
 const GOAL_READOUT_FONT := COMBAT_HUD_MAJOR_FONT
 const GOAL_READOUT_FONT_NARROW := COMBAT_HUD_MAJOR_FONT_NARROW
@@ -127,6 +154,12 @@ var bet_minus_btn: Button
 var bet_plus_btn: Button
 var bet_label: Label
 var mult_label: Label
+var _spin_bar_host: Control
+var _spin_count_root: Control
+var _spin_bar_label: Label
+var _spin_bar_blocks: Array[Panel] = []
+var _shown_spin_blocks: int = 0
+var _slime_busy: bool = false
 var goal_label: Label
 var budget_label: Label
 var bankroll_label: Label
@@ -138,6 +171,10 @@ var super_fs_choice_overlay: Control
 var choose_bloody_hand_button: Button
 var choose_alcohol_button: Button
 var choose_cigarette_button: Button
+var _fs_choice_layer: CanvasLayer
+var _fs_choice_ready := false
+var _vice_hover_tweens: Dictionary = {}
+var _vice_highlight_tex: ImageTexture
 var top_bar: Control
 var meta_box: PanelContainer
 var goal_box: PanelContainer
@@ -712,6 +749,10 @@ func _connect_runtime_signals() -> void:
 		combat.meter_full_transition_started.connect(_on_meter_full_transition_started)
 	if not combat.winnings_popup_border_touched.is_connected(_on_winnings_popup_border_touched):
 		combat.winnings_popup_border_touched.connect(_on_winnings_popup_border_touched)
+	if not combat.round_winnings_hold_started.is_connected(_on_round_winnings_hold_started):
+		combat.round_winnings_hold_started.connect(_on_round_winnings_hold_started)
+	if not combat.free_spins_bonus_granted.is_connected(_on_free_spins_bonus_granted):
+		combat.free_spins_bonus_granted.connect(_on_free_spins_bonus_granted)
 	if not choose_bloody_hand_button.pressed.is_connected(_on_choose_bloody_hand_pressed):
 		choose_bloody_hand_button.pressed.connect(_on_choose_bloody_hand_pressed)
 	if not choose_alcohol_button.pressed.is_connected(_on_choose_alcohol_pressed):
@@ -1652,6 +1693,8 @@ func _request_spin() -> void:
 		return
 	if combat == null or not _can_use_combat_api():
 		return
+	if combat.free_spins.active:
+		return
 	_spin_request_frame = frame
 	_spin_busy = true
 	if combat.is_encounter_complete():
@@ -1699,6 +1742,7 @@ func _refresh_readouts() -> void:
 	_sync_skull_meter(_safe_get_meter_sections_filled())
 	_sync_premium_bar_color(_safe_get_meter_sections_filled())
 	_maybe_pop_spin_money()
+	_refresh_spin_bars()
 	_refresh_playtest_readouts()
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
@@ -1768,8 +1812,17 @@ func _on_spin_started(seed_value: int) -> void:
 	_set_seed_spin_value_no_signal(seed_value)
 	_clear_history_spin_list()
 	_last_displayed_cascade_mult = int(combat.get_multiplier_value())
-	_reset_winnings_counter_display()
+	if not _free_spin_round_showing():
+		_reset_winnings_counter_display()
+	_refresh_spin_bars()
 	_refresh_skull_first_spin_hint()
+
+func _on_round_winnings_hold_started() -> void:
+	_reset_winnings_counter_display()
+	_refresh_spin_bars()
+
+func _free_spin_round_showing() -> bool:
+	return _can_use_combat_api() and combat != null and combat.free_spins.active
 
 func _on_spin_finished() -> void:
 	_sync_winnings_counter_to_combat_truth()
@@ -1974,6 +2027,120 @@ func _cache_hud_pieces() -> void:
 	_widget_layer = get_node_or_null("WidgetLayer")
 	if _widget_layer == null:
 		_widget_layer = find_child("WidgetLayer", true, false)
+	_install_pause_gear()
+
+
+const PAUSE_GEAR_CHAR := "⚙"
+const PAUSE_GEAR_FILL := 0.63175
+const PAUSE_GEAR_TEETH := 8
+const PAUSE_GEAR_PIXELS := 16
+const PAUSE_GEAR_COLOR := Color8(7, 7, 7)
+const PAUSE_GEAR_ROOT := 0.72
+const PAUSE_GEAR_HOLE := 0.32
+
+
+class PauseGearIcon extends Control:
+	var _mask := PackedByteArray()
+
+
+	func _draw() -> void:
+		var n := PAUSE_GEAR_PIXELS
+		if n < 2 or size.x < 2.0 or size.y < 2.0:
+			return
+		if _mask.size() != n * n:
+			_mask = _gear_mask(n)
+		for y in n:
+			var y0 := int(round(float(y) * size.y / float(n)))
+			var y1 := int(round(float(y + 1) * size.y / float(n)))
+			if y1 <= y0:
+				continue
+			for x in n:
+				if _mask[y * n + x] == 0:
+					continue
+				var x0 := int(round(float(x) * size.x / float(n)))
+				var x1 := int(round(float(x + 1) * size.x / float(n)))
+				if x1 <= x0:
+					continue
+				draw_rect(Rect2(x0, y0, x1 - x0, y1 - y0), PAUSE_GEAR_COLOR, true)
+
+
+	func _gear_mask(n: int) -> PackedByteArray:
+		var mask := PackedByteArray()
+		mask.resize(n * n)
+		for y in n:
+			var ny := (float(y) + 0.5) / float(n) * 2.0 - 1.0
+			for x in n:
+				var nx := (float(x) + 0.5) / float(n) * 2.0 - 1.0
+				if _gear_covers(nx, ny):
+					mask[y * n + x] = 1
+		return mask
+
+
+	func _gear_covers(nx: float, ny: float) -> bool:
+		var dist := Vector2(nx, ny).length()
+		if dist <= PAUSE_GEAR_HOLE:
+			return false
+		if dist <= PAUSE_GEAR_ROOT:
+			return true
+		if dist > 1.0:
+			return false
+		var step := TAU / float(PAUSE_GEAR_TEETH)
+		var tip_half := step * 0.20
+		var root_half := step * 0.36
+		var tooth_base := PAUSE_GEAR_ROOT * 0.90
+		for i in PAUSE_GEAR_TEETH:
+			var mid := -PI * 0.5 + step * float(i)
+			if _point_in_poly(nx, ny, PackedVector2Array([
+				Vector2.from_angle(mid - root_half) * tooth_base,
+				Vector2.from_angle(mid - tip_half),
+				Vector2.from_angle(mid + tip_half),
+				Vector2.from_angle(mid + root_half) * tooth_base,
+			])):
+				return true
+		return false
+
+
+	func _point_in_poly(px: float, py: float, poly: PackedVector2Array) -> bool:
+		var inside := false
+		var j := poly.size() - 1
+		for i in poly.size():
+			var a := poly[i]
+			var b := poly[j]
+			var crosses := (a.y > py) != (b.y > py)
+			if crosses and px < (b.x - a.x) * (py - a.y) / (b.y - a.y) + a.x:
+				inside = not inside
+			j = i
+		return inside
+
+
+func _install_pause_gear() -> void:
+	if _piece_settings == null or _piece_settings.get_node_or_null("PauseGear") != null:
+		return
+	var gear := PauseGearIcon.new()
+	gear.name = "PauseGear"
+	gear.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gear.set_meta("gear_char", PAUSE_GEAR_CHAR)
+	_piece_settings.add_child(gear)
+	if not _piece_settings.resized.is_connected(_fit_pause_gear):
+		_piece_settings.resized.connect(_fit_pause_gear)
+	_fit_pause_gear()
+
+
+func _fit_pause_gear() -> void:
+	if _piece_settings == null:
+		return
+	var gear := _piece_settings.get_node_or_null("PauseGear") as PauseGearIcon
+	if gear == null:
+		return
+	var host := _piece_settings.size
+	if host.x < 8.0 or host.y < 8.0:
+		return
+	var side := minf(host.x, host.y) * PAUSE_GEAR_FILL
+	if side < 8.0:
+		return
+	gear.position = (host - Vector2(side, side)) * 0.5
+	gear.size = Vector2(side, side)
+	gear.queue_redraw()
 
 
 func _is_player_combat_host() -> bool:
@@ -2169,6 +2336,7 @@ func _bind_widgets_to_pieces() -> void:
 		bet_plus_btn.text = ""
 	if _piece_spin_money != null and mult_label != null:
 		_piece_spin_money.attach(mult_label, _host_for_piece(_piece_spin_money, "spin_money"))
+		_refresh_spin_bars()
 	if _winnings_center != null:
 		_winnings_center.visible = false
 	var winnings_pill := find_child("WinningsReadoutPill", true, false) as CanvasItem
@@ -2346,7 +2514,13 @@ func _animate_bet_strip() -> void:
 
 func _sync_skull_meter(sections: int) -> void:
 	var filled := clampi(sections, 0, 3)
-	if _premium_skull != null and _premium_skull.has_method("set_fill"):
+	if _premium_skull == null:
+		_refresh_skull_first_spin_hint()
+		return
+	var held := _can_use_combat_api() and combat.has_method("is_bonus_skull_held") and combat.is_bonus_skull_held()
+	if _premium_skull.has_method("set_full_face_locked"):
+		_premium_skull.set_full_face_locked(held)
+	if _premium_skull.has_method("set_fill"):
 		_premium_skull.set_fill(float(filled) / 3.0)
 	_refresh_skull_first_spin_hint()
 
@@ -2378,6 +2552,252 @@ func _sync_premium_bar_color(sections: int, animate: bool = false) -> void:
 		_premium_bar_fill.color = target
 
 
+func _ensure_spin_bar_host() -> void:
+	if _spin_bar_host != null and is_instance_valid(_spin_bar_host):
+		return
+	var host := Control.new()
+	host.name = "FreeSpinBars"
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.clip_contents = false
+	host.z_index = 30
+	host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(host)
+	_spin_bar_host = host
+	var layer := CanvasLayer.new()
+	layer.name = "FreeSpinCountLayer"
+	layer.layer = SPIN_COUNT_LAYER
+	host.add_child(layer)
+	var count_root := Control.new()
+	count_root.name = "FreeSpinCountRoot"
+	count_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	count_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(count_root)
+	_spin_count_root = count_root
+	var label := Label.new()
+	label.name = "FreeSpinCount"
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.clip_text = false
+	label.modulate = Color.WHITE
+	label.add_theme_font_override("font", VT323_FONT)
+	count_root.add_child(label)
+	_spin_bar_label = label
+	_style_spin_count_label(_hud_art_scale())
+
+
+func _set_spin_bars_visible(on: bool) -> void:
+	if _spin_bar_host != null:
+		_spin_bar_host.visible = on
+	if _spin_count_root != null:
+		_spin_count_root.visible = on
+
+
+func _on_free_spins_bonus_granted(_added: int) -> void:
+	_refresh_spin_bars()
+
+
+func _refresh_spin_bars() -> void:
+	_ensure_spin_bar_host()
+	if not _free_spin_round_showing():
+		_shown_spin_blocks = 0
+		_set_spin_bars_visible(false)
+		return
+	var left := combat.free_spins.spins_remaining
+	var progress := combat.get_free_spin_counter()
+	if progress.y <= 0 or left <= 0:
+		_shown_spin_blocks = 0
+		_set_spin_bars_visible(false)
+		return
+	_set_spin_bars_visible(true)
+	_spin_bar_label.text = "%d/%d spins" % [progress.x, progress.y]
+	_style_spin_count_label(_hud_art_scale())
+	if left == _shown_spin_blocks:
+		_layout_spin_bars()
+		return
+	if left < _shown_spin_blocks or _shown_spin_blocks == 0:
+		_set_spin_block_count(left)
+		return
+	if _slime_busy:
+		return
+	_slime_busy = true
+	await _play_mouth_slime()
+	if _free_spin_round_showing():
+		_set_spin_block_count(combat.free_spins.spins_remaining)
+	_slime_busy = false
+
+
+func _set_spin_block_count(count: int) -> void:
+	_ensure_spin_bar_host()
+	var want := maxi(count, 0)
+	while _spin_bar_blocks.size() > want:
+		var extra: Panel = _spin_bar_blocks.pop_back()
+		if extra != null and is_instance_valid(extra):
+			extra.queue_free()
+	var scale := _hud_art_scale()
+	var block_w := SPIN_BLOCK_W * scale
+	var block_h := SPIN_BLOCK_H * scale
+	while _spin_bar_blocks.size() < want:
+		var block := Panel.new()
+		block.name = "SpinBlock"
+		block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		block.custom_minimum_size = Vector2(block_w, block_h)
+		block.size = Vector2(block_w, block_h)
+		_spin_count_root.add_child(block)
+		_spin_bar_blocks.append(block)
+	_shown_spin_blocks = want
+	_layout_spin_bars()
+
+
+func _style_spin_count_label(art_scale: float) -> void:
+	if _spin_bar_label == null:
+		return
+	_apply_white_hud_text_style(_spin_bar_label)
+	_spin_bar_label.add_theme_color_override("font_shadow_color", Color(0.28, 0.28, 0.28, 1.0))
+	_spin_bar_label.add_theme_constant_override("shadow_offset_x", 2)
+	_spin_bar_label.add_theme_constant_override("shadow_offset_y", 2)
+	_spin_bar_label.add_theme_font_size_override("font_size", maxi(22, int(round(40.0 * art_scale))))
+
+
+func _spin_block_edge() -> int:
+	return maxi(2, int(round(4.0 * _hud_art_scale())))
+
+
+func _apply_spin_block_style(block: Panel) -> void:
+	var edge := _spin_block_edge()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color.WHITE
+	style.border_color = Color.BLACK
+	style.set_border_width_all(edge)
+	style.set_corner_radius_all(0)
+	style.shadow_color = Color(0.22, 0.22, 0.22, 1.0)
+	style.shadow_size = maxi(2, int(round(4.0 * _hud_art_scale())))
+	style.shadow_offset = Vector2(2.0, 3.0)
+	block.add_theme_stylebox_override("panel", style)
+
+
+func _control_visual_global_rect(node: Control) -> Rect2:
+	if node.size.x <= 1.0 or node.size.y <= 1.0:
+		return node.get_global_rect()
+	var xform := node.get_global_transform_with_canvas()
+	var corners: Array[Vector2] = [
+		xform * Vector2.ZERO,
+		xform * Vector2(node.size.x, 0.0),
+		xform * node.size,
+		xform * Vector2(0.0, node.size.y),
+	]
+	var lo := corners[0]
+	var hi := corners[0]
+	for point in corners:
+		lo = lo.min(point)
+		hi = hi.max(point)
+	return Rect2(lo, hi - lo)
+
+
+func _layout_spin_bars() -> void:
+	if _spin_bar_host == null or _premium_skull == null:
+		return
+	var skull := _premium_skull as Control
+	if skull == null:
+		return
+	var art_scale := _hud_art_scale()
+	var rect := _control_visual_global_rect(skull)
+	var gap_under := maxf(8.0, 14.0 * art_scale)
+	var to_local := _spin_bar_host.get_global_transform_with_canvas().affine_inverse()
+	var origin := to_local * (rect.position + Vector2(0.0, rect.size.y + gap_under))
+	var block_w := SPIN_BLOCK_W * art_scale
+	var block_h := SPIN_BLOCK_H * art_scale
+	var gap := SPIN_BLOCK_GAP * art_scale
+	var label_gap := maxf(4.0, 8.0 * art_scale)
+	_style_spin_count_label(art_scale)
+	origin = _clamp_spin_bar_origin(origin, block_h, label_gap, to_local)
+	_place_spin_bar_row(origin, block_w, block_h, gap, label_gap)
+
+
+func _clamp_spin_bar_origin(origin: Vector2, block_h: float, label_gap: float, to_local: Transform2D) -> Vector2:
+	if _spin_bar_label == null:
+		return origin
+	var vp := get_viewport_rect().size
+	if vp.y <= 1.0:
+		vp = size
+	if vp.y <= 1.0:
+		return origin
+	var font_px := float(_spin_bar_label.get_theme_font_size("font_size"))
+	var label_h := font_px + 10.0
+	var row_bottom_local := origin.y + block_h + label_gap + label_h
+	var row_bottom := _spin_bar_host.get_global_transform_with_canvas() * Vector2(origin.x, row_bottom_local)
+	var overflow := row_bottom.y - (vp.y - SPIN_BAR_SCREEN_PAD)
+	if overflow <= 0.5:
+		return origin
+	var delta := to_local.basis_xform(Vector2(0.0, -overflow))
+	return origin + Vector2(0.0, delta.y)
+
+
+func _spin_bar_global(local_point: Vector2) -> Vector2:
+	return _spin_bar_host.get_global_transform_with_canvas() * local_point
+
+
+func _place_spin_bar_row(origin: Vector2, block_w: float, block_h: float, gap: float, label_gap: float) -> void:
+	for i in _spin_bar_blocks.size():
+		var block := _spin_bar_blocks[i]
+		var local_pos := origin + Vector2(float(i) * (block_w + gap), 0.0)
+		block.size = Vector2(block_w, block_h)
+		block.global_position = _spin_bar_global(local_pos)
+		_apply_spin_block_style(block)
+	if _spin_bar_label == null:
+		return
+	var font_px := float(_spin_bar_label.get_theme_font_size("font_size"))
+	var label_local := origin + Vector2(0.0, block_h + label_gap)
+	_spin_bar_label.size = Vector2(maxf(240.0, font_px * 14.0), font_px + 10.0)
+	_spin_bar_label.custom_minimum_size = _spin_bar_label.size
+	_spin_bar_label.global_position = _spin_bar_global(label_local)
+
+
+func _skull_mouth_local() -> Vector2:
+	var stage := _premium_skull.get_node_or_null("SkullStage3") as Control
+	var rect := stage.get_global_rect() if stage != null else (_premium_skull as Control).get_global_rect()
+	var mouth := rect.position + Vector2(rect.size.x * SKULL_MOUTH_FRAC.x, rect.size.y * SKULL_MOUTH_FRAC.y)
+	return _spin_bar_host.get_global_transform_with_canvas().affine_inverse() * mouth
+
+
+func _play_mouth_slime() -> void:
+	if _spin_bar_host == null or _premium_skull == null:
+		return
+	if _reduce_hud_flashing():
+		return
+	var scale := _hud_art_scale()
+	var mouth := _spin_bar_global(_skull_mouth_local())
+	var land := mouth + Vector2(0.0, 80.0 * scale)
+	if not _spin_bar_blocks.is_empty():
+		var last := _spin_bar_blocks[_spin_bar_blocks.size() - 1]
+		land = last.global_position + Vector2(last.size.x + SPIN_BLOCK_GAP * scale, 0.0)
+	var drops: Array[ColorRect] = []
+	for i in 4:
+		var drop := ColorRect.new()
+		drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		drop.color = Color(1.0, 1.0, 1.0, 0.92)
+		var drop_size := Vector2(8.0, 14.0) * scale
+		drop.size = drop_size
+		drop.global_position = mouth + Vector2(float(i - 1) * 6.0 * scale, float(i) * 4.0 * scale)
+		_spin_count_root.add_child(drop)
+		drops.append(drop)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	for drop in drops:
+		tween.tween_property(drop, "global_position", land, 0.35)
+	await tween.finished
+	for drop in drops:
+		if is_instance_valid(drop):
+			drop.queue_free()
+
+
+func _reduce_hud_flashing() -> bool:
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings == null or not settings.has_method("get_value"):
+		return false
+	return bool(settings.call("get_value", "access", "reduce_flashing", false))
+
+
 func _maybe_pop_spin_money() -> void:
 	if mult_label == null or _piece_spin_money == null:
 		return
@@ -2406,6 +2826,7 @@ func _on_size_changed() -> void:
 	_fit_hud_canvas(size)
 	_apply_hud_chrome()
 	call_deferred("_layout_combat")
+	call_deferred("_layout_spin_bars")
 
 func _fit_hud_canvas(viewport_override: Vector2 = Vector2.ZERO) -> void:
 	if Engine.is_editor_hint():
@@ -2707,7 +3128,10 @@ func _flash_goal_victory() -> void:
 func _refresh_super_fs_choice_overlay() -> void:
 	if super_fs_choice_overlay == null:
 		return
+	if not Engine.is_editor_hint():
+		_ensure_free_spins_choice_presentation()
 	var awaiting_choice: bool = _safe_is_waiting_for_free_spin_choice()
+	var was_visible := super_fs_choice_overlay.visible
 	super_fs_choice_overlay.visible = awaiting_choice
 	if choose_bloody_hand_button != null:
 		choose_bloody_hand_button.disabled = not awaiting_choice
@@ -2715,6 +3139,413 @@ func _refresh_super_fs_choice_overlay() -> void:
 		choose_alcohol_button.disabled = not awaiting_choice
 	if choose_cigarette_button != null:
 		choose_cigarette_button.disabled = not awaiting_choice
+	if not awaiting_choice:
+		_reset_vice_choice_hover()
+	if awaiting_choice and not was_visible:
+		_layout_free_spins_choice()
+
+
+func _ensure_free_spins_choice_presentation() -> void:
+	if Engine.is_editor_hint() or super_fs_choice_overlay == null:
+		return
+	if not _fs_choice_ready:
+		_build_free_spins_choice_presentation()
+		_fs_choice_ready = true
+	_layout_free_spins_choice()
+
+
+func _build_free_spins_choice_presentation() -> void:
+	_fs_choice_layer = CanvasLayer.new()
+	_fs_choice_layer.name = "FreeSpinsChoiceLayer"
+	_fs_choice_layer.layer = FS_CHOICE_LAYER
+	add_child(_fs_choice_layer)
+	super_fs_choice_overlay.reparent(_fs_choice_layer)
+	super_fs_choice_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	super_fs_choice_overlay.scale = Vector2.ONE
+	var dimmer := super_fs_choice_overlay.get_node_or_null("SuperFSChoiceDimmer") as ColorRect
+	if dimmer != null:
+		dimmer.color = Color(0, 0, 0, FS_SCRIM_ALPHA)
+		dimmer.mouse_filter = Control.MOUSE_FILTER_STOP
+		dimmer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var panel := super_fs_choice_overlay.get_node_or_null("SuperFSChoicePanel") as Panel
+	if panel == null:
+		return
+	panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.clip_contents = false
+	_ensure_fs_choice_fade(panel)
+	var vbox := panel.get_node_or_null("SuperFSChoiceVBox") as VBoxContainer
+	if vbox == null:
+		return
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var title := vbox.get_node_or_null("SuperFSChoiceTitle") as Label
+	var hint := vbox.get_node_or_null("SuperFSChoiceHint") as Label
+	if title != null:
+		_style_fs_label(title, 44)
+		_split_vice_title(title)
+	if hint != null:
+		hint.text = FS_CHOICE_HINT
+		_style_fs_label(hint, 32)
+	var row := vbox.get_node_or_null("SuperFSChoiceButtons") as HBoxContainer
+	if row != null:
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", int(FS_CHOICE_COL_GAP))
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_dress_free_spins_choice_button(
+		choose_bloody_hand_button,
+		FS_ICON_BLOODY_HAND,
+		PackedStringArray(["BLOODY HAND", "4 SPINS", "+4 on meter fill"])
+	)
+	_dress_free_spins_choice_button(
+		choose_alcohol_button,
+		FS_ICON_ALCOHOL,
+		PackedStringArray(["ALCOHOL", "5 SPINS", "+3 on meter fill"])
+	)
+	_dress_free_spins_choice_button(
+		choose_cigarette_button,
+		FS_ICON_CIGARETTE,
+		PackedStringArray(["CIGARETTE", "8 SPINS", "+2 on meter fill"])
+	)
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_layout_free_spins_choice):
+		vp.size_changed.connect(_layout_free_spins_choice)
+
+
+func _layout_free_spins_choice() -> void:
+	if not _fs_choice_ready or super_fs_choice_overlay == null:
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var view := vp.get_visible_rect().size
+	if view.x < 2.0 or view.y < 2.0:
+		return
+	super_fs_choice_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	super_fs_choice_overlay.offset_left = 0.0
+	super_fs_choice_overlay.offset_top = 0.0
+	super_fs_choice_overlay.offset_right = 0.0
+	super_fs_choice_overlay.offset_bottom = 0.0
+	super_fs_choice_overlay.position = Vector2.ZERO
+	super_fs_choice_overlay.size = view
+	super_fs_choice_overlay.scale = Vector2.ONE
+	var buttons: Array[Button] = [choose_bloody_hand_button, choose_alcohol_button, choose_cigarette_button]
+	var col_w := 180.0
+	for button in buttons:
+		if button == null:
+			continue
+		col_w = maxf(col_w, _fs_choice_column_width(button))
+	var max_card_w := maxf(view.x - FS_CHOICE_MARGIN * 2.0, 320.0)
+	var inner_budget := maxf(max_card_w - FS_CHOICE_PAD_X * 2.0 - FS_CHOICE_COL_GAP * 2.0, 180.0)
+	col_w = minf(col_w, inner_budget / 3.0)
+	var icon_px := minf(FS_ICON_PX, col_w * 0.62)
+	var col_h := icon_px + 220.0
+	for button in buttons:
+		if button == null:
+			continue
+		button.custom_minimum_size = Vector2(col_w, col_h)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var slot := button.find_child("ViceIconSlot", true, false) as Control
+		var icon := button.find_child("ViceIcon", true, false) as TextureRect
+		if slot != null:
+			slot.custom_minimum_size = Vector2(icon_px, icon_px)
+		if icon == null:
+			continue
+		icon.custom_minimum_size = Vector2(icon_px, icon_px)
+		if icon.size.x > 1.0:
+			icon.pivot_offset = icon.size * 0.5
+	var card_w := minf(col_w * 3.0 + FS_CHOICE_COL_GAP * 2.0 + FS_CHOICE_PAD_X * 2.0, max_card_w)
+	var card_h := minf(FS_CHOICE_PAD_Y * 2.0 + 44.0 + 14.0 + 32.0 + 14.0 + col_h + 36.0, maxf(view.y - FS_CHOICE_MARGIN * 2.0, 280.0))
+	var panel := super_fs_choice_overlay.get_node_or_null("SuperFSChoicePanel") as Panel
+	if panel != null:
+		panel.set_anchors_preset(Control.PRESET_CENTER)
+		panel.offset_left = -card_w * 0.5
+		panel.offset_top = -card_h * 0.5
+		panel.offset_right = card_w * 0.5
+		panel.offset_bottom = card_h * 0.5
+		_apply_fs_choice_fade(panel, card_w, card_h)
+
+
+func _dress_free_spins_choice_button(button: Button, icon_tex: Texture2D, lines: PackedStringArray) -> void:
+	if button == null or button.get_node_or_null("ViceChoiceColumn") != null:
+		return
+	var empty := StyleBoxEmpty.new()
+	for state_name in ["normal", "hover", "pressed", "disabled", "focus"]:
+		button.add_theme_stylebox_override(state_name, empty)
+	button.flat = true
+	button.text = ""
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.clip_contents = false
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var host := CenterContainer.new()
+	host.name = "ViceChoiceColumn"
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	button.add_child(host)
+	var frame := Control.new()
+	frame.name = "ViceChoiceFrame"
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	host.add_child(frame)
+	var column := VBoxContainer.new()
+	column.name = "ViceChoiceStack"
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 20)
+	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(column)
+	column.minimum_size_changed.connect(_sync_vice_choice_frame.bind(frame, column))
+	var slot := Control.new()
+	slot.name = "ViceIconSlot"
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.custom_minimum_size = Vector2(FS_ICON_PX, FS_ICON_PX)
+	slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(slot)
+	var highlight := TextureRect.new()
+	highlight.name = "ViceHoverHighlight"
+	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	highlight.texture = _vice_icon_highlight_texture()
+	highlight.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	highlight.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	highlight.stretch_mode = TextureRect.STRETCH_SCALE
+	highlight.modulate = Color(1, 1, 1, 0)
+	highlight.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	highlight.offset_left = -FS_HOVER_HIGHLIGHT_PAD
+	highlight.offset_top = -FS_HOVER_HIGHLIGHT_PAD
+	highlight.offset_right = FS_HOVER_HIGHLIGHT_PAD
+	highlight.offset_bottom = FS_HOVER_HIGHLIGHT_PAD
+	slot.add_child(highlight)
+	var icon := TextureRect.new()
+	icon.name = "ViceIcon"
+	icon.texture = icon_tex
+	icon.custom_minimum_size = Vector2(FS_ICON_PX, FS_ICON_PX)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	slot.add_child(icon)
+	icon.resized.connect(_on_vice_icon_resized.bind(icon))
+	button.mouse_entered.connect(_on_vice_choice_hover.bind(icon))
+	button.mouse_exited.connect(_on_vice_choice_unhover.bind(icon))
+	var text_block := PanelContainer.new()
+	text_block.name = "ViceTextBlock"
+	text_block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text_block.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	text_block.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	column.add_child(text_block)
+	var lines_box := VBoxContainer.new()
+	lines_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lines_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	lines_box.add_theme_constant_override("separation", 4)
+	text_block.add_child(lines_box)
+	var line_names: PackedStringArray = PackedStringArray(["ViceName", "ViceSpins", "ViceMeter"])
+	for i in lines.size():
+		if i == 1:
+			var gap := Control.new()
+			gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			gap.custom_minimum_size = Vector2(0, 12)
+			lines_box.add_child(gap)
+		var lab := Label.new()
+		lab.name = line_names[i] if i < line_names.size() else "ViceLine"
+		lab.text = lines[i]
+		lab.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_style_fs_label(lab, 32, FS_NAME_RED if i == 0 else HUD_WHITE_TEXT_COLOR)
+		lines_box.add_child(lab)
+	_sync_vice_choice_frame(frame, column)
+
+
+func _ensure_fs_choice_fade(panel: Panel) -> void:
+	if panel.get_node_or_null("ViceChoiceFade") != null:
+		return
+	var fade := TextureRect.new()
+	fade.name = "ViceChoiceFade"
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fade.stretch_mode = TextureRect.STRETCH_SCALE
+	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(fade)
+	panel.move_child(fade, 0)
+
+
+func _apply_fs_choice_fade(panel: Panel, card_w: float, card_h: float) -> void:
+	_ensure_fs_choice_fade(panel)
+	var fade := panel.get_node_or_null("ViceChoiceFade") as TextureRect
+	if fade == null:
+		return
+	fade.offset_left = -FS_FADE_PAD
+	fade.offset_top = -FS_FADE_PAD
+	fade.offset_right = FS_FADE_PAD
+	fade.offset_bottom = FS_FADE_PAD
+	fade.texture = _make_fs_fade_texture(card_w, card_h)
+
+
+func _make_fs_fade_texture(card_w: float, card_h: float) -> ImageTexture:
+	var full_w := maxf(card_w + FS_FADE_PAD * 2.0, 1.0)
+	var full_h := maxf(card_h + FS_FADE_PAD * 2.0, 1.0)
+	var fade_len := FS_FADE_PAD + FS_FADE_INSET
+	var inset_u := clampf(fade_len / full_w, 0.02, 0.49)
+	var inset_v := clampf(fade_len / full_h, 0.02, 0.49)
+	var tex_w := 160
+	var tex_h := 160
+	var img := Image.create(tex_w, tex_h, false, Image.FORMAT_RGBA8)
+	for y in tex_h:
+		for x in tex_w:
+			var u := (float(x) + 0.5) / float(tex_w)
+			var v := (float(y) + 0.5) / float(tex_h)
+			var ax := 0.0
+			if u < inset_u:
+				ax = 1.0 - u / inset_u
+			elif u > 1.0 - inset_u:
+				ax = (u - (1.0 - inset_u)) / inset_u
+			var ay := 0.0
+			if v < inset_v:
+				ay = 1.0 - v / inset_v
+			elif v > 1.0 - inset_v:
+				ay = (v - (1.0 - inset_v)) / inset_v
+			var t := clampf(maxf(ax, ay), 0.0, 1.0)
+			var s := t * t * (3.0 - 2.0 * t)
+			img.set_pixel(x, y, Color(0, 0, 0, 1.0 - s))
+	return ImageTexture.create_from_image(img)
+
+
+func _tween_vice_choice_hover(icon: TextureRect, hovered: bool) -> void:
+	if icon == null or not is_instance_valid(icon):
+		return
+	var key := icon.get_instance_id()
+	var existing: Tween = _vice_hover_tweens.get(key) as Tween
+	if existing != null and is_instance_valid(existing):
+		existing.kill()
+	icon.pivot_offset = icon.size * 0.5
+	var target := FS_ICON_HOVER_SCALE if hovered else 1.0
+	var highlight := _vice_hover_highlight(icon)
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_CUBIC)
+	tw.set_ease(Tween.EASE_IN_OUT)
+	tw.set_parallel(true)
+	tw.tween_property(icon, "scale", Vector2(target, target), FS_ICON_HOVER_SEC)
+	if highlight != null:
+		var show_a := 1.0 if hovered else 0.0
+		tw.tween_property(highlight, "modulate:a", show_a, FS_ICON_HOVER_SEC)
+	_vice_hover_tweens[key] = tw
+
+
+func _vice_icon_highlight_texture() -> ImageTexture:
+	if _vice_highlight_tex != null:
+		return _vice_highlight_tex
+	var n := 64
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var center := Vector2(float(n - 1) * 0.5, float(n - 1) * 0.5)
+	var radius := float(n) * 0.5
+	for y in n:
+		for x in n:
+			var dist := Vector2(float(x), float(y)).distance_to(center) / radius
+			var t := clampf(dist, 0.0, 1.0)
+			var fade := t * t * (3.0 - 2.0 * t)
+			img.set_pixel(x, y, Color(1, 1, 1, (1.0 - fade) * 0.32))
+	_vice_highlight_tex = ImageTexture.create_from_image(img)
+	return _vice_highlight_tex
+
+
+func _sync_vice_choice_frame(frame: Control, column: Control) -> void:
+	if frame == null or column == null:
+		return
+	var need := column.get_combined_minimum_size()
+	if frame.custom_minimum_size != need:
+		frame.custom_minimum_size = need
+
+
+func _vice_hover_highlight(icon: TextureRect) -> CanvasItem:
+	var node: Node = icon
+	while node != null:
+		if node is Button:
+			return (node as Button).find_child("ViceHoverHighlight", true, false) as CanvasItem
+		node = node.get_parent()
+	return null
+
+
+func _reset_vice_choice_hover() -> void:
+	for key in _vice_hover_tweens.keys():
+		var tw: Tween = _vice_hover_tweens[key] as Tween
+		if tw != null and is_instance_valid(tw):
+			tw.kill()
+	_vice_hover_tweens.clear()
+	if super_fs_choice_overlay == null:
+		return
+	for node in super_fs_choice_overlay.find_children("ViceIcon", "TextureRect", true):
+		var icon := node as TextureRect
+		if icon != null:
+			icon.scale = Vector2.ONE
+	for node in super_fs_choice_overlay.find_children("ViceHoverHighlight", "CanvasItem", true):
+		var highlight := node as CanvasItem
+		if highlight != null:
+			highlight.modulate.a = 0.0
+
+
+func _on_vice_choice_hover(icon: TextureRect) -> void:
+	_tween_vice_choice_hover(icon, true)
+
+
+func _on_vice_choice_unhover(icon: TextureRect) -> void:
+	_tween_vice_choice_hover(icon, false)
+
+
+func _fs_choice_column_width(button: Button) -> float:
+	var widest := FS_ICON_PX + 72.0
+	for node in button.find_children("*", "Label", true, false):
+		var lab := node as Label
+		if lab == null:
+			continue
+		var font := lab.get_theme_font("font")
+		if font == null:
+			continue
+		var size := lab.get_theme_font_size("font_size")
+		widest = maxf(widest, font.get_string_size(lab.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 72.0)
+	return widest
+
+
+func _split_vice_title(title: Label) -> void:
+	if title.get_parent() != null and title.get_parent().name == "ViceTitleRow":
+		return
+	var row := HBoxContainer.new()
+	row.name = "ViceTitleRow"
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 0)
+	var parent := title.get_parent()
+	var index := title.get_index()
+	parent.add_child(row)
+	parent.move_child(row, index)
+	title.reparent(row)
+	title.text = "Choose Your "
+	var vice := Label.new()
+	vice.name = "ViceTitleWord"
+	vice.text = "Vice"
+	vice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_style_fs_label(vice, 44, FS_NAME_RED)
+	row.add_child(vice)
+
+
+func _style_fs_label(label: Label, font_size: int, font_color: Color = HUD_WHITE_TEXT_COLOR) -> void:
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_override("font", VT323_FONT)
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", font_color)
+	label.add_theme_constant_override("outline_size", 0)
+	label.add_theme_constant_override("shadow_offset_x", 0)
+	label.add_theme_constant_override("shadow_offset_y", 0)
+
+
+func _on_vice_icon_resized(icon: TextureRect) -> void:
+	if icon == null:
+		return
+	icon.pivot_offset = icon.size * 0.5
+
 
 func _on_choose_bloody_hand_pressed() -> void:
 	_submit_super_fs_choice(POWER_BLOODY_HAND)
@@ -2728,8 +3559,17 @@ func _on_choose_cigarette_pressed() -> void:
 func _submit_super_fs_choice(power_id: StringName) -> void:
 	if not combat.is_waiting_for_free_spin_choice():
 		return
+	if _spin_busy:
+		return
+	_spin_busy = true
+	if spin_btn != null:
+		spin_btn.disabled = true
 	combat.choose_free_spins_power(power_id)
-	spin_btn.disabled = false
+	_refresh_readouts()
+	await combat.run_free_spin_round()
+	_spin_busy = false
+	if spin_btn != null:
+		spin_btn.disabled = false
 	_refresh_readouts()
 	_refresh_spin_button_state()
 

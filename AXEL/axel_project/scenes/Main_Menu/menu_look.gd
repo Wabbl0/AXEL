@@ -46,15 +46,27 @@ static func apply_button(button: Button, size_px: int = 36, h_flags: int = Contr
 
 
 static func apply_slider(slider: HSlider) -> void:
+	slider.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	slider.add_theme_font_override("font", FONT)
 	slider.add_theme_stylebox_override("slider", _slider_track())
 	slider.add_theme_stylebox_override("grabber_area", _slider_fill())
 	slider.add_theme_stylebox_override("grabber_area_highlight", _slider_fill())
-	var grab := _pixel_texture(ACCENT, 14, 22)
+	var grab := _chunky_block(ACCENT, 4, 8)
 	slider.add_theme_icon_override("grabber", grab)
 	slider.add_theme_icon_override("grabber_highlight", grab)
-	slider.add_theme_icon_override("grabber_disabled", _pixel_texture(DIM, 14, 22))
-	slider.custom_minimum_size.y = 28
+	slider.add_theme_icon_override("grabber_disabled", _chunky_block(DIM, 4, 8))
+	slider.custom_minimum_size.y = 40
+
+
+static func apply_check(box: CheckBox) -> void:
+	apply_button(box, 24, Control.SIZE_SHRINK_CENTER)
+	box.add_theme_icon_override("checked", _checkbox_icon(true, ACCENT))
+	box.add_theme_icon_override("unchecked", _checkbox_icon(false, ACCENT))
+	box.add_theme_icon_override("checked_disabled", _checkbox_icon(true, DIM))
+	box.add_theme_icon_override("unchecked_disabled", _checkbox_icon(false, DIM))
+	box.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	box.add_theme_constant_override("icon_max_width", 32)
+	box.add_theme_constant_override("h_separation", 12)
 
 
 static func apply_scroll(scroll: ScrollContainer) -> void:
@@ -81,10 +93,15 @@ static func _slider_track() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.05, 0.0, 0.0, 1.0)
 	style.border_color = ACCENT
-	style.set_border_width_all(1)
+	style.set_border_width_all(4)
 	style.anti_aliasing = false
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
+	style.anti_aliasing_size = 0.0
+	style.corner_detail = 1
+	style.set_corner_radius_all(0)
+	style.content_margin_left = 4
+	style.content_margin_right = 4
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
 	return style
 
 
@@ -92,7 +109,54 @@ static func _slider_fill() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.45, 0.04, 0.04, 1.0)
 	style.anti_aliasing = false
+	style.anti_aliasing_size = 0.0
+	style.corner_detail = 1
+	style.set_corner_radius_all(0)
 	return style
+
+
+static func _chunky_block(ink: Color, cols: int, rows: int) -> Texture2D:
+	var cell := 4
+	var img := Image.create(cols * cell, rows * cell, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 1))
+	for gy in rows:
+		for gx in cols:
+			_fill_cell(img, gx, gy, cell, ink)
+	return ImageTexture.create_from_image(img)
+
+
+static func _checkbox_icon(checked: bool, ink: Color) -> Texture2D:
+	var cell := 4
+	var grid := 8
+	var img := Image.create(grid * cell, grid * cell, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 1))
+	for gy in grid:
+		for gx in grid:
+			var border := gx == 0 or gy == 0 or gx == grid - 1 or gy == grid - 1
+			if border or (checked and _is_check_cell(gx, gy)):
+				_fill_cell(img, gx, gy, cell, ink)
+	return ImageTexture.create_from_image(img)
+
+
+static func _is_check_cell(x: int, y: int) -> bool:
+	return (
+		(x == 6 and y == 1)
+		or (y == 2 and x >= 5 and x <= 6)
+		or (y == 3 and (x == 1 or (x >= 4 and x <= 5)))
+		or (y == 4 and x >= 1 and x <= 4)
+		or (y == 5 and x >= 2 and x <= 3)
+	)
+
+
+static func _fill_cell(img: Image, gx: int, gy: int, cell: int, ink: Color) -> void:
+	var x0 := gx * cell
+	var y0 := gy * cell
+	for y in cell:
+		for x in cell:
+			var color := ink
+			if x == cell - 1 or y == cell - 1:
+				color = Color(0, 0, 0, 1)
+			img.set_pixel(x0 + x, y0 + y, color)
 
 
 static func _scroll_track() -> StyleBoxFlat:

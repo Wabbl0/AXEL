@@ -283,7 +283,60 @@ func _check_options_theme() -> void:
 		var font := slider.get_theme_font("font")
 		if font == null or not str(font.resource_path).contains("VT323"):
 			_fail("slider should use VT323")
-	var scroll := panel.find_child("*", true, false) as ScrollContainer
+		if slider.texture_filter != CanvasItem.TEXTURE_FILTER_NEAREST:
+			_fail("slider should use nearest filtering")
+		var track := slider.get_theme_stylebox("slider") as StyleBoxFlat
+		if track == null or track.get_border_width(SIDE_LEFT) < 4 or track.anti_aliasing:
+			_fail("slider track should be a chunky square border")
+	for _i in 3:
+		await process_frame
+	var column := panel.find_child("OptionsColumn", true, false) as Control
+	if column == null:
+		_fail("options column missing")
+	else:
+		var rect := column.get_global_rect()
+		if rect.size.x < 8.0 or rect.size.y < 8.0:
+			_fail("options column has no size")
+		else:
+			var mid := Vector2(root.size) * 0.5
+			var col_mid := rect.get_center()
+			if col_mid.distance_to(mid) > 48.0:
+				_fail(
+					"options column center %s is %.1f px from window center %s"
+					% [col_mid, col_mid.distance_to(mid), mid]
+				)
+	var banned: PackedStringArray = [
+		"FPS cap", "CRT", "UI scale", "Dialogue speed", "Auto-advance",
+		"Reduce flashing", "Screen shake", "Glitch intensity", "CONTROLS", "Move up",
+	]
+	for node in panel.find_children("*", "", true, false):
+		var text := ""
+		if node is Label:
+			text = (node as Label).text
+		elif node is BaseButton:
+			text = (node as BaseButton).text
+		if text.is_empty():
+			continue
+		for phrase in banned:
+			if text.find(phrase) >= 0:
+				_fail("options still shows %s" % phrase)
+	var vsync: CheckBox = null
+	for node in panel.find_children("*", "CheckBox", true, false):
+		var box := node as CheckBox
+		if box != null and box.text == "VSync":
+			vsync = box
+	if vsync == null:
+		_fail("VSync checkbox missing")
+	else:
+		var icon := vsync.get_theme_icon("unchecked")
+		if icon == null:
+			_fail("checkbox icon missing")
+		else:
+			var px := icon.get_image().get_pixel(1, 1)
+			if px.r < 0.7 or px.g > 0.2:
+				_fail("checkbox should be red")
+			if icon.get_width() < 16 or vsync.texture_filter != CanvasItem.TEXTURE_FILTER_NEAREST:
+				_fail("checkbox should be chunky pixels")
 	var scrolls := panel.find_children("*", "ScrollContainer", true, false)
 	if scrolls.is_empty() or (scrolls[0] as ScrollContainer).theme == null:
 		_fail("options scroll theme missing")

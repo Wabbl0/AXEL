@@ -31,6 +31,7 @@ var _spawn_placement_pending := false
 
 
 func _ready() -> void:
+	GameManager.set_cafeteria_down_hint_done(true)
 	bind_player_cover()
 	_cafeteria_area = get_node_or_null(
 		"WalkableWorld/EnvironmentColliders/CafeteriaInteractArea"

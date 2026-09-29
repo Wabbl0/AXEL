@@ -9,7 +9,9 @@ const HOVER_SCALE := 1.06
 const PRESS_SCALE := 0.94
 const FILL_SCALE_1_3 := 1.08
 const FILL_SCALE_2_3 := 1.1
-const FILL_SCALE_FULL := 1.16
+# About 8% smaller than the old 1.16 full face, so the spin bars can sit under the jaw.
+const FILL_SCALE_FULL := 1.067
+const FULL_FACE_LIFT := 70.0
 const GLOW_HOVER_ALPHA := 0.45
 const GLOW_FILL_ALPHA := 0.55
 const OUTLINE_SCALE := 1.03
@@ -26,6 +28,8 @@ var _base_scale := Vector2.ONE
 var _shake_tween: Tween
 var _press_tween: Tween
 var _first_spin_hint := false
+var _full_face_locked := false
+var _full_face_lifted := false
 
 
 func _ready() -> void:
@@ -71,14 +75,33 @@ func _reduce_flashing() -> bool:
 	return bool(settings.call("get_value", "access", "reduce_flashing", false))
 
 
-func set_fill(f: float) -> void:
-	_fill = clampf(f, 0.0, 1.0)
+func set_full_face_locked(on: bool) -> void:
+	if _full_face_locked == on:
+		return
+	_full_face_locked = on
+	_apply_full_face_lift(on)
 	_apply_stage_visibility()
 	_apply_fill_feel()
 
 
+func _apply_full_face_lift(on: bool) -> void:
+	if on == _full_face_lifted:
+		return
+	var delta := -FULL_FACE_LIFT if on else FULL_FACE_LIFT
+	offset_top += delta
+	offset_bottom += delta
+	_full_face_lifted = on
+
+
+func set_fill(f: float) -> void:
+	_fill = clampf(f, 0.0, 1.0)
+	_apply_stage_visibility()
+	if not _full_face_locked:
+		_apply_fill_feel()
+
+
 func _apply_stage_visibility() -> void:
-	var stage_idx := _stage_index_for_fill(_fill)
+	var stage_idx := 2 if _full_face_locked else _stage_index_for_fill(_fill)
 	if _stage1 != null:
 		_stage1.visible = stage_idx == 0
 	if _stage2 != null:
@@ -101,20 +124,21 @@ func _apply_fill_feel() -> void:
 	var glow_alpha := 0.0
 	var shake_amp := 0.0
 	var shake_count := 0
+	var shown := 1.0 if _full_face_locked else _fill
 
-	if _fill >= STAGE_THRESHOLDS[3] - 0.0001:
+	if shown >= STAGE_THRESHOLDS[3] - 0.0001:
 		target_scale = _base_scale * FILL_SCALE_FULL
 		glow_on = true
 		glow_alpha = GLOW_FILL_ALPHA
 		shake_amp = 6.0
 		shake_count = 8
-	elif _fill >= STAGE_THRESHOLDS[2]:
+	elif shown >= STAGE_THRESHOLDS[2]:
 		target_scale = _base_scale * FILL_SCALE_2_3
 		glow_on = true
 		glow_alpha = GLOW_FILL_ALPHA
 		shake_amp = 4.0
 		shake_count = 5
-	elif _fill >= STAGE_THRESHOLDS[1]:
+	elif shown >= STAGE_THRESHOLDS[1]:
 		target_scale = _base_scale * FILL_SCALE_1_3
 		glow_on = true
 		glow_alpha = GLOW_FILL_ALPHA * 0.85

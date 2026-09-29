@@ -2,8 +2,11 @@ extends SceneTree
 
 const OverlayScript := preload("res://scenes/ui/locker_map_overlay.gd")
 
-const ENTRANCE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
+const EXTERIOR := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
+const ENTRANCE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const CORRIDOR := "res://scenes/Arc_1/1.2_Corridor.tscn"
+const SCHOOL_MAP := "res://scenes/Arc_1/1.3_SchoolMap.tscn"
+const BASEMENT := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const CAFETERIA := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const HALLWAY := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
 const BACKYARD := "res://scenes/Arc_3/3.1_Backyard.tscn"
@@ -34,11 +37,13 @@ func _main() -> void:
 		quit(1)
 		return
 
+	_check_entrance_target()
 	_check_unlock(world, run, gm)
 	_check_fill_keeps_existing(world, run)
 	await _check_pins_and_cards(world, run)
 	await _check_spots_at_start(world)
 	await _check_retier_on_map(world, run)
+	await _check_same_room(world, gm)
 
 	if _failures.is_empty():
 		print("Locker map travel check OK.")
@@ -47,6 +52,26 @@ func _main() -> void:
 		for msg in _failures:
 			push_error("locker_map_travel_check: %s" % msg)
 		quit(1)
+
+
+func _check_entrance_target() -> void:
+	var found := false
+	for area in OverlayScript.AREAS:
+		var row: Dictionary = area
+		if String(row.get("name", "")) != "Entrance":
+			continue
+		found = true
+		if String(row.get("scene", "")) != ENTRANCE:
+			_fail("entrance should open the corridor, not the exterior intro")
+		if String(row.get("scene", "")) == EXTERIOR:
+			_fail("entrance still loads 1.1")
+		if String(row.get("pin_scene", "")) != BASEMENT:
+			_fail("entrance pin should use the basement item")
+		var pin_rect: Variant = row.get("pin_rect", null)
+		if not (pin_rect is Rect2) or (pin_rect as Rect2) != Rect2(487, 533, 475, 95):
+			_fail("entrance pin rect is not the right half")
+	if not found:
+		_fail("entrance area is missing")
 
 
 func _check_unlock(world: Node, run: Node, gm: Node) -> void:
@@ -230,13 +255,15 @@ func _check_spots_at_start(world: Node) -> void:
 				_fail("%s should have %d hands at start, got %d" % [path, want, shown.size()])
 	var expect := 0
 	for area in OverlayScript.AREAS:
-		var plate := String(area.get("plate", ""))
+		var row: Dictionary = area
+		var plate := String(row.get("pin_plate", row.get("plate", "")))
 		if plate.is_empty():
 			continue
-		var shown: Array = world.call("placed_floor_items", String(area.get("scene", "")))
+		var scene_path := String(row.get("pin_scene", row.get("scene", "")))
+		var shown: Array = world.call("placed_floor_items", scene_path)
 		expect += shown.size()
 		if shown.is_empty():
-			_fail("%s is on the map but has no pin" % String(area.get("name", "")))
+			_fail("%s is on the map but has no pin" % String(row.get("name", "")))
 	var overlay := OverlayScript.new()
 	root.add_child(overlay)
 	if overlay.has_method("open"):
@@ -246,6 +273,18 @@ func _check_spots_at_start(world: Node) -> void:
 	var pins := overlay.find_children("ItemPin*", "TextureRect", true, false)
 	if pins.size() != expect:
 		_fail("map showed %d hands, want %d" % [pins.size(), expect])
+	var right_half := Rect2(487, 533, 475, 95)
+	var saw_entrance := false
+	for node in pins:
+		var mark := node as TextureRect
+		if mark == null or String(mark.get_meta("pin_area", "")) != "Entrance":
+			continue
+		saw_entrance = true
+		var tex_point: Vector2 = mark.get_meta("tex_point")
+		if not right_half.has_point(tex_point):
+			_fail("entrance pin sits outside the right half at %s" % tex_point)
+	if not saw_entrance:
+		_fail("entrance right half has no basement pin")
 	overlay.queue_free()
 	world.call("reset_world")
 
@@ -300,6 +339,63 @@ func _check_retier_on_map(world: Node, run: Node) -> void:
 	overlay.queue_free()
 	world.call("reset_world")
 	run.call("reset_run")
+
+
+func _check_same_room(world: Node, gm: Node) -> void:
+	if change_scene_to_file(CORRIDOR) != OK:
+		_fail("could not load the corridor for the same-room click")
+		return
+	for _i in 16:
+		await process_frame
+	if not bool(world.call("map_can_travel", ENTRANCE)):
+		_fail("corridor visit did not unlock entrance")
+		return
+	var overlay := OverlayScript.new()
+	root.add_child(overlay)
+	var got: Array[String] = []
+	overlay.travel_requested.connect(func(path: String) -> void: got.append(path))
+	_click_area(overlay, "Entrance")
+	if not got.is_empty():
+		_fail("entrance click while already in the corridor traveled")
+	gm.visited_rooms[CAFETERIA] = true
+	world._room_items[CAFETERIA] = [{"id": "C-A", "x": 40.0, "y": 40.0, "taken": true}]
+	got.clear()
+	_click_area(overlay, "Cafeteria")
+	if got.size() != 1 or got[0] != CAFETERIA:
+		_fail("cafeteria click from the corridor did not travel")
+	overlay.queue_free()
+
+	gm.call("set_pause_map_return", CORRIDOR, Vector2(12.0, 12.0))
+	if change_scene_to_file(SCHOOL_MAP) != OK:
+		_fail("could not load the pause map")
+		return
+	for _i in 12:
+		await process_frame
+	overlay = OverlayScript.new()
+	root.add_child(overlay)
+	got.clear()
+	overlay.travel_requested.connect(func(path: String) -> void: got.append(path))
+	_click_area(overlay, "Entrance")
+	if not got.is_empty():
+		_fail("entrance click on the pause map while returning to the corridor traveled")
+	gm.call("set_pause_map_return", CAFETERIA, Vector2(20.0, 20.0))
+	got.clear()
+	_click_area(overlay, "Cafeteria")
+	if not got.is_empty():
+		_fail("cafeteria click while that is the pause-map room traveled")
+	got.clear()
+	_click_area(overlay, "Entrance")
+	if got.size() != 1 or got[0] != ENTRANCE:
+		_fail("entrance click from another pause-map room did not travel")
+	overlay.queue_free()
+	world.call("reset_world")
+
+
+func _click_area(overlay: Node, area_name: String) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	overlay.call("_on_part_gui", ev, _area_index(overlay, area_name))
 
 
 func _area_index(_overlay: Node, area_name: String) -> int:
