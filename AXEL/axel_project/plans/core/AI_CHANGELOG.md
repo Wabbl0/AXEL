@@ -8164,4 +8164,87 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared the map sentences to `locker_map_overlay.gd` (`ENTRANCE_SCENE`, `ENTRANCE_PIN_RECT`, `_opened_from_room`) and `locker_map_travel_check.gd`. Compared the Free Spins sentences to `combat_root.gd` and `combat_test.gd`.
 - Notes: `AI_DOCS.md` and `AXEL_SCENES_ARC1.md` already said Entrance loads `1.2` and that the basement hand sits on the right half. This entry fills the plans that still said “Entrance travels after a visit.”
 
+### Plans for a cheaper builder
+
+- Request: PREMIUM plans should be detailed enough that the cheaper builder only follows them, and the same note should land in the other workflow docs.
+- Implementation: `PREMIUM_Artifact` now requires follow-only steps (file, place, exact change, and the code when the edit is more than one line) with no leftover choices. `AI_DOCS` marks Implement as the cheaper model and tells it not to invent missing design. `PRE-PLAN_Artifact` must quote paths, line or node refs, and current values so Premium can write that plan without opening the repo. The always-on rule points at the same split.
+- Files changed:
+  - `AXEL/axel_project/plans/PREMIUM_Artifact`
+  - `AXEL/axel_project/plans/PRE-PLAN_Artifact`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `.cursor/rules/axel-ai-docs-governance.mdc`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Docs and prompt templates only. Gameplay unchanged.
+- Verification: Re-read the four instruction files; the builder rule is in the plan template, the chat-workflow table, the explore fact-pack line, and the always-on pointer.
+- Notes: Premium still invents the approach. The cheaper chat only carries it out.
+
+### Bigger free-spin bars, filled from the mouth
+
+- Request: Make the free-spin blocks and the count bigger, growing up and to the right from where they sit, until the blocks just overlap the open mouth. New blocks should fill from the bottom, one by one, with the mouth drip. The same drip should reveal the blocks and the count when Free Spins start.
+- Implementation: The row keeps its old bottom-left and scales until the block tops sit on the lower lip of the open mouth. Each new block, and the count on round start, gets a short white drip and fills upward. Meter fills only add the new blocks. Reduce flashing and headless runs show the finished row.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: During Free Spins the blocks cover the jaw and just enter the mouth. They appear one at a time from the mouth instead of popping in.
+- Verification: `free_spins_choice_ui_check.gd` exit 0. `combat_test_scaffold_check.gd` exit 0.
+
+### Combat speed and rush
+
+- Request: Options should set combat speed to slow, normal, or fast, with today’s pace as normal. During a fight, E, Space, or Enter should make the current animations play much faster, like skipping a dialogue line.
+- Implementation: Options (title and pause) saves `gameplay/combat_speed`. Slow is half speed, normal is today’s speed, fast is double. `CombatPace` scales fight tweens, pauses, flames, and the win and loss motion. It does not change `Engine.time_scale`, so music fades stay on the clock. While a spin, free-spin autoplay, win burst, or loss fall is playing, interact latches an 8× rush until the game next waits (idle board, vice choice, Round Complete, or the loss buttons). That press does not start a spin, pick a vice, or leave the win or loss screen.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_settings.gd`
+  - `AXEL/axel_project/scripts/autoload/combat_pace.gd`
+  - `AXEL/axel_project/scenes/ui/options_panel.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_feel.gd`
+  - `AXEL/axel_project/combat/scripts/symbol_slot.gd`
+  - `AXEL/axel_project/combat/scripts/flame_burst.gd`
+  - `AXEL/axel_project/combat/scripts/empty_item_dvd.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/tools/qa/combat_pace_check.gd`
+  - `AXEL/axel_project/tools/qa/settings_persistence_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Fights play at the saved speed. A press during the show rushes the rest of that show. Payouts and the board do not change.
+- Verification: `combat_pace_check.gd`, `settings_persistence_check.gd`, `menu_nav_check.gd`, `playtest_fix_groups_check.gd`, `determinism_check.gd`, `powers_check.gd`, `combat_test_scaffold_check.gd`, and `power_act_fx_check.gd` all exited 0.
+
+### Free spin flame crown
+
+- Request: During Free Spins, play the flame sheet as a thinner, slightly rounded crown behind the full-face skull. Hide it when the round ends.
+- Implementation: `flame_6_48x48.png` is drawn behind the skull face and in front of the glow. Five copies arc across the top. The sheet plays at 10 frames a second. Reduce flashing holds the first frame. The crown ignores the mouse. It turns off when Free Spins end, including on the vice choice card.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/shaders/flame_crown.gdshader`
+  - `AXEL/axel_project/assets/sprites/combat/flame_6_48x48.png`
+  - `AXEL/axel_project/combat/test/free_spins_choice_ui_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Free Spins show a flame crown behind the skull. Vice Round and normal spins do not. Payouts are unchanged.
+- Verification: `free_spins_choice_ui_check.gd` exit 0.
+
+### Combat frame drop shadows
+
+- Request: Give the combat frames and the skull a soft grey drop shadow down and to the right.
+- Implementation: Goal, items, bets, grid, multiplier, history, and settings each get that shadow. The skull uses the same shadow, so it shows on the execute piece. The shadow is grey (`Color(0.22, 0.22, 0.22)`), shifted 2px right and 3px down, ignores the mouse, and draws behind the picture.
+- Files changed:
+  - `AXEL/axel_project/combat/scripts/hud_drop_shadow.gd`
+  - `AXEL/axel_project/combat/shaders/piece_drop_shadow.gdshader`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/tools/qa/hud_piece_placement_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Those frames and the skull read as sitting slightly off the plate. Clicks still land on the frames, not the shadow.
+- Verification: `hud_piece_placement_check.gd` exit 0 (8 pieces on plate).
+
 

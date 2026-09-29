@@ -72,7 +72,7 @@ func play_drop(from_local: Vector2, to_local: Vector2, duration: float, delay: f
 	_ensure_icon()
 	_cancel_tween(_drop_tween)
 	_icon.position = from_local - to_local
-	_drop_tween = create_tween()
+	_drop_tween = CombatPace.bind(create_tween())
 	if delay > 0.0:
 		_drop_tween.tween_interval(delay)
 	_drop_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -92,7 +92,7 @@ func play_fall_off(distance_px: float, duration: float, delay: float = 0.0) -> v
 	_cancel_tween(_drop_tween)
 	_icon.position = Vector2.ZERO
 	_icon.scale = Vector2.ONE
-	_drop_tween = create_tween()
+	_drop_tween = CombatPace.bind(create_tween())
 	if delay > 0.0:
 		_drop_tween.tween_interval(delay)
 	_drop_tween.set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN_OUT)
@@ -113,7 +113,7 @@ func play_tube_in(distance_px: float, duration: float) -> void:
 	_cancel_tween(_drop_tween)
 	_icon.scale = Vector2.ONE
 	_icon.position = Vector2(0.0, -distance_px)
-	_drop_tween = create_tween()
+	_drop_tween = CombatPace.bind(create_tween())
 	_drop_tween.set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN_OUT)
 	_drop_tween.tween_property(_icon, "position", Vector2.ZERO, max(duration, 0.01))
 
@@ -123,7 +123,7 @@ func play_count_flash(duration: float, peak_alpha: float = 0.55, delay: float = 
 	_cancel_tween(_flash_tween)
 	_flash_overlay.color.a = 0.0
 	_flash_overlay.visible = true
-	_flash_tween = create_tween()
+	_flash_tween = CombatPace.bind(create_tween())
 	if delay > 0.0:
 		_flash_tween.tween_interval(delay)
 	var half: float = max(duration * 0.5, 0.01)
@@ -186,7 +186,7 @@ func play_win_popup(
 	_win_glow_label.modulate.a = 0.0
 
 	var phase := _win_popup_phase_durations()
-	_win_tween = create_tween()
+	_win_tween = CombatPace.bind(create_tween())
 	if delay > 0.0:
 		_win_tween.tween_interval(delay)
 
@@ -428,7 +428,7 @@ func play_power_act(kind: StringName, from_tex: Texture2D, to_tex: Texture2D, du
 		return
 	duration = maxf(duration, 0.01)
 	_begin_power_fx(from_tex, to_tex, mode, reduce_flash)
-	_power_tween = create_tween()
+	_power_tween = CombatPace.bind(create_tween())
 	_power_tween.set_parallel(true)
 	_power_tween.tween_method(_set_power_progress, 0.0, 1.0, duration)
 	if mode < 0.5:
@@ -473,7 +473,7 @@ func _play_morph_motion(duration: float, reduce_flash: bool, from_tex: Texture2D
 	_insert_behind_icon(_power_glow)
 	_center_pivot(_power_glow)
 	_power_glow.scale = Vector2(1.08, 1.08)
-	var glow_tw := create_tween()
+	var glow_tw := CombatPace.bind(create_tween())
 	_extra_tweens.append(glow_tw)
 	var hit := duration * 0.17
 	glow_tw.tween_property(_power_glow, "modulate:a", 0.5, hit)
@@ -536,7 +536,7 @@ func _play_burn_motion(duration: float, reduce_flash: bool) -> void:
 		var rise := cell.y * 0.30
 		var drift := (float(i % 5) - 2.0) * cell.x * 0.04
 		var end := fleck.position + Vector2(drift, -rise)
-		var tw := create_tween()
+		var tw := CombatPace.bind(create_tween())
 		_extra_tweens.append(tw)
 		tw.tween_interval(delay)
 		tw.tween_property(fleck, "modulate:a", 0.85, span * 0.18)

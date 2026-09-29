@@ -188,8 +188,8 @@ func chip_screen_rect() -> Rect2:
 	if _using_hand_gap():
 		var placed := _hand_chip_top_left()
 		if placed.x > -100000.0:
-			var panel_size := _panel_size()
-			return Rect2(placed, panel_size)
+			var hand_size := _panel_size()
+			return Rect2(placed, hand_size)
 	var viewport := get_viewport()
 	if viewport == null:
 		return Rect2()

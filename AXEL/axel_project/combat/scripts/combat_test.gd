@@ -12,6 +12,7 @@ const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
 const EmptyItemDvdScript := preload("res://combat/scripts/empty_item_dvd.gd")
 const PlayerItemPanelScript := preload("res://combat/scripts/player_item_panel.gd")
+const HudDropShadowScript := preload("res://combat/scripts/hud_drop_shadow.gd")
 const POWER_BLOODY_HAND: StringName = &"bloody_hand"
 const POWER_ALCOHOL: StringName = &"alcohol"
 const POWER_CIGARETTE: StringName = &"cigarette"
@@ -95,6 +96,9 @@ const SPIN_BLOCK_GAP := 12.0
 const SPIN_BAR_SCREEN_PAD := 8.0
 # Mouth on the stage-3 skull. Nudge if the drip misses the teeth.
 const SKULL_MOUTH_FRAC := Vector2(0.50, 0.62)
+# Bottom of the dark mouth on axel_skull_3.png. Block tops sit on this line.
+const SKULL_MOUTH_LIP_FRAC := 0.80
+const SPIN_BAR_FILL_SEC := 0.08
 const FS_CHOICE_LAYER := 116
 # Noir (90), scanlines (105), and combat CRT (108) sit under this.
 # That filter turns white into black, which hides this count.
@@ -158,8 +162,20 @@ var _spin_bar_host: Control
 var _spin_count_root: Control
 var _spin_bar_label: Label
 var _spin_bar_blocks: Array[Panel] = []
+var _spin_block_fill: Array[float] = []
 var _shown_spin_blocks: int = 0
+var _spin_count_fill: float = 1.0
+var _spin_bar_grow: float = 1.0
 var _slime_busy: bool = false
+var _vomit_token: int = 0
+var _spin_bar_tween: Tween
+var _spin_bar_drops: Array[ColorRect] = []
+var _bar_origin: Vector2 = Vector2.ZERO
+var _bar_block_w: float = 0.0
+var _bar_block_h: float = 0.0
+var _bar_gap: float = 0.0
+var _bar_label_gap: float = 0.0
+var _bar_label_h: float = 0.0
 var goal_label: Label
 var budget_label: Label
 var bankroll_label: Label
@@ -712,6 +728,7 @@ func _initialize_shared_layout(editor_mode: bool) -> void:
 	else:
 		_build_item_picker()
 	_apply_side_panel_typography()
+	_install_piece_shadows()
 	if not resized.is_connected(_on_size_changed):
 		resized.connect(_on_size_changed)
 
@@ -1632,6 +1649,11 @@ func _style_stake_buttons() -> void:
 		btn.add_theme_stylebox_override("disabled", flat.duplicate())
 
 func _input(event: InputEvent) -> void:
+	if _wants_spin_hotkey(event) and _rush_allowed():
+		get_viewport().set_input_as_handled()
+		CombatPace.set_rush(true)
+		_note_loss_rush_press()
+		return
 	if not _wants_spin_hotkey(event):
 		return
 	if not _spin_hotkey_allowed():
@@ -1646,6 +1668,52 @@ func _wants_spin_hotkey(event: InputEvent) -> bool:
 	if Engine.is_editor_hint():
 		return false
 	return event.is_action_pressed("interact")
+
+
+func _rush_allowed() -> bool:
+	if not _can_use_combat_api():
+		return false
+	if not _spin_busy and not _rush_presentation_open():
+		return false
+	if super_fs_choice_overlay != null and super_fs_choice_overlay.visible:
+		return false
+	var pause := get_node_or_null("/root/AxelPause")
+	if pause != null and pause.has_method("is_paused") and bool(pause.call("is_paused")):
+		return false
+	var tools := get_node_or_null("/root/AxelCombatDevTools")
+	if tools != null and tools.has_method("is_menu_open") and bool(tools.call("is_menu_open")):
+		return false
+	var focus := get_viewport().gui_get_focus_owner() as Control
+	if focus != null and focus.is_visible_in_tree() and _focus_uses_interact(focus):
+		return false
+	return true
+
+
+func _rush_presentation_open() -> bool:
+	if combat == null:
+		return false
+	if combat.has_method("is_goal_burst_playing") and bool(combat.is_goal_burst_playing()):
+		return true
+	if not combat.has_method("get_feel"):
+		return false
+	var feel: Node = combat.get_feel()
+	return feel != null and feel.has_method("is_loss_presentation") and bool(feel.is_loss_presentation())
+
+
+func _note_loss_rush_press() -> void:
+	if not _rush_presentation_open() or combat == null or not combat.has_method("get_feel"):
+		return
+	var feel: Node = combat.get_feel()
+	if feel != null and feel.has_method("is_loss_presentation") and bool(feel.is_loss_presentation()):
+		if feel.has_method("note_rush_press"):
+			feel.call("note_rush_press")
+
+
+func _release_spin_busy() -> void:
+	_spin_busy = false
+	if _rush_presentation_open():
+		return
+	CombatPace.clear_rush()
 
 
 func _spin_hotkey_allowed() -> bool:
@@ -1699,7 +1767,7 @@ func _request_spin() -> void:
 	_spin_busy = true
 	if combat.is_encounter_complete():
 		if _is_live_axel_run():
-			_spin_busy = false
+			_release_spin_busy()
 			_refresh_spin_button_state()
 			return
 		combat.begin_next_playtest_encounter(_queued_seed)
@@ -1711,7 +1779,7 @@ func _request_spin() -> void:
 	await combat.spin()
 	if spin_btn != null:
 		spin_btn.disabled = false
-	_spin_busy = false
+	_release_spin_busy()
 	_refresh_readouts()
 	_refresh_spin_button_state()
 
@@ -1798,7 +1866,7 @@ func _pulse_cascade_multiplier() -> void:
 		_cascade_mult_rest_pos = rest
 	_cascade_mult_label.scale = Vector2.ONE
 	_cascade_mult_label.position = rest
-	_cascade_mult_pop_tween = create_tween()
+	_cascade_mult_pop_tween = CombatPace.bind(create_tween())
 	_cascade_mult_pop_tween.tween_property(_cascade_mult_label, "scale", Vector2(1.08, 1.08), 0.07)
 	_cascade_mult_pop_tween.parallel().tween_property(
 		_cascade_mult_label, "position", rest + Vector2(0.0, -3.0), 0.07
@@ -1880,7 +1948,7 @@ func _run_winnings_counter_async() -> void:
 		var tree := get_tree()
 		if tree == null:
 			break
-		await tree.create_timer(step_interval).timeout
+		await CombatPace.await_seconds(step_interval)
 	if gen != _winnings_counter_generation:
 		return
 	_winnings_counter_running = false
@@ -2028,6 +2096,41 @@ func _cache_hud_pieces() -> void:
 	if _widget_layer == null:
 		_widget_layer = find_child("WidgetLayer", true, false)
 	_install_pause_gear()
+
+
+func _install_piece_shadows() -> void:
+	_cache_hud_pieces()
+	var pieces: Array[Control] = [
+		_piece_grid,
+		_piece_goal,
+		_piece_items,
+		_find_hud_piece("NEW_Bets"),
+		_piece_history,
+		_piece_multiplier,
+		_piece_settings,
+	]
+	for piece in pieces:
+		var art := _frame_art(piece)
+		if art == null:
+			continue
+		HudDropShadowScript.attach_beside(art)
+
+
+func _frame_art(piece: Control) -> TextureRect:
+	if piece == null:
+		return null
+	if piece is TextureRect:
+		var own := piece as TextureRect
+		if own.texture != null:
+			return own
+	for child in piece.get_children():
+		if child.name == "DropShadow":
+			continue
+		if child is TextureRect:
+			var art := child as TextureRect
+			if art.texture != null:
+				return art
+	return null
 
 
 const PAUSE_GEAR_CHAR := "⚙"
@@ -2522,6 +2625,9 @@ func _sync_skull_meter(sections: int) -> void:
 		_premium_skull.set_full_face_locked(held)
 	if _premium_skull.has_method("set_fill"):
 		_premium_skull.set_fill(float(filled) / 3.0)
+	var crown_on := _can_use_combat_api() and combat != null and combat.free_spins.active
+	if _premium_skull.has_method("set_flame_crown"):
+		_premium_skull.set_flame_crown(crown_on)
 	_refresh_skull_first_spin_hint()
 
 
@@ -2546,7 +2652,7 @@ func _sync_premium_bar_color(sections: int, animate: bool = false) -> void:
 	var idx := clampi(sections, 0, PREMIUM_BAR_COLORS.size() - 1)
 	var target: Color = PREMIUM_BAR_COLORS[idx]
 	if animate:
-		var tween := create_tween()
+		var tween := CombatPace.bind(create_tween())
 		tween.tween_property(_premium_bar_fill, "color", target, 0.2)
 	else:
 		_premium_bar_fill.color = target
@@ -2577,6 +2683,7 @@ func _ensure_spin_bar_host() -> void:
 	label.name = "FreeSpinCount"
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	label.clip_text = false
 	label.modulate = Color.WHITE
@@ -2600,31 +2707,45 @@ func _on_free_spins_bonus_granted(_added: int) -> void:
 func _refresh_spin_bars() -> void:
 	_ensure_spin_bar_host()
 	if not _free_spin_round_showing():
-		_shown_spin_blocks = 0
-		_set_spin_bars_visible(false)
+		_clear_spin_bars()
 		return
 	var left := combat.free_spins.spins_remaining
 	var progress := combat.get_free_spin_counter()
 	if progress.y <= 0 or left <= 0:
-		_shown_spin_blocks = 0
-		_set_spin_bars_visible(false)
+		_clear_spin_bars()
 		return
 	_set_spin_bars_visible(true)
 	_spin_bar_label.text = "%d/%d spins" % [progress.x, progress.y]
-	_style_spin_count_label(_hud_art_scale())
+	if _slime_busy:
+		_layout_spin_bars()
+		return
 	if left == _shown_spin_blocks:
 		_layout_spin_bars()
 		return
-	if left < _shown_spin_blocks or _shown_spin_blocks == 0:
+	if left < _shown_spin_blocks:
 		_set_spin_block_count(left)
 		return
-	if _slime_busy:
+	if _skip_spin_bar_motion():
+		_spin_count_fill = 1.0
+		_set_spin_block_count(left)
 		return
 	_slime_busy = true
-	await _play_mouth_slime()
-	if _free_spin_round_showing():
-		_set_spin_block_count(combat.free_spins.spins_remaining)
+	await _vomit_spin_bars(_vomit_token)
+
+
+func _clear_spin_bars() -> void:
+	_vomit_token += 1
 	_slime_busy = false
+	_kill_spin_bar_tween()
+	_clear_spin_bar_drops()
+	_shown_spin_blocks = 0
+	_spin_count_fill = 1.0
+	_spin_block_fill.clear()
+	while not _spin_bar_blocks.is_empty():
+		var extra: Panel = _spin_bar_blocks.pop_back()
+		if extra != null and is_instance_valid(extra):
+			extra.queue_free()
+	_set_spin_bars_visible(false)
 
 
 func _set_spin_block_count(count: int) -> void:
@@ -2632,47 +2753,62 @@ func _set_spin_block_count(count: int) -> void:
 	var want := maxi(count, 0)
 	while _spin_bar_blocks.size() > want:
 		var extra: Panel = _spin_bar_blocks.pop_back()
+		if not _spin_block_fill.is_empty():
+			_spin_block_fill.pop_back()
 		if extra != null and is_instance_valid(extra):
 			extra.queue_free()
-	var scale := _hud_art_scale()
-	var block_w := SPIN_BLOCK_W * scale
-	var block_h := SPIN_BLOCK_H * scale
 	while _spin_bar_blocks.size() < want:
-		var block := Panel.new()
-		block.name = "SpinBlock"
-		block.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		block.custom_minimum_size = Vector2(block_w, block_h)
-		block.size = Vector2(block_w, block_h)
-		_spin_count_root.add_child(block)
-		_spin_bar_blocks.append(block)
+		_spin_count_root.add_child(_make_spin_block())
+		_spin_block_fill.append(1.0)
 	_shown_spin_blocks = want
 	_layout_spin_bars()
+
+
+func _append_empty_spin_block() -> void:
+	_ensure_spin_bar_host()
+	_spin_count_root.add_child(_make_spin_block())
+	_spin_block_fill.append(0.0)
+	_shown_spin_blocks = _spin_bar_blocks.size()
+	_layout_spin_bars()
+
+
+func _make_spin_block() -> Panel:
+	var block := Panel.new()
+	block.name = "SpinBlock"
+	block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	block.clip_contents = false
+	_spin_bar_blocks.append(block)
+	return block
 
 
 func _style_spin_count_label(art_scale: float) -> void:
 	if _spin_bar_label == null:
 		return
+	var grow := maxf(_spin_bar_grow, 1.0)
+	var shadow := maxi(2, int(round(2.0 * grow)))
 	_apply_white_hud_text_style(_spin_bar_label)
 	_spin_bar_label.add_theme_color_override("font_shadow_color", Color(0.28, 0.28, 0.28, 1.0))
-	_spin_bar_label.add_theme_constant_override("shadow_offset_x", 2)
-	_spin_bar_label.add_theme_constant_override("shadow_offset_y", 2)
-	_spin_bar_label.add_theme_font_size_override("font_size", maxi(22, int(round(40.0 * art_scale))))
+	_spin_bar_label.add_theme_constant_override("shadow_offset_x", shadow)
+	_spin_bar_label.add_theme_constant_override("shadow_offset_y", shadow)
+	var base_font := maxi(22, int(round(40.0 * art_scale)))
+	_spin_bar_label.add_theme_font_size_override("font_size", maxi(22, int(round(float(base_font) * grow))))
 
 
 func _spin_block_edge() -> int:
-	return maxi(2, int(round(4.0 * _hud_art_scale())))
+	return maxi(2, int(round(4.0 * _hud_art_scale() * maxf(_spin_bar_grow, 1.0))))
 
 
 func _apply_spin_block_style(block: Panel) -> void:
+	var grow := maxf(_spin_bar_grow, 1.0)
 	var edge := _spin_block_edge()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color.WHITE
 	style.border_color = Color.BLACK
 	style.set_border_width_all(edge)
 	style.set_corner_radius_all(0)
-	style.shadow_color = Color(0.22, 0.22, 0.22, 1.0)
-	style.shadow_size = maxi(2, int(round(4.0 * _hud_art_scale())))
-	style.shadow_offset = Vector2(2.0, 3.0)
+	style.shadow_color = HudDropShadowScript.COLOR
+	style.shadow_size = maxi(2, int(round(4.0 * _hud_art_scale() * grow)))
+	style.shadow_offset = HudDropShadowScript.OFFSET * grow
 	block.add_theme_stylebox_override("panel", style)
 
 
@@ -2701,20 +2837,36 @@ func _layout_spin_bars() -> void:
 	if skull == null:
 		return
 	var art_scale := _hud_art_scale()
-	var rect := _control_visual_global_rect(skull)
-	var gap_under := maxf(8.0, 14.0 * art_scale)
-	var to_local := _spin_bar_host.get_global_transform_with_canvas().affine_inverse()
-	var origin := to_local * (rect.position + Vector2(0.0, rect.size.y + gap_under))
+	var base_font := maxi(22, int(round(40.0 * art_scale)))
 	var block_w := SPIN_BLOCK_W * art_scale
 	var block_h := SPIN_BLOCK_H * art_scale
 	var gap := SPIN_BLOCK_GAP * art_scale
 	var label_gap := maxf(4.0, 8.0 * art_scale)
+	var label_h := float(base_font) + 10.0
+	var stack := block_h + label_gap + label_h
+	var rect := _control_visual_global_rect(skull)
+	var gap_under := maxf(8.0, 14.0 * art_scale)
+	var to_local := _spin_bar_host.get_global_transform_with_canvas().affine_inverse()
+	var origin := to_local * (rect.position + Vector2(0.0, rect.size.y + gap_under))
+	origin = _clamp_spin_bar_origin(origin, block_h, label_gap, to_local, label_h)
+	var bar_bottom := origin.y + stack
+	var lip_global := rect.position + Vector2(0.0, rect.size.y * SKULL_MOUTH_LIP_FRAC)
+	var lip_local := to_local * lip_global
+	var grow := 1.0
+	if stack > 1.0 and rect.size.y > 8.0:
+		grow = (bar_bottom - lip_local.y) / stack
+	_spin_bar_grow = clampf(grow, 1.0, 8.0)
 	_style_spin_count_label(art_scale)
-	origin = _clamp_spin_bar_origin(origin, block_h, label_gap, to_local)
-	_place_spin_bar_row(origin, block_w, block_h, gap, label_gap)
+	_bar_origin = Vector2(origin.x, bar_bottom - stack * _spin_bar_grow)
+	_bar_block_w = block_w * _spin_bar_grow
+	_bar_block_h = block_h * _spin_bar_grow
+	_bar_gap = gap * _spin_bar_grow
+	_bar_label_gap = label_gap * _spin_bar_grow
+	_bar_label_h = label_h * _spin_bar_grow
+	_place_spin_bar_row()
 
 
-func _clamp_spin_bar_origin(origin: Vector2, block_h: float, label_gap: float, to_local: Transform2D) -> Vector2:
+func _clamp_spin_bar_origin(origin: Vector2, block_h: float, label_gap: float, to_local: Transform2D, label_h: float) -> Vector2:
 	if _spin_bar_label == null:
 		return origin
 	var vp := get_viewport_rect().size
@@ -2722,8 +2874,6 @@ func _clamp_spin_bar_origin(origin: Vector2, block_h: float, label_gap: float, t
 		vp = size
 	if vp.y <= 1.0:
 		return origin
-	var font_px := float(_spin_bar_label.get_theme_font_size("font_size"))
-	var label_h := font_px + 10.0
 	var row_bottom_local := origin.y + block_h + label_gap + label_h
 	var row_bottom := _spin_bar_host.get_global_transform_with_canvas() * Vector2(origin.x, row_bottom_local)
 	var overflow := row_bottom.y - (vp.y - SPIN_BAR_SCREEN_PAD)
@@ -2737,57 +2887,160 @@ func _spin_bar_global(local_point: Vector2) -> Vector2:
 	return _spin_bar_host.get_global_transform_with_canvas() * local_point
 
 
-func _place_spin_bar_row(origin: Vector2, block_w: float, block_h: float, gap: float, label_gap: float) -> void:
+func _place_spin_bar_row() -> void:
 	for i in _spin_bar_blocks.size():
-		var block := _spin_bar_blocks[i]
-		var local_pos := origin + Vector2(float(i) * (block_w + gap), 0.0)
-		block.size = Vector2(block_w, block_h)
-		block.global_position = _spin_bar_global(local_pos)
-		_apply_spin_block_style(block)
+		_place_one_spin_block(i)
 	if _spin_bar_label == null:
 		return
 	var font_px := float(_spin_bar_label.get_theme_font_size("font_size"))
-	var label_local := origin + Vector2(0.0, block_h + label_gap)
-	_spin_bar_label.size = Vector2(maxf(240.0, font_px * 14.0), font_px + 10.0)
-	_spin_bar_label.custom_minimum_size = _spin_bar_label.size
+	var text_w := font_px * 8.0
+	var font := _spin_bar_label.get_theme_font("font")
+	if font != null and not _spin_bar_label.text.is_empty():
+		text_w = font.get_string_size(_spin_bar_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, int(font_px)).x + 12.0
+	var shown_h := _bar_label_h * clampf(_spin_count_fill, 0.0, 1.0)
+	_spin_bar_label.clip_text = _spin_count_fill < 0.999
+	_spin_bar_label.custom_minimum_size = Vector2.ZERO
+	_spin_bar_label.size = Vector2(maxf(text_w, 32.0), shown_h)
+	var label_local := Vector2(_bar_origin.x, _bar_origin.y + _bar_block_h + _bar_label_gap + _bar_label_h - shown_h)
 	_spin_bar_label.global_position = _spin_bar_global(label_local)
+
+
+func _place_one_spin_block(index: int) -> void:
+	if index < 0 or index >= _spin_bar_blocks.size():
+		return
+	var block := _spin_bar_blocks[index]
+	if block == null or not is_instance_valid(block):
+		return
+	var fill := 1.0
+	if index < _spin_block_fill.size():
+		fill = clampf(_spin_block_fill[index], 0.0, 1.0)
+	var shown_h := _bar_block_h * fill
+	var local_pos := _bar_origin + Vector2(float(index) * (_bar_block_w + _bar_gap), _bar_block_h - shown_h)
+	block.custom_minimum_size = Vector2.ZERO
+	block.size = Vector2(_bar_block_w, maxf(shown_h, 0.0))
+	block.visible = shown_h >= 1.0
+	block.global_position = _spin_bar_global(local_pos)
+	_apply_spin_block_style(block)
+
+
+func _set_block_fill(index: int, amount: float) -> void:
+	if index < 0 or index >= _spin_block_fill.size():
+		return
+	_spin_block_fill[index] = clampf(amount, 0.0, 1.0)
+	_place_one_spin_block(index)
+
+
+func _set_count_fill(amount: float) -> void:
+	_spin_count_fill = clampf(amount, 0.0, 1.0)
+	_place_spin_bar_row()
 
 
 func _skull_mouth_local() -> Vector2:
 	var stage := _premium_skull.get_node_or_null("SkullStage3") as Control
-	var rect := stage.get_global_rect() if stage != null else (_premium_skull as Control).get_global_rect()
+	var rect := _control_visual_global_rect(stage) if stage != null else _control_visual_global_rect(_premium_skull as Control)
 	var mouth := rect.position + Vector2(rect.size.x * SKULL_MOUTH_FRAC.x, rect.size.y * SKULL_MOUTH_FRAC.y)
 	return _spin_bar_host.get_global_transform_with_canvas().affine_inverse() * mouth
 
 
-func _play_mouth_slime() -> void:
-	if _spin_bar_host == null or _premium_skull == null:
+func _skip_spin_bar_motion() -> bool:
+	return DisplayServer.get_name() == "headless" or _reduce_hud_flashing()
+
+
+func _vomit_spin_bars(token: int) -> void:
+	var reveal_text := _shown_spin_blocks == 0
+	if reveal_text:
+		_spin_count_fill = 0.0
+		_layout_spin_bars()
+	while token == _vomit_token and _free_spin_round_showing():
+		var target := combat.free_spins.spins_remaining
+		if target < _shown_spin_blocks:
+			_set_spin_block_count(target)
+			continue
+		if target > _shown_spin_blocks:
+			_append_empty_spin_block()
+			await _fill_spin_block_from_bottom(_spin_bar_blocks.size() - 1, token)
+			continue
+		if reveal_text:
+			reveal_text = false
+			await _fill_spin_count_from_bottom(token)
+			continue
+		break
+	if token == _vomit_token:
+		_slime_busy = false
+
+
+func _fill_spin_block_from_bottom(index: int, token: int) -> void:
+	if token != _vomit_token:
 		return
-	if _reduce_hud_flashing():
+	if index < 0 or index >= _spin_bar_blocks.size():
 		return
-	var scale := _hud_art_scale()
+	if _skip_spin_bar_motion():
+		_set_block_fill(index, 1.0)
+		return
+	var land := _block_slot_global(index).end - Vector2(_bar_block_w * 0.5, 0.0)
+	await _play_mouth_drip(land, token, func(amount: float) -> void:
+		_set_block_fill(index, amount)
+	)
+	if token == _vomit_token:
+		_set_block_fill(index, 1.0)
+
+
+func _fill_spin_count_from_bottom(token: int) -> void:
+	if token != _vomit_token:
+		return
+	if _skip_spin_bar_motion():
+		_set_count_fill(1.0)
+		return
+	var land := _spin_bar_global(_bar_origin + Vector2(_bar_block_w * 0.5, _bar_block_h + _bar_label_gap + _bar_label_h))
+	await _play_mouth_drip(land, token, func(amount: float) -> void:
+		_set_count_fill(amount)
+	)
+	if token == _vomit_token:
+		_set_count_fill(1.0)
+
+
+func _block_slot_global(index: int) -> Rect2:
+	var local := _bar_origin + Vector2(float(index) * (_bar_block_w + _bar_gap), 0.0)
+	var top_left := _spin_bar_global(local)
+	var bottom_right := _spin_bar_global(local + Vector2(_bar_block_w, _bar_block_h))
+	return Rect2(top_left, bottom_right - top_left)
+
+
+func _play_mouth_drip(land: Vector2, token: int, on_fill: Callable) -> void:
+	if token != _vomit_token or _spin_bar_host == null or _premium_skull == null:
+		return
+	var drip_scale := _hud_art_scale() * maxf(_spin_bar_grow, 1.0)
 	var mouth := _spin_bar_global(_skull_mouth_local())
-	var land := mouth + Vector2(0.0, 80.0 * scale)
-	if not _spin_bar_blocks.is_empty():
-		var last := _spin_bar_blocks[_spin_bar_blocks.size() - 1]
-		land = last.global_position + Vector2(last.size.x + SPIN_BLOCK_GAP * scale, 0.0)
-	var drops: Array[ColorRect] = []
+	_clear_spin_bar_drops()
 	for i in 4:
 		var drop := ColorRect.new()
 		drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		drop.color = Color(1.0, 1.0, 1.0, 0.92)
-		var drop_size := Vector2(8.0, 14.0) * scale
-		drop.size = drop_size
-		drop.global_position = mouth + Vector2(float(i - 1) * 6.0 * scale, float(i) * 4.0 * scale)
+		drop.size = Vector2(8.0, 14.0) * drip_scale
+		drop.global_position = mouth + Vector2(float(i - 1) * 6.0 * drip_scale, float(i) * 4.0 * drip_scale)
 		_spin_count_root.add_child(drop)
-		drops.append(drop)
-	var tween := create_tween()
+		_spin_bar_drops.append(drop)
+	var tween := CombatPace.bind(create_tween())
 	tween.set_parallel(true)
-	for drop in drops:
-		tween.tween_property(drop, "global_position", land, 0.35)
+	_spin_bar_tween = tween
+	tween.tween_method(on_fill, 0.0, 1.0, SPIN_BAR_FILL_SEC)
+	for drop in _spin_bar_drops:
+		tween.tween_property(drop, "global_position", land, SPIN_BAR_FILL_SEC)
 	await tween.finished
-	for drop in drops:
-		if is_instance_valid(drop):
+	if token == _vomit_token:
+		_clear_spin_bar_drops()
+
+
+func _kill_spin_bar_tween() -> void:
+	if _spin_bar_tween != null and _spin_bar_tween.is_valid():
+		_spin_bar_tween.kill()
+	_spin_bar_tween = null
+
+
+func _clear_spin_bar_drops() -> void:
+	while not _spin_bar_drops.is_empty():
+		var drop: ColorRect = _spin_bar_drops.pop_back()
+		if drop != null and is_instance_valid(drop):
 			drop.queue_free()
 
 
@@ -3118,7 +3371,7 @@ func _flash_goal_victory() -> void:
 	if _piece_goal == null:
 		return
 	_piece_goal.modulate = Color.WHITE
-	var tw := create_tween()
+	var tw := CombatPace.bind(create_tween())
 	for _i in 3:
 		tw.tween_property(_piece_goal, "modulate", Color(1.55, 1.55, 1.55, 1.0), 0.2)
 		tw.tween_property(_piece_goal, "modulate", Color.WHITE, 0.2)
@@ -3143,6 +3396,7 @@ func _refresh_super_fs_choice_overlay() -> void:
 		_reset_vice_choice_hover()
 	if awaiting_choice and not was_visible:
 		_layout_free_spins_choice()
+		CombatPace.clear_rush()
 
 
 func _ensure_free_spins_choice_presentation() -> void:
@@ -3503,8 +3757,8 @@ func _fs_choice_column_width(button: Button) -> float:
 		var font := lab.get_theme_font("font")
 		if font == null:
 			continue
-		var size := lab.get_theme_font_size("font_size")
-		widest = maxf(widest, font.get_string_size(lab.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 72.0)
+		var font_px := lab.get_theme_font_size("font_size")
+		widest = maxf(widest, font.get_string_size(lab.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_px).x + 72.0)
 	return widest
 
 
@@ -3567,7 +3821,7 @@ func _submit_super_fs_choice(power_id: StringName) -> void:
 	combat.choose_free_spins_power(power_id)
 	_refresh_readouts()
 	await combat.run_free_spin_round()
-	_spin_busy = false
+	_release_spin_busy()
 	if spin_btn != null:
 		spin_btn.disabled = false
 	_refresh_readouts()

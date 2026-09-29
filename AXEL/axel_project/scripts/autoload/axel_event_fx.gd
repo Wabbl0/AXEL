@@ -230,7 +230,7 @@ func play_round_complete_fade() -> void:
 		_round_root.visible = true
 	_round_label.visible = true
 	_round_label.modulate.a = 1.0
-	var fade_in := create_tween()
+	var fade_in := CombatPace.bind(create_tween())
 	fade_in.tween_property(_round_scrim, "color:a", 1.0, 0.35)
 	await fade_in.finished
 
@@ -247,7 +247,7 @@ func finish_round_complete_fade() -> void:
 	_round_scrim.color = Color(0, 0, 0, 1)
 	if _round_label != null:
 		_round_label.visible = false
-	var fade_out := create_tween()
+	var fade_out := CombatPace.bind(create_tween())
 	fade_out.tween_property(_round_scrim, "color:a", 0.0, 0.35)
 	await fade_out.finished
 	_hide_round_complete()
@@ -361,7 +361,7 @@ func _start_round_hop() -> void:
 	if _round_label == null:
 		return
 	var rest_y := _round_label.position.y
-	_round_hop = create_tween()
+	_round_hop = CombatPace.bind(create_tween())
 	_round_hop.set_loops()
 	_round_hop.tween_property(_round_label, "position:y", rest_y - 24.0, 0.225)
 	_round_hop.tween_property(_round_label, "position:y", rest_y, 0.225)

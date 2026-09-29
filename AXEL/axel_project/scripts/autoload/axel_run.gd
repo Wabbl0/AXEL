@@ -551,6 +551,9 @@ func _show_round_complete_card() -> void:
 	var root := _live_combat_root()
 	if root != null and root.has_method("play_goal_win_burst"):
 		await root.call("play_goal_win_burst")
+	var pace := get_node_or_null("/root/CombatPace")
+	if pace != null and pace.has_method("clear_rush"):
+		pace.call("clear_rush")
 	var fx := get_node_or_null("/root/AxelEventFx")
 	if fx != null and fx.has_method("show_round_complete_card"):
 		fx.call("show_round_complete_card")

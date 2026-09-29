@@ -24,6 +24,8 @@ var _wobble_tween: Tween
 var _host_rest: Vector2 = Vector2.ZERO
 var _game_over_open := false
 var _banner_anchor: Control
+var _loss_presentation := false
+var _loss_rush_frame := -1
 
 
 func setup(root: Node2D, grid_ui: Control) -> void:
@@ -123,7 +125,7 @@ func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62, pe
 	_kill(_banner_tween)
 	_banner.modulate.a = 0.0
 	_banner_scrim.color = Color(0.0, 0.0, 0.0, 0.0)
-	_banner_tween = create_tween()
+	_banner_tween = CombatPace.bind(create_tween())
 	_banner_tween.tween_property(_banner, "modulate:a", 1.0, BANNER_FADE_IN_SEC)
 	_banner_tween.parallel().tween_property(_banner_scrim, "color:a", scrim_a, BANNER_FADE_IN_SEC)
 	_banner_tween.tween_interval(hold_sec)
@@ -172,8 +174,18 @@ func is_game_over_open() -> bool:
 	return _game_over_open
 
 
+func is_loss_presentation() -> bool:
+	return _loss_presentation
+
+
+func note_rush_press() -> void:
+	_loss_rush_frame = Engine.get_process_frames()
+
+
 func show_game_over_menu(retry: Callable, to_menu: Callable, quit_app: Callable) -> void:
 	_game_over_open = true
+	_loss_presentation = true
+	set_process_unhandled_input(true)
 	_kill(_banner_tween)
 	_banner_anchor = null
 	_place_banner()
@@ -192,11 +204,26 @@ func show_game_over_menu(retry: Callable, to_menu: Callable, quit_app: Callable)
 	if _banner != null:
 		_banner.text = line
 		_banner.modulate.a = 0.0
-		var fade := create_tween()
+		var fade := CombatPace.bind(create_tween())
 		fade.tween_property(_banner, "modulate:a", 1.0, 0.5)
 		await fade.finished
+	_loss_presentation = false
+	set_process_unhandled_input(false)
+	CombatPace.clear_rush()
 	await _wait_for_loss_buttons()
 	_reveal_loss_buttons(retry, to_menu, quit_app)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not _loss_presentation or not event.is_action_pressed("interact"):
+		return
+	if _combat_paused():
+		return
+	var vp := get_viewport()
+	if vp != null:
+		vp.set_input_as_handled()
+	CombatPace.set_rush(true)
+	note_rush_press()
 
 
 func _play_loss_collapse() -> void:
@@ -236,7 +263,7 @@ func _play_loss_collapse() -> void:
 			parent.remove_child(piece)
 		host.add_child(piece)
 		piece.global_position = global_pos
-		var drop := create_tween()
+		var drop := CombatPace.bind(create_tween())
 		var delay := float(i) * 0.04
 		if delay > 0.0:
 			drop.tween_interval(delay)
@@ -245,7 +272,7 @@ func _play_loss_collapse() -> void:
 		drop.finished.connect(_hide_loss_piece.bind(piece))
 	var tree := get_tree()
 	if tree != null:
-		await tree.create_timer(minf(float(pieces.size()) * 0.04, 0.4) + 0.15).timeout
+		await CombatPace.await_seconds(minf(float(pieces.size()) * 0.04, 0.4) + 0.15)
 
 
 func _hide_loss_piece(piece: CanvasItem) -> void:
@@ -287,6 +314,11 @@ func _loss_view_size() -> Vector2:
 	return Vector2(1920, 1280)
 
 
+func _combat_paused() -> bool:
+	var pause := get_node_or_null("/root/AxelPause")
+	return pause != null and pause.has_method("is_paused") and bool(pause.call("is_paused"))
+
+
 func _reduce_flashing() -> bool:
 	var settings := get_node_or_null("/root/AxelSettings")
 	if settings != null and settings.has_method("get_value"):
@@ -301,7 +333,8 @@ func _wait_for_loss_buttons() -> void:
 	var elapsed := 0.0
 	var reveal := false
 	while elapsed < 3.0:
-		if Input.is_action_just_pressed("interact") or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		var rush_press := Engine.get_process_frames() == _loss_rush_frame
+		if not rush_press and (Input.is_action_just_pressed("interact") or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
 			reveal = true
 			var vp := get_viewport()
 			if vp != null:
@@ -351,7 +384,7 @@ func shake(multiplier_value: int, settings: Node) -> void:
 		amp *= clampf(float(settings.call("get_value", "access", "screen_shake", 1.0)), 0.0, 1.0)
 	_kill(_shake_tween)
 	_shake_host.position = _host_rest
-	_shake_tween = create_tween()
+	_shake_tween = CombatPace.bind(create_tween())
 	for i in 5:
 		var kick := Vector2(amp if i % 2 == 0 else -amp, amp * 0.4 if i % 2 == 0 else -amp * 0.4)
 		_shake_tween.tween_property(_shake_host, "position", _host_rest + kick, 0.03)
@@ -370,7 +403,7 @@ func crt_wobble(multiplier_value: int, settings: Node) -> void:
 	if settings != null:
 		amp *= clampf(float(settings.call("get_value", "access", "screen_shake", 1.0)), 0.0, 1.0)
 	_kill(_wobble_tween)
-	_wobble_tween = create_tween()
+	_wobble_tween = CombatPace.bind(create_tween())
 	for i in 6:
 		var kick := Vector2(amp if i % 2 == 0 else -amp, 0.0)
 		_wobble_tween.tween_property(_shake_host, "position", _host_rest + kick, 0.05)
@@ -386,7 +419,7 @@ func glitch_flash(settings: Node) -> void:
 	if settings != null:
 		peak *= clampf(float(settings.call("get_value", "access", "glitch_intensity", 1.0)), 0.0, 1.0)
 	_banner_scrim.color = Color(0.9, 0.05, 0.05, peak)
-	var tw := create_tween()
+	var tw := CombatPace.bind(create_tween())
 	tw.tween_property(_banner_scrim, "color:a", 0.0, 0.12)
 
 

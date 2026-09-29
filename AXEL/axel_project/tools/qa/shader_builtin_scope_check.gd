@@ -36,8 +36,8 @@ func _init() -> void:
 
 func _main() -> void:
 	var fail_count := 0
-	for root in SCAN_ROOTS:
-		for shader_path in _list_gdshader(root):
+	for scan_root in SCAN_ROOTS:
+		for shader_path in _list_gdshader(scan_root):
 			for hit in _scan_shader(shader_path):
 				fail_count += 1
 				push_error(

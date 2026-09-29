@@ -19,6 +19,7 @@ func _main() -> void:
 
 
 	_assert_locked(settings, failures)
+	_assert_combat_speed(settings, failures)
 	if Engine.max_fps != 0:
 		failures.append("FPS cap should stay off, got %s" % Engine.max_fps)
 	_assert_rebinds_ignored(settings, failures)
@@ -87,6 +88,24 @@ func _assert_locked(settings: Node, failures: Array[String]) -> void:
 	settings.set_value("access", "glitch_intensity", 0.0)
 	if not is_equal_approx(float(settings.get_value("access", "glitch_intensity")), 1.0):
 		failures.append("glitch intensity should stay full")
+
+
+func _assert_combat_speed(settings: Node, failures: Array[String]) -> void:
+	var had: bool = settings._config.has_section_key("gameplay", "combat_speed")
+	var original := String(settings.get_value("gameplay", "combat_speed"))
+	if original != "slow" and original != "normal" and original != "fast":
+		failures.append("combat speed should be slow, normal, or fast, got %s" % original)
+	settings.set_value("gameplay", "combat_speed", "fast")
+	if String(settings.get_value("gameplay", "combat_speed")) != "fast":
+		failures.append("combat speed should save fast")
+	settings.set_value("gameplay", "combat_speed", "slow")
+	if String(settings.get_value("gameplay", "combat_speed")) != "slow":
+		failures.append("combat speed should save slow")
+	if had:
+		settings.set_value("gameplay", "combat_speed", original)
+	elif settings._config.has_section_key("gameplay", "combat_speed"):
+		settings._config.erase_section_key("gameplay", "combat_speed")
+		settings._queue_save()
 
 
 func _assert_rebinds_ignored(settings: Node, failures: Array[String]) -> void:

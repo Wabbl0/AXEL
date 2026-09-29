@@ -137,7 +137,9 @@ func _crop_pad_remap(src: Image) -> Image:
 	cropped.resize(nw, nh, Image.INTERPOLATE_NEAREST)
 	var out := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
 	out.fill(Color(0, 0, 0, 0))
+	@warning_ignore("integer_division")
 	var ox := int((SIZE - nw) / 2)
+	@warning_ignore("integer_division")
 	var oy := int((SIZE - nh) / 2)
 	out.blit_rect(cropped, Rect2i(0, 0, nw, nh), Vector2i(ox, oy))
 	for y in SIZE:

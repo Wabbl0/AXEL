@@ -188,8 +188,8 @@ func _play_fight(
 	wallet: int,
 	spins: int,
 ) -> Dictionary:
-	var seed := 800000 + run_i * 104729 + fight_i * 10007
-	cr.setup_new_grid(seed)
+	var fight_seed := 800000 + run_i * 104729 + fight_i * 10007
+	cr.setup_new_grid(fight_seed)
 	cr.set_bet_index(0)
 	cr.set_equipped_items(items)
 	cr.set_goal_base_target_cents(_goal_base(fight_i))
@@ -274,6 +274,7 @@ func _choose_bet(style: String, wallet: int) -> int:
 			if step <= wallet:
 				best = step
 		return best
+	@warning_ignore("integer_division")
 	var target := int(wallet / 5)
 	if target < MIN_BET:
 		return MIN_BET
@@ -344,7 +345,9 @@ func _median_int(values: Array) -> float:
 	sorted.sort()
 	var n := sorted.size()
 	if n % 2 == 1:
+		@warning_ignore("integer_division")
 		return float(sorted[n / 2])
+	@warning_ignore("integer_division")
 	return (float(sorted[n / 2 - 1]) + float(sorted[n / 2])) * 0.5
 
 

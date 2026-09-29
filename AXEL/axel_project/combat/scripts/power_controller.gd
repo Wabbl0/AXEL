@@ -221,12 +221,12 @@ func _cigarette_remove_lowpays(ctx: Dictionary) -> void:
 func _note_power_fx(ctx: Dictionary, kind: StringName, cell: Vector2i, from_sym: SymbolDefScript, to_sym: SymbolDefScript) -> void:
 	if not ctx.has("fx_log"):
 		return
-	var log: Variant = ctx["fx_log"]
-	if typeof(log) != TYPE_ARRAY:
+	var fx_events: Variant = ctx["fx_log"]
+	if typeof(fx_events) != TYPE_ARRAY:
 		return
 	var from_tex: Texture2D = from_sym.texture if from_sym != null else null
 	var to_tex: Texture2D = to_sym.texture if to_sym != null else null
-	(log as Array).append({
+	(fx_events as Array).append({
 		"kind": kind,
 		"cell": cell,
 		"from_tex": from_tex,

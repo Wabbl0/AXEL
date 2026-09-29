@@ -55,8 +55,8 @@ func _physics_process(delta: float) -> void:
 	global_position = clamp_center_to_rect(next, _inset_rect, _viewport_size, zoom)
 
 
-func set_follow_enabled(enabled: bool) -> void:
-	follow_enabled = enabled
+func set_follow_enabled(follow_on: bool) -> void:
+	follow_enabled = follow_on
 
 
 func place_center_clamped(world_center: Vector2) -> void:

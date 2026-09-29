@@ -2,6 +2,7 @@ class_name RunState
 extends Resource
 
 @export var schema_version: int = 1
+@warning_ignore("shadowed_global_identifier")
 @export var seed: int = 0
 @export var act: int = 1
 @export var encounter_index: int = 0

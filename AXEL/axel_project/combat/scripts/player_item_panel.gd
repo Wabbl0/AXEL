@@ -82,7 +82,7 @@ func pulse_item(item_id: String) -> void:
 	icon.scale = Vector2.ONE
 	icon.modulate = Color.WHITE
 	icon.pivot_offset = Vector2(ICON_PX, ICON_PX) * 0.5
-	var tw := create_tween()
+	var tw := CombatPace.bind(create_tween())
 	_pulse_tweens[item_id] = tw
 	tw.tween_property(icon, "scale", Vector2(PULSE_SCALE, PULSE_SCALE), PULSE_SEC * 0.45)
 	tw.parallel().tween_property(icon, "modulate", Color(1.35, 0.9, 0.9, 1.0), PULSE_SEC * 0.45)

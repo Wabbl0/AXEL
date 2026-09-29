@@ -34,6 +34,7 @@ const DEFAULTS := {
 	"gameplay": {
 		"text_speed_cps": 35.0,
 		"auto_advance": true,
+		"combat_speed": "normal",
 	},
 	"access": {
 		"reduce_flashing": false,

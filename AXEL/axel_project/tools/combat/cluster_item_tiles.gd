@@ -164,6 +164,7 @@ func _build_sheet(cluster_list: Array, items_out: Array) -> Image:
 	for i in count:
 		var cluster: Dictionary = cluster_list[i]
 		var col := i % cols
+		@warning_ignore("integer_division")
 		var row := int(i / cols)
 		var ox := CELL_PAD + col * cell_w
 		var oy := CELL_PAD + row * cell_h

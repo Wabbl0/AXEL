@@ -216,7 +216,6 @@ func _check_scene(entry: Dictionary, local_overhang: Dictionary) -> int:
 		var meta_scale: Variant = player.get_meta("axel_authored_scale")
 		if meta_scale is Vector2:
 			authored_scale = (meta_scale as Vector2).x
-	var env_unit := bg_scale
 
 
 	var required_tex := {

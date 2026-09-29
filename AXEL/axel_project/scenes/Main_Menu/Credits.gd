@@ -34,8 +34,8 @@ func _ready() -> void:
 		label.text = line
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var color := MenuLook.ACCENT if line == "AXEL" else MenuLook.TEXT
-		var size := 64 if line == "AXEL" else 28
-		MenuLook.apply_label(label, MenuLook.scaled_font(self, size), color)
+		var font_px := 64 if line == "AXEL" else 28
+		MenuLook.apply_label(label, MenuLook.scaled_font(self, font_px), color)
 		col.add_child(label)
 	var back := Button.new()
 	back.name = "BackButton"

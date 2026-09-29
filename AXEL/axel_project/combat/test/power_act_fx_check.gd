@@ -104,6 +104,7 @@ func _assert_logs_match_board(power_id: StringName, kind: StringName) -> void:
 	for i in before.size():
 		if before[i] != after[i]:
 			var x := i % GridManagerScript.COLS
+			@warning_ignore("integer_division")
 			var y := int(i / GridManagerScript.COLS)
 			changed["%d,%d" % [x, y]] = true
 	if changed.is_empty():
@@ -183,12 +184,12 @@ func _assert_collapse_keeps_last_kind() -> void:
 	var tex_a := _symbol(cr, &"sym_green_circle").texture
 	var tex_b := _symbol(cr, &"sym_yellow_triangle").texture
 	var skull := cr.wild_symbol.texture
-	var log: Array = [
+	var fx_events: Array = [
 		{"kind": &"morph", "cell": Vector2i(1, 1), "from_tex": tex_a, "to_tex": tex_b},
 		{"kind": &"eat", "cell": Vector2i(1, 1), "from_tex": tex_b, "to_tex": skull},
 		{"kind": &"burn", "cell": Vector2i(0, 0), "from_tex": tex_a, "to_tex": null},
 	]
-	var collapsed: Array = cr._collapse_power_fx(log)
+	var collapsed: Array = cr._collapse_power_fx(fx_events)
 	if collapsed.size() != 2:
 		_fail("two cells should stay two motions, got %d" % collapsed.size())
 	var eaten: Dictionary = {}
@@ -272,14 +273,14 @@ func _assert_play_clears_and_times() -> void:
 	var slot := cr._get_slot(Vector2i(2, 2))
 	var tex_a := _symbol(cr, &"sym_green_circle").texture
 	var tex_b := _symbol(cr, &"sym_yellow_triangle").texture
-	var log: Array = [{
+	var fx_events: Array = [{
 		"kind": &"morph",
 		"cell": Vector2i(2, 2),
 		"from_tex": tex_a,
 		"to_tex": tex_b,
 	}]
 	var started := Time.get_ticks_msec()
-	cr._play_power_act_fx(log)
+	cr._play_power_act_fx(fx_events)
 	var icon := slot.get_node("Icon") as TextureRect
 	if icon.material == null:
 		_fail("power motion did not start on the cell")

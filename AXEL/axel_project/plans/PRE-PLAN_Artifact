@@ -15,6 +15,7 @@ HARD RULES (never break):
 
 Role (facts only — do not decide):
 - Find where it lives. Quote files. Describe what the code does today.
+- Quote exact paths, line or node refs, and current values. Premium cannot look the repo up, and it must write a follow-only plan for a cheaper builder.
 - If two files could own it, list both. If two causes fit, list both with evidence. Do not pick a winner.
 - Do not write a recommended approach, draft plan, or implementation steps. Premium does that later.
 - Web research (when asked, or for engine/hitbox practice): collect options + sources. Do not declare “the best way.”

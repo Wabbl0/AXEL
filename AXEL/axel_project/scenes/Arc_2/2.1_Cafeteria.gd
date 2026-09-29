@@ -377,11 +377,11 @@ func _update_direction_hint(delta: float) -> void:
 	var pause_holds := get_tree() != null and get_tree().paused
 	if not dialogue_holds and not pause_holds:
 		_hint_elapsed += delta
-	var show := _cover_layout_ready and (
+	var hint_on := _cover_layout_ready and (
 		_hint_elapsed >= HINT_WAIT_SEC or _both_side_rooms_visited()
 	)
-	_direction_hint.visible = show
-	if not show:
+	_direction_hint.visible = hint_on
+	if not hint_on:
 		return
 	_sync_direction_hint()
 	if _direction_hint.has_method("overlaps_player") and bool(_direction_hint.call("overlaps_player", _player)):

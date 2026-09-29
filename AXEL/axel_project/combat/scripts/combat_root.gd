@@ -167,6 +167,7 @@ var _dev_guarantee_trinity: bool = false
 var _dev_guarantee_fs_clear: bool = false
 var _dev_guarantee_payout_1000x: bool = false
 var _dev_skip_visuals: bool = false
+var _goal_burst_playing: bool = false
 var _power_fx_log: Array = []
 var _power_fx_depth: int = 0
 
@@ -1075,10 +1076,11 @@ func _pause_visual(seconds: float) -> void:
 	if _dev_skip_visuals or seconds <= 0.0:
 		await tree.process_frame
 		return
-	var remaining := seconds
-	while remaining > 0.0 and not _dev_skip_visuals:
-		await tree.process_frame
-		remaining -= get_process_delta_time()
+	await CombatPace.await_seconds(seconds, _visual_skip_requested)
+
+
+func _visual_skip_requested() -> bool:
+	return _dev_skip_visuals
 
 func _on_grid_populated() -> void:
 	if _suppress_grid_populated_fx:
@@ -1301,7 +1303,7 @@ func _play_board_fall_off_fx(pitch: float) -> void:
 			slot.call("play_fall_off", pitch * travel_rows, duration, delay)
 	if max_total <= 0.0:
 		return
-	await get_tree().create_timer(max_total).timeout
+	await _pause_visual(max_total)
 
 func _play_board_stream_in_fx(pitch: float) -> void:
 	var max_total := 0.0
@@ -1323,7 +1325,7 @@ func _play_board_stream_in_fx(pitch: float) -> void:
 				slot.call("play_tube_in", distance, duration)
 	if max_total <= 0.0:
 		return
-	await get_tree().create_timer(max_total).timeout
+	await _pause_visual(max_total)
 
 func _await_board_swap_fx() -> void:
 	var tree := get_tree()
@@ -1336,7 +1338,17 @@ func get_feel() -> Node:
 	return _feel
 
 
+func is_goal_burst_playing() -> bool:
+	return _goal_burst_playing
+
+
 func play_goal_win_burst() -> void:
+	_goal_burst_playing = true
+	await _play_goal_win_burst()
+	_goal_burst_playing = false
+
+
+func _play_goal_win_burst() -> void:
 	if _dev_skip_visuals or grid_ui == null:
 		return
 	for child in grid_ui.get_children():
@@ -1347,7 +1359,7 @@ func play_goal_win_burst() -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
-	await tree.create_timer(0.4).timeout
+	await _pause_visual(0.4)
 	var layer := CanvasLayer.new()
 	layer.name = "GoalFlameLayer"
 	layer.layer = 180
@@ -1367,7 +1379,7 @@ func play_goal_win_burst() -> void:
 	var rect := grid_ui.get_global_rect()
 	await burst.play_waves(rect.position + rect.size * 0.5, [8, 16, 32])
 	if tree != null:
-		await tree.create_timer(0.25).timeout
+		await _pause_visual(0.25)
 
 
 func await_victory_confirm() -> void:
@@ -1437,7 +1449,7 @@ func _play_count_flash_for_lines(lines: Array) -> void:
 					_get_winnings_popup_target_rect_global(),
 					payout_cents,
 				)
-	await get_tree().create_timer(count_flash_duration_sec + fx_stagger_sec * max(flash_index - 1, 0)).timeout
+	await _pause_visual(count_flash_duration_sec + fx_stagger_sec * max(flash_index - 1, 0))
 
 func _show_win_popups_for_lines(lines: Array) -> void:
 	for line in lines:
@@ -1724,7 +1736,7 @@ func _play_pending_gravity_refill_fx() -> void:
 		if slot.has_method("play_drop"):
 			slot.call("play_drop", from_pos, to_pos, duration, delay)
 	if max_total > 0.0:
-		await get_tree().create_timer(max_total).timeout
+		await _pause_visual(max_total)
 	sfx_requested.emit(&"land")
 	_refresh_cells_visual()
 
@@ -2010,7 +2022,7 @@ func _play_meter_full_transition_async() -> void:
 	var border_wait_sec: float = maxf(grid_border_pulse_duration_sec, 0.05)
 	if grid_frame != null:
 		_kill_tween(_grid_border_tween)
-		_grid_border_tween = create_tween()
+		_grid_border_tween = CombatPace.bind(create_tween())
 		_grid_border_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		_grid_border_tween.tween_property(grid_frame, "border_color", border_target, border_wait_sec)
 	for i in maxi(grid_flash_count, 1):
@@ -2033,7 +2045,7 @@ func _play_grid_white_flash_async(duration: float, peak_alpha: float) -> void:
 	grid_flash_overlay.visible = true
 	grid_flash_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
 	var half: float = max(duration * 0.5, 0.04)
-	_grid_flash_tween = create_tween()
+	_grid_flash_tween = CombatPace.bind(create_tween())
 	_grid_flash_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_grid_flash_tween.tween_property(grid_flash_overlay, "color:a", clampf(peak_alpha, 0.0, 1.0), half)
 	_grid_flash_tween.set_ease(Tween.EASE_IN)
@@ -2114,7 +2126,7 @@ func _play_power_intro_flash_async(power_id: StringName) -> void:
 	var hold: float = max(power_intro_hold_sec, 0.0)
 	var scale_out: float = max(power_intro_scale_out_sec, 0.05)
 	var peak: float = max(power_intro_peak_scale, 1.0)
-	_power_intro_tween = create_tween()
+	_power_intro_tween = CombatPace.bind(create_tween())
 	_power_intro_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_power_intro_tween.tween_property(target, "scale", Vector2(peak, peak), scale_in)
 	_power_intro_tween.parallel().tween_property(target, "modulate:a", 1.0, scale_in * 0.8)
@@ -2150,7 +2162,7 @@ func _refresh_grid_border_for_state() -> void:
 	if not is_inside_tree() or not enable_transition_fx:
 		grid_frame.border_color = target
 		return
-	_grid_border_tween = create_tween()
+	_grid_border_tween = CombatPace.bind(create_tween())
 	_grid_border_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_grid_border_tween.tween_property(grid_frame, "border_color", target, max(grid_border_pulse_duration_sec * 0.6, 0.08))
 

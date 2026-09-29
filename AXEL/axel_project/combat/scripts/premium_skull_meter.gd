@@ -15,6 +15,16 @@ const FULL_FACE_LIFT := 70.0
 const GLOW_HOVER_ALPHA := 0.45
 const GLOW_FILL_ALPHA := 0.55
 const OUTLINE_SCALE := 1.03
+const HudDropShadowScript := preload("res://combat/scripts/hud_drop_shadow.gd")
+const FLAME_CROWN_SHEET := "res://assets/sprites/combat/flame_6_48x48.png"
+const FLAME_CROWN_SHADER := preload("res://combat/shaders/flame_crown.gdshader")
+const FLAME_CROWN_FPS := 10.0
+const FLAME_CROWN_COPIES := 5.0
+const FLAME_CROWN_THIN := 0.72
+const FLAME_CROWN_ARC := 0.22
+const FLAME_CROWN_POS := Vector2(40.0, -46.0)
+const FLAME_CROWN_SIZE := Vector2(612.0, 240.0)
+const PUNCH_BLACK := 0.08
 
 @onready var _glow: TextureRect = $Glow
 @onready var _stage1: TextureRect = $SkullStage1
@@ -30,6 +40,13 @@ var _press_tween: Tween
 var _first_spin_hint := false
 var _full_face_locked := false
 var _full_face_lifted := false
+var _drop_shadow: Control
+var _flame_crown: ColorRect
+var _flame_crown_on := false
+var _flame_frame := 0.0
+var _flame_count := 1
+var _flame_ink_top := 0.0
+var _flame_ink_bottom := 1.0
 
 
 func _ready() -> void:
@@ -50,10 +67,14 @@ func _ready() -> void:
 			stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			stage.pivot_offset = stage.size * 0.5
 	set_fill(preview_fill)
+	_ensure_drop_shadow()
+	_ensure_flame_crown()
+	_apply_flame_crown_visible()
 	set_process(true)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_advance_flame_crown(delta)
 	if _pressing:
 		return
 	var t := float(Time.get_ticks_msec()) * 0.001
@@ -66,6 +87,161 @@ func _process(_delta: float) -> void:
 func set_first_spin_hint(on: bool) -> void:
 	_first_spin_hint = on
 	_apply_fill_feel()
+
+
+func set_flame_crown(on: bool) -> void:
+	_flame_crown_on = on
+	if not is_node_ready():
+		return
+	_ensure_flame_crown()
+	_apply_flame_crown_visible()
+
+
+func _apply_flame_crown_visible() -> void:
+	if _flame_crown == null:
+		return
+	_flame_crown.visible = _flame_crown_on
+	if _flame_crown_on and _reduce_flashing():
+		_flame_frame = 0.0
+		_apply_flame_frame()
+
+
+func _ensure_flame_crown() -> void:
+	if _flame_crown != null and is_instance_valid(_flame_crown):
+		return
+	var image := _load_flame_crown_image()
+	if image == null:
+		return
+	var rect := ColorRect.new()
+	rect.name = "FreeSpinFlameCrown"
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rect.color = Color(1, 1, 1, 1)
+	rect.position = FLAME_CROWN_POS
+	rect.size = FLAME_CROWN_SIZE
+	rect.visible = false
+	add_child(rect)
+	if _glow != null:
+		move_child(rect, _glow.get_index() + 1)
+	else:
+		move_child(rect, 0)
+	var mat := ShaderMaterial.new()
+	mat.shader = FLAME_CROWN_SHADER
+	mat.set_shader_parameter("sheet", ImageTexture.create_from_image(image))
+	mat.set_shader_parameter("frame", 0.0)
+	mat.set_shader_parameter("frame_count", float(_flame_count))
+	mat.set_shader_parameter("copies", FLAME_CROWN_COPIES)
+	mat.set_shader_parameter("thin", FLAME_CROWN_THIN)
+	mat.set_shader_parameter("arc", FLAME_CROWN_ARC)
+	mat.set_shader_parameter("ink_top", _flame_ink_top)
+	mat.set_shader_parameter("ink_bottom", _flame_ink_bottom)
+	rect.material = mat
+	_flame_crown = rect
+
+
+func _advance_flame_crown(delta: float) -> void:
+	if _flame_crown == null or not _flame_crown.visible:
+		return
+	if _reduce_flashing():
+		if _flame_frame != 0.0:
+			_flame_frame = 0.0
+			_apply_flame_frame()
+		return
+	if _flame_count <= 1:
+		return
+	_flame_frame += delta * FLAME_CROWN_FPS
+	var span := float(_flame_count)
+	if _flame_frame >= span:
+		_flame_frame = fmod(_flame_frame, span)
+	_apply_flame_frame()
+
+
+func _apply_flame_frame() -> void:
+	if _flame_crown == null:
+		return
+	var mat := _flame_crown.material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("frame", _flame_frame)
+
+
+func _load_flame_crown_image() -> Image:
+	if not ResourceLoader.exists(FLAME_CROWN_SHEET):
+		return null
+	var src := load(FLAME_CROWN_SHEET) as Texture2D
+	if src == null:
+		return null
+	var image := src.get_image()
+	if image == null:
+		return null
+	if image.is_compressed():
+		image.decompress()
+	image = _punch_black(image)
+	_flame_count = _flame_count_for(image)
+	_measure_flame_ink(image)
+	return image
+
+
+func _flame_count_for(image: Image) -> int:
+	var width := image.get_width()
+	var height := image.get_height()
+	if width <= 0 or height <= 0:
+		return 1
+	if width % height == 0:
+		return maxi(int(width / float(height)), 1)
+	var runs := 0
+	var in_ink := false
+	for x in width:
+		var ink := false
+		for y in height:
+			if image.get_pixel(x, y).a > 0.1:
+				ink = true
+				break
+		if ink and not in_ink:
+			runs += 1
+			in_ink = true
+		elif not ink:
+			in_ink = false
+	if runs >= 2 and width % runs == 0:
+		return runs
+	return maxi(runs, 1)
+
+
+func _measure_flame_ink(image: Image) -> void:
+	var width := image.get_width()
+	var height := image.get_height()
+	var top := height
+	var bottom := -1
+	for y in height:
+		var ink := false
+		for x in width:
+			if image.get_pixel(x, y).a > 0.1:
+				ink = true
+				break
+		if not ink:
+			continue
+		if y < top:
+			top = y
+		if y > bottom:
+			bottom = y
+	if bottom < top or height <= 0:
+		_flame_ink_top = 0.0
+		_flame_ink_bottom = 1.0
+		return
+	_flame_ink_top = float(top) / float(height)
+	_flame_ink_bottom = float(bottom + 1) / float(height)
+
+
+func _punch_black(image: Image) -> Image:
+	var copy := image.duplicate() as Image
+	if copy.get_format() != Image.FORMAT_RGBA8:
+		copy.convert(Image.FORMAT_RGBA8)
+	for y in copy.get_height():
+		for x in copy.get_width():
+			var pixel := copy.get_pixel(x, y)
+			if pixel.r <= PUNCH_BLACK and pixel.g <= PUNCH_BLACK and pixel.b <= PUNCH_BLACK:
+				copy.set_pixel(x, y, Color(0, 0, 0, 0))
+	return copy
 
 
 func _reduce_flashing() -> bool:
@@ -108,6 +284,27 @@ func _apply_stage_visibility() -> void:
 		_stage2.visible = stage_idx == 1
 	if _stage3 != null:
 		_stage3.visible = stage_idx == 2
+	_ensure_drop_shadow()
+
+
+func _visible_stage() -> TextureRect:
+	if _stage3 != null and _stage3.visible:
+		return _stage3
+	if _stage2 != null and _stage2.visible:
+		return _stage2
+	return _stage1
+
+
+func _ensure_drop_shadow() -> void:
+	var stage := _visible_stage()
+	if stage == null:
+		return
+	if _drop_shadow == null or not is_instance_valid(_drop_shadow):
+		var made := HudDropShadowScript.attach_beside(stage) as Control
+		if made != null:
+			_drop_shadow = made
+	elif _drop_shadow.has_method("set_art"):
+		_drop_shadow.set_art(stage)
 
 
 func _stage_index_for_fill(f: float) -> int:
@@ -180,7 +377,7 @@ func _play_shake(amplitude: float, pulses: int) -> void:
 	if _shake_tween != null and _shake_tween.is_valid():
 		_shake_tween.kill()
 	var origin := position
-	_shake_tween = create_tween()
+	_shake_tween = CombatPace.bind(create_tween())
 	for i in range(pulses):
 		var dir := 1.0 if (i % 2) == 0 else -1.0
 		_shake_tween.tween_property(self, "position", origin + Vector2(dir * amplitude, 0.0), 0.03)

@@ -99,12 +99,16 @@ func _pixelate(image: Image) -> Image:
 	var keep := PackedByteArray()
 	keep.resize(dst_w * dst_h)
 	for oy in dst_h:
+		@warning_ignore("integer_division")
 		var y0 := oy * src_h / dst_h
+		@warning_ignore("integer_division")
 		var y1 := (oy + 1) * src_h / dst_h
 		if y1 <= y0:
 			y1 = mini(src_h, y0 + 1)
 		for ox in dst_w:
+			@warning_ignore("integer_division")
 			var x0 := ox * src_w / dst_w
+			@warning_ignore("integer_division")
 			var x1 := (ox + 1) * src_w / dst_w
 			if x1 <= x0:
 				x1 = mini(src_w, x0 + 1)

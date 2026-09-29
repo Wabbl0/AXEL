@@ -141,6 +141,7 @@ func _slot_label(slot: int) -> String:
 	if header.is_empty():
 		return "Slot %d  —  empty" % (slot + 1)
 	var play := int(float(header.get("playtime_sec", 0.0)))
+	@warning_ignore("integer_division")
 	var mins := play / 60
 	var secs := play % 60
 	var stamp := int(header.get("timestamp_unix", 0))
@@ -176,19 +177,19 @@ func _show_seed_hover(button: Button, seed_n: int) -> void:
 	_ensure_seed_hover()
 	_seed_hover.text = "seed %d" % seed_n
 	_seed_hover.visible = true
-	var size := _seed_hover.get_combined_minimum_size()
-	if size.x < 1.0 or size.y < 1.0:
-		size = Vector2(220.0, 36.0)
+	var hover_size := _seed_hover.get_combined_minimum_size()
+	if hover_size.x < 1.0 or hover_size.y < 1.0:
+		hover_size = Vector2(220.0, 36.0)
 	var btn_rect := button.get_global_rect()
 	var view := get_viewport_rect().size
 	var x := btn_rect.position.x
-	var y := btn_rect.position.y - size.y - 4.0
+	var y := btn_rect.position.y - hover_size.y - 4.0
 	if y < 0.0:
 		y = btn_rect.end.y + 4.0
-	x = clampf(x, 0.0, maxf(view.x - size.x, 0.0))
-	y = clampf(y, 0.0, maxf(view.y - size.y, 0.0))
+	x = clampf(x, 0.0, maxf(view.x - hover_size.x, 0.0))
+	y = clampf(y, 0.0, maxf(view.y - hover_size.y, 0.0))
 	_seed_hover.global_position = Vector2(x, y)
-	_seed_hover.size = size
+	_seed_hover.size = hover_size
 
 
 func _hide_seed_hover() -> void:

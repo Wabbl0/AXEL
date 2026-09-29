@@ -95,6 +95,7 @@ func _mean_opaque_luminance(img: Image) -> float:
 	var sum := 0.0
 	var count := 0
 
+	@warning_ignore("integer_division")
 	var step := maxi(1, mini(w, h) / 200)
 	for y in range(0, h, step):
 		for x in range(0, w, step):

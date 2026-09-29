@@ -374,6 +374,7 @@ static func _make_reversed_wav(src: AudioStreamWAV) -> AudioStreamWAV:
 	if bytes_per_frame <= 0 or data.size() < bytes_per_frame:
 		out.data = data
 		return out
+	@warning_ignore("integer_division")
 	var frame_count := data.size() / bytes_per_frame
 	var reversed := PackedByteArray()
 	reversed.resize(frame_count * bytes_per_frame)
@@ -399,6 +400,7 @@ func _type_stream_length_sec() -> float:
 		bytes_per_frame *= 2
 	if bytes_per_frame <= 0 or TYPE_STREAM.mix_rate <= 0:
 		return 0.0
+	@warning_ignore("integer_division")
 	return float(TYPE_STREAM.data.size() / bytes_per_frame) / float(TYPE_STREAM.mix_rate)
 
 
@@ -1125,6 +1127,7 @@ func _place_entry_caret() -> void:
 	_caret.size = Vector2(caret_w, caret_h)
 	_caret.color = OTHER_SPEAKER_COLOR if _entry_armed else PLAYER_LINE_COLOR
 	var elapsed := Time.get_ticks_msec() - _entry_blink_origin_ms
+	@warning_ignore("integer_division")
 	_caret.visible = int(elapsed / ENTRY_CARET_BLINK_MS) % 2 == 0
 
 

@@ -11,6 +11,13 @@ Use ONLY the EXPLORATION ARTIFACT pasted in the chat (not stored in this file). 
 The artifact is a fact pack (files, current flow, possible causes, canon quotes). It will not contain a draft approach — you invent the numbered steps. Treat Possible causes / Questions for Plan as choices for you, not as already decided.
 @AXEL/axel_project/plans/core/AI_DOCS.md (canon only — no file hunting)
 
+Builder rule (the implement chat is a cheaper model):
+- Write the plan so the cheaper model does almost no thinking. It should only follow the steps.
+- Every step names the file, the function or node, and the exact change.
+- Include the exact values, strings, and the code for that change. A short note is not enough when the edit is more than a tiny tweak.
+- Do not leave "or", "similar to", "figure out", "if it fits", or a choice between approaches.
+- If the artifact is missing a fact you need to write that step, ask in one batched question list. Do not hand the guess to the builder.
+
 Expected user message shape:
 1. @AXEL/axel_project/plans/PREMIUM_Artifact
 2. Pasted block:
@@ -19,7 +26,7 @@ Expected user message shape:
 --- END ARTIFACT ---
 
 Deliver:
-1. Numbered implementation steps (file + concrete change; no full code unless one line is essential)
+1. Numbered implementation steps a cheaper model can follow without deciding (file + place + exact change, with the code when the change is more than one line)
 2. Acceptance criteria (what I should see in-game after the fix)
 3. Manual test checklist (≤5 steps)
 4. Residual risks / rollback note

@@ -59,6 +59,7 @@ func _run(scene: Node) -> void:
 		_expect(name, "position", got.position, Vector2(want[0], want[1]), POS_TOLERANCE)
 		_expect(name, "size", got.size, Vector2(want[2], want[3]), SIZE_TOLERANCE)
 		_check_native_art_size(piece, name)
+		_check_piece_shadow(piece, name)
 
 	_check_pause_gear(scene)
 	_check_on_plate(canvas)
@@ -80,6 +81,8 @@ func _check_native_art_size(piece: Control, name: String) -> void:
 	var art := piece as TextureRect
 	if art == null:
 		for child in piece.get_children():
+			if child.name == "DropShadow":
+				continue
 			if child is TextureRect and (child as TextureRect).texture != null:
 				art = child as TextureRect
 				break
@@ -87,6 +90,61 @@ func _check_native_art_size(piece: Control, name: String) -> void:
 		return
 	var native := Vector2(art.texture.get_width(), art.texture.get_height())
 	_expect(name, "native art size", _plate_rect(art).size, native, SIZE_TOLERANCE)
+
+
+func _check_piece_shadow(piece: Control, name: String) -> void:
+	var canvas := piece.get_parent()
+	while canvas != null and canvas.name != "HudCanvas":
+		canvas = canvas.get_parent()
+	var shadow := canvas.get_node_or_null("DropShadow_" + name) as Control if canvas != null else null
+	if shadow == null:
+		_fail("%s has no drop shadow" % name)
+		return
+	if shadow.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		_fail("%s drop shadow takes the click" % name)
+	var piece_top := piece
+	while piece_top.get_parent() != canvas:
+		piece_top = piece_top.get_parent() as Control
+	if shadow.get_index() >= piece_top.get_index():
+		_fail("%s drop shadow draws on top of the picture" % name)
+	var mat := shadow.material as ShaderMaterial
+	if mat == null:
+		_fail("%s drop shadow has no material" % name)
+		return
+	var col: Variant = mat.get_shader_parameter("shadow_color")
+	if not col is Color:
+		_fail("%s drop shadow color is missing" % name)
+		return
+	var shadow_color := col as Color
+	if (
+		absf(shadow_color.r - 0.22) > 0.04
+		or absf(shadow_color.g - 0.22) > 0.04
+		or absf(shadow_color.b - 0.22) > 0.04
+		or shadow_color.a < 0.9
+	):
+		_fail("%s drop shadow color is %s" % [name, shadow_color])
+	if shadow.size.x < 8.0 or shadow.size.y < 8.0:
+		_fail("%s drop shadow has no size (%s)" % [name, shadow.size])
+		return
+	var picture := _picture_node(piece)
+	if picture == null:
+		_fail("%s drop shadow is not on a picture" % name)
+		return
+	var art_rect := _plate_rect(picture)
+	var shadow_rect := _plate_rect(shadow)
+	if shadow_rect.end.x < art_rect.end.x + 0.5 or shadow_rect.end.y < art_rect.end.y + 0.5:
+		_fail("%s drop shadow does not sit down-right (%s vs %s)" % [name, shadow_rect, art_rect])
+
+
+func _picture_node(piece: Control) -> Control:
+	if piece is TextureRect and (piece as TextureRect).texture != null:
+		return piece
+	for child in piece.get_children():
+		if str(child.name).begins_with("DropShadow"):
+			continue
+		if child is TextureRect and (child as TextureRect).texture != null:
+			return child
+	return piece.find_child("SkullStage1", true, false) as Control
 
 
 func _check_pause_gear(scene: Node) -> void:

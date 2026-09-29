@@ -172,6 +172,7 @@ func _check_fade(panel: Panel) -> void:
 	if img == null or img.is_empty():
 		_fail("fade image missing")
 		return
+	@warning_ignore("integer_division")
 	var center := img.get_pixel(img.get_width() / 2, img.get_height() / 2)
 	var corner := img.get_pixel(0, 0)
 	if center.a < 0.9 or center.r > 0.05:
@@ -179,6 +180,7 @@ func _check_fade(panel: Panel) -> void:
 	if corner.a > 0.08:
 		_fail("fade corner should be clear, alpha %.3f" % corner.a)
 	var found_mid := false
+	@warning_ignore("integer_division")
 	var x := img.get_width() / 2
 	for y in img.get_height():
 		var a := img.get_pixel(x, y).a
@@ -306,8 +308,11 @@ func _check_spin_bars(ui: Node, combat: Node) -> void:
 	combat._state = CombatRoot.State.IDLE
 	combat.free_spins.reset()
 	combat._awaiting_free_spin_choice = true
+	ui._sync_skull_meter(0)
+	_check_flame_crown(ui, false, "the choice card")
 	combat.choose_free_spins_power(&"bloody_hand")
 	await process_frame
+	_check_flame_crown(ui, true, "free spins")
 	var skull := ui.find_child("PremiumSkull", true, false) as Control
 	if skull == null:
 		_fail("skull missing during free spins")
@@ -350,21 +355,23 @@ func _check_spin_bars(ui: Node, combat: Node) -> void:
 			_fail("spin block should have a small shadow")
 	if not blocks.is_empty():
 		var block_parent := blocks[0].get_parent()
-		var count_layer := block_parent.get_parent() if block_parent != null else null
-		if count_layer is CanvasLayer and (count_layer as CanvasLayer).layer <= 108:
+		var block_layer := block_parent.get_parent() if block_parent != null else null
+		if block_layer is CanvasLayer and (block_layer as CanvasLayer).layer <= 108:
 			_fail("spin blocks should sit above the skull")
-		elif not count_layer is CanvasLayer:
+		elif not block_layer is CanvasLayer:
 			_fail("spin blocks should sit above the skull")
 		var drawn_skull := _visual_rect(skull)
-		var drawn_bottom := drawn_skull.position.y + drawn_skull.size.y * (885.0 / 922.0)
-		var overlap := drawn_bottom - blocks[0].get_global_rect().position.y
-		if overlap > 10.0:
-			_fail("spin bars overlap the skull by %.1f" % overlap)
+		var first := blocks[0].get_global_rect()
+		var lip_y := drawn_skull.position.y + drawn_skull.size.y * 0.80
+		if absf(first.position.y - lip_y) > 8.0:
+			_fail("spin bars should just enter the mouth, top %.1f lip %.1f" % [first.position.y, lip_y])
+		if absf(first.position.x - drawn_skull.position.x) > 6.0:
+			_fail("spin bars left edge moved, delta %.1f" % (first.position.x - drawn_skull.position.x))
 	if not blocks.is_empty():
 		var first_rect := blocks[0].get_global_rect()
 		_check_inside_window("first spin block", first_rect)
-		if first_rect.size.x < 20.0 or first_rect.size.y < 14.0:
-			_fail("spin block is too small (%s)" % first_rect.size)
+		if first_rect.size.x < 48.0 or first_rect.size.y < 36.0:
+			_fail("spin block did not grow (%s)" % first_rect.size)
 	var label := host.find_child("FreeSpinCount", true, false) as Label
 	if label == null or label.text != "1/4 spins":
 		var got := ""
@@ -372,7 +379,17 @@ func _check_spin_bars(ui: Node, combat: Node) -> void:
 			got = label.text
 		_fail("count should read 1/4 spins, got '%s'" % got)
 		return
-	_check_inside_window("spin count", label.get_global_rect())
+	var count_rect := label.get_global_rect()
+	if count_rect.size.y <= 1.0 or count_rect.position.x < -1.0 or count_rect.position.y < -1.0:
+		_fail("spin count sits off the top or left (%s)" % count_rect)
+	elif count_rect.end.y > WANT.y + 1.0:
+		_fail("spin count sits off the bottom (%s)" % count_rect)
+	elif not blocks.is_empty() and absf(count_rect.position.x - blocks[0].get_global_rect().position.x) > 4.0:
+		_fail("spin count should keep the block's left edge")
+	elif not blocks.is_empty() and count_rect.position.y + 2.0 < blocks[0].get_global_rect().end.y:
+		_fail("spin count should sit under the blocks")
+	if label.get_theme_font_size("font_size") < 40:
+		_fail("spin count font %d should grow" % label.get_theme_font_size("font_size"))
 	if not _is_white(label.get_theme_color("font_color")):
 		_fail("spin count should be white")
 	var count_layer := label.get_parent().get_parent() as CanvasLayer
@@ -381,9 +398,32 @@ func _check_spin_bars(ui: Node, combat: Node) -> void:
 	if label.get_theme_constant("shadow_offset_y") < 2:
 		_fail("spin count should have a small shadow")
 	combat.free_spins.reset()
+	ui._sync_skull_meter(0)
 	ui._refresh_spin_bars()
 	if label.is_visible_in_tree():
 		_fail("spin count should hide when free spins end")
+	_check_flame_crown(ui, false, "after free spins")
+
+
+func _check_flame_crown(ui: Node, want_visible: bool, when: String) -> void:
+	var skull := ui.find_child("PremiumSkull", true, false) as Control
+	if skull == null:
+		_fail("skull missing for the flame crown (%s)" % when)
+		return
+	var crown := skull.get_node_or_null("FreeSpinFlameCrown") as Control
+	if crown == null:
+		_fail("flame crown missing (%s)" % when)
+		return
+	if crown.visible != want_visible:
+		var state := "visible" if want_visible else "hidden"
+		_fail("flame crown should be %s (%s)" % [state, when])
+	if crown.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		_fail("flame crown should ignore the mouse")
+	var glow := skull.get_node_or_null("Glow")
+	var stage := skull.get_node_or_null("SkullStage1")
+	if glow != null and stage != null:
+		if crown.get_index() <= glow.get_index() or crown.get_index() >= stage.get_index():
+			_fail("flame crown should sit behind the skull face")
 
 
 func _visual_rect(node: Control) -> Rect2:
@@ -434,6 +474,7 @@ func _is_faded_white_glow(glow: TextureRect) -> bool:
 	var img := glow.texture.get_image()
 	if img == null or img.is_empty():
 		return false
+	@warning_ignore("integer_division")
 	var center := img.get_pixel(img.get_width() / 2, img.get_height() / 2)
 	var corner := img.get_pixel(0, 0)
 	if center.r < 0.9 or center.g < 0.9 or center.b < 0.9:
@@ -442,6 +483,7 @@ func _is_faded_white_glow(glow: TextureRect) -> bool:
 		return false
 	if corner.a > 0.06:
 		return false
+	@warning_ignore("integer_division")
 	var mid := img.get_pixel(img.get_width() / 2, int(img.get_height() * 0.2))
 	return mid.a > corner.a + 0.05 and mid.a < center.a - 0.02
 

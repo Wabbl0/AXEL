@@ -182,8 +182,8 @@ func _check_basement_spots(world: Node, run: Node) -> void:
 	if first.distance_to(again) > 1.0:
 		_fail("the same item seed moved the 1.4 hand")
 	var found_other := false
-	for seed in [2, 3, 5, 8, 13, 21, 34, 55]:
-		var other := await _basement_hand(world, run, seed)
+	for trial_seed in [2, 3, 5, 8, 13, 21, 34, 55]:
+		var other := await _basement_hand(world, run, trial_seed)
 		if other == Vector2.INF:
 			return
 		if first.distance_to(other) >= 32.0:
@@ -193,15 +193,15 @@ func _check_basement_spots(world: Node, run: Node) -> void:
 		_fail("different item seeds all placed the 1.4 hand in the same spot")
 
 
-func _basement_hand(world: Node, run: Node, seed: int) -> Vector2:
+func _basement_hand(world: Node, run: Node, item_seed: int) -> Vector2:
 	world.call("reset_world")
-	world.call("plan_floor_items", seed)
+	world.call("plan_floor_items", item_seed)
 	if change_scene_to_file(BASEMENT) != OK:
-		_fail("could not load 1.4 for seed %d" % seed)
+		_fail("could not load 1.4 for seed %d" % item_seed)
 		return Vector2.INF
 	await _frames(45)
 	if current_scene == null or current_scene.scene_file_path != BASEMENT:
-		_fail("1.4 did not become current for seed %d" % seed)
+		_fail("1.4 did not become current for seed %d" % item_seed)
 		return Vector2.INF
 	var env := current_scene.get_node_or_null("WalkableWorld/EnvironmentColliders") as Node2D
 	if env == null:
@@ -210,17 +210,17 @@ func _basement_hand(world: Node, run: Node, seed: int) -> Vector2:
 	var host := env.get_node_or_null("WorldItemScatter")
 	if host == null or host.get_child_count() != 1:
 		_fail("1.4 seed %d wanted 1 floor hand, got %d" % [
-			seed, 0 if host == null else host.get_child_count(),
+			item_seed, 0 if host == null else host.get_child_count(),
 		])
 		return Vector2.INF
 	var hand := host.get_child(0) as Node2D
 	var player := current_scene.find_child("Player", true, false) as Node2D
 	if _circle_blocked(env, hand, player, host, false):
-		_fail("1.4 seed %d hand circle hits a wall" % seed)
+		_fail("1.4 seed %d hand circle hits a wall" % item_seed)
 	elif not _hand_on_floor(env, hand):
-		_fail("1.4 seed %d hand is off the floor Mike can walk" % seed)
+		_fail("1.4 seed %d hand is off the floor Mike can walk" % item_seed)
 	if run.call("load_item", String(hand.get("item_id"))) == null:
-		_fail("1.4 seed %d rolled an unusable item" % seed)
+		_fail("1.4 seed %d rolled an unusable item" % item_seed)
 	return hand.position
 
 

@@ -104,6 +104,7 @@ func _spawn_mill() -> void:
 
 
 func _process(delta: float) -> void:
+	delta *= CombatPace.multiplier()
 	_anim_t += delta
 	_tick_ticker(delta)
 	var bounds := _bounce_size()

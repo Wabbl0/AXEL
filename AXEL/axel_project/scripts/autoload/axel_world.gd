@@ -713,8 +713,8 @@ func _is_unplaced_spot(spot: Vector2) -> bool:
 	return absf(spot.x) < UNPLACED_EPS and absf(spot.y) < UNPLACED_EPS
 
 
-func plan_floor_items(seed: int) -> void:
-	_item_seed = seed if seed != 0 else 1
+func plan_floor_items(run_seed: int) -> void:
+	_item_seed = run_seed if run_seed != 0 else 1
 	_room_items.clear()
 	_roll_open_area_ids()
 	_queue_map_spots()
@@ -809,8 +809,8 @@ func _probe_place_room(path: String, pass_id: int) -> void:
 		player.set_physics_process(false)
 		player.set_process_unhandled_input(false)
 	_layout_probe(scene, args)
-	var ready := await _await_probe_space(scene, pass_id)
-	if ready and pass_id == _spot_pass and _room_has_unplaced(path):
+	var probe_ready := await _await_probe_space(scene, pass_id)
+	if probe_ready and pass_id == _spot_pass and _room_has_unplaced(path):
 		var env := _env_of(scene)
 		var area_id := area_for_scene(path)
 		var want := floor_slot_count(path)
@@ -1438,10 +1438,10 @@ func _player_floor(scene: Node, env: Node2D) -> Dictionary:
 		return {}
 	var tex_size := _texture_size(scene)
 	var exclude: Array[RID] = [player.get_rid()]
-	var seed := _open_seed_cell(env, player, PlayerSpawnSync.capture_tex(env, player), exclude, tex_size)
-	if seed.x == 0x7FFFFFFF:
+	var seed_cell := _open_seed_cell(env, player, PlayerSpawnSync.capture_tex(env, player), exclude, tex_size)
+	if seed_cell.x == 0x7FFFFFFF:
 		return {}
-	return _flood_floor(env, player, seed, exclude, tex_size)
+	return _flood_floor(env, player, seed_cell, exclude, tex_size)
 
 
 func _open_seed_cell(
@@ -1468,15 +1468,15 @@ func _open_seed_cell(
 func _flood_floor(
 	env: Node2D,
 	player: CharacterBody2D,
-	seed: Vector2i,
+	seed_cell: Vector2i,
 	exclude: Array[RID],
 	tex_size: Vector2,
 ) -> Dictionary:
 	var open := {}
 	var seen := {}
-	var queue: Array[Vector2i] = [seed]
-	seen[seed] = true
-	open[seed] = true
+	var queue: Array[Vector2i] = [seed_cell]
+	seen[seed_cell] = true
+	open[seed_cell] = true
 	var head := 0
 	var dirs: Array[Vector2i] = [
 		Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
@@ -1850,10 +1850,10 @@ func _ensure_floor_plan() -> void:
 	var run := _run()
 	if run == null:
 		return
-	var seed := int(run.state.seed)
-	if seed == 0:
-		seed = 1
-	plan_floor_items(seed)
+	var run_seed := int(run.state.seed)
+	if run_seed == 0:
+		run_seed = 1
+	plan_floor_items(run_seed)
 
 
 func _pick_board_item() -> Dictionary:
@@ -1876,8 +1876,8 @@ func _pick_board_item() -> Dictionary:
 		return {}
 	var run := _run()
 	var rng := RandomNumberGenerator.new()
-	var seed := int(run.state.seed) if run != null else 1
-	rng.seed = seed if seed != 0 else 1
+	var run_seed := int(run.state.seed) if run != null else 1
+	rng.seed = run_seed if run_seed != 0 else 1
 	return candidates[rng.randi_range(0, candidates.size() - 1)]
 
 

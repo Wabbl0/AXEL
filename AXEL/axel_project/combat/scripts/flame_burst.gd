@@ -37,7 +37,7 @@ func play_waves(origin: Vector2, counts: Array) -> void:
 			var tree := get_tree()
 			if tree == null:
 				return
-			await tree.create_timer(GAP).timeout
+			await CombatPace.await_seconds(GAP)
 
 
 func _spawn_wave(origin: Vector2, count: int) -> void:
@@ -63,6 +63,7 @@ func _spawn_wave(origin: Vector2, count: int) -> void:
 
 
 func _process(delta: float) -> void:
+	delta *= CombatPace.multiplier()
 	var i := _items.size() - 1
 	while i >= 0:
 		var item: Dictionary = _items[i]

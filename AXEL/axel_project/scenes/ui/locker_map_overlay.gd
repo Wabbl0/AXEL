@@ -247,10 +247,10 @@ func _layout() -> void:
 	var margin := 72.0 * fit
 	var avail := Vector2(maxf(view.x - margin * 2.0, 32.0), maxf(view.y - margin * 2.0, 32.0))
 	var tex_size := _map.texture.get_size()
-	var scale := minf(avail.x / tex_size.x, avail.y / tex_size.y)
-	var drawn := tex_size * scale
+	var fit_scale := minf(avail.x / tex_size.x, avail.y / tex_size.y)
+	var drawn := tex_size * fit_scale
 	_map_origin = (view - drawn) * 0.5
-	_map_scale = Vector2(scale, scale)
+	_map_scale = Vector2(fit_scale, fit_scale)
 	_map.position = _map_origin
 	_map.size = drawn
 	_apply_area_rects()

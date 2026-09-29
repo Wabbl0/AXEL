@@ -27,7 +27,7 @@ func _main() -> void:
 	await _test_ignore_slot_cap()
 	await _test_g_bonus_zero_in_trinity_and_fs()
 	await _test_h_changes_effective_goal()
-	await _test_l_a_absent()
+	_test_l_a_absent()
 	await _test_set_spins_used_changes_c1_scalar()
 	await _test_goal_setters_do_not_reseed()
 

@@ -5,11 +5,13 @@ signal closed
 
 const _WINDOW_MODES: PackedStringArray = ["windowed", "borderless", "fullscreen"]
 const _QUALITY: PackedStringArray = ["low", "medium", "high"]
+const _COMBAT_SPEEDS: PackedStringArray = ["slow", "normal", "fast"]
 const _SIZE_CANDIDATES: PackedStringArray = [
 	"1280x720", "1366x768", "1600x900", "1920x1080",
 	"1920x1200", "1920x1280", "2560x1440", "3840x2160",
 ]
 const _BAR_SCREEN_FRACTION := 1.0 / 3.0
+const _SettingsScript := preload("res://scripts/autoload/axel_settings.gd")
 
 var _sliders: Array[HSlider] = []
 var _size_option: OptionButton
@@ -74,6 +76,9 @@ func _build() -> void:
 	_size_option = _size_dropdown(col)
 	_toggle(col, "VSync", "video", "vsync")
 	_option(col, "Graphics quality", "video", "graphics_quality", _QUALITY)
+
+	_section(col, "GAMEPLAY")
+	_option(col, "Combat speed", "gameplay", "combat_speed", _COMBAT_SPEEDS)
 
 	var back := Button.new()
 	back.name = "BackButton"
@@ -157,7 +162,7 @@ func _size_dropdown(col: VBoxContainer) -> OptionButton:
 	var allowed: PackedStringArray = []
 	var screen := DisplayServer.screen_get_size()
 	for raw in _SIZE_CANDIDATES:
-		var parsed := AxelSettings.parse_size_string(raw)
+		var parsed := _SettingsScript.parse_size_string(raw)
 		if parsed.x <= screen.x and parsed.y <= screen.y:
 			allowed.append(raw)
 	if allowed.is_empty():

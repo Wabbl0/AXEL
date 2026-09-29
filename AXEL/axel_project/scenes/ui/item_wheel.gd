@@ -453,13 +453,13 @@ func _place_arrows() -> void:
 	var index := 0
 	var shown := _shown_bands()
 	for band in BAND_COUNT:
-		var visible := shown.has(band)
+		var band_on := shown.has(band)
 		var mid_r := _mid_radius(band)
 		for direction in [-1, 1]:
 			var arrow := _arrows[index]
 			index += 1
-			arrow.visible = visible
-			if not visible:
+			arrow.visible = band_on
+			if not band_on:
 				continue
 			arrow.size = Vector2(HIT_PX, HIT_PX)
 			arrow.set_meta("band", band)
