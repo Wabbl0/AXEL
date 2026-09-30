@@ -184,14 +184,12 @@ func _attach_to_scene(scene: Node) -> void:
 func _combat_room_fx_test() -> bool:
 	if OS.get_environment("COMBAT_ROOM_FX_TEST").strip_edges() == "1":
 		return true
-	return OS.is_debug_build() and COMBAT_ROOM_FX_TEST
+	return COMBAT_ROOM_FX_TEST
 
 
 func _use_noir_8band_test() -> bool:
 	if OS.has_environment("AXEL_NOIR_8BAND") and OS.get_environment("AXEL_NOIR_8BAND").strip_edges() == "1":
 		return true
-	if not OS.is_debug_build():
-		return false
 	return DEBUG_USE_NOIR_8BAND_TEST
 
 

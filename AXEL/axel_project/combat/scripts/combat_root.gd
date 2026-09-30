@@ -173,6 +173,8 @@ var _goal_burst_playing: bool = false
 var _power_fx_log: Array = []
 var _power_fx_depth: int = 0
 var _power_sfx_emitted: bool = false
+var _hold_item_pulses: bool = false
+var _held_item_pulses: Array[StringName] = []
 
 func _ready() -> void:
 	add_to_group("combat_root")
@@ -609,6 +611,7 @@ func spin() -> void:
 		await _await_board_swap_fx()
 	else:
 		await _pause_visual(pause_at_spin_start_sec)
+	_release_item_pulses()
 	var spin_summary := _empty_spin_summary()
 	_stamp_free_spin_open(spin_summary)
 	await _try_regular_spin_start_girl_power_async(spin_summary)
@@ -648,6 +651,7 @@ func spin() -> void:
 	_refresh_multiplier_label()
 	_last_spin_summary = spin_summary.duplicate(true)
 	_dev_skip_visuals = false
+	_release_item_pulses()
 	emit_signal("readouts_progressed")
 	emit_signal("spin_finished")
 
@@ -670,6 +674,7 @@ func spin_sync() -> void:
 		_hide_round_winnings_overlay(false)
 		_refresh_round_winnings_label()
 	_begin_spin_round()
+	_release_item_pulses()
 	if not free_spins.active:
 		multiplier.reset()
 	emit_signal("readouts_progressed")
@@ -709,10 +714,12 @@ func spin_sync() -> void:
 		_play_round_winnings_win_glow()
 	_last_spin_summary = spin_summary.duplicate(true)
 	_dev_skip_visuals = false
+	_release_item_pulses()
 	emit_signal("readouts_progressed")
 
 func debug_trigger_power() -> void:
 	_trigger_item_power(powers.current_id(), 1.0, false, false)
+	_release_item_pulses()
 	_refresh_cells_visual()
 
 func serialize_spin_result() -> String:
@@ -899,7 +906,6 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
-		_note_paid_line_procs(lines)
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
@@ -962,7 +968,6 @@ func _resolve_trinity_cascade_loop_async() -> Dictionary:
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
-		_note_paid_line_procs(lines)
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
@@ -1026,6 +1031,9 @@ func _make_power_ctx(potency: float = 1.0, power_id: StringName = &"") -> Dictio
 	}
 
 func _resolve_lines(lines: Array) -> void:
+	_release_item_pulses()
+	_note_line_glyph_procs(lines)
+	_note_paid_line_procs(lines)
 	await _play_count_flash_for_lines(lines)
 	_resolve_lines_impl(lines)
 	_apply_meter_from_lines(lines)
@@ -1626,6 +1634,7 @@ func _start_spin_with_new_grid() -> void:
 	emit_signal("readouts_progressed")
 
 func _begin_spin_round() -> void:
+	_hold_item_pulses = true
 	if free_spins.active:
 		# The choice already filled spin 1. Each later free spin opens a new full grid.
 		_free_spin_opened_fresh = false
@@ -2470,9 +2479,38 @@ func _flush_item_procs() -> void:
 	var ids: Array[StringName] = _item_fx.drain_procs()
 	if ids.is_empty():
 		return
+	if _hold_item_pulses:
+		_held_item_pulses.append_array(ids)
+		return
+	_pulse_item_ids(ids)
+
+
+func _release_item_pulses() -> void:
+	_hold_item_pulses = false
+	_flush_item_procs()
+	if _held_item_pulses.is_empty():
+		return
+	var ids: Array[StringName] = []
+	ids.assign(_held_item_pulses)
+	_held_item_pulses.clear()
+	_pulse_item_ids(ids)
+
+
+func _pulse_item_ids(ids: Array[StringName]) -> void:
 	var panel := _player_item_panel()
 	if panel != null and panel.has_method("pulse_items"):
 		panel.call("pulse_items", ids)
+
+
+func _note_line_glyph_procs(lines: Array) -> void:
+	if _item_fx.glyphs.is_empty():
+		return
+	for line in lines:
+		for p in line.get("cells", []):
+			var v := p as Vector2i
+			if _item_fx.glyphs.has("%d:%d" % [v.x, v.y]):
+				_item_fx.note_effect(inventory.items, &"corner_glyphs")
+				return
 
 
 func _player_item_panel() -> Node:
@@ -2528,6 +2566,7 @@ func _open_power_fx_log() -> void:
 	_power_fx_depth += 1
 	if _power_fx_depth == 1:
 		_power_fx_log = []
+		_hold_item_pulses = true
 
 
 func _close_power_fx_log() -> void:
@@ -2535,6 +2574,7 @@ func _close_power_fx_log() -> void:
 
 
 func _play_power_act_fx(fx_log: Array) -> void:
+	_release_item_pulses()
 	if _dev_skip_visuals or not enable_symbol_fx:
 		_power_sfx_emitted = false
 		_refresh_cells_visual()
@@ -2602,6 +2642,7 @@ func _trigger_item_power(power_id: StringName, potency: float, is_chain: bool, i
 	var nested := _power_fx_depth > 0
 	if not nested:
 		_power_fx_log = []
+		_hold_item_pulses = true
 	_power_fx_depth += 1
 	var pot := potency * (1.0 + _item_fx.power_potency_bonus(inventory.items))
 	var ctx := _make_power_ctx(pot, power_id)

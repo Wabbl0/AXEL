@@ -41,9 +41,17 @@ var _round_root: Control
 var _round_scrim: ColorRect
 var _round_flames: Control
 var _round_label: RichTextLabel
-var _round_bets_label: Label
-var _round_balance_label: Label
+var _round_bets_label: RichTextLabel
+var _round_balance_label: RichTextLabel
 var _round_hop: Tween
+var _round_intro: Tween
+var _round_punch: Tween
+var _round_land: Tween
+var _round_stats_tween: Tween
+var _round_bets_value := 0
+var _round_balance_value := 0
+const ROUND_LETTER_SEC := 0.06
+const ROUND_NUMBER_COLOR := "#dc1414"
 
 const LOAD_COVER_LAYER := 120
 const LOAD_FADE_SEC := 0.35
@@ -220,19 +228,23 @@ func show_round_complete_card(bets_used: int = 0, balance: int = 0) -> void:
 	_round_scrim.color = Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A)
 	_round_scrim.visible = true
 	_round_label.text = _round_complete_bbcode()
-	_round_label.modulate.a = 1.0
+	_round_label.modulate = Color.WHITE
+	_round_label.scale = Vector2.ONE
 	_round_label.visible = true
-	if _round_bets_label != null:
-		_round_bets_label.text = "Bets used: %d" % bets_used
-		_round_bets_label.visible = true
-	if _round_balance_label != null:
-		_round_balance_label.text = "Current balance: %d" % balance
-		_round_balance_label.visible = true
-	_start_round_hop()
-	_start_round_flames()
+	_round_bets_value = bets_used
+	_round_balance_value = balance
+	if _load_fade_instant():
+		_snap_round_intro()
+		_start_round_hop()
+		_start_round_flames()
+		return
+	_play_round_intro()
 
 
 func play_round_complete_fade() -> void:
+	if _round_intro_running():
+		_snap_round_intro()
+	_stop_round_intro()
 	_stop_round_hop()
 	skip_next_enter_glitch()
 	if _event_fx_disabled():
@@ -265,6 +277,7 @@ func finish_round_complete_fade() -> void:
 		return
 	_round_fade.visible = true
 	_round_scrim.color = Color(0, 0, 0, 1)
+	_stop_round_intro()
 	if _round_label != null:
 		_round_label.visible = false
 	if _round_bets_label != null:
@@ -392,12 +405,15 @@ func _hide_round_complete() -> void:
 		_round_root.visible = false
 	if _round_scrim != null:
 		_round_scrim.color = Color(0, 0, 0, 0)
+	_stop_round_intro()
 	_stop_round_hop()
 	_clear_round_flames()
 	if _round_label != null:
 		_round_label.visible = false
 		_round_label.modulate.a = 0.0
 		_round_label.position = Vector2.ZERO
+		_round_label.scale = Vector2.ONE
+		_round_label.visible_characters = -1
 	if _round_bets_label != null:
 		_round_bets_label.visible = false
 	if _round_balance_label != null:
@@ -475,23 +491,9 @@ func _build_round_complete_overlay() -> void:
 	_round_label.modulate.a = 0.0
 	_round_label.visible = false
 	_round_root.add_child(_round_label)
-	_round_bets_label = Label.new()
-	_round_bets_label.name = "RoundBetsLabel"
-	_round_bets_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_round_bets_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_round_bets_label.add_theme_font_override("font", round_font)
-	_round_bets_label.add_theme_font_size_override("font_size", 32)
-	_round_bets_label.add_theme_color_override("font_color", Color.WHITE)
-	_round_bets_label.visible = false
+	_round_bets_label = _make_round_stat_label("RoundBetsLabel", round_font)
 	_round_root.add_child(_round_bets_label)
-	_round_balance_label = Label.new()
-	_round_balance_label.name = "RoundBalanceLabel"
-	_round_balance_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_round_balance_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_round_balance_label.add_theme_font_override("font", round_font)
-	_round_balance_label.add_theme_font_size_override("font_size", 32)
-	_round_balance_label.add_theme_color_override("font_color", Color.WHITE)
-	_round_balance_label.visible = false
+	_round_balance_label = _make_round_stat_label("RoundBalanceLabel", round_font)
 	_round_root.add_child(_round_balance_label)
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_layout_round_complete):
@@ -506,6 +508,146 @@ func _round_complete_bbcode() -> String:
 		var color := "white" if i % 2 == 0 else "red"
 		out += "[color=%s]%s[/color]" % [color, ch]
 	return out
+
+
+func _make_round_stat_label(node_name: String, font: Font) -> RichTextLabel:
+	var lab := RichTextLabel.new()
+	lab.name = node_name
+	lab.bbcode_enabled = true
+	lab.scroll_active = false
+	lab.autowrap_mode = TextServer.AUTOWRAP_OFF
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lab.add_theme_font_override("normal_font", font)
+	lab.add_theme_font_size_override("normal_font_size", 32)
+	lab.add_theme_color_override("default_color", Color.WHITE)
+	lab.visible = false
+	return lab
+
+
+func _set_round_stat(lab: RichTextLabel, caption: String, value: int) -> void:
+	if lab == null:
+		return
+	lab.text = "%s: [color=%s]%d[/color]" % [caption, ROUND_NUMBER_COLOR, value]
+
+
+func _set_round_bets(value: float) -> void:
+	_set_round_stat(_round_bets_label, "Bets used", int(round(value)))
+
+
+func _set_round_balance(value: float) -> void:
+	_set_round_stat(_round_balance_label, "Current balance", int(round(value)))
+
+
+func _round_intro_running() -> bool:
+	for tw in [_round_intro, _round_stats_tween]:
+		if tw != null and is_instance_valid(tw) and tw.is_running():
+			return true
+	return false
+
+
+func _stop_round_intro() -> void:
+	for tw in [_round_intro, _round_punch, _round_land, _round_stats_tween]:
+		if tw != null and is_instance_valid(tw):
+			tw.kill()
+	_round_intro = null
+	_round_punch = null
+	_round_land = null
+	_round_stats_tween = null
+
+
+func _snap_round_intro() -> void:
+	_stop_round_intro()
+	_layout_round_complete()
+	if _round_scrim != null:
+		_round_scrim.color = Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A)
+	if _round_label != null:
+		_round_label.visible_characters = -1
+		_round_label.scale = Vector2.ONE
+		_round_label.modulate = Color.WHITE
+		_round_label.position.x = 0.0
+	for lab in [_round_bets_label, _round_balance_label]:
+		if lab != null:
+			lab.modulate = Color.WHITE
+			lab.visible = true
+	_set_round_bets(_round_bets_value)
+	_set_round_balance(_round_balance_value)
+
+
+func _play_round_intro() -> void:
+	_stop_round_intro()
+	_clear_round_flames()
+	_round_label.visible_characters = 0
+	_round_label.pivot_offset = _round_label.size * 0.5
+	for lab in [_round_bets_label, _round_balance_label]:
+		if lab != null:
+			lab.visible = false
+			lab.modulate = Color(1, 1, 1, 0)
+	_set_round_bets(0)
+	_set_round_balance(0)
+	var tw := CombatPace.bind(create_tween())
+	_round_intro = tw
+	for i in ROUND_COMPLETE_TEXT.length():
+		tw.tween_callback(_slam_round_letter.bind(i))
+		tw.tween_interval(ROUND_LETTER_SEC)
+	tw.tween_callback(_round_title_landed)
+	tw.tween_interval(0.3)
+	tw.tween_callback(_reveal_round_stats)
+
+
+func _slam_round_letter(index: int) -> void:
+	if _round_label == null:
+		return
+	_round_label.visible_characters = index + 1
+	if ROUND_COMPLETE_TEXT.substr(index, 1) == " ":
+		return
+	if _round_punch != null and is_instance_valid(_round_punch):
+		_round_punch.kill()
+	_round_label.scale = Vector2(1.08, 1.08)
+	var flash := Color(1.6, 0.45, 0.45, 1.0) if not _reduce_flashing() else Color.WHITE
+	_round_label.modulate = flash
+	_round_punch = CombatPace.bind(create_tween())
+	_round_punch.tween_property(_round_label, "scale", Vector2.ONE, ROUND_LETTER_SEC * 1.5)
+	_round_punch.parallel().tween_property(_round_label, "modulate", Color.WHITE, ROUND_LETTER_SEC * 1.5)
+
+
+func _round_title_landed() -> void:
+	if _round_label == null:
+		return
+	if _round_punch != null and is_instance_valid(_round_punch):
+		_round_punch.kill()
+	_round_label.visible_characters = -1
+	_round_label.scale = Vector2(1.22, 1.22)
+	_round_label.modulate = Color.WHITE
+	var flashing_ok := not _reduce_flashing()
+	_round_land = CombatPace.bind(create_tween())
+	_round_land.tween_property(_round_label, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if flashing_ok and _round_scrim != null:
+		_round_scrim.color = Color(0.4, 0.0, 0.0, ROUND_COMPLETE_SCRIM_A)
+		_round_land.parallel().tween_property(_round_scrim, "color", Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A), 0.3)
+		var jitter := 10.0 * _glitch_scale()
+		var steps := [jitter, -jitter * 0.8, jitter * 0.5, -jitter * 0.3, 0.0]
+		var flicker := [0.35, 1.0, 0.6, 1.0, 1.0]
+		for i in steps.size():
+			_round_land.tween_property(_round_label, "position:x", steps[i], 0.035)
+			_round_land.parallel().tween_property(_round_label, "modulate:a", flicker[i], 0.035)
+	_start_round_hop()
+	_start_round_flames()
+
+
+func _reveal_round_stats() -> void:
+	_round_stats_tween = CombatPace.bind(create_tween())
+	var labs := [_round_bets_label, _round_balance_label]
+	var targets := [_round_bets_value, _round_balance_value]
+	var setters := [_set_round_bets, _set_round_balance]
+	for i in labs.size():
+		var lab := labs[i] as RichTextLabel
+		if lab == null:
+			continue
+		lab.visible = true
+		_round_stats_tween.tween_property(lab, "modulate:a", 1.0, 0.15)
+		_round_stats_tween.tween_method(setters[i], 0.0, float(targets[i]), 0.5).set_ease(Tween.EASE_OUT)
 
 
 func _start_round_hop() -> void:
@@ -555,6 +697,9 @@ func play_combat_wipe() -> void:
 	if _event_fx_disabled():
 		return
 	_wipe_guard_left = COMBAT_WIPE_MAX_SEC
+	var sfx := get_node_or_null("/root/AxelSfx")
+	if sfx != null and sfx.has_method("play"):
+		sfx.call("play", &"combat_transition")
 	await _combat_wipe.call("close_wipe")
 
 

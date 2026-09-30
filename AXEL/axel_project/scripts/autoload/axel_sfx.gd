@@ -14,6 +14,7 @@ const PATH_MATCH := "res://assets/audio/sfx/symbol_match.wav"
 const PATH_ROUND := "res://assets/audio/sfx/round_winnings.wav"
 const PATH_WHEEL_OPEN := "res://assets/audio/sfx/item_wheel_open.wav"
 const PATH_WHEEL_CLICK := "res://assets/audio/sfx/item_wheel_click.wav"
+const PATH_COMBAT_TRANSITION := "res://assets/audio/sfx/combat_transition.wav"
 
 var _pool: Array[AudioStreamPlayer] = []
 var _pool_i := 0
@@ -25,6 +26,7 @@ var _stream_match: AudioStream
 var _stream_round: AudioStream
 var _stream_wheel_open: AudioStream
 var _stream_wheel_click: AudioStream
+var _stream_combat_transition: AudioStream
 
 
 func _ready() -> void:
@@ -39,6 +41,7 @@ func _ready() -> void:
 	_stream_round = load(PATH_ROUND) as AudioStream
 	_stream_wheel_open = load(PATH_WHEEL_OPEN) as AudioStream
 	_stream_wheel_click = load(PATH_WHEEL_CLICK) as AudioStream
+	_stream_combat_transition = load(PATH_COMBAT_TRANSITION) as AudioStream
 	for i in POOL_SIZE:
 		var player := AudioStreamPlayer.new()
 		player.name = "SfxPlayer_%d" % i
@@ -71,6 +74,9 @@ func play(cue: StringName) -> void:
 			bus = UI_BUS
 		&"item_wheel_click":
 			stream = _stream_wheel_click
+			bus = UI_BUS
+		&"combat_transition":
+			stream = _stream_combat_transition
 			bus = UI_BUS
 		_:
 			return

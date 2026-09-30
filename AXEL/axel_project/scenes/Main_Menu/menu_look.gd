@@ -91,7 +91,7 @@ static func apply_scroll(scroll: ScrollContainer) -> void:
 
 static func _slider_track() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.0, 0.0, 1.0)
+	style.bg_color = Color(0.22, 0.03, 0.03, 1.0)
 	style.border_color = ACCENT
 	style.set_border_width_all(4)
 	style.anti_aliasing = false
@@ -107,7 +107,7 @@ static func _slider_track() -> StyleBoxFlat:
 
 static func _slider_fill() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.45, 0.04, 0.04, 1.0)
+	style.bg_color = ACCENT
 	style.anti_aliasing = false
 	style.anti_aliasing_size = 0.0
 	style.corner_detail = 1
