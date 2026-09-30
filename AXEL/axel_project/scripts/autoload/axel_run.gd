@@ -606,12 +606,7 @@ func _persist_now() -> void:
 func _ensure_catalog() -> void:
 	if not _catalog.is_empty():
 		return
-	var dir := DirAccess.open(ITEM_DIR)
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
+	for fname in ResourceLoader.list_directory(ITEM_DIR):
 		if fname.ends_with(".tres"):
 			var path := ITEM_DIR + fname
 			var res := load(path)
@@ -619,5 +614,3 @@ func _ensure_catalog() -> void:
 				var item_id := String(res.get("id"))
 				if not item_id.is_empty():
 					_catalog[item_id] = path
-		fname = dir.get_next()
-	dir.list_dir_end()

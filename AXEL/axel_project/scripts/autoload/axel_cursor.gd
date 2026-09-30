@@ -78,9 +78,9 @@ func _set_pressed(down: bool) -> void:
 
 
 func _load_cursor() -> Image:
-	var image := Image.new()
-	var err := image.load(ProjectSettings.globalize_path(CURSOR_PATH))
-	if err != OK:
+	var tex := load(CURSOR_PATH) as Texture2D
+	var image: Image = tex.get_image() if tex != null else null
+	if image == null:
 		push_error("AxelCursor: could not load %s" % CURSOR_PATH)
 		return null
 	if image.get_format() != Image.FORMAT_RGBA8:

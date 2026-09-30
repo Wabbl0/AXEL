@@ -4700,18 +4700,11 @@ func _is_ascii_letter(code: int) -> bool:
 
 func _discover_available_items() -> Array:
 	var found: Array = []
-	var dir := DirAccess.open("res://combat/data/items")
-	if dir == null:
-		return found
-	dir.list_dir_begin()
-	var file_name := dir.get_next()
-	while file_name != "":
+	for file_name in ResourceLoader.list_directory("res://combat/data/items"):
 		if file_name.ends_with(".tres") or file_name.ends_with(".res"):
 			var res := load("res://combat/data/items/".path_join(file_name))
 			if res != null and res is ItemDefScript:
 				found.append(res)
-		file_name = dir.get_next()
-	dir.list_dir_end()
 	found.sort_custom(func(a, b): return _item_id_sort_key(String(a.id)) < _item_id_sort_key(String(b.id)))
 	return found
 
