@@ -8,7 +8,7 @@ const InfoCardScript := preload("res://scenes/ui/world_item_info_card.gd")
 const WheelScript := preload("res://scenes/ui/item_wheel.gd")
 const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
 const INFO_CARD_NODE_NAME := "WorldItemInfoCard"
-const ITEM_PROMPT_GAP_BELOW_HAND_PX := 10.0
+const ITEMS_INDICATOR_GAP_PX := 10.0
 const PICKUP_HOST_NAME := "WorldItemScatter"
 const INTERACT_PAD_PX := 8.0
 const ITEM_SEPARATION_PX := 220.0
@@ -194,7 +194,7 @@ func area_for_scene(scene_path: String) -> String:
 	return ""
 
 
-func hand_reaches_player(scene: Node, tex_pos: Vector2) -> bool:
+func items_indicator_reaches_player(scene: Node, tex_pos: Vector2) -> bool:
 	var env := _env_of(scene)
 	if env == null:
 		return false
@@ -592,6 +592,17 @@ func _on_scene_changed() -> void:
 		_populate_room(scene)
 	if is_enabled() and path == TUTORIAL_SCENE and is_locker_tutorial_pending():
 		_start_locker_tutorial(scene)
+	_request_items_wheel_lesson(scene)
+
+
+func _request_items_wheel_lesson(scene: Node) -> void:
+	if scene.find_child("Player", true, false) == null:
+		return
+	if _owned_item_ids().is_empty():
+		return
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	if tutorial != null and tutorial.has_method("request"):
+		tutorial.call("request", "items_wheel")
 
 
 func _mark_visited_if_walkable(scene: Node) -> void:

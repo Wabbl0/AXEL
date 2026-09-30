@@ -5,7 +5,7 @@ signal closed
 
 # Room boxes are pixels on axel_map_v2.png.
 const MAP_TEXTURE := preload("res://exports/Drawings/axel_map_v2.png")
-const HAND_SHEET := preload("res://assets/sprites/item_hand-Sheet.png")
+const ITEMS_INDICATOR_SHEET := preload("res://assets/sprites/items_indicator-Sheet.png")
 const UI_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const FADE_COLOR := Color(0, 0, 0, 0.75)
 const HIGHLIGHT_COLOR := Color(0.85, 0.0, 0.0, 0.62)
@@ -70,7 +70,7 @@ const AREAS: Array[Dictionary] = [
 		"rect": Rect2(13, 533, 949, 95),
 		"fit": true,
 		"scene": ENTRANCE_SCENE,
-		# Basement hand only. The click still travels the whole strip to 1.2.
+		# Basement items_indicator only. The click still travels the whole strip to 1.2.
 		"pin_scene": BASEMENT_SCENE,
 		"pin_plate": "res://exports/Drawings/1.4_BasementDoor_v2.png",
 		"pin_rect": ENTRANCE_PIN_RECT,
@@ -98,7 +98,7 @@ var _label: Label
 var _exit_button: Button
 var _pin_host: Control
 var _card_host: Control
-var _hand_tex: AtlasTexture
+var _items_indicator_tex: AtlasTexture
 var _plate_size: Dictionary = {}
 var _parts: Array[Control] = []
 var _part_area: Array[int] = []
@@ -613,12 +613,12 @@ func _texture_size(path: String) -> Vector2:
 	return size
 
 
-func _hand_frame() -> Texture2D:
-	if _hand_tex == null:
-		_hand_tex = AtlasTexture.new()
-		_hand_tex.atlas = HAND_SHEET
-		_hand_tex.region = Rect2(0, 0, 48, 48)
-	return _hand_tex
+func _items_indicator_frame() -> Texture2D:
+	if _items_indicator_tex == null:
+		_items_indicator_tex = AtlasTexture.new()
+		_items_indicator_tex.atlas = ITEMS_INDICATOR_SHEET
+		_items_indicator_tex.region = Rect2(0, 0, 48, 48)
+	return _items_indicator_tex
 
 
 func _world() -> Node:
@@ -684,7 +684,7 @@ func _refresh_pins() -> void:
 			mark.set_meta("pin_area", String(AREAS[index].get("name", "")))
 			mark.set_meta("tex_point", tex_point)
 			pin_index += 1
-			mark.texture = _hand_frame()
+			mark.texture = _items_indicator_frame()
 			mark.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			mark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

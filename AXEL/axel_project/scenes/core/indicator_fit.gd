@@ -4,7 +4,7 @@ class_name IndicatorFit
 # 2.1 cafeteria: Mike 0.298, memory glow 2.25.
 const MEMORY_REF_PLAYER := 0.298
 const MEMORY_REF_SCALE := 2.25
-# 1.4 basement door: Mike 0.198, room baseline 0.352, hand 180.
+# 1.4 basement door: Mike 0.198, room baseline 0.352, items_indicator 180.
 const ITEM_REF_PLAYER := 0.198
 const ITEM_REF_BASELINE := 0.352
 const ITEM_REF_MARKER_PX := 180.0

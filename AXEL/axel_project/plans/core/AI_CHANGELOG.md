@@ -8298,4 +8298,95 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: None in the game. Future edits should credit GOAL on each grid win, keep the Master compressor, and snap a bad 1.1 load off the left exit.
 - Verification: Compared the goal sentences to `combat_root.gd` `_add_round_winnings`. Compared the shadow sentences to `hud_drop_shadow.gd` and `premium_skull_meter.gd`. Compared the load-cover and exit-snap sentences to `axel_saves.gd` and `axel_event_fx.gd`. Compared the compressor sentence to `default_bus_layout.tres`.
 
+## 2026-09-30
+
+### Items indicator
+
+- Request: Replace the white pointing-hand floor marker with the items indicator sheet, and stop calling it a hand.
+- Implementation: Floor pickups, the locker map pins, and the walk-near card now use `items_indicator-Sheet.png`. The old `item_hand-Sheet.png` is gone. Code names that said hand (`HAND_GAP_PX`, `anchored_hand_screen_rect`, `hand_reaches_player`) now say items_indicator. The picture stays white, under Mike, with the same drop shadow and red outline.
+- Files changed:
+  - `AXEL/axel_project/assets/sprites/items_indicator-Sheet.png`
+  - `AXEL/axel_project/assets/sprites/item_hand-Sheet.png` (removed)
+  - `AXEL/axel_project/scenes/world/item_marker.gd`
+  - `AXEL/axel_project/scenes/world/ItemMarker.tscn`
+  - `AXEL/axel_project/scenes/world/world_item_pickup.gd`
+  - `AXEL/axel_project/scenes/ui/world_item_info_card.gd`
+  - `AXEL/axel_project/scenes/ui/InteractPromptOverlay.gd`
+  - `AXEL/axel_project/scenes/ui/locker_map_overlay.gd`
+  - `AXEL/axel_project/scenes/core/indicator_fit.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Floor items and map pins show the items indicator instead of the pointing hand. Pickup, scatter, and the walk-near card work the same way.
+- Verification: Compared the marker path to `item_marker.gd` (`items_indicator-Sheet.png`) and the card gap to `ITEMS_INDICATOR_GAP_PX` in `world_item_info_card.gd`.
+
+### Lesson cards
+
+- Request: Show a short lesson the first time the player walks, fights, sees a floor item, or opens the item wheel. Each lesson happens once per save.
+- Implementation: Autoload `AxelTutorial` draws six cards on layer 114. `move_walk` opens after the 1.1 first line. `fight_spin`, then `fight_stakes`, open on the first idle fight; `fight_items` joins them when something is equipped. `items_hand` opens with the first floor-item card. `items_wheel` opens the first time the wheel opens, or when the player returns to a room that already has an item. Seen ids live on `RunState.tutorial_seen`. A fight card locks spin and glows the frames it names. The red X closes the card immediately. E, Space, Enter, Tab, Q, R, I, click, and Esc finish the line, then close it, and that press does not also spin, pause, open the wheel, or use a door. Pause stays off while a card is open. Headless runs hide the cards unless a check turns them on.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_tutorial.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/combat/scripts/run_state.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.1_SchoolExterior.gd`
+  - `AXEL/axel_project/scenes/ui/item_wheel.gd`
+  - `AXEL/axel_project/scenes/world/world_item_pickup.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_pause.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/tools/qa/tutorial_popup_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: A new save teaches move, fight, and items once. Those cards do not replay. Spin waits until the fight cards close. Taking a floor item waits until its lesson card closes.
+- Verification: Compared the six lesson ids and the glow frames to `axel_tutorial.gd`. Compared the triggers to `1.1_SchoolExterior.gd`, `combat_test.gd`, `world_item_pickup.gd`, `item_wheel.gd`, and `axel_world.gd`.
+
+### Dialogue bar shadow
+
+- Request: Give the dialogue bar a thin almost-black shadow down and to the left.
+- Implementation: The bar style paints `Color(0.04, 0.04, 0.04)` with a 2px lip, offset 3px left and 3px down, scaled with window height. It follows the CRT open and close and ignores the mouse.
+- Files changed:
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.gd`
+  - `AXEL/axel_project/scenes/ui/TopDialogueOverlay.tscn`
+  - `AXEL/axel_project/tools/qa/dialogue_bar_shadow_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: The dialogue bar reads as sitting slightly off the floor. Clicks still land on the bar, not the shadow.
+- Verification: Compared the color and offset to `BAR_SHADOW_COLOR` and `BAR_SHADOW_OFFSET` in `TopDialogueOverlay.gd`.
+
+### Audio panel fader under the Options slider
+
+- Request: A full Options volume slider should keep the fader saved in the Audio panel, and a bus-layout save while playing from the editor should show up in the running game.
+- Implementation: `AxelSettings` stores each of Master, Music, and Effects from `default_bus_layout.tres`, then adds the Options slider on top. While a windowed editor play is running, it reloads that file about a second after it changes. The first apply still leaves an Audio-panel mute alone. Master’s fader in the file is about -12 dB.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_settings.gd`
+  - `AXEL/axel_project/default_bus_layout.tres`
+  - `AXEL/axel_project/tools/qa/audio_bus_layout_check.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: Dragging a bus in the Audio panel is the base loudness. Options still turns that bus up or down from there. Restart is not required to hear a layout save during an editor play. Do not set Master’s fader back to 0.
+- Verification: Compared `_set_bus_linear` and `_reload_authored_bus_layout` to `axel_settings.gd`. Compared Master `volume_db` to `default_bus_layout.tres` (`-11.951987`).
+
+### Docs matched to the items indicator, lesson cards, and the volume fader
+
+- Request: Update docs.
+- Implementation: Canon, the world-loop plan, scene building, and the item catalog now say items_indicator instead of the pointing hand. The rulebook names the six lesson cards, the dialogue-bar shadow, and the Audio-panel fader under the Options slider. Pause also refuses while a lesson card is open. Master’s fader is about -12 dB and must not be zeroed. The Moving card is noted on the 1.1 first line. The first floor-item walk-up opens the Items lesson, and E does not take the item while that card is open. The headless list names `dialogue_bar_shadow_check.gd` and `tutorial_popup_check.gd`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/combat/AXEL_COMBAT_ITEM_CATALOG_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/playtest/README.md`
+  - `AXEL/axel_project/plans/playtest/2026-09-23_item_card_width.md`
+  - `AXEL/axel_project/plans/playtest/2026-09-23_item_outline_bigger.md`
+  - `AXEL/axel_project/plans/playtest/2026-09-23_item_wheel.md`
+  - `AXEL/axel_project/plans/playtest/2026-09-23_memory_indicator_grey.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None in the game. Future edits should use the items indicator, keep the six once-per-save lessons, and leave the Master fader near -12 dB.
+- Verification: Compared the lesson ids, dismiss keys, and pause refusal to `axel_tutorial.gd` and `axel_pause.gd`. Compared the marker path to `item_marker.gd`. Compared the dialogue shadow to `TopDialogueOverlay.gd`. Compared the Master fader to `default_bus_layout.tres`.
+
 

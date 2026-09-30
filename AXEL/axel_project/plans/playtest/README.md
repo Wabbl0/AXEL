@@ -39,7 +39,7 @@ One plan per note. Do not implement from this index. Open the single plan for th
 | Item wheel over Mike; pause no longer lists items (shipped) | [Item wheel](2026-09-23_item_wheel.md) |
 | Overworld item card should be one wide width, icon at the top-left | [Item card width](2026-09-23_item_card_width.md) |
 | In-game descriptions and the catalog do not match, and they are hard to read | [Plain descriptions](2026-09-23_item_descriptions.md) |
-| Red outline on the floor item hand is too small | [Bigger item outline](2026-09-23_item_outline_bigger.md) |
+| Red outline on the items_indicator is too small | [Bigger item outline](2026-09-23_item_outline_bigger.md) |
 
 ## Markers
 

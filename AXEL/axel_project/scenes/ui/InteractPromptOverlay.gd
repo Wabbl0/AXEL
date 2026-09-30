@@ -89,7 +89,7 @@ func show_prompt_below_sprite_immediate(sprite: CanvasItem, gap_px: float) -> vo
 	show_prompt_immediate(anchor)
 
 
-func anchored_hand_screen_rect() -> Rect2:
+func anchored_items_indicator_screen_rect() -> Rect2:
 	if _below_sprite == null or not is_instance_valid(_below_sprite):
 		return Rect2()
 	return _canvas_item_screen_rect(_below_sprite)
@@ -185,11 +185,11 @@ func _run_hide_async() -> void:
 
 
 func chip_screen_rect() -> Rect2:
-	if _using_hand_gap():
-		var placed := _hand_chip_top_left()
+	if _using_items_indicator_gap():
+		var placed := _items_indicator_chip_top_left()
 		if placed.x > -100000.0:
-			var hand_size := _panel_size()
-			return Rect2(placed, hand_size)
+			var chip_size := _panel_size()
+			return Rect2(placed, chip_size)
 	var viewport := get_viewport()
 	if viewport == null:
 		return Rect2()
@@ -205,8 +205,8 @@ func chip_screen_rect() -> Rect2:
 
 
 func _update_screen_position() -> void:
-	if _using_hand_gap():
-		var placed := _hand_chip_top_left()
+	if _using_items_indicator_gap():
+		var placed := _items_indicator_chip_top_left()
 		if placed.x > -100000.0:
 			_chip_root_position(placed)
 			return
@@ -224,7 +224,7 @@ func _chip_root_position(pos: Vector2) -> void:
 	_root.position = pos
 
 
-func _using_hand_gap() -> bool:
+func _using_items_indicator_gap() -> bool:
 	return (
 		_below_gap_px >= 0.0
 		and _below_sprite != null
@@ -241,12 +241,12 @@ func _panel_size() -> Vector2:
 	return panel_size
 
 
-func _hand_chip_top_left() -> Vector2:
-	var hand := _canvas_item_screen_rect(_below_sprite)
-	if hand.size.y <= 1.0:
+func _items_indicator_chip_top_left() -> Vector2:
+	var items_indicator := _canvas_item_screen_rect(_below_sprite)
+	if items_indicator.size.y <= 1.0:
 		return Vector2(-1000000.0, 0.0)
 	var panel_size := _panel_size()
-	return Vector2(hand.get_center().x - panel_size.x * 0.5, hand.end.y + _below_gap_px)
+	return Vector2(items_indicator.get_center().x - panel_size.x * 0.5, items_indicator.end.y + _below_gap_px)
 
 
 func _canvas_item_screen_rect(item: CanvasItem) -> Rect2:

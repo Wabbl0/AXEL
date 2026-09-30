@@ -189,7 +189,7 @@ func _check_pins_and_cards(world: Node, run: Node) -> void:
 	var screen: Vector2 = overlay.call("_screen_point", center)
 	var pins := overlay.find_children("ItemPin*", "TextureRect", true, false)
 	if pins.is_empty():
-		_fail("map did not place an item hand")
+		_fail("map did not place an items_indicator")
 	else:
 		var found := false
 		for node in pins:
@@ -201,7 +201,7 @@ func _check_pins_and_cards(world: Node, run: Node) -> void:
 				found = true
 				break
 		if not found:
-			_fail("hand pin missed the highlight center (want %s)" % screen)
+			_fail("items_indicator pin missed the highlight center (want %s)" % screen)
 	_check_card_text(overlay)
 	overlay.queue_free()
 	world.call("reset_world")
@@ -252,7 +252,7 @@ func _check_spots_at_start(world: Node) -> void:
 				continue
 			var shown: Array = world.call("placed_floor_items", String(path))
 			if shown.size() != want:
-				_fail("%s should have %d hands at start, got %d" % [path, want, shown.size()])
+				_fail("%s should have %d items_indicators at start, got %d" % [path, want, shown.size()])
 	var expect := 0
 	for area in OverlayScript.AREAS:
 		var row: Dictionary = area
@@ -272,7 +272,7 @@ func _check_spots_at_start(world: Node) -> void:
 		await process_frame
 	var pins := overlay.find_children("ItemPin*", "TextureRect", true, false)
 	if pins.size() != expect:
-		_fail("map showed %d hands, want %d" % [pins.size(), expect])
+		_fail("map showed %d items_indicators, want %d" % [pins.size(), expect])
 	var right_half := Rect2(487, 533, 475, 95)
 	var saw_entrance := false
 	for node in pins:
@@ -309,7 +309,7 @@ func _check_retier_on_map(world: Node, run: Node) -> void:
 	world.call("take_item", basement, 0)
 	var shown: Array = world.call("placed_floor_items", cafeteria)
 	if shown.is_empty():
-		_fail("cafeteria lost its map hands after a pickup")
+		_fail("cafeteria lost its map items_indicators after a pickup")
 		world.call("reset_world")
 		run.call("reset_run")
 		return
@@ -335,7 +335,7 @@ func _check_retier_on_map(world: Node, run: Node) -> void:
 			saw_mark = true
 			break
 	if not saw_mark:
-		_fail("map hands did not show the new rarity mark")
+		_fail("map items_indicators did not show the new rarity mark")
 	overlay.queue_free()
 	world.call("reset_world")
 	run.call("reset_run")

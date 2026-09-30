@@ -159,21 +159,21 @@ func _check_prompt_gaps() -> void:
 		marker.position = Vector2(200, 200)
 		for _j in 4:
 			await process_frame
-		var hand := marker.get_node_or_null("AnimatedSprite") as CanvasItem
+		var items_indicator := marker.get_node_or_null("AnimatedSprite") as CanvasItem
 		var prompt: Node = load("res://scenes/ui/InteractPromptOverlay.tscn").instantiate()
 		scene.add_child(prompt)
-		prompt.call("show_prompt_below_sprite_immediate", hand, 10.0)
+		prompt.call("show_prompt_below_sprite_immediate", items_indicator, 10.0)
 		await process_frame
-		var hand_rect: Rect2 = prompt.call("anchored_hand_screen_rect")
+		var items_indicator_rect: Rect2 = prompt.call("anchored_items_indicator_screen_rect")
 		var chip: Rect2 = prompt.call("chip_screen_rect")
-		var gap := chip.position.y - hand_rect.end.y
+		var gap := chip.position.y - items_indicator_rect.end.y
 		if absf(gap - 10.0) > 2.0:
 			_fail("%s item chip gap %.2f should be 10" % [room_path, gap])
 		var sprite := marker.get_node_or_null("AnimatedSprite") as AnimatedSprite2D
 		if sprite != null:
 			var frame_h := 48.0 * absf(sprite.get_global_transform_with_canvas().get_scale().y)
-			if hand_rect.size.y > frame_h * 0.7:
-				_fail("%s item chip should sit under the visible hand, height %.1f frame %.1f" % [room_path, hand_rect.size.y, frame_h])
+			if items_indicator_rect.size.y > frame_h * 0.7:
+				_fail("%s item chip should sit under the visible items_indicator, height %.1f frame %.1f" % [room_path, items_indicator_rect.size.y, frame_h])
 		if room_path == GAP_ROOMS[0]:
 			_assert_glyph_on_ink(marker)
 		scene.queue_free()
@@ -198,7 +198,7 @@ func _assert_glyph_on_ink(marker: Node2D) -> void:
 	var overlap := float(marker_script.get_script_constant_map()["GLYPH_OVERLAP_PX"])
 	var want := Vector2(corner.x - overlap / s, corner.y + overlap / s - glyph_h)
 	if glyph.position.distance_to(want) > 1.0:
-		_fail("rarity glyph %s should sit on the hand corner %s" % [glyph.position, want])
+		_fail("rarity glyph %s should sit on the items_indicator corner %s" % [glyph.position, want])
 
 
 func _check_grime() -> void:

@@ -211,6 +211,9 @@ func _run_forced_intro_sequence() -> void:
 	_first_line_playing = true
 	await _play_first_dialogue_line()
 	_first_line_playing = false
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	if tutorial != null and tutorial.has_method("request"):
+		tutorial.call("request", "move_walk")
 	if is_inside_tree() and not _is_transitioning:
 		if _player_in_exit_trigger():
 			call_deferred("_begin_ending_1_transition")

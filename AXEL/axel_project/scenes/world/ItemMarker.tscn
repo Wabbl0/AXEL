@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scenes/world/item_marker.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://assets/sprites/item_hand-Sheet.png" id="2_sheet"]
+[ext_resource type="Texture2D" path="res://assets/sprites/items_indicator-Sheet.png" id="2_sheet"]
 [ext_resource type="Shader" path="res://scenes/fx/marker_silhouette_outline.gdshader" id="3_glow"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_red_halo"]

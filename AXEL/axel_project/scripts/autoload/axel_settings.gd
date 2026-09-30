@@ -43,9 +43,17 @@ const DEFAULTS := {
 	},
 }
 
+const _VOLUME_BUSES: PackedStringArray = ["Master", "Music", "Effects"]
+const _LAYOUT_PATH := "res://default_bus_layout.tres"
+const _LAYOUT_POLL_SEC := 0.25
+
 var _config := ConfigFile.new()
 var _save_queued := false
 var _bus_volumes_applied := false
+var _layout_volume_db := {}
+var _layout_text := ""
+var _layout_poll := 0.0
+var _watch_layout := false
 
 
 func _enter_tree() -> void:
@@ -211,7 +219,35 @@ func _apply_fps_cap() -> void:
 	Engine.max_fps = maxi(int(get_value("video", "fps_cap")), 0)
 
 
+func _ready() -> void:
+	# Godot's Audio dock edits the editor, not the running game. It writes this
+	# file about a second after a slider move. Follow that while a windowed play is up.
+	if not OS.has_feature("editor_runtime") or DisplayServer.get_name() == "headless":
+		set_process(false)
+		return
+	_layout_text = _read_layout_text()
+	_watch_layout = true
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	if not _watch_layout:
+		return
+	_layout_poll += delta
+	if _layout_poll < _LAYOUT_POLL_SEC:
+		return
+	_layout_poll = 0.0
+	var text := _read_layout_text()
+	if text.is_empty() or text == _layout_text:
+		return
+	if not _reload_authored_bus_layout():
+		return
+	_layout_text = text
+
+
 func _apply_bus_volumes() -> void:
+	_capture_layout_volumes()
 	var respect_existing_mute := not _bus_volumes_applied
 	_set_bus_linear("Master", master_volume(), respect_existing_mute)
 	_set_bus_linear("Music", music_volume(), respect_existing_mute)
@@ -219,17 +255,48 @@ func _apply_bus_volumes() -> void:
 	_bus_volumes_applied = true
 
 
+func _capture_layout_volumes() -> void:
+	if not _layout_volume_db.is_empty():
+		return
+	for bus_name in _VOLUME_BUSES:
+		var idx := AudioServer.get_bus_index(bus_name)
+		if idx < 0:
+			continue
+		_layout_volume_db[bus_name] = AudioServer.get_bus_volume_db(idx)
+
+
 func _set_bus_linear(bus_name: String, linear: float, respect_existing_mute: bool = false) -> void:
 	var idx := AudioServer.get_bus_index(bus_name)
 	if idx < 0:
 		return
-	AudioServer.set_bus_volume_db(idx, linear_to_db(maxf(linear, 0.0001)))
+	# A full Options slider is 0 dB on top of the Audio panel fader.
+	var base_db := float(_layout_volume_db.get(bus_name, 0.0))
+	AudioServer.set_bus_volume_db(idx, base_db + linear_to_db(maxf(linear, 0.0001)))
 	if linear <= 0.001:
 		AudioServer.set_bus_mute(idx, true)
 		return
 	if respect_existing_mute and AudioServer.is_bus_mute(idx):
 		return
 	AudioServer.set_bus_mute(idx, false)
+
+
+func _reload_authored_bus_layout() -> bool:
+	var loaded: Resource = ResourceLoader.load(_LAYOUT_PATH, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if not loaded is AudioBusLayout:
+		return false
+	AudioServer.set_bus_layout(loaded)
+	_layout_volume_db.clear()
+	_capture_layout_volumes()
+	_set_bus_linear("Master", master_volume(), true)
+	_set_bus_linear("Music", music_volume(), true)
+	_set_bus_linear("Effects", effects_volume(), true)
+	return true
+
+
+func _read_layout_text() -> String:
+	if not FileAccess.file_exists(_LAYOUT_PATH):
+		return ""
+	return FileAccess.get_file_as_string(_LAYOUT_PATH)
 
 
 func _apply_input_overrides() -> void:

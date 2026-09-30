@@ -101,7 +101,7 @@ func _check_room(run: Node, room_path: String, want: int) -> void:
 			_fail("%s put %s so its interact circle hits a wall or furniture" % [
 				room_path, item_id,
 			])
-		elif not _hand_on_floor(env, child as Node2D):
+		elif not _items_indicator_on_floor(env, child as Node2D):
 			_fail("%s put %s off the floor Mike can walk" % [room_path, item_id])
 
 		elif _circle_blocked(env, child as Node2D, player, host, true):
@@ -151,12 +151,12 @@ func _circle_blocked(
 	return not space.intersect_shape(params, 8).is_empty()
 
 
-func _hand_on_floor(env: Node2D, item: Node2D) -> bool:
+func _items_indicator_on_floor(env: Node2D, item: Node2D) -> bool:
 	var world := root.get_node_or_null("AxelWorld")
 	var scene := current_scene
-	if world == null or scene == null or item == null or not world.has_method("hand_reaches_player"):
+	if world == null or scene == null or item == null or not world.has_method("items_indicator_reaches_player"):
 		return false
-	return bool(world.call("hand_reaches_player", scene, env.to_local(item.global_position)))
+	return bool(world.call("items_indicator_reaches_player", scene, env.to_local(item.global_position)))
 
 
 func _first_collision_shape(item: Node) -> CollisionShape2D:
@@ -172,28 +172,28 @@ func _frames(count: int) -> void:
 
 
 func _check_basement_spots(world: Node, run: Node) -> void:
-	var first := await _basement_hand(world, run, 111)
-	var again := await _basement_hand(world, run, 111)
+	var first := await _basement_items_indicator(world, run, 111)
+	var again := await _basement_items_indicator(world, run, 111)
 	if first == Vector2.INF or again == Vector2.INF:
-		_fail("1.4 did not place a floor hand on the first load")
+		_fail("1.4 did not place an items_indicator on the first load")
 		return
 	if absf(first.x) < 0.5 and absf(first.y) < 0.5:
-		_fail("1.4 placed its hand at 0,0")
+		_fail("1.4 placed its items_indicator at 0,0")
 	if first.distance_to(again) > 1.0:
-		_fail("the same item seed moved the 1.4 hand")
+		_fail("the same item seed moved the 1.4 items_indicator")
 	var found_other := false
 	for trial_seed in [2, 3, 5, 8, 13, 21, 34, 55]:
-		var other := await _basement_hand(world, run, trial_seed)
+		var other := await _basement_items_indicator(world, run, trial_seed)
 		if other == Vector2.INF:
 			return
 		if first.distance_to(other) >= 32.0:
 			found_other = true
 			break
 	if not found_other:
-		_fail("different item seeds all placed the 1.4 hand in the same spot")
+		_fail("different item seeds all placed the 1.4 items_indicator in the same spot")
 
 
-func _basement_hand(world: Node, run: Node, item_seed: int) -> Vector2:
+func _basement_items_indicator(world: Node, run: Node, item_seed: int) -> Vector2:
 	world.call("reset_world")
 	world.call("plan_floor_items", item_seed)
 	if change_scene_to_file(BASEMENT) != OK:
@@ -209,19 +209,19 @@ func _basement_hand(world: Node, run: Node, item_seed: int) -> Vector2:
 		return Vector2.INF
 	var host := env.get_node_or_null("WorldItemScatter")
 	if host == null or host.get_child_count() != 1:
-		_fail("1.4 seed %d wanted 1 floor hand, got %d" % [
+		_fail("1.4 seed %d wanted 1 items_indicator, got %d" % [
 			item_seed, 0 if host == null else host.get_child_count(),
 		])
 		return Vector2.INF
-	var hand := host.get_child(0) as Node2D
+	var items_indicator := host.get_child(0) as Node2D
 	var player := current_scene.find_child("Player", true, false) as Node2D
-	if _circle_blocked(env, hand, player, host, false):
-		_fail("1.4 seed %d hand circle hits a wall" % item_seed)
-	elif not _hand_on_floor(env, hand):
-		_fail("1.4 seed %d hand is off the floor Mike can walk" % item_seed)
-	if run.call("load_item", String(hand.get("item_id"))) == null:
+	if _circle_blocked(env, items_indicator, player, host, false):
+		_fail("1.4 seed %d items_indicator circle hits a wall" % item_seed)
+	elif not _items_indicator_on_floor(env, items_indicator):
+		_fail("1.4 seed %d items_indicator is off the floor Mike can walk" % item_seed)
+	if run.call("load_item", String(items_indicator.get("item_id"))) == null:
 		_fail("1.4 seed %d rolled an unusable item" % item_seed)
-	return hand.position
+	return items_indicator.position
 
 
 func _check_item_seed_differs(world: Node) -> void:

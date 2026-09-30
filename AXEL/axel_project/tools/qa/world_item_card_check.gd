@@ -5,7 +5,7 @@ const ROOM := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const ITEM_TRES := "res://combat/data/items/C1_ash_spin_token.tres"
 const WINDOW := Vector2i(1920, 1280)
 const EDGE := 8.0
-const HAND_GAP := 10.0
+const ITEMS_INDICATOR_GAP := 10.0
 
 var _failures: Array[String] = []
 
@@ -67,12 +67,12 @@ func _check_room_card() -> void:
 		pickup.call("_show_info_card")
 	await _wait_settled(card, "1.4 room")
 	var marker: Node = pickup.call("floor_marker") if pickup.has_method("floor_marker") else null
-	var hand := Rect2()
+	var items_indicator := Rect2()
 	if marker != null and marker.has_method("ink_screen_rect"):
 		var got: Variant = marker.call("ink_screen_rect")
 		if got is Rect2:
-			hand = got
-	_assert_card(card, hand, "1.4 room")
+			items_indicator = got
+	_assert_card(card, items_indicator, "1.4 room")
 
 
 func _check_stays_below() -> void:
@@ -81,7 +81,7 @@ func _check_stays_below() -> void:
 	root.add_child(card)
 	if not card.is_node_ready():
 		await card.ready
-	var fake := FakeHand.new()
+	var fake := FakeItemsIndicator.new()
 	fake.rect = Rect2(900.0, 1180.0, 48.0, 28.0)
 	root.add_child(fake)
 	var item := load(ITEM_TRES) as Resource
@@ -99,7 +99,7 @@ func _check_stays_below() -> void:
 	fake.queue_free()
 
 
-func _assert_card(card: Node, hand: Rect2, where: String) -> void:
+func _assert_card(card: Node, items_indicator: Rect2, where: String) -> void:
 	if card == null:
 		_fail("%s: card missing" % where)
 		return
@@ -160,15 +160,15 @@ func _assert_card(card: Node, hand: Rect2, where: String) -> void:
 	var expected := title_w + icon_w + sep + chrome
 	if absf(panel.size.x - expected) > 8.0:
 		_fail("%s: panel width %.1f should match the title row %.1f" % [where, panel.size.x, expected])
-	if hand.size.y > 1.0:
+	if items_indicator.size.y > 1.0:
 		var card_rect := root_ctrl.get_global_rect()
 		if card_rect.size.x <= 1.0:
 			card_rect = panel.get_global_rect()
-		var gap := card_rect.position.y - hand.end.y
-		if absf(gap - HAND_GAP) > 3.0:
-			_fail("%s: card gap %.1f should be %.0f under the hand" % [where, gap, HAND_GAP])
-		if card_rect.position.y + 1.0 < hand.end.y:
-			_fail("%s: card must stay under the hand" % where)
+		var gap := card_rect.position.y - items_indicator.end.y
+		if absf(gap - ITEMS_INDICATOR_GAP) > 3.0:
+			_fail("%s: card gap %.1f should be %.0f under the items_indicator" % [where, gap, ITEMS_INDICATOR_GAP])
+		if card_rect.position.y + 1.0 < items_indicator.end.y:
+			_fail("%s: card must stay under the items_indicator" % where)
 	if root_ctrl.position.x < EDGE - 1.0:
 		_fail("%s: card left the 8px window pad" % where)
 	var panel_rect := panel.get_global_rect()
@@ -212,7 +212,7 @@ func _frames(count: int) -> void:
 		await process_frame
 
 
-class FakeHand extends Node:
+class FakeItemsIndicator extends Node:
 	var rect := Rect2()
 
 	func ink_screen_rect() -> Rect2:

@@ -19,7 +19,7 @@ Prefer the **live project tree** when this file and disk disagree — update thi
   - `player/` — packed Mike (`Player.tscn`), shared Front hitbox (`hitbox_front.tres`), shared pose nudge (`pose_nudge.tres` + `mike_pose_nudge.gd`); unused `hitbox_back.tres` / `hitbox_side.tres` were archived 2026-09-17
   - `ui/` — dialogue, interact prompt, locker, pause, world-item card
   - `fx/` — noir/scanline/CRT overlays, memory indicator, glitch/pulse, 1.2 `DirectionHint`
-  - `world/` — floor-item pickup + white pointing-hand marker (`ItemMarker.tscn`)
+  - `world/` — floor-item pickup + items_indicator (`ItemMarker.tscn`)
 - `scripts/`
   - `autoload/` — `AxelPostFxStack`, `AxelEventFx`, `AxelMusic`, `AxelSettings`, `AxelPause`, `AxelSaves`, `AxelRun`, `AxelWorld`
   - `debug/` — `AxelCombatDevTools` (editor/debug-only combat menu; open from Settings → DEV TOOLS)

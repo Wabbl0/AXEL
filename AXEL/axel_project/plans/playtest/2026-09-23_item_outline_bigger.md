@@ -1,4 +1,4 @@
-# Plan: Bigger red outline on the floor item hand
+# Plan: Bigger red outline on the items_indicator
 
 Plan only. Do not implement in the planning chat.
 
@@ -8,15 +8,15 @@ Make the red outline around the overworld item marker larger.
 
 ## What the game does now
 
-- The floor marker is the white pointing hand (`scenes/world/ItemMarker.tscn`).
-- `scenes/fx/marker_outline_style.gd` uses one `SPREAD` of `12` for the hand’s red glow and for the memory blob’s white halo.
+- The floor marker is the items_indicator (`scenes/world/ItemMarker.tscn`).
+- `scenes/fx/marker_outline_style.gd` uses one `SPREAD` of `12` for the items_indicator’s red glow and for the memory blob’s white halo.
 - The shader `scenes/fx/memory_outer_glow.gdshader` clamps `spread` to `28`.
-- The hand stays white. The memory blob is a separate note (grey fill, white outline).
+- The items_indicator stays white. The memory blob is a separate note (grey fill, white outline).
 
 ## Locked choices
 
 - Split the shared spread. Item spread becomes `20`. Memory spread stays `12`.
-- Do not change the hand sprite size, the drop shadow, or the red color (`Color(0.9, 0, 0)`).
+- Do not change the items_indicator sprite size, the drop shadow, or the red color (`Color(0.9, 0, 0)`).
 - Do not change the memory blob’s color in this note.
 
 ## Steps
@@ -27,16 +27,16 @@ Make the red outline around the overworld item marker larger.
 
 ## What you should see
 
-The faint red edge around the white hand is wider. The hand is still white. Memory markers do not grow.
+The faint red edge around the items_indicator is wider. The items_indicator is still white. Memory markers do not grow.
 
 ## How to test
 
-1. Walk to a floor item. Compare the red fringe to a memory blob in another room. Only the hand’s fringe is larger.
+1. Walk to a floor item. Compare the red fringe to a memory blob in another room. Only the items_indicator’s fringe is larger.
 2. No headless check draws the shader (`--headless` does not compile shaders). A windowed glance is the check.
 
 ## Risks
 
-- If `20` is still too faint, the next step is a higher spread up to `28`, not a bigger hand picture.
+- If `20` is still too faint, the next step is a higher spread up to `28`, not a bigger items_indicator picture.
 
 ## When this ships
 

@@ -146,12 +146,19 @@ func _on_body_exited(body: Node) -> void:
 	_hide_info_card()
 
 
+func _tutorial_card_open() -> bool:
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	return tutorial != null and tutorial.has_method("is_open") and bool(tutorial.call("is_open"))
+
+
 static func _is_player(body: Node) -> bool:
 	return body != null and body.name == "Player"
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _taken or not _player_inside:
+		return
+	if _tutorial_card_open():
 		return
 	if not event.is_action_pressed("interact"):
 		return
@@ -193,6 +200,9 @@ func _show_info_card() -> void:
 			_icon_texture(),
 			_marker
 		)
+		var tutorial := get_node_or_null("/root/AxelTutorial")
+		if tutorial != null and tutorial.has_method("request"):
+			tutorial.call("request", "items_hand")
 
 
 func _hide_info_card() -> void:

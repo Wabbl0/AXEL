@@ -11,7 +11,7 @@ In the overworld, every item description bar has the same max width, a wide land
 - `scenes/ui/world_item_info_card.gd` sets the description width to the title string width (`_apply_wrap_sizes`). A short name such as Locker Tape makes a tall narrow card.
 - The icon is the left cell of a horizontal row, so it lines up with the middle of the whole text block, not the top of the title.
 - The title does not wrap (`AUTOWRAP_OFF`).
-- `[E]` is the bottom-right line. Floor items use it. The card CRT-opens under the pointing hand.
+- `[E]` is the bottom-right line. Floor items use it. The card CRT-opens under the items_indicator.
 - `tools/qa/world_item_card_check.gd` fails if the description width does not follow the title, or if the title is more than one line.
 
 ## Locked choices
@@ -26,7 +26,7 @@ In the overworld, every item description bar has the same max width, a wide land
 
 1. Replace `_title_px()` sizing. Set the text column width to `viewport_width * 0.42` minus the icon and the row gap.
 2. Turn title autowrap on, and give the title the same max width as the description. Keep the icon’s vertical size flags at the top of the row (`SIZE_SHRINK_BEGIN`), not vertically centered.
-3. Keep the card under the hand by the same 10 px gap, and keep it inside the window on X.
+3. Keep the card under the items_indicator by the same 10 px gap, and keep it inside the window on X.
 4. Update `world_item_card_check.gd`: description max width is the shared column width, not the title string width. A short title and a long title produce the same panel width (within a few pixels). The icon’s top is within a few pixels of the title’s top.
 
 ## What you should see

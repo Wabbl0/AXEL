@@ -1,6 +1,6 @@
 extends Node2D
 
-const _DEFAULT_SHEET := "res://assets/sprites/item_hand-Sheet.png"
+const _DEFAULT_SHEET := "res://assets/sprites/items_indicator-Sheet.png"
 const _ANIM := &"point"
 const OutlineStyle := preload("res://scenes/fx/marker_outline_style.gd")
 const GLYPH_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")

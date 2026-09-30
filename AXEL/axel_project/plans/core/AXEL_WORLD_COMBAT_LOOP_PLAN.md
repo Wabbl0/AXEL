@@ -15,9 +15,9 @@ Canon still wins: `plans/core/AI_DOCS.md`. Catalog text changes only in
 - Flashlight / key / shovel / name start a fight after their line.
 - Combat items lie on the floor in indoor rooms; picking one up starts a fight.
 - All item ranks start Common; picking up in one area clears it and upgrades
-  the rooms you have not taken from yet (those hands change to the new rarity).
+  the rooms you have not taken from yet (those items_indicators change to the new rarity).
 - The locker shows lore pictures only. Equip and unequip live on the item wheel. `START RUN` is gone. After a correct board answer the name-tag picture becomes that floor item's icon.
-- The locker map and pause Map are the same overlay. A room with floor items travels after a visit and one pickup. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. The basement is not a travel button; its floor hand is pinned on the right half of Entrance. Hands are placed when the game starts. Each map hand shows the rarity mark, and a rarity step redraws the hands and the hover cards.
+- The locker map and pause Map are the same overlay. A room with floor items travels after a visit and one pickup. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. The basement is not a travel button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed when the game starts. Each map items_indicator shows the rarity mark, and a rarity step redraws the items_indicators and the hover cards.
 - A full-screen wipe plays on the way into every fight.
 - Winning puts you back in the room you left, on the spot you left.
 - Losing deletes that slot’s save files (no tombstone) and keeps **GONE** up with **Retry** / **Return To Main Menu** / **Exit**. Retry starts a new run from `1.1` on the slot that died. `AxelWorld.notify_fight_ended()` clears `_starting_fight` on a loss so New Game can fight again.
@@ -99,13 +99,13 @@ keep their encounter seeds.
 
 ### Floor marker and info card
 
-Every floor pickup draws the same white pointing-hand
-(`scenes/world/ItemMarker.tscn`, `assets/sprites/item_hand-Sheet.png` — 5
+Every floor pickup draws the same items_indicator
+(`scenes/world/ItemMarker.tscn`, `assets/sprites/items_indicator-Sheet.png` — 5
 frames of 48×48). The pickup `Area2D` stays under `EnvironmentColliders` so
 the 220 px interact circle takes the room's cover-fit. The picture reparents
 to `PlayerLayer` (above noir, `z_index` `-8` so Mike draws in front) so the
-hand stays white. The memory blob is red with a white outline (0.96 texture pixels, 75% opacity). A drop shadow and
-a red outline at 75% opacity (`marker_silhouette_outline.gdshader`, 1.92 texture pixels) keep the hand from looking
+items_indicator stays white. The memory blob is red with a white outline (0.96 texture pixels, 75% opacity). A drop shadow and
+a red outline at 75% opacity (`marker_silhouette_outline.gdshader`, 1.92 texture pixels) keep the items_indicator from looking
 like that blob.
 
 Scatter only accepts a spot whose **220 px interact circle plus an 8 px pad** (`INTERACT_PAD_PX`; the live Area2D stays 220) misses walls and
@@ -118,8 +118,8 @@ What the item actually is only shows up when you walk into the existing
 220 px radius: `scenes/ui/world_item_info_card.gd` (one per room, layer 109 —
 above CRT 108, below dialogue 111) CRT-opens like the dialogue bar. It shows
 the item's real name (with the rarity glyph), `description`, and catalog `icon` 10px under the painted
-hand. `[E]` is the bottom-right line of that card, at the description font
-size. The card is as wide as the icon plus the full title on one row.
+items_indicator. `[E]` is the bottom-right line of that card, at the description font
+size. The first time that card opens, the Items lesson plays, and E does not take the item while a lesson card is open. The card is as wide as the icon plus the full title on one row.
 
 Floor pickups auto-equip into a free slot (`AxelRun.equip_owned_if_free`) so that
 fight's ITEMS list is live. Unequip is on the overworld item wheel. The locker only shows lore pictures.
@@ -130,9 +130,9 @@ Every area starts at Common, including extended Commons. The same seed always
 shows the same Common board, whether you open `1.4` or `2.1` first. The first
 pickup in an area *clears* it and freezes its leftover items at that rarity.
 Every area that is neither engaged nor cleared moves up one rank (cap
-Legendary) and is rolled again from the same seed at the new rank. Hands stay;
+Legendary) and is rolled again from the same seed at the new rank. Items_indicators stay;
 only the item changes. Taking the rest of a cleared area does not bump anyone
-again. `1.2` has no floor item, so taking the hand in `2.4` clears Halls.
+again. `1.2` has no floor item, so taking the items_indicator in `2.4` clears Halls.
 
 Item ids resolve as `TIER-FAMILY` from the live `.tres` files, or as a baseline
 line from `combat/scripts/item_lines.gd` (C1–C10 and their later rungs). Each
@@ -181,9 +181,9 @@ a cleared area.
    floor item's icon. The shovel is not on the locker. First hub visit sets the opened-locker flag (no C1/C2/C3 grant).
 10. `scenes/ui/locker_map_overlay.gd` — locker and pause Map share this overlay.
     Travel uses `AxelWorld.map_can_travel()`: a visit, plus one floor-item pickup
-    when that room has hands. Entrance loads `1.2` after a visit. A click on the
+    when that room has items_indicators. Entrance loads `1.2` after a visit. A click on the
     room you opened the map from does nothing. The basement is not a travel
-    button; its floor hand is pinned on the right half of Entrance. Hands are placed
+    button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed
     when the game starts. Each pin shows the rarity mark. A rarity step redraws
     the pins and the hover cards.
 11. Memory stills — `2.2_CafeteriaMemory.gd`, `3.2_BackyardMemory.gd`,
@@ -212,29 +212,29 @@ a cleared area.
   an immediate all-in) reseeds to a fixed board whose real matches pay the goal.
 - Flashlight / key / shovel / name each start exactly one fight, ever.
 - Every memory still ends in a fight. The locker map paper (`scene_3`) does not.
-- Every floor item looks like the same white pointing hand from across the
+- Every floor item looks like the same items_indicator from across the
   room; walking near one shows its real name, description and icon.
-- Floor items show `[E]` on the walk-near card, join the item inventory (and auto-equip if a slot is free), and start a fight.
+- Floor items show `[E]` on the walk-near card, join the item inventory (and auto-equip if a slot is free), and start a fight. The first walk-up opens the Items lesson, and E does not take the item while that card is open.
 - `1.1` and `1.2` never hold a floor item. `3.1` holds two.
 - Fight goals climb 100, 150, 225, then ×1.5 (rounded to 25).
 - The first area's floor items are Common; after that pickup, every area you
-  have not taken from reads one rank higher and its hands show the new rarity.
+  have not taken from reads one rank higher and its items_indicators show the new rarity.
 - The locker has no START RUN button and no LOCKER overlay; flashlight, key, and name pictures sit on the locker. Combat equip is the item wheel.
-- The locker map and pause Map are the same picture. A room with floor items travels only after a visit and one pickup there. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. Hallway on the map is `2.4`. The basement is not a travel button; its floor hand is pinned on the right half of Entrance. Hands are placed when the game starts. Each map hand shows the rarity mark, and a rarity step redraws the hands and the hover cards.
+- The locker map and pause Map are the same picture. A room with floor items travels only after a visit and one pickup there. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. Hallway on the map is `2.4`. The basement is not a travel button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed when the game starts. Each map items_indicator shows the rarity mark, and a rarity step redraws the items_indicators and the hover cards.
 - A wipe plays before each fight; a win shows Round Complete!, fades, and returns to the same room and spot.
 - The `1.4` chained door plays `"Not yet."` and stays in the room.
 
 ## Manual test checklist
 
-1. New game → walk `1.1` and `1.2` for a while: no floor-item hands and no fights.
+1. New game → walk `1.1` and `1.2` for a while: no items_indicators and no fights.
 2. Locker → close → red `X`: a fight starts as you land in `1.2`, with a 100
    goal and an empty item panel. Last spin / all-in pays the goal from real
    matches. Win → back in `1.2` where you stood.
-3. Walk to `1.4`, walk near the hand: its real name, description and icon
+3. Walk to `1.4`, walk near the items_indicator: its real name, description and icon
    show before you press `[E]`. Take it → fight (next ladder rung, 150) → win.
    The chained door only plays `"Not yet."` and stays in the room.
-4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot walk-fight, but it does have floor hands.
-5. Open the locker map at the start: every floor-item room already has a hand. The basement hand sits on the right half of Entrance. Clicking the room you are already in does nothing. Before visiting `2.3`, kitchen does not travel. Walk there, pick up one hand, reopen: the click works. Hover shows the remaining hands and their cards. The other hands show the next rarity.
+4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot walk-fight, but it does have items_indicators.
+5. Open the locker map at the start: every floor-item room already has an items_indicator. The basement items_indicator sits on the right half of Entrance. Clicking the room you are already in does nothing. Before visiting `2.3`, kitchen does not travel. Walk there, pick up one items_indicator, reopen: the click works. Hover shows the remaining items_indicators and their cards. The other items_indicators show the next rarity.
 
 ## Found while building
 
@@ -260,6 +260,6 @@ a cleared area.
 - Save bodies gain two blocks. Missing keys default, so old slots still load.
 - Return placement runs a few frames after the room settles; if a room ever
   moves the player later than that, the spot can be off by a step.
-- Floor-item spots are picked when the game starts, from the room's clear spots (the full interact circle misses walls and furniture, and the cell is on Mike's connected walkable floor) using the run seed, then stored in the save. The map can show every hand before that room is walked. A saved spot that fails that test is moved the next time the room loads. A new game can put the hand somewhere else. The same save keeps the place when ranks change. A room can add an `ItemSpawnPoints` node of `Marker2D` children; a marker whose circle hits a wall is ignored.
+- Floor-item spots are picked when the game starts, from the room's clear spots (the full interact circle misses walls and furniture, and the cell is on Mike's connected walkable floor) using the run seed, then stored in the save. The map can show every items_indicator before that room is walked. A saved spot that fails that test is moved the next time the room loads. A new game can put the items_indicator somewhere else. The same save keeps the place when ranks change. A room can add an `ItemSpawnPoints` node of `Marker2D` children; a marker whose circle hits a wall is ignored.
 - Rollback: `AXEL_WORLD_COMBAT=0` disables every new trigger and hides floor
   items; the rooms stay playable. Restoring START RUN is a small revert.

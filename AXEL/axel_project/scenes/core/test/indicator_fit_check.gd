@@ -69,7 +69,7 @@ func _main() -> void:
 		return
 	var item_14: float = Fit.item_marker_px(Fit.ITEM_REF_PLAYER, Fit.ITEM_REF_BASELINE)
 	if absf(item_14 - Fit.ITEM_REF_MARKER_PX) > ITEM_EPS:
-		_fail("1.4 hand=%.4f expected %.4f" % [item_14, Fit.ITEM_REF_MARKER_PX])
+		_fail("1.4 items_indicator=%.4f expected %.4f" % [item_14, Fit.ITEM_REF_MARKER_PX])
 		return
 	if absf(Fit.memory_from_player(0.0)) > MEMORY_EPS or absf(Fit.item_marker_px(0.0, 1.0)) > ITEM_EPS:
 		_fail("zero scale should return 0")
@@ -89,19 +89,19 @@ func _main() -> void:
 			_fail("%s glow=%.4f expected %.4f" % [room["name"], memory, float(room["memory"])])
 			return
 		if absf(item - float(room["item"])) > ITEM_EPS:
-			_fail("%s hand=%.4f expected %.4f" % [room["name"], item, float(room["item"])])
+			_fail("%s items_indicator=%.4f expected %.4f" % [room["name"], item, float(room["item"])])
 			return
 		if absf(memory / player_scale - memory_ratio) > MEMORY_RATIO_EPS:
 			_fail("%s glow/Mike drifted" % room["name"])
 			return
 		if absf(item * baseline / player_scale - item_k) > ITEM_RATIO_EPS:
-			_fail("%s hand/Mike drifted" % room["name"])
+			_fail("%s items_indicator/Mike drifted" % room["name"])
 			return
 
 	root.size = Vector2i(1920, 1280)
 	if not await _check_live_rooms():
 		return
-	print("IndicatorFit check OK (2.1 glow=%.3f, 1.4 hand=%.1f, rooms=%d)." % [
+	print("IndicatorFit check OK (2.1 glow=%.3f, 1.4 items_indicator=%.1f, rooms=%d)." % [
 		memory_21, item_14, ROOMS.size()
 	])
 	quit(0)
@@ -119,9 +119,9 @@ func _check_live_rooms() -> bool:
 		if not node.is_node_ready():
 			await node.ready
 		await process_frame
-		var hand := float(node.call("floor_item_marker_px"))
-		if absf(hand - float(room["item"])) > ITEM_EPS:
-			_fail("%s live hand=%.4f expected %.4f" % [path, hand, float(room["item"])])
+		var items_indicator := float(node.call("floor_item_marker_px"))
+		if absf(items_indicator - float(room["item"])) > ITEM_EPS:
+			_fail("%s live items_indicator=%.4f expected %.4f" % [path, items_indicator, float(room["item"])])
 			return false
 		var glow := node.get_node_or_null("PlayerLayer/MemoryIndicator")
 		if bool(room["glow"]):

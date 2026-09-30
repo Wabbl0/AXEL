@@ -8,7 +8,7 @@ const ICON_PX := 64.0
 const NAME_FONT := 26
 const DESC_FONT := 20
 const KEY_TEXT := "[E]"
-const HAND_GAP_PX := 10.0
+const ITEMS_INDICATOR_GAP_PX := 10.0
 const WINDOW_PAD := 8.0
 const SCREEN_CORNER_GAP := 6.0
 const ROW_SEP := 12.0
@@ -325,7 +325,7 @@ func _run_hide_async() -> void:
 	CrtPowerFx.reset_visual(_root, _panel, _beam, _bloom)
 
 
-func _hand_rect() -> Rect2:
+func _items_indicator_rect() -> Rect2:
 	if is_instance_valid(_anchor) and _anchor.has_method("ink_screen_rect"):
 		var got: Variant = _anchor.call("ink_screen_rect")
 		if got is Rect2 and (got as Rect2).size.y > 1.0:
@@ -352,14 +352,14 @@ func _update_screen_position() -> void:
 	if _screen_lock:
 		_place_at_screen(viewport)
 		return
-	var hand := _hand_rect()
+	var items_indicator := _items_indicator_rect()
 	_refresh_panel_size()
 	var card_size := _panel.size
 	if card_size.x <= 0.0 or card_size.y <= 0.0:
 		card_size = _panel.get_combined_minimum_size()
 	var card_w := card_size.x
-	var gap := HAND_GAP_PX
-	var pos := Vector2(hand.get_center().x - card_w * 0.5, hand.end.y + gap)
+	var gap := ITEMS_INDICATOR_GAP_PX
+	var pos := Vector2(items_indicator.get_center().x - card_w * 0.5, items_indicator.end.y + gap)
 	var view_size := Vector2(viewport.get_visible_rect().size)
 	pos.x = clampf(pos.x, WINDOW_PAD, maxf(view_size.x - card_w - WINDOW_PAD, WINDOW_PAD))
 	_root.position = pos

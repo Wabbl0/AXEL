@@ -317,10 +317,10 @@ Optional hidden **Mythic** variant per extended family lane (**A, B, C, D, E, F,
 Live rule (implemented in `scripts/autoload/axel_world.gd`): every area starts
 **Common**, including extended Commons. The first pickup in an area *clears*
 it and freezes leftover items there. That area lifts the rank of every area
-you have not taken from by one tier, once, and those hands are rolled again
+you have not taken from by one tier, once, and those items_indicators are rolled again
 from the same seed at the new rank. Cap is Legendary, so taking from four
 areas puts a still-untouched area at `L-*`. `1.2` has no floor item, so the
-Halls pickup is the hand in `2.4`.
+Halls pickup is the items_indicator in `2.4`.
 
 The six written areas map onto the live rooms like this. `Families` are the
 extended lanes each area rolls from. Each pickup also mixes in leftover
@@ -344,7 +344,7 @@ do get walking encounters once the locker tutorial is done and some other room
 has already hosted a fight — so `Halls` is cleared by 2.4's single item.
 Details: `plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`.
 
-Every floor item shows the same white pointing-hand marker rather than its own
+Every floor item shows the same items_indicator rather than its own
 picture; the item's name, description and real icon appear on a walk-near card.
 
 Rough shape over a playthrough:
@@ -400,7 +400,7 @@ Not player-final. Right-hand ITEMS list:
 - Game path: `res://combat/art/item_icons/{id}.png` on `ItemDef.icon`.
 - Size: **1024×1024** files. File gate: `tools/qa/item_icons_check.gd`. On-screen gate: `tools/qa/item_icon_draw_size_check.gd` (combat slot 144 / res 120). Locker shelves show lore, not combat icons.
 - Draw size: combat ITEMS slot stays **144px** and uses a **120px** copy of the icon. The overworld item wheel uses the **1024×1024** file. Locker shelves show lore items, not these combat icons. Pause no longer draws item icons. Walk-near card stays 64px. Do not re-run the old 48×48 baker (`bake_item_icons.gd`) or `bake_item_icons_256.gd` — those sizes overwrite the 1024 set.
-- Floor pickups never show this picture — shared white pointing hand only. Name / description / icon appear on the walk-near card, the item wheel, and the playtest ITEMS list.
+- Floor pickups never show this picture — shared items_indicator only. Name / description / icon appear on the walk-near card, the item wheel, and the playtest ITEMS list.
 - All **75** live icons are detailed 8-band noir remaps. Stage originals in `tools/combat/ai_icon_src/{id}.png`. Skip `L-A`.
 - Bake-time LimeZu map still lives in `tools/combat/item_icon_sources.json` (CLI folder args only — no machine-absolute paths in gameplay). Family A (C-A…E-A) must **not** reuse the L2 clock.
 

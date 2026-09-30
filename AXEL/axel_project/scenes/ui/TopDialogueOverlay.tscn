@@ -14,6 +14,12 @@ border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.290196, 0, 0, 1)
+anti_aliasing = false
+anti_aliasing_size = 0.0
+corner_detail = 1
+shadow_color = Color(0.04, 0.04, 0.04, 1)
+shadow_size = 2
+shadow_offset = Vector2(-3, 3)
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_beam"]
 blend_mode = 1

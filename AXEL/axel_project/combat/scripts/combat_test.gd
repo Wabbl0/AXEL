@@ -257,6 +257,7 @@ const FALLBACK_CELL_SIZE_MIN := 48.0
 
 var _fallback_grid_width: float = 0.0
 var _spin_busy: bool = false
+var _tutorial_skull_hold := false
 var _piece_goal: CombatHudPiece
 var _piece_items: CombatHudPiece
 var _piece_history: CombatHudPiece
@@ -1717,6 +1718,8 @@ func _release_spin_busy() -> void:
 
 
 func _spin_hotkey_allowed() -> bool:
+	if _tutorial_blocks_spin():
+		return false
 	if _spin_busy or not _can_use_combat_api():
 		return false
 	if _can_use_combat_api() and combat != null and combat.is_encounter_complete() and _is_live_axel_run():
@@ -1753,6 +1756,8 @@ func _on_spin_pressed() -> void:
 
 func _request_spin() -> void:
 	if Engine.is_editor_hint():
+		return
+	if _tutorial_blocks_spin():
 		return
 	var frame := Engine.get_process_frames()
 	if _spin_request_frame == frame:
@@ -2643,7 +2648,78 @@ func _refresh_skull_first_spin_hint() -> void:
 			and state == CombatRoot.State.IDLE
 			and not combat.is_waiting_for_free_spin_choice()
 		)
+	if _tutorial_suppresses_skull():
+		on = false
 	_premium_skull.call("set_first_spin_hint", on)
+
+
+func _tutorial_node() -> Node:
+	return get_node_or_null("/root/AxelTutorial")
+
+
+func _tutorial_blocks_spin() -> bool:
+	var tutorial := _tutorial_node()
+	return tutorial != null and tutorial.has_method("blocks_spin") and bool(tutorial.call("blocks_spin"))
+
+
+func _tutorial_suppresses_skull() -> bool:
+	var tutorial := _tutorial_node()
+	return tutorial != null and tutorial.has_method("suppresses_skull_hint") and bool(tutorial.call("suppresses_skull_hint"))
+
+
+func _sync_tutorial_skull_hint() -> void:
+	var hold := _tutorial_suppresses_skull()
+	if hold == _tutorial_skull_hold:
+		return
+	_tutorial_skull_hold = hold
+	_refresh_skull_first_spin_hint()
+
+
+func _maybe_queue_fight_tutorials() -> void:
+	if not _can_use_combat_api() or combat == null:
+		return
+	if combat.is_encounter_complete() or combat.get_spins_used() != 0:
+		return
+	if combat.get_state() != CombatRoot.State.IDLE:
+		return
+	if combat.is_waiting_for_free_spin_choice():
+		return
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("request"):
+		return
+	tutorial.call("request", "fight_spin")
+	tutorial.call("request", "fight_stakes")
+	if _tutorial_equipped_count() > 0:
+		tutorial.call("request", "fight_items")
+
+
+func _tutorial_equipped_count() -> int:
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not run.has_method("is_in_encounter") or not bool(run.call("is_in_encounter")):
+		return 0
+	return run.state.equipped_item_ids.size()
+
+
+func _push_tutorial_hud_rects() -> void:
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("set_hud_rects"):
+		return
+	if not tutorial.has_method("wants_hud_rects") or not bool(tutorial.call("wants_hud_rects")):
+		return
+	var rects := {}
+	_put_tutorial_piece(rects, "NEW_Execute", _piece_execute)
+	_put_tutorial_piece(rects, "NEW_Grid", _piece_grid)
+	_put_tutorial_piece(rects, "MOVE_Balance", _piece_balance)
+	_put_tutorial_piece(rects, "MOVE_BetStrip", _piece_bet_strip)
+	_put_tutorial_piece(rects, "NEW_Goal", _piece_goal)
+	_put_tutorial_piece(rects, "NEW_Items", _piece_items)
+	tutorial.call("set_hud_rects", rects)
+
+
+func _put_tutorial_piece(rects: Dictionary, piece_name: String, piece: Control) -> void:
+	if piece == null or not is_instance_valid(piece):
+		return
+	rects[piece_name] = piece.get_global_rect()
 
 
 func _sync_premium_bar_color(sections: int, animate: bool = false) -> void:
@@ -4110,6 +4186,10 @@ func _stop_item_desc_fade() -> void:
 
 func _process(_delta: float) -> void:
 	_tick_cascade_multiplier_idle()
+	if not Engine.is_editor_hint():
+		_maybe_queue_fight_tutorials()
+		_push_tutorial_hud_rects()
+		_sync_tutorial_skull_hint()
 	if Engine.is_editor_hint() and not editor_preview_enabled:
 		return
 	if _item_desc_panel == null or not _item_desc_panel.visible:

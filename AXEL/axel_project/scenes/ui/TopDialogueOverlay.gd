@@ -36,6 +36,9 @@ const DESIGN_VIEWPORT_H := 1280.0
 const BASE_FONT_SIZE := 32
 const BASE_OUTLINE_SIZE := 4
 const TEXT_BOOST := 1.5
+const BAR_SHADOW_COLOR := Color(0.04, 0.04, 0.04, 1.0)
+const BAR_SHADOW_SIZE := 2
+const BAR_SHADOW_OFFSET := Vector2(-3.0, 3.0)
 const PLAYER_LINE_COLOR := Color(1, 1, 1, 1)
 const OTHER_SPEAKER_COLOR := Color(1, 0, 0, 1)
 const GREY_SPEAKER_COLOR := Color(0.72, 0.72, 0.72, 1)
@@ -188,6 +191,21 @@ func _apply_dialogue_scale(viewport_size: Vector2) -> void:
 		"outline_size",
 		int(round(float(BASE_OUTLINE_SIZE) * scale_factor))
 	)
+	_apply_bar_shadow(viewport_size)
+
+
+func _apply_bar_shadow(viewport_size: Vector2) -> void:
+	if _panel_style == null:
+		return
+	var window_scale := 1.0
+	if viewport_size.y > 0.0:
+		window_scale = clampf(viewport_size.y / DESIGN_VIEWPORT_H, 0.5, 2.5)
+	_panel_style.anti_aliasing = false
+	_panel_style.anti_aliasing_size = 0.0
+	_panel_style.corner_detail = 1
+	_panel_style.shadow_color = BAR_SHADOW_COLOR
+	_panel_style.shadow_size = maxi(1, int(round(float(BAR_SHADOW_SIZE) * window_scale)))
+	_panel_style.shadow_offset = BAR_SHADOW_OFFSET * window_scale
 
 
 func _measure_bar_height() -> float:

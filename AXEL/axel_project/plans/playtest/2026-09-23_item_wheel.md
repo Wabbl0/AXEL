@@ -13,7 +13,7 @@ Remove item rows from the pause menu. Open a half-circle wheel on Mike with a cl
 - Four ranks, inner to outer: Common, Uncommon, Rare, Epic. The fill is near-black. The Common arc is always drawn. Uncommon, Rare, and Epic arcs appear only after an item of that rank is owned, packed inward so a skipped rank leaves no empty hole. Legendary is not drawn. A pickup can still auto-equip a Legendary, and the cap count includes it.
 - Each drawn arc shows up to 3 owned items. Downward arrows at the lower ends, and the mouse wheel, scroll. The list wraps. Left still scrolls back and right still scrolls forward. Equipped icons are full color. The others are grey. Click toggles equip through `AxelRun.toggle_equip`. Hover grows the icon from 40px to 46px.
 - The `n/cap` label sits above the outermost drawn arc, and only after the player owns at least one item.
-- Hover uses `world_item_info_card.gd` with its top-left just outside the icon’s bottom-right corner, without `[E]`. Floor cards still show `[E]` under the hand.
+- Hover uses `world_item_info_card.gd` with its top-left just outside the icon’s bottom-right corner, without `[E]`. Floor cards still show `[E]` under the items_indicator.
 - The wheel closes on pause or when a fight starts. It is not on the title menu or in combat.
 
 ## Locked choices
@@ -36,7 +36,7 @@ Remove item rows from the pause menu. Open a half-circle wheel on Mike with a cl
 1. Add `item_wheel` to `project.godot`.
 2. Add `scenes/ui/item_wheel.gd`. `AxelWorld` creates it so every overworld scene has it. Layer `109`, above the CRT and under dialogue. The walk-up card stays on top of the arcs.
 3. Draw four upper half-rings over the head. Place up to three icons on each ring. Left arrow scrolls back. Right arrow scrolls forward.
-4. Add `show_screen_item` on the info card for the hover. Floor `show_item` still shows `[E]` under the hand.
+4. Add `show_screen_item` on the info card for the hover. Floor `show_item` still shows `[E]` under the items_indicator.
 5. Delete the pause loadout column, cap label, and equip handlers.
 6. Update `tools/qa/pause_contract_check.gd` so it expects no loadout. Add `tools/qa/item_wheel_check.gd`: 4 bands, a Legendary id is owned but not listed, the cap label is hidden with an empty inventory and visible once an item is owned.
 7. Update the pause and input sentences in `plans/core/AI_DOCS.md`.
@@ -62,4 +62,4 @@ Click Mike, or press Q, R, I, or Tab (when no line is playing). A near-black hal
 
 ## When this ships
 
-One changelog line. Card width, plain descriptions, the hand outline, and the memory color stay separate notes.
+One changelog line. Card width, plain descriptions, the items_indicator outline, and the memory color stay separate notes.
