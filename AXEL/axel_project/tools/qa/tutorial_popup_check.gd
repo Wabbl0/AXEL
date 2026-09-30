@@ -1,6 +1,7 @@
 extends SceneTree
 
 const RunStateScript := preload("res://combat/scripts/run_state.gd")
+const PieceHighlightGlow := preload("res://combat/scripts/piece_highlight_glow.gd")
 
 
 func _init() -> void:
@@ -23,6 +24,7 @@ func _main() -> void:
 	await _check_move_card(tutorial, failures)
 	await _check_spin_card_moves_off_glow(tutorial, failures)
 	await _check_card_stack(tutorial, failures)
+	await _check_highlight_above_noir(failures)
 	_finish(failures)
 
 
@@ -38,7 +40,7 @@ func _check_roundtrip(failures: Array[String]) -> void:
 
 func _check_glow_map(tutorial: Node, failures: Array[String]) -> void:
 	_expect_pieces(tutorial, failures, "fight_spin", ["NEW_Execute", "NEW_Grid"])
-	_expect_pieces(tutorial, failures, "fight_stakes", ["MOVE_Balance", "MOVE_BetStrip", "NEW_Goal"])
+	_expect_pieces(tutorial, failures, "fight_stakes", ["NEW_Bets", "NEW_Goal"])
 	_expect_pieces(tutorial, failures, "fight_items", ["NEW_Items"])
 	var none: PackedStringArray = tutorial.call("glow_piece_names", "move_walk")
 	if not none.is_empty():
@@ -240,7 +242,10 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 		return
 	if host2.visible:
 		failures.append("second card host visible too early")
-	await create_timer(0.7).timeout
+	await create_timer(4.0).timeout
+	if host2.visible:
+		failures.append("second card opened before the 5s stack gap")
+	await create_timer(1.5).timeout
 	if not host2.visible:
 		failures.append("CardHost2 did not open after stack gap")
 		return
@@ -329,6 +334,55 @@ func _body_label(tutorial: Node) -> Label:
 
 func _color_close(a: Color, b: Color) -> bool:
 	return absf(a.r - b.r) < 0.02 and absf(a.g - b.g) < 0.02 and absf(a.b - b.b) < 0.02 and absf(a.a - b.a) < 0.02
+
+
+func _check_highlight_above_noir(failures: Array[String]) -> void:
+	var scene := Control.new()
+	scene.name = "GlowProbeScene"
+	root.add_child(scene)
+	var piece := Control.new()
+	piece.name = "NEW_Execute"
+	piece.position = Vector2(200, 200)
+	piece.size = Vector2(120, 160)
+	scene.add_child(piece)
+	var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	image.fill_rect(Rect2i(8, 8, 16, 16), Color.BLACK)
+	var art := TextureRect.new()
+	art.name = "SkullStage1"
+	art.texture = ImageTexture.create_from_image(image)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.size = Vector2(120, 160)
+	piece.add_child(art)
+	await process_frame
+	PieceHighlightGlow.set_highlight(piece, true)
+	PieceHighlightGlow.pulse_highlights(piece, 0.8)
+	await process_frame
+	await process_frame
+	var glow: TextureRect = PieceHighlightGlow.glow_for(art)
+	if glow == null:
+		failures.append("highlight glow was not made")
+	else:
+		var layer := glow.get_parent().get_parent() as CanvasLayer
+		if layer == null or layer.layer <= 90:
+			failures.append("highlight glow is not above the noir layer")
+		if art.is_ancestor_of(glow):
+			failures.append("highlight glow sits inside the art")
+		if not glow.visible:
+			failures.append("highlight glow is hidden while the art shows")
+		if not glow.get_global_rect().is_equal_approx(art.get_global_rect()):
+			failures.append("highlight glow does not sit on the art: %s vs %s" % [glow.get_global_rect(), art.get_global_rect()])
+		if absf(glow.modulate.a - 0.8) > 0.01:
+			failures.append("highlight glow pulse alpha is %.2f" % glow.modulate.a)
+	if not art.is_visible_in_tree():
+		failures.append("highlighted art went hidden")
+	PieceHighlightGlow.set_highlight(piece, false)
+	await process_frame
+	await process_frame
+	if PieceHighlightGlow.glow_for(art) != null:
+		failures.append("highlight glow stayed after turning off")
+	scene.queue_free()
+	await process_frame
 
 
 func _finish(failures: Array[String]) -> void:

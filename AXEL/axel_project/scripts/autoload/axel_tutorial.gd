@@ -10,7 +10,7 @@ const CARD_W := 520.0
 const CARD_H := 860.0
 const CARD_MARGIN := 36.0
 const STACK_GAP_PX := 16.0
-const STACK_OPEN_GAP_SEC := 0.6
+const STACK_OPEN_GAP_SEC := 5.0
 const REF_H := 1280.0
 const FONT_PX := 32.0
 const OUTLINE_PX := 4.0
@@ -54,7 +54,7 @@ const LESSONS := {
 
 const GLOW_PIECES := {
 	"fight_spin": ["NEW_Execute", "NEW_Grid"],
-	"fight_stakes": ["MOVE_Balance", "MOVE_BetStrip", "NEW_Goal"],
+	"fight_stakes": ["NEW_Bets", "NEW_Goal"],
 	"fight_items": ["NEW_Items"],
 }
 

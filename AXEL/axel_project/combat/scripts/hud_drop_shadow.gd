@@ -153,13 +153,17 @@ func _sync() -> void:
 		visible = false
 		return
 	visible = true
-	var origin := host.get_global_transform().affine_inverse() * xform.origin
+	var host_xform := host.get_global_transform()
+	var origin := host_xform.affine_inverse() * xform.origin
+	var turn := xform.get_rotation() - host_xform.get_rotation()
 	var scale_now := xform.get_scale()
 	var local_size := Vector2(_art.size.x * absf(scale_now.x), _art.size.y * absf(scale_now.y))
 	var screen_soft := float(softness_px(maxf(absf(scale_now.x), 0.01)))
 	var pad := Vector2(screen_soft, screen_soft)
 	var off := _screen_offset
-	_place(origin + off - pad, local_size + pad * 2.0)
+	_place(origin + off - pad.rotated(turn), local_size + pad * 2.0)
+	pivot_offset = Vector2.ZERO
+	rotation = turn
 	texture = _art.texture
 	var mat := material as ShaderMaterial
 	if mat == null:
@@ -167,7 +171,7 @@ func _sync() -> void:
 	mat.set_shader_parameter("art_size_px", local_size)
 	mat.set_shader_parameter("pad_px", pad)
 	mat.set_shader_parameter("blur_px", maxf(pad.x, pad.y))
-	mat.set_shader_parameter("shift_px", off)
+	mat.set_shader_parameter("shift_px", off.rotated(-turn))
 	mat.set_shader_parameter("shadow_color", _color)
 
 
