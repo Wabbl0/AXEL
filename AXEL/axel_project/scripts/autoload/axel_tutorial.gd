@@ -21,8 +21,9 @@ const AUTO_READING_SQRT := 0.5774
 const AUTO_READING_MAX_SEC := 20.0
 const AUTO_SKIP_GRACE_SEC := 2.0
 const GLOW_STEADY := 0.45
-const GLOW_PULSE_SEC := 1.2
-const GLOW_ALPHA_MIN := 0.45
+const GLOW_PULSE_SEC := 1.6
+const GLOW_FADE_OUT_SEC := 0.35
+const GLOW_ALPHA_MIN := 0.0
 const GLOW_ALPHA_MAX := 1.0
 
 const LESSONS := {
@@ -67,6 +68,9 @@ var _hud_rects: Dictionary = {}
 var _reversed_open: AudioStreamWAV
 var _stack_gap_left := 0.0
 var _glow_pieces: Dictionary = {}
+var _glow_on_ms: Dictionary = {}
+var _glow_off: Dictionary = {}
+var _glow_last_alpha: Dictionary = {}
 
 var _card_layer: CanvasLayer
 var _slots: Array = []
@@ -185,6 +189,17 @@ func card_rect() -> Rect2:
 	return _slots[0].card_host.get_global_rect()
 
 
+func claims_point(pos: Vector2) -> bool:
+	for slot in _slots:
+		if slot.phase == Phase.IDLE:
+			continue
+		if slot.exit != null and slot.exit.visible and slot.exit.get_global_rect().has_point(pos):
+			return true
+		if slot.card_host != null and slot.card_host.visible and slot.card_host.get_global_rect().has_point(pos):
+			return true
+	return false
+
+
 func debug_dismiss() -> void:
 	_dismiss_one_card()
 
@@ -231,6 +246,8 @@ func _mark_seen(id: String) -> void:
 
 
 func _process(delta: float) -> void:
+	if _focus_frozen():
+		return
 	if _stack_gap_left > 0.0:
 		_stack_gap_left = maxf(0.0, _stack_gap_left - delta)
 	for slot in _slots:
@@ -560,19 +577,19 @@ func _open_fight_glow_names() -> Dictionary:
 
 func _sync_glows() -> void:
 	var wanted := _open_fight_glow_names()
-	if wanted.is_empty():
+	if wanted.is_empty() and _glow_on_ms.is_empty() and _glow_off.is_empty():
 		_hide_glows()
 		return
 	var scene := get_tree().current_scene
 	if scene == null:
 		_hide_glows()
 		return
+	var now := Time.get_ticks_msec()
 	var all_names: Dictionary = {}
 	for lesson_id in GLOW_PIECES.keys():
 		for piece_name in GLOW_PIECES[lesson_id]:
 			all_names[String(piece_name)] = true
 	for piece_name in all_names.keys():
-		var on := wanted.has(piece_name)
 		var piece: Control = null
 		if _glow_pieces.has(piece_name) and is_instance_valid(_glow_pieces[piece_name]):
 			piece = _glow_pieces[piece_name] as Control
@@ -582,27 +599,43 @@ func _sync_glows() -> void:
 				_glow_pieces[piece_name] = piece
 		if piece == null:
 			continue
-		PieceHighlightGlow.set_highlight(piece, on)
-	var alpha := _glow_alpha()
-	for piece_name in wanted.keys():
-		if not _glow_pieces.has(piece_name):
+		if wanted.has(piece_name):
+			_glow_off.erase(piece_name)
+			if not _glow_on_ms.has(piece_name):
+				_glow_on_ms[piece_name] = now
+			PieceHighlightGlow.set_highlight(piece, true)
+			var alpha := _glow_alpha(float(now - int(_glow_on_ms[piece_name])) * 0.001)
+			_glow_last_alpha[piece_name] = alpha
+			PieceHighlightGlow.pulse_highlights(piece, alpha)
 			continue
-		var piece: Control = _glow_pieces[piece_name] as Control
-		if piece == null or not is_instance_valid(piece):
-			continue
-		PieceHighlightGlow.pulse_highlights(piece, alpha)
+		if _glow_on_ms.has(piece_name):
+			_glow_on_ms.erase(piece_name)
+			_glow_off[piece_name] = now
+		if _glow_off.has(piece_name):
+			var t := float(now - int(_glow_off[piece_name])) * 0.001 / GLOW_FADE_OUT_SEC
+			if t < 1.0:
+				var from := float(_glow_last_alpha.get(piece_name, GLOW_ALPHA_MAX))
+				PieceHighlightGlow.pulse_highlights(piece, from * (1.0 - t))
+				continue
+			_glow_off.erase(piece_name)
+			_glow_last_alpha.erase(piece_name)
+		PieceHighlightGlow.set_highlight(piece, false)
 
 
-func _glow_alpha() -> float:
+func _glow_alpha(elapsed_sec: float) -> float:
 	var settings := get_node_or_null("/root/AxelSettings")
 	var steady := false
 	if settings != null and settings.has_method("get_value"):
 		steady = bool(settings.call("get_value", "access", "reduce_flashing", false))
 	if steady:
 		return GLOW_STEADY
-	var t := float(Time.get_ticks_msec()) * 0.001
-	var wave := 0.5 + 0.5 * sin(t * TAU / GLOW_PULSE_SEC)
+	var wave := 0.5 - 0.5 * cos(elapsed_sec * TAU / GLOW_PULSE_SEC)
 	return lerpf(GLOW_ALPHA_MIN, GLOW_ALPHA_MAX, wave)
+
+
+func _focus_frozen() -> bool:
+	var pause := get_node_or_null("/root/AxelPause")
+	return pause != null and pause.has_method("is_focus_frozen") and bool(pause.call("is_focus_frozen"))
 
 
 func _measured_height(slot: CardSlot, scale: float, host_w: float) -> float:
@@ -638,6 +671,9 @@ func _hide_glows() -> void:
 			continue
 		PieceHighlightGlow.set_highlight(piece, false)
 	_glow_pieces.clear()
+	_glow_on_ms.clear()
+	_glow_off.clear()
+	_glow_last_alpha.clear()
 
 
 func _build() -> void:

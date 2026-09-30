@@ -56,6 +56,15 @@ func play_waves_linger(origin: Vector2, counts: Array) -> void:
 			await CombatPace.await_seconds(GAP)
 
 
+func await_done() -> void:
+	var guard := 0
+	while not _items.is_empty() and guard < 120:
+		guard += 1
+		if get_tree() == null:
+			return
+		await CombatPace.await_seconds(0.05)
+
+
 func _spawn_wave(origin: Vector2, count: int, linger: bool) -> void:
 	_ensure_frames()
 	if _parent == null or _frames.is_empty():

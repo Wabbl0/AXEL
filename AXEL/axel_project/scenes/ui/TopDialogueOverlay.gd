@@ -266,11 +266,25 @@ func _is_advance_event(event: InputEvent) -> bool:
 		return true
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
-		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+		if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+			return false
+		return not _tutorial_claims(mouse_event.position)
 	if event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
-		return touch_event.pressed
+		return touch_event.pressed and not _tutorial_claims(touch_event.position)
 	return false
+
+
+func _tutorial_claims(pos: Vector2) -> bool:
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	return tutorial != null and tutorial.has_method("claims_point") and bool(tutorial.call("claims_point", pos))
+
+
+func _now_ms() -> int:
+	var pause := get_node_or_null("/root/AxelPause")
+	if pause != null and pause.has_method("game_msec"):
+		return int(pause.call("game_msec"))
+	return Time.get_ticks_msec()
 
 
 func _handle_line_input() -> bool:
@@ -305,7 +319,7 @@ func _reading_duration_sec(text: String) -> float:
 
 func _compute_advance_deadline_ms() -> int:
 	if _skip_requested:
-		return Time.get_ticks_msec() + int(AUTO_ADVANCE_SKIP_GRACE_SEC * 1000.0)
+		return _now_ms() + int(AUTO_ADVANCE_SKIP_GRACE_SEC * 1000.0)
 	return _active_line_start_ms + int(_reading_duration_sec(_active_line_text) * 1000.0)
 
 
@@ -317,7 +331,7 @@ func _wait_for_advance(token: int, deadline_ms: int) -> void:
 	_advance_requested = false
 	var use_deadline := _auto_advance_enabled()
 	while _line_alive(token) and not _advance_requested:
-		if use_deadline and Time.get_ticks_msec() >= deadline_ms:
+		if use_deadline and _now_ms() >= deadline_ms:
 			break
 		if not await _await_process_frame():
 			break
@@ -325,8 +339,8 @@ func _wait_for_advance(token: int, deadline_ms: int) -> void:
 
 
 func _await_or_skip(duration_sec: float, allow_skip: bool) -> bool:
-	var end_ms := Time.get_ticks_msec() + int(duration_sec * 1000.0)
-	while Time.get_ticks_msec() < end_ms:
+	var end_ms := _now_ms() + int(duration_sec * 1000.0)
+	while _now_ms() < end_ms:
 		if allow_skip and _skip_requested:
 			return true
 		if not await _await_process_frame():
@@ -351,7 +365,7 @@ func _apply_chrome() -> void:
 func _compose(visible_text: String) -> String:
 	if not fx_cursor:
 		return visible_text
-	var on := int(Time.get_ticks_msec() / 500.0) % 2 == 0
+	var on := int(_now_ms() / 500.0) % 2 == 0
 	return visible_text + (CURSOR_GLYPH if on else " ")
 
 
@@ -552,8 +566,8 @@ func _stop_border_pulse() -> void:
 
 
 func _scramble_glitch(length: int) -> void:
-	var end_ms := Time.get_ticks_msec() + int(GLITCH_SEC * 1000.0)
-	while Time.get_ticks_msec() < end_ms:
+	var end_ms := _now_ms() + int(GLITCH_SEC * 1000.0)
+	while _now_ms() < end_ms:
 		if not is_instance_valid(_label):
 			return
 		var scrambled := ""
@@ -871,7 +885,7 @@ func _run_typewriter(
 	_skip_requested = false
 	if display_text.is_empty() and segments.is_empty():
 
-		_active_line_start_ms = Time.get_ticks_msec()
+		_active_line_start_ms = _now_ms()
 		_line_phase = LinePhase.READY
 		_pause_type_loop()
 		return
@@ -897,8 +911,8 @@ func _run_typewriter(
 		if str(segment.get("kind", "")) == "beat":
 			_pause_type_loop()
 			var beat_sec: float = float(segment.get("sec", 0.0))
-			var end_ms := Time.get_ticks_msec() + int(beat_sec * 1000.0)
-			while Time.get_ticks_msec() < end_ms:
+			var end_ms := _now_ms() + int(beat_sec * 1000.0)
+			while _now_ms() < end_ms:
 				if token >= 0 and not _line_alive(token):
 					_stop_border_pulse()
 					_pause_type_loop()
@@ -960,7 +974,7 @@ func _run_typewriter(
 	_label.text = display_text
 	_stop_border_pulse()
 
-	_active_line_start_ms = Time.get_ticks_msec()
+	_active_line_start_ms = _now_ms()
 	_line_phase = LinePhase.READY
 
 
@@ -974,7 +988,7 @@ func await_text_entry() -> Dictionary:
 	_entry_done = false
 	_entry_cancelled = false
 	_entry_text = ""
-	_entry_blink_origin_ms = Time.get_ticks_msec()
+	_entry_blink_origin_ms = _now_ms()
 	_line_phase = LinePhase.NONE
 	_skip_input_enabled = false
 	_advance_requested = false
@@ -1009,7 +1023,7 @@ func _handle_text_entry(event: InputEvent) -> void:
 	if not _entry_armed:
 		if _is_entry_box_press(event):
 			_entry_armed = true
-			_entry_blink_origin_ms = Time.get_ticks_msec()
+			_entry_blink_origin_ms = _now_ms()
 			_place_entry_caret()
 			return
 		if _is_entry_delete(event):
@@ -1144,7 +1158,7 @@ func _place_entry_caret() -> void:
 	_caret.global_position = Vector2(caret_x, caret_y)
 	_caret.size = Vector2(caret_w, caret_h)
 	_caret.color = OTHER_SPEAKER_COLOR if _entry_armed else PLAYER_LINE_COLOR
-	var elapsed := Time.get_ticks_msec() - _entry_blink_origin_ms
+	var elapsed := _now_ms() - _entry_blink_origin_ms
 	@warning_ignore("integer_division")
 	_caret.visible = int(elapsed / ENTRY_CARET_BLINK_MS) % 2 == 0
 

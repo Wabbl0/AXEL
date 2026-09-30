@@ -4,7 +4,7 @@ const MENU_SCENE_PATH := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
 const MENU_STEM: AudioStream = preload("res://assets/audio/music/B_Goes_Down_p2.ogg")
 const OVERWORLD_STEM: AudioStream = preload("res://assets/audio/music/B_Goes_Down_p1.ogg")
 const DRUMS1_STEM: AudioStream = preload("res://assets/audio/music/B_Goes_Down_Drums_p1.wav")
-const DRUMS2_STEM: AudioStream = preload("res://assets/audio/music/B_Goes_Down_Drums_p2.wav")
+const DRUMS2_STEM: AudioStream = preload("res://assets/audio/music/B_Goes_Down_Drums_p2_fixed.wav")
 
 const MENU_INDEX := 0
 const OVERWORLD_INDEX := 1
@@ -17,6 +17,7 @@ const FULL_VOLUME_DB := 0.0
 const MENU_FADE_IN_SEC := 10.0
 const NEW_GAME_CROSSFADE_SEC := 10.0
 const DRUM_FADE_IN_SEC := 0.35
+const VICE_DRUM_FADE_IN_SEC := 1.0
 const VICE_DRUM_FADE_SEC := 0.5
 
 enum MusicState {
@@ -85,11 +86,17 @@ func to_combat() -> void:
 	_begin_combat_entry()
 
 
+func set_frozen(frozen: bool) -> void:
+	if _player == null:
+		return
+	_player.stream_paused = frozen
+
+
 func notify_trinity() -> void:
 	if not _music_enabled or _state != MusicState.COMBAT:
 		return
 	_drums2_up = true
-	_fade_drums2(FULL_VOLUME_DB, DRUM_FADE_IN_SEC)
+	_fade_drums2(FULL_VOLUME_DB, VICE_DRUM_FADE_IN_SEC)
 
 
 func notify_trinity_ended(keep_for_free_spins: bool) -> void:
@@ -372,15 +379,4 @@ static func _make_looped_wav(stream: AudioStreamWAV) -> AudioStreamWAV:
 
 
 static func _wav_frame_count(stream: AudioStreamWAV) -> int:
-	var channels: int = 2 if stream.stereo else 1
-	var bytes_per_sample: int = 2
-	match stream.format:
-		AudioStreamWAV.FORMAT_8_BITS:
-			bytes_per_sample = 1
-		AudioStreamWAV.FORMAT_16_BITS:
-			bytes_per_sample = 2
-		_:
-			bytes_per_sample = 2
-
-	var bytes_per_frame: int = max(1, channels * bytes_per_sample)
-	return int(floor(float(stream.data.size()) / float(bytes_per_frame)))
+	return int(round(stream.get_length() * float(stream.mix_rate)))

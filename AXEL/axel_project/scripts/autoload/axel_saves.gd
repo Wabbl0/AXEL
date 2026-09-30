@@ -46,6 +46,11 @@ func _ready() -> void:
 		tree.scene_changed.connect(_on_scene_changed)
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_active() and not _play_scene_session:
+		save_active_now()
+
+
 func _process(delta: float) -> void:
 	if not is_active():
 		return

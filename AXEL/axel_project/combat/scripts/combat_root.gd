@@ -1433,6 +1433,12 @@ func _play_goal_win_burst() -> void:
 	burst.bind(host)
 	var rect := grid_ui.get_global_rect()
 	await burst.play_waves(rect.position + rect.size * 0.5, [8, 16, 32])
+	if is_instance_valid(burst):
+		await burst.await_done()
+	if is_instance_valid(burst):
+		burst.queue_free()
+	if is_instance_valid(layer):
+		layer.queue_free()
 	if tree != null:
 		await _pause_visual(0.25)
 

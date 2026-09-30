@@ -6,10 +6,74 @@ const _MENU_SCENE_PREFIX := "res://scenes/Main_Menu/"
 const _PauseMenuScript := preload("res://scenes/ui/pause_menu.gd")
 
 var _menu: CanvasLayer
+var _focus_frozen := false
+var _freeze_paused_tree := false
+var _freeze_master_was_muted := false
+var _freeze_start_ms := 0
+var _frozen_total_ms := 0
 
 
 func _enter_tree() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+func _notification(what: int) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_focus_freeze()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_focus_thaw()
+
+
+func is_focus_frozen() -> bool:
+	return _focus_frozen
+
+
+func game_msec() -> int:
+	var now := Time.get_ticks_msec()
+	var frozen := _frozen_total_ms
+	if _focus_frozen:
+		frozen += now - _freeze_start_ms
+	return now - frozen
+
+
+func _focus_freeze() -> void:
+	if _focus_frozen:
+		return
+	_focus_frozen = true
+	_freeze_start_ms = Time.get_ticks_msec()
+	var tree := get_tree()
+	_freeze_paused_tree = tree != null and not tree.paused
+	if _freeze_paused_tree:
+		tree.paused = true
+	var master := AudioServer.get_bus_index(&"Master")
+	if master >= 0:
+		_freeze_master_was_muted = AudioServer.is_bus_mute(master)
+		AudioServer.set_bus_mute(master, true)
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("set_frozen"):
+		music.call("set_frozen", true)
+	var saves := get_node_or_null("/root/AxelSaves")
+	if saves != null and saves.has_method("save_active"):
+		saves.call("save_active")
+
+
+func _focus_thaw() -> void:
+	if not _focus_frozen:
+		return
+	_frozen_total_ms += Time.get_ticks_msec() - _freeze_start_ms
+	_focus_frozen = false
+	var tree := get_tree()
+	if _freeze_paused_tree and tree != null:
+		tree.paused = false
+	_freeze_paused_tree = false
+	var master := AudioServer.get_bus_index(&"Master")
+	if master >= 0:
+		AudioServer.set_bus_mute(master, _freeze_master_was_muted)
+	var music := get_node_or_null("/root/AxelMusic")
+	if music != null and music.has_method("set_frozen"):
+		music.call("set_frozen", false)
 
 
 func _ready() -> void:
@@ -27,7 +91,7 @@ func is_paused() -> bool:
 
 
 func request_pause() -> bool:
-	if get_tree().paused:
+	if get_tree().paused or _focus_frozen:
 		return false
 	if not _can_pause_here():
 		return false
