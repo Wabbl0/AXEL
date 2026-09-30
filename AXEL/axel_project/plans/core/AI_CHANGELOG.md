@@ -8463,3 +8463,11 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Verification: Compared Entrance gate to `axel_world.gd` `map_can_travel`. Compared 1.4 right exit and hint to `1.4_BasementDoor.gd` (`CafeteriaExitTrigger`, `basement_right_hint_done`). Compared skull shadow and SFX cue names to `AI_DOCS.md` vs `hud_drop_shadow.gd` / `axel_sfx.gd`. Compared drum fade to `axel_music.gd` (0.35s).
 
 
+
+## 2026-09-30
+
+### Changelog retired: history now lives in git commits
+
+- Why: Cursor usage limits ran out, so work on AXEL moved from Cursor to Claude Code. Writing long changelog entries costs a lot of usage, so this file stops growing here.
+- From now on: git commit messages are the record of what changed and why. Read `git log` (and each commit's diff) for anything after this entry.
+- This file stays as the archive of decisions up to 2026-09-30. Canon rules still live in `AI_DOCS.md`, which keeps being updated when behavior changes.

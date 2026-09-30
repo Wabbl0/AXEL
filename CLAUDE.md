@@ -10,7 +10,7 @@ The Godot project is in `AXEL/axel_project` (`project.godot`). Main scene: `res:
 2. Then open the matching plan:
    - Rooms, player, spawn, hitboxes, cover-fit: `plans/scenes/SCENE_BUILDING.md`
    - Combat: the combat plans, only when I say the task is combat-related
-   - "What did we decide lately?": the tail of `plans/core/AI_CHANGELOG.md`
+   - "What did we decide lately?": `git log`. The tail of `plans/core/AI_CHANGELOG.md` only for decisions before 2026-09-30.
    - Anything else in `plans/**/*.md` only when clearly relevant. Skip `plans/archive/`.
 3. Ask before large or ambiguous changes. If my request breaks an established rule, remind me. If I confirm, the new request may become canon.
 
@@ -69,7 +69,7 @@ The Godot project is in `AXEL/axel_project` (`project.godot`). Main scene: `res:
 
 ## Big files. Do not read them whole.
 
-- `plans/core/AI_CHANGELOG.md` is about 800 KB. Read only the tail.
+- `plans/core/AI_CHANGELOG.md` is about 800 KB and retired (no new entries after 2026-09-30). Read only the tail, and only for older history.
 - `combat_test.gd` (~175 KB), `combat_root.gd` (~100 KB), `axel_world.gd` (~55 KB): search for what you need and read only that part.
 - Ignore `exports/*` (except `GameManager.gd`) and the archived HTML prototype unless I say otherwise.
 
@@ -98,5 +98,5 @@ Notes:
 
 - For big or risky work, plan first and wait for my approval before editing.
 - For small single-issue fixes, one plan file in `plans/playtest/` is enough. Implement it, then run the checks.
-- When I say "update docs", append a dated `## YYYY-MM-DD` entry to `AI_CHANGELOG.md`. It is append-only.
-- Git commits are the main history.
+- When I say "update docs", update `AI_DOCS.md` and the matching plans. Do not add entries to `AI_CHANGELOG.md`; it is retired.
+- Git commits are the change history. Write clear commit messages: what changed and why.
