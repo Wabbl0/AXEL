@@ -59,7 +59,7 @@ func _run(scene: Node) -> void:
 		_expect(name, "position", got.position, Vector2(want[0], want[1]), POS_TOLERANCE)
 		_expect(name, "size", got.size, Vector2(want[2], want[3]), SIZE_TOLERANCE)
 		_check_native_art_size(piece, name)
-		_check_piece_shadow(piece, name)
+		await _check_piece_shadow(piece, name)
 
 	_check_pause_gear(scene)
 	_check_on_plate(canvas)
@@ -119,10 +119,11 @@ func _check_piece_shadow(piece: Control, name: String) -> void:
 		_fail("%s drop shadow color is missing" % name)
 		return
 	var shadow_color := col as Color
+	var want_rgb := 0.04 if name == "NEW_Execute" else 0.15
 	if (
-		absf(shadow_color.r - 0.15) > 0.04
-		or absf(shadow_color.g - 0.15) > 0.04
-		or absf(shadow_color.b - 0.15) > 0.04
+		absf(shadow_color.r - want_rgb) > 0.04
+		or absf(shadow_color.g - want_rgb) > 0.04
+		or absf(shadow_color.b - want_rgb) > 0.04
 		or shadow_color.a < 0.9
 	):
 		_fail("%s drop shadow color is %s" % [name, shadow_color])
@@ -136,10 +137,31 @@ func _check_piece_shadow(piece: Control, name: String) -> void:
 	var art_rect := _plate_rect(picture)
 	var shadow_rect := _plate_rect(shadow)
 	if name == "NEW_Execute":
+		# Skull shadow sits slightly left and below (~4px / ~5px), not far like 16/18.
 		if shadow_rect.position.x > art_rect.position.x - 0.5 or shadow_rect.end.y < art_rect.end.y + 0.5:
 			_fail("%s skull shadow is not lower-left (%s vs %s)" % [name, shadow_rect, art_rect])
+		await _check_skull_shadow_follows(piece, shadow)
 	elif shadow_rect.end.x < art_rect.end.x + 0.5 or shadow_rect.end.y < art_rect.end.y + 0.5:
 		_fail("%s drop shadow does not sit down-right (%s vs %s)" % [name, shadow_rect, art_rect])
+
+
+func _check_skull_shadow_follows(piece: Control, shadow: Control) -> void:
+	var skull := piece.find_child("PremiumSkull", true, false) as Control
+	if skull == null:
+		_fail("NEW_Execute PremiumSkull missing for shadow follow check")
+		return
+	var before_shadow := shadow.global_position
+	var before_skull := skull.global_position
+	var saved := skull.position
+	skull.position = saved + Vector2(20.0, 0.0)
+	await process_frame
+	var skull_dx := skull.global_position.x - before_skull.x
+	var shadow_dx := shadow.global_position.x - before_shadow.x
+	# Local +20 becomes ~10 screen px under HudCanvas scale; shadow must match that delta.
+	if absf(shadow_dx - skull_dx) > 2.0:
+		_fail("NEW_Execute skull shadow did not follow move (shadow dx=%s, skull dx=%s)" % [shadow_dx, skull_dx])
+	skull.position = saved
+	await process_frame
 
 
 func _picture_node(piece: Control) -> Control:

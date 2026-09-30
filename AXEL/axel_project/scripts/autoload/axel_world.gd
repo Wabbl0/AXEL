@@ -239,12 +239,16 @@ func placed_floor_items(scene_path: String) -> Array:
 
 
 func map_can_travel(scene_path: String) -> bool:
+	const ENTRANCE_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
+	const BASEMENT_DOOR_SCENE := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 	if scene_path.is_empty():
 		return false
 	var gm := get_node_or_null("/root/GameManager")
 	if gm == null or not gm.has_method("has_visited"):
 		return false
 	if not bool(gm.call("has_visited", scene_path)):
+		return false
+	if scene_path == ENTRANCE_SCENE and not bool(gm.call("has_visited", BASEMENT_DOOR_SCENE)):
 		return false
 	if floor_slot_count(scene_path) <= 0:
 		return true

@@ -34,6 +34,9 @@ func request_pause() -> bool:
 	get_tree().paused = true
 	if _menu != null and _menu.has_method("show_menu"):
 		_menu.call("show_menu")
+	var sfx := get_node_or_null("/root/AxelSfx")
+	if sfx != null and sfx.has_method("play_pause_open"):
+		sfx.call("play_pause_open")
 	pause_state_changed.emit(true)
 	return true
 

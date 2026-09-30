@@ -25,7 +25,8 @@ const FLAME_CROWN_ARC := 0.22
 const FLAME_CROWN_POS := Vector2(40.0, -46.0)
 const FLAME_CROWN_SIZE := Vector2(612.0, 240.0)
 const PUNCH_BLACK := 0.08
-const SKULL_SHADOW_OFFSET := Vector2(-16.0, 18.0)
+const SKULL_SHADOW_OFFSET := Vector2(-4.0, 5.0)
+const SKULL_SHADOW_COLOR := Color(0.04, 0.04, 0.04, 1.0)
 
 @onready var _glow: TextureRect = $Glow
 @onready var _stage1: TextureRect = $SkullStage1
@@ -79,6 +80,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_advance_flame_crown(delta)
+	_push_shadow_live()
 	if _pressing:
 		return
 	var t := float(Time.get_ticks_msec()) * 0.001
@@ -309,10 +311,12 @@ func _ensure_drop_shadow() -> void:
 			_drop_shadow = made
 	elif _drop_shadow.has_method("set_art"):
 		_drop_shadow.set_art(stage)
+	if _drop_shadow != null and is_instance_valid(_drop_shadow) and _drop_shadow.has_method("set_color"):
+		_drop_shadow.call("set_color", SKULL_SHADOW_COLOR)
 	if _motion_locks == 0:
 		_rest_position = position
 		_rest_scale = scale
-	_push_shadow_rest()
+	_push_shadow_live()
 
 
 func _remember_rest() -> void:
@@ -320,25 +324,16 @@ func _remember_rest() -> void:
 		return
 	_rest_position = position
 	_rest_scale = scale
-	_push_shadow_rest()
+	_push_shadow_live()
 
 
-func _push_shadow_rest() -> void:
+func _push_shadow_live() -> void:
 	var stage := _visible_stage()
 	if stage == null or _drop_shadow == null or not is_instance_valid(_drop_shadow):
 		return
 	if not _drop_shadow.has_method("set_locked_global"):
 		return
-	var saved_pos := position
-	var saved_scale := scale
-	var saved_rot := rotation
-	position = _rest_position
-	scale = _rest_scale
-	rotation = 0.0
 	var xform := stage.get_global_transform()
-	position = saved_pos
-	scale = saved_scale
-	rotation = saved_rot
 	_drop_shadow.call("set_locked_global", xform, SKULL_SHADOW_OFFSET)
 
 

@@ -116,6 +116,7 @@ var _state: State = State.IDLE
 var _weights: Dictionary = {}
 var _base_weights: Dictionary = {}
 var _spins_used: int = 0
+var _bets_used_cents: int = 0
 var _lifetime_spins_used: int = 0
 var _current_seed: int = 0
 var _encounter_complete: bool = false
@@ -149,6 +150,7 @@ var _grid_height_cached: float = 0.0
 var _grid_flash_tween: Tween
 var _grid_border_tween: Tween
 var _power_intro_tween: Tween
+var _round_winnings_glow_tween: Tween
 var _last_spin_summary: Dictionary = {}
 var _default_grid_border_color: Color = Color(0.78, 0.03, 0.03, 0.95)
 var _power_symbol_by_id: Dictionary = {}
@@ -170,6 +172,7 @@ var _dev_skip_visuals: bool = false
 var _goal_burst_playing: bool = false
 var _power_fx_log: Array = []
 var _power_fx_depth: int = 0
+var _power_sfx_emitted: bool = false
 
 func _ready() -> void:
 	add_to_group("combat_root")
@@ -425,6 +428,7 @@ func debug_skip_current_loop() -> void:
 	_kill_tween(_grid_flash_tween)
 	_kill_tween(_grid_border_tween)
 	_kill_tween(_power_intro_tween)
+	_kill_tween(_round_winnings_glow_tween)
 
 func get_item_payout_scalar() -> float:
 	return _get_item_payout_scalar()
@@ -471,6 +475,9 @@ func get_meter_sections_filled() -> int:
 
 func get_spins_used() -> int:
 	return _spins_used
+
+func get_bets_used() -> int:
+	return _bets_used_cents
 
 func get_lifetime_spins_used() -> int:
 	return _lifetime_spins_used
@@ -537,6 +544,7 @@ func setup_new_grid(seed_value: int) -> void:
 	meter.reset()
 	free_spins.reset()
 	_spins_used = 0
+	_bets_used_cents = 0
 	_encounter_complete = false
 	_encounter_won = false
 	_state = State.IDLE
@@ -635,7 +643,7 @@ func spin() -> void:
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED and _state != State.FREE_SPINS_CHOOSE:
 		_state = State.IDLE
-	if _round_winnings_cents > 0:
+	if int(spin_summary.get("payout", 0)) > 0:
 		_play_round_winnings_win_glow()
 	_refresh_multiplier_label()
 	_last_spin_summary = spin_summary.duplicate(true)
@@ -697,7 +705,7 @@ func spin_sync() -> void:
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED and _state != State.FREE_SPINS_CHOOSE:
 		_state = State.IDLE
-	if _round_winnings_cents > 0:
+	if int(spin_summary.get("payout", 0)) > 0:
 		_play_round_winnings_win_glow()
 	_last_spin_summary = spin_summary.duplicate(true)
 	_dev_skip_visuals = false
@@ -792,6 +800,7 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	meter.reset()
 	free_spins.reset()
 	_spins_used = 0
+	_bets_used_cents = 0
 	_encounter_complete = false
 	_encounter_won = false
 	_state = State.IDLE
@@ -1237,7 +1246,27 @@ func _hide_encounter_won_banner() -> void:
 	return
 
 func _play_round_winnings_win_glow() -> void:
-	pass
+	sfx_requested.emit(&"round_winnings")
+	if _dev_skip_visuals:
+		return
+	if _winnings_popup_target == null or not is_instance_valid(_winnings_popup_target):
+		return
+	var label := _winnings_popup_target as Control
+	if label == null:
+		return
+	if _round_winnings_glow_tween != null and _round_winnings_glow_tween.is_valid():
+		_round_winnings_glow_tween.kill()
+	label.pivot_offset = label.size * 0.5
+	label.scale = Vector2.ONE
+	label.modulate = Color.WHITE
+	_round_winnings_glow_tween = CombatPace.bind(create_tween())
+	_round_winnings_glow_tween.set_parallel(true)
+	_round_winnings_glow_tween.tween_property(label, "scale", Vector2(1.14, 1.14), 0.12)
+	_round_winnings_glow_tween.tween_property(label, "modulate", Color(1.55, 1.55, 1.55), 0.12)
+	_round_winnings_glow_tween.chain()
+	_round_winnings_glow_tween.set_parallel(true)
+	_round_winnings_glow_tween.tween_property(label, "scale", Vector2.ONE, 0.16)
+	_round_winnings_glow_tween.tween_property(label, "modulate", Color.WHITE, 0.16)
 
 func _hide_round_winnings_overlay(_immediate: bool = false) -> void:
 	pass
@@ -1351,6 +1380,24 @@ func play_goal_win_burst() -> void:
 func _play_goal_win_burst() -> void:
 	if _dev_skip_visuals or grid_ui == null:
 		return
+	if not _power_reduce_flashing():
+		var any_eaten := false
+		for child in grid_ui.get_children():
+			if not child.has_method("play_power_act") or not child.has_method("icon_texture"):
+				continue
+			var tex: Texture2D = child.call("icon_texture") as Texture2D
+			if tex == null:
+				continue
+			var is_win_skull := tex == WIN_SKULL or (
+				not String(tex.resource_path).is_empty()
+				and tex.resource_path == WIN_SKULL.resource_path
+			)
+			if is_win_skull:
+				continue
+			child.call("play_power_act", &"eat", tex, WIN_SKULL, 0.48, false)
+			any_eaten = true
+		if any_eaten:
+			await _pause_visual(0.48)
 	for child in grid_ui.get_children():
 		if child.has_method("show_win_skull"):
 			child.call("show_win_skull", WIN_SKULL)
@@ -1553,6 +1600,7 @@ func _start_spin_with_new_grid() -> void:
 	_item_fx.reset_spin()
 	_refresh_spin_weights()
 	var used_before := _spins_used
+	var bankroll_before := _bankroll_cents
 	var r1_free: bool = _item_fx.first_paid_spin_free(inventory.items) and used_before == 0
 	if not r1_free:
 		_bankroll_cents -= _to_cents(total_bet)
@@ -1562,6 +1610,7 @@ func _start_spin_with_new_grid() -> void:
 			_clamp_bankroll()
 			_item_fx.note_effect(inventory.items, &"first_paid_spin_refund")
 			_flush_item_procs()
+	_bets_used_cents += maxi(bankroll_before - _bankroll_cents, 0)
 	_item_fx.note_paid_spin_passives(inventory.items)
 	_flush_item_procs()
 
@@ -1589,6 +1638,7 @@ func _begin_spin_round() -> void:
 		_item_fx.roll_glyphs(inventory.items, rng)
 		_flush_item_procs()
 		emit_signal("spin_started", _current_seed)
+		sfx_requested.emit(&"spin")
 		emit_signal("readouts_progressed")
 		return
 	_clear_free_spin_open()
@@ -2092,6 +2142,8 @@ func _play_power_intro_flash_async(power_id: StringName) -> void:
 		return
 	if not enable_power_intro_fx or power_intro_layer == null or power_intro_icon == null:
 		return
+	sfx_requested.emit(&"power")
+	_power_sfx_emitted = true
 	var sym := _power_symbol_by_id.get(power_id, null) as SymbolDef
 	var intro_texture: Texture2D = sym.texture_for_power_intro() if sym != null else null
 	var display_text := _power_display_name_for(power_id, sym)
@@ -2484,9 +2536,13 @@ func _close_power_fx_log() -> void:
 
 func _play_power_act_fx(fx_log: Array) -> void:
 	if _dev_skip_visuals or not enable_symbol_fx:
+		_power_sfx_emitted = false
 		_refresh_cells_visual()
 		await _pause_visual(pause_after_power_sec)
 		return
+	if not _power_sfx_emitted:
+		sfx_requested.emit(&"power")
+	_power_sfx_emitted = false
 	var events := _collapse_power_fx(fx_log)
 	if events.is_empty():
 		_refresh_cells_visual()

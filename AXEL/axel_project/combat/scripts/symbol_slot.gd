@@ -86,6 +86,11 @@ func has_visible_symbol() -> bool:
 	return _icon.texture != null
 
 
+func icon_texture() -> Texture2D:
+	_ensure_icon()
+	return _icon.texture
+
+
 func play_fall_off(distance_px: float, duration: float, delay: float = 0.0) -> void:
 	_clear_power_fx()
 	_ensure_icon()

@@ -21,7 +21,7 @@ Prefer the **live project tree** when this file and disk disagree — update thi
   - `fx/` — noir/scanline/CRT overlays, memory indicator, glitch/pulse, 1.2 `DirectionHint`
   - `world/` — floor-item pickup + items_indicator (`ItemMarker.tscn`)
 - `scripts/`
-  - `autoload/` — `AxelPostFxStack`, `AxelEventFx`, `AxelMusic`, `AxelSettings`, `AxelPause`, `AxelSaves`, `AxelRun`, `AxelWorld`
+  - `autoload/` — `AxelPostFxStack`, `AxelEventFx`, `AxelMusic`, `AxelSfx`, `AxelSettings`, `AxelPause`, `AxelSaves`, `AxelRun`, `AxelWorld`, `AxelTutorial`
   - `debug/` — `AxelCombatDevTools` (editor/debug-only combat menu; open from Settings → DEV TOOLS)
   - `Player.gd` (and related gameplay scripts as they land under `gameplay/` / `ui/` / `debug/`)
 - `combat/` — self-contained combat subsystem (`scripts/`, `scenes/`, `art/`, `data/`, `test/`, …)

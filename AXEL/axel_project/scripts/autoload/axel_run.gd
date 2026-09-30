@@ -445,6 +445,10 @@ func _return_to_world_room() -> void:
 	var world := get_node_or_null("/root/AxelWorld")
 	if world != null and world.has_method("notify_fight_won"):
 		world.call("notify_fight_won", reason, dest, tex, has_tex)
+	if dest.ends_with("1.4_BasementDoor.tscn"):
+		var gm := get_node_or_null("/root/GameManager")
+		if gm != null and gm.has_method("set_basement_hint_soon"):
+			gm.call("set_basement_hint_soon", true)
 	_to_overworld_music()
 	get_tree().change_scene_to_file(dest)
 	await _fade_in_after_combat()
@@ -548,6 +552,9 @@ func _live_feel() -> Node:
 
 
 func _show_round_complete_card() -> void:
+	var scene := get_tree().current_scene if get_tree() != null else null
+	if scene != null and scene.has_method("await_victory_prelude"):
+		await scene.call("await_victory_prelude")
 	var root := _live_combat_root()
 	if root != null and root.has_method("play_goal_win_burst"):
 		await root.call("play_goal_win_burst")
@@ -556,7 +563,14 @@ func _show_round_complete_card() -> void:
 		pace.call("clear_rush")
 	var fx := get_node_or_null("/root/AxelEventFx")
 	if fx != null and fx.has_method("show_round_complete_card"):
-		fx.call("show_round_complete_card")
+		var bets := 0
+		var balance := 0
+		root = _live_combat_root()
+		if root != null and root.has_method("get_bets_used"):
+			bets = int(root.call("get_bets_used"))
+		if root != null and root.has_method("get_bankroll"):
+			balance = int(root.call("get_bankroll"))
+		fx.call("show_round_complete_card", bets, balance)
 
 
 func _fade_out_of_combat() -> void:

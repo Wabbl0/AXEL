@@ -291,7 +291,7 @@ func _handoff_14_to_21_tex_y(stand_near_top: bool) -> float:
 		await scene14.ready
 	await _await_frames(ARRIVAL_SETTLE_FRAMES)
 	var area := scene14.get_node(
-		"WalkableWorld/EnvironmentColliders/CafeteriaInteractArea"
+		"WalkableWorld/EnvironmentColliders/CafeteriaExitTrigger"
 	) as Area2D
 	var player14 := scene14.get_node("PlayerLayer/Player") as CharacterBody2D
 	var shape := area.get_node("CollisionShape2D") as CollisionShape2D

@@ -20,7 +20,7 @@ func _main() -> void:
 		push_error("round_complete_overlay_check: AxelEventFx.show_round_complete_card missing")
 		quit(1)
 		return
-	fx.call("show_round_complete_card")
+	fx.call("show_round_complete_card", 12, 340)
 	await process_frame
 	await process_frame
 	var scrim: ColorRect = fx.call("get_round_complete_scrim")
@@ -56,6 +56,24 @@ func _main() -> void:
 			failures.append(
 				"label size %s is not full window (want %.0fx%.0f)" % [lab_rect.size, WANT_W, WANT_H]
 			)
+	var bets_ok := false
+	var balance_ok := false
+	var root_ctrl := label.get_parent() if label != null else null
+	if root_ctrl != null:
+		for child in root_ctrl.get_children():
+			var text := ""
+			if child is Label:
+				text = (child as Label).text
+			elif child is RichTextLabel:
+				text = (child as RichTextLabel).get_parsed_text()
+			if text.findn("Bets used: 12") >= 0:
+				bets_ok = true
+			if text.findn("Current balance: 340") >= 0:
+				balance_ok = true
+	if not bets_ok:
+		failures.append("missing label text 'Bets used: 12'")
+	if not balance_ok:
+		failures.append("missing label text 'Current balance: 340'")
 	if failures.is_empty():
 		print("Round complete overlay check OK.")
 		quit(0)

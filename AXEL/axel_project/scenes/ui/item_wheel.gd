@@ -18,6 +18,8 @@ const HIT_PX := 28.0
 const ARC_STEPS := 18
 const FILL := Color(0.02, 0.02, 0.02, 0.98)
 const OUTLINE := Color(0.9, 0.0, 0.0, 1.0)
+const SHADOW := Color(0.04, 0.04, 0.04, 0.95)
+const SHADOW_OFFSET := Vector2(5, 6)
 const GREYED := Color(0.38, 0.38, 0.38, 1.0)
 const ARC_START := PI
 const ARC_END := TAU
@@ -31,6 +33,7 @@ var _open := false
 var _center := Vector2.ZERO
 var _inner := 64.0
 var _hover_id := ""
+var _cache_warmed := false
 
 
 func _ready() -> void:
@@ -96,6 +99,7 @@ func open_wheel() -> bool:
 	_root.visible = true
 	_hide_floor_card()
 	_layout()
+	_play_sfx(&"item_wheel_open")
 	var tutorial := get_node_or_null("/root/AxelTutorial")
 	if tutorial != null and tutorial.has_method("request"):
 		tutorial.call("request", "items_wheel")
@@ -167,6 +171,9 @@ func _build() -> void:
 
 
 func _process(_delta: float) -> void:
+	if not _cache_warmed:
+		_cache_warmed = true
+		call_deferred("_warm_wheel_textures")
 	if not _open:
 		return
 	if not _can_open():
@@ -230,6 +237,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _on_scene_changed() -> void:
 	close_wheel()
+	_cache_warmed = false
 
 
 func _on_pause_changed(paused: bool) -> void:
@@ -261,7 +269,12 @@ func paint_on(canvas: Control) -> void:
 		for step in ARC_STEPS:
 			var a0 := lerpf(ARC_START, ARC_END, float(step) / float(ARC_STEPS))
 			var a1 := lerpf(ARC_START, ARC_END, float(step + 1) / float(ARC_STEPS))
-			canvas.draw_colored_polygon(_quad(_center, inner_edge, outer_edge, a0, a1), FILL)
+			var pts := _quad(_center, inner_edge, outer_edge, a0, a1)
+			var shadow_pts := PackedVector2Array()
+			for p in pts:
+				shadow_pts.append(p + SHADOW_OFFSET)
+			canvas.draw_colored_polygon(shadow_pts, SHADOW)
+			canvas.draw_colored_polygon(pts, FILL)
 		canvas.draw_polyline(_arc_points(_center, outer_edge, ARC_START, ARC_END), OUTLINE, 2.0, false)
 		canvas.draw_polyline(_arc_points(_center, inner_edge, ARC_START, ARC_END), OUTLINE, 2.0, false)
 		canvas.draw_line(_point(_center, inner_edge, ARC_START), _point(_center, outer_edge, ARC_START), OUTLINE, 2.0, false)
@@ -450,7 +463,10 @@ func _place_icons() -> void:
 			icon.visible = true
 			icon.custom_minimum_size = Vector2(px, px)
 			icon.size = Vector2(px, px)
-			icon.texture_normal = item.get("icon") as Texture2D
+			var cached := ItemDef.cached_wheel_texture(item)
+			var prev_id := str(icon.get_meta("item_id", ""))
+			if prev_id != item_id or icon.texture_normal != cached:
+				icon.texture_normal = cached
 			icon.modulate = Color.WHITE if _is_equipped(item_id) else GREYED
 			icon.set_meta("item_id", item_id)
 			var at := _point(_center, mid_r, float(angles[i]))
@@ -459,6 +475,16 @@ func _place_icons() -> void:
 		_icons[slot].visible = false
 		_icons[slot].set_meta("item_id", "")
 		slot += 1
+
+
+func _warm_wheel_textures() -> void:
+	var run := _run()
+	if run == null or not run.has_method("owned_items"):
+		return
+	for item in run.call("owned_items"):
+		if item == null:
+			continue
+		ItemDef.cached_wheel_texture(item)
 
 
 func _place_arrows() -> void:
@@ -582,10 +608,17 @@ func _on_icon_pressed(icon: TextureButton) -> void:
 	var item_id := str(icon.get_meta("item_id", ""))
 	if item_id.is_empty():
 		return
+	_play_sfx(&"item_wheel_click")
 	var run := _run()
 	if run != null and run.has_method("toggle_equip"):
 		run.call("toggle_equip", item_id)
 	_layout()
+
+
+func _play_sfx(cue: StringName) -> void:
+	var sfx := get_node_or_null("/root/AxelSfx")
+	if sfx != null and sfx.has_method("play"):
+		sfx.call("play", cue)
 
 
 func _on_icon_hover(icon: TextureButton) -> void:

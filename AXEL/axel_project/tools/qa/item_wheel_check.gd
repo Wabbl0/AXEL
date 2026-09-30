@@ -65,6 +65,7 @@ func _check_wheel(wheel: Node, run: Node) -> void:
 	run.state.owned_item_ids = PackedStringArray(["C1"])
 	run.state.equipped_item_ids = PackedStringArray()
 	await process_frame
+	_expect_icon_texture_width(wheel, 64)
 	_expect_arcs(wheel, 1, "commons only")
 	run.state.owned_item_ids = PackedStringArray(["C1", "U1"])
 	await process_frame
@@ -121,6 +122,27 @@ func _check_wheel(wheel: Node, run: Node) -> void:
 	wheel.call("close_wheel")
 	if bool(wheel.call("is_wheel_open")):
 		_fail("wheel stayed open after close")
+
+
+func _expect_icon_texture_width(wheel: Node, px: int) -> void:
+	var root := wheel.get_node_or_null("WheelRoot")
+	if root == null:
+		_fail("WheelRoot missing for icon texture check")
+		return
+	for child in root.get_children():
+		if not child is TextureButton:
+			continue
+		var icon := child as TextureButton
+		if not icon.visible:
+			continue
+		var tex := icon.texture_normal
+		if tex == null:
+			_fail("visible icon has no texture_normal")
+			return
+		if tex.get_width() != px:
+			_fail("visible icon texture_normal width should be %d, got %d" % [px, tex.get_width()])
+		return
+	_fail("no visible icon button after owning one item")
 
 
 func _expect_arcs(wheel: Node, arcs: int, label: String) -> void:

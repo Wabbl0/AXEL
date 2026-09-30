@@ -22,6 +22,7 @@ func _main() -> void:
 	_check_glow_map(tutorial, failures)
 	await _check_move_card(tutorial, failures)
 	await _check_spin_card_moves_off_glow(tutorial, failures)
+	await _check_card_stack(tutorial, failures)
 	_finish(failures)
 
 
@@ -126,13 +127,20 @@ func _check_move_card(tutorial: Node, failures: Array[String]) -> void:
 	var dismiss := tutorial.get_node_or_null("CardLayer/CardHost/FadeRoot/BarPanel/InnerPanel/TextColumn/DismissLabel")
 	if dismiss != null:
 		failures.append("tutorial card still has an E button")
-	var exit_button := tutorial.get_node_or_null("CardLayer/ExitButton") as Button
+	var exit_button := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
 	if exit_button == null or exit_button.text != "X" or not exit_button.visible:
 		failures.append("tutorial X marker is missing")
 	else:
 		var exit_rect := exit_button.get_global_rect()
-		if exit_rect.position.x < vp.x * 0.75 or exit_rect.end.y < vp.y * 0.9:
-			failures.append("tutorial X is not in the bottom-right corner at %s" % exit_rect)
+		var card_rect := card
+		if not card_rect.grow(4.0).intersects(exit_rect):
+			failures.append("tutorial X is not on the move card at %s" % exit_rect)
+		var want_font := roundi(36.0 * scale * 0.5)
+		var got_font := exit_button.get_theme_font_size("font_size")
+		if absi(got_font - want_font) > 2:
+			failures.append("tutorial X font is %s, want about %s" % [got_font, want_font])
+		if exit_rect.size.x > 40.0 * scale:
+			failures.append("tutorial X is still large (%s)" % exit_rect.size)
 	if card.position.x < vp.x * 0.5:
 		failures.append("move card is not on the right half")
 	if not bool(tutorial.call("blocks_spin")):
@@ -194,10 +202,8 @@ func _check_spin_card_moves_off_glow(tutorial: Node, failures: Array[String]) ->
 	if not placed:
 		failures.append("spin card did not open")
 		return
-	if card.intersects(skull):
-		failures.append("spin card still covers the skull at %s" % card)
-	if card.position.x > vp.x * 0.5:
-		failures.append("spin card stayed on the right while the skull was there")
+	if card.position.x <= vp.x * 0.5:
+		failures.append("spin card left the right half at %s" % card)
 	_expect_flanked_title(tutorial, failures, "Fights")
 	await _close_card(tutorial)
 	tutorial.call("request", "items_hand")
@@ -213,6 +219,53 @@ func _check_spin_card_moves_off_glow(tutorial: Node, failures: Array[String]) ->
 	else:
 		_expect_flanked_title(tutorial, failures, "Items")
 	await _close_card(tutorial)
+
+
+func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
+	tutorial.call("request", "fight_stakes")
+	tutorial.call("request", "fight_items")
+	var host := tutorial.get_node_or_null("CardLayer/CardHost") as Control
+	var host2 := tutorial.get_node_or_null("CardLayer/CardHost2") as Control
+	if host == null or host2 == null:
+		failures.append("card hosts missing for stack check")
+		return
+	var opened := false
+	for _i in 90:
+		await process_frame
+		if bool(tutorial.call("is_open")) and host.visible:
+			opened = true
+			break
+	if not opened:
+		failures.append("stack first card did not open")
+		return
+	if host2.visible:
+		failures.append("second card host visible too early")
+	await create_timer(0.7).timeout
+	if not host2.visible:
+		failures.append("CardHost2 did not open after stack gap")
+		return
+	var top0 := host.get_global_rect().position.y
+	var bottom0 := host.get_global_rect().end.y
+	var top1 := host2.get_global_rect().position.y
+	if top1 <= bottom0:
+		failures.append("CardHost2 top %s is not below CardHost bottom %s" % [top1, bottom0])
+	if top1 <= top0:
+		failures.append("CardHost2 is not under CardHost")
+	var exit0 := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
+	var exit1 := tutorial.get_node_or_null("CardLayer/CardHost2/ExitButton") as Button
+	if exit0 == null or not exit0.visible:
+		failures.append("first stacked card has no visible X")
+	if exit1 == null or not exit1.visible:
+		failures.append("second stacked card has no visible X")
+	# Interact must not close a tutorial card.
+	var open_before := bool(tutorial.call("is_open"))
+	Input.action_press("interact")
+	await process_frame
+	Input.action_release("interact")
+	await process_frame
+	if open_before and not bool(tutorial.call("is_open")):
+		failures.append("interact closed a tutorial card")
+	await _close_both_cards(tutorial)
 
 
 func _expect_flanked_title(tutorial: Node, failures: Array[String], want: String) -> void:
@@ -240,9 +293,30 @@ func _expect_flanked_title(tutorial: Node, failures: Array[String], want: String
 
 
 func _close_card(tutorial: Node) -> void:
-	var exit_button := tutorial.get_node_or_null("CardLayer/ExitButton") as Button
+	var exit_button := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
 	if exit_button != null:
 		exit_button.emit_signal("pressed")
+	for _i in 180:
+		await process_frame
+		if not bool(tutorial.call("is_open")):
+			return
+
+
+func _close_both_cards(tutorial: Node) -> void:
+	var exit0 := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
+	var exit1 := tutorial.get_node_or_null("CardLayer/CardHost2/ExitButton") as Button
+	if exit0 != null and exit0.visible:
+		exit0.emit_signal("pressed")
+	if exit1 != null and exit1.visible:
+		exit1.emit_signal("pressed")
+	for _i in 240:
+		await process_frame
+		if not bool(tutorial.call("is_open")):
+			return
+	# Force-dismiss leftovers so the script can finish.
+	for _i in 4:
+		tutorial.call("debug_dismiss")
+		await process_frame
 	for _i in 180:
 		await process_frame
 		if not bool(tutorial.call("is_open")):

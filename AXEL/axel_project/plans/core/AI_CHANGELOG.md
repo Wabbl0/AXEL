@@ -8389,4 +8389,77 @@ Keep scope minimal. One batched question list only if truly blocked.
 - Behavior impact: None in the game. Future edits should use the items indicator, keep the six once-per-save lessons, and leave the Master fader near -12 dB.
 - Verification: Compared the lesson ids, dismiss keys, and pause refusal to `axel_tutorial.gd` and `axel_pause.gd`. Compared the marker path to `item_marker.gd`. Compared the dialogue shadow to `TopDialogueOverlay.gd`. Compared the Master fader to `default_bus_layout.tres`.
 
+## 2026-09-30
+
+### Playtest: map gate, wheel, tutorials, 1.4 exit, combat win and music
+
+- Request: Fix the 2026-09-30 playtest notes (overworld map, item wheel, tutorial cards, 1.4 exit, combat highlights, skull shadow, round-win presentation, drums).
+- Implementation: Entrance stays locked until 1.4 is visited. The item wheel has a small shadow and draws cached 64px icons. Tutorial cards stay on the right, stack with a 0.6s gap, and fight art glows white from its alpha. 1.4 walks off the right edge into 2.1 and shows a right arrow. The skull shadow is closer, darker, and follows the skull. A win settles winnings and the goal text before Round Complete; leftover symbols play the alcohol eat; card fireworks fall and bounce; the card lists bets used and the post-win balance. Drum layers fade in over 0.35s and Vice does not restart the song.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_world.gd`
+  - `AXEL/axel_project/scenes/ui/item_wheel.gd`
+  - `AXEL/axel_project/combat/scripts/item_def.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_tutorial.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.gd`
+  - `AXEL/axel_project/scenes/Arc_1/1.4_BasementDoor.tscn`
+  - `AXEL/axel_project/exports/GameManager.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/premium_skull_meter.gd`
+  - `AXEL/axel_project/combat/scripts/hud_drop_shadow.gd`
+  - `AXEL/axel_project/combat/scripts/flame_burst.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_event_fx.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_music.gd`
+  - `AXEL/axel_project/scripts/autoload/axel_run.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: The locker tutorial can no longer be skipped by clicking Entrance. 1.4 reaches the cafeteria by walking right. Wins pause on the goal readout before the banner. Drums come in quickly and stay on the room song’s clock.
+- Verification: Headless checks for locker map, item wheel, tutorials, basement arrow, collision uniqueness, HUD placement, round-complete overlay, combat scaffold, determinism, power act, and playtest fix groups exited 0. `interact_arrival_check` still fails on the older 2.3→2.1 kitchen return; 1.4↔2.1 handoffs in that run printed OK. `wall_sprite_clearance_check` still fails on other rooms; 1.4 RightWall passed.
+
+### Combat / pause SFX buses and cues
+
+- Request: Add new combat/UI sound effects on an Effects-tagged bus, keep Music on its own Options Music bus, and wire power / pause / skull-spin / symbol match / round-winnings (with winnings text glow).
+- Implementation: Confirmed `Music` → Master and `Effects` → Master already match Options. Added `AxelSfx` autoload with clips under `assets/audio/sfx/` on `CombatSfx` / `UiSfx` (both send to Effects). Combat listens to `sfx_requested` for power, spin, line_win, and round_winnings; skull meter section-ups play the skull cue; pause open plays via `AxelPause`. Round total after a paying spin flashes the winnings readout size/brightness.
+- Files changed:
+  - `AXEL/axel_project/scripts/autoload/axel_sfx.gd`
+  - `AXEL/axel_project/project.godot`
+  - `AXEL/axel_project/scripts/autoload/axel_pause.gd`
+  - `AXEL/axel_project/combat/scripts/combat_root.gd`
+  - `AXEL/axel_project/combat/scripts/combat_test.gd`
+  - `AXEL/axel_project/assets/audio/sfx/power_activate.wav`
+  - `AXEL/axel_project/assets/audio/sfx/pause_open.wav`
+  - `AXEL/axel_project/assets/audio/sfx/skull_spin.wav`
+  - `AXEL/axel_project/assets/audio/sfx/symbol_match.wav`
+  - `AXEL/axel_project/assets/audio/sfx/round_winnings.wav`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Options Music still only fades BGM. Options Effects fades combat/UI SFX (and typewriter). Pause, spins, matches, powers, and settled round totals make sound; the winnings number pops when a spin pays.
+- Verification: `audio_bus_layout_check`, `determinism_check`, `powers_check`, `combat_test_scaffold_check`, and `pause_contract_check` all exited 0. Source WAVs that were 24-bit extensible were converted to PCM 16-bit for Godot import.
+
+### Item wheel open / click SFX
+
+- Request: Play a sound when the item wheel opens and when an item on it is clicked.
+- Implementation: Added `item_wheel_open.wav` and `item_wheel_click.wav` on `UiSfx` via `AxelSfx`. `item_wheel.gd` plays open on a successful `open_wheel()`, and click on icon press before toggle-equip.
+- Files changed:
+  - `AXEL/axel_project/assets/audio/sfx/item_wheel_open.wav`
+  - `AXEL/axel_project/assets/audio/sfx/item_wheel_click.wav`
+  - `AXEL/axel_project/scripts/autoload/axel_sfx.gd`
+  - `AXEL/axel_project/scenes/ui/item_wheel.gd`
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+- Behavior impact: Opening the wheel and clicking an item icon make short UI sounds under the Effects slider.
+- Verification: New WAVs imported; `item_wheel_check` exited 0.
+
+### Docs matched to playtest fixes and SFX
+
+- Request: Update docs.
+- Implementation: Canon already named the Entrance→1.4 map gate, 1.4 right walk-off and arrow, wheel shadow/64px icons, tutorial stack and alpha glow, skull shadow follow, Round Complete settle/bets/balance fireworks, drum fades at 0.35s, and `AxelSfx` cues. Matching plans now say the same: world-loop map gate and 1.4 right exit, scene building 1.4 door + right hint, Arc 1 1.4 walk-off (not `[E]`), combat implementation skull shadow / win card / drums / `AxelSfx`, and the structure list names `AxelSfx` and `AxelTutorial`. Headless list already names `basement_right_hint_check.gd`.
+- Files changed:
+  - `AXEL/axel_project/plans/core/AI_DOCS.md`
+  - `AXEL/axel_project/plans/core/AXEL_WORLD_COMBAT_LOOP_PLAN.md`
+  - `AXEL/axel_project/plans/scenes/SCENE_BUILDING.md`
+  - `AXEL/axel_project/plans/scenes/AXEL_SCENES_ARC1.md`
+  - `AXEL/axel_project/plans/combat/AXEL_combat_implementation.md`
+  - `AXEL/axel_project/plans/references/README_STRUCTURE.md`
+  - `AXEL/axel_project/plans/core/AI_CHANGELOG.md`
+- Behavior impact: None in the game. Future edits should keep Entrance locked until 1.4, use the right walk-off into 2.1, keep drums at 0.35s fade-in without seeking on Vice, and route new one-shots through `AxelSfx`.
+- Verification: Compared Entrance gate to `axel_world.gd` `map_can_travel`. Compared 1.4 right exit and hint to `1.4_BasementDoor.gd` (`CafeteriaExitTrigger`, `basement_right_hint_done`). Compared skull shadow and SFX cue names to `AI_DOCS.md` vs `hud_drop_shadow.gd` / `axel_sfx.gd`. Compared drum fade to `axel_music.gd` (0.35s).
+
 

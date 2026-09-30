@@ -771,6 +771,8 @@ func _connect_runtime_signals() -> void:
 		combat.round_winnings_hold_started.connect(_on_round_winnings_hold_started)
 	if not combat.free_spins_bonus_granted.is_connected(_on_free_spins_bonus_granted):
 		combat.free_spins_bonus_granted.connect(_on_free_spins_bonus_granted)
+	if not combat.sfx_requested.is_connected(_on_sfx_requested):
+		combat.sfx_requested.connect(_on_sfx_requested)
 	if not choose_bloody_hand_button.pressed.is_connected(_on_choose_bloody_hand_pressed):
 		choose_bloody_hand_button.pressed.connect(_on_choose_bloody_hand_pressed)
 	if not choose_alcohol_button.pressed.is_connected(_on_choose_alcohol_pressed):
@@ -779,8 +781,6 @@ func _connect_runtime_signals() -> void:
 		choose_cigarette_button.pressed.connect(_on_choose_cigarette_pressed)
 	if not seed_spin.value_changed.is_connected(_on_seed_spin_value_changed):
 		seed_spin.value_changed.connect(_on_seed_spin_value_changed)
-	if combat.has_signal("goal_victory_requested") and not combat.goal_victory_requested.is_connected(_flash_goal_victory):
-		combat.goal_victory_requested.connect(_flash_goal_victory)
 	_wire_piece_input_signals()
 
 func _apply_editor_combat_preview() -> void:
@@ -1898,7 +1898,8 @@ func _free_spin_round_showing() -> bool:
 	return _can_use_combat_api() and combat != null and combat.free_spins.active
 
 func _on_spin_finished() -> void:
-	_sync_winnings_counter_to_combat_truth()
+	if not _safe_is_encounter_complete() and not _safe_did_win_encounter():
+		_sync_winnings_counter_to_combat_truth()
 	if combat.get_state() == CombatRoot.State.IDLE or combat.is_encounter_complete():
 		spin_btn.disabled = false
 	_refresh_spin_button_state()
@@ -1964,9 +1965,22 @@ func _on_meter_full_transition_started() -> void:
 	if _piece_premium_bar != null:
 		_piece_premium_bar.pop()
 
-func _on_premium_meter_changed(_previous_sections: int, next_sections: int) -> void:
+func _on_premium_meter_changed(previous_sections: int, next_sections: int) -> void:
 	_sync_skull_meter(next_sections)
 	_sync_premium_bar_color(next_sections, true)
+	if next_sections > previous_sections:
+		_play_combat_sfx(&"skull")
+
+
+func _on_sfx_requested(cue: StringName) -> void:
+	_play_combat_sfx(cue)
+
+
+func _play_combat_sfx(cue: StringName) -> void:
+	var sfx := get_node_or_null("/root/AxelSfx")
+	if sfx != null and sfx.has_method("play"):
+		sfx.call("play", cue)
+
 
 func _on_seed_spin_value_changed(value: float) -> void:
 	if not _can_queue_seed_change():
@@ -3444,15 +3458,80 @@ func _refresh_encounter_win_overlay() -> void:
 
 
 func _flash_goal_victory() -> void:
-	if _piece_goal == null:
+	pass
+
+
+func await_victory_prelude() -> void:
+	if combat == null:
 		return
-	_piece_goal.modulate = Color.WHITE
-	var tw := CombatPace.bind(create_tween())
-	for _i in 3:
-		tw.tween_property(_piece_goal, "modulate", Color(1.55, 1.55, 1.55, 1.0), 0.2)
-		tw.tween_property(_piece_goal, "modulate", Color.WHITE, 0.2)
-		if _piece_goal.has_method("pop"):
-			_piece_goal.pop()
+	if not _safe_is_encounter_complete() or not _safe_did_win_encounter():
+		return
+	if combat.get("_dev_skip_visuals") == true:
+		return
+
+	var tree := get_tree()
+	if tree == null:
+		return
+
+	# Wait for the gather counter; do not kill it at the start.
+	var waited := 0.0
+	while _winnings_counter_running and waited < 1.5:
+		await tree.create_timer(0.05).timeout
+		waited += 0.05
+	if _displayed_round_winnings < _target_round_winnings or _winnings_counter_running:
+		_sync_winnings_counter_to_combat_truth()
+
+	var final_current := 0
+	if combat.has_method("get_chip_bar_goal_progress_cents"):
+		final_current = int(combat.get_chip_bar_goal_progress_cents())
+	else:
+		var progress := _goal_progress_only(_safe_get_goal_label())
+		var slash := progress.find("/")
+		if slash != -1:
+			final_current = int(progress.substr(0, slash).strip_edges())
+
+	var target := 0
+	if combat.has_method("get_chip_bar_goal_target_cents"):
+		target = int(combat.get_chip_bar_goal_target_cents())
+
+	var gain := 0
+	if combat.has_method("get_last_spin_summary"):
+		var summary: Dictionary = combat.get_last_spin_summary()
+		# Spin summary uses "payout" (see combat_root._empty_spin_summary).
+		gain = int(summary.get("payout", 0))
+
+	if goal_label != null:
+		if gain <= 0:
+			goal_label.text = "GOAL:\n%d / %d" % [final_current, target]
+			await tree.create_timer(0.25).timeout
+		else:
+			var start_current := maxi(final_current - gain, 0)
+			goal_label.text = "GOAL:\n%d / %d" % [start_current, target]
+			var count_tw := create_tween()
+			count_tw.tween_method(
+				func(v: float) -> void:
+					if goal_label != null:
+						goal_label.text = "GOAL:\n%d / %d" % [int(round(v)), target],
+				float(start_current),
+				float(final_current),
+				0.5
+			)
+			await count_tw.finished
+
+		goal_label.pivot_offset = goal_label.size * 0.5
+		goal_label.scale = Vector2.ONE
+		goal_label.modulate = Color.WHITE
+		var pop_tw := create_tween()
+		pop_tw.set_parallel(true)
+		pop_tw.tween_property(goal_label, "scale", Vector2(1.18, 1.18), 0.2)
+		pop_tw.tween_property(goal_label, "modulate", Color(1.4, 1.4, 1.4), 0.2)
+		pop_tw.chain()
+		pop_tw.set_parallel(true)
+		pop_tw.tween_property(goal_label, "scale", Vector2.ONE, 0.2)
+		pop_tw.tween_property(goal_label, "modulate", Color.WHITE, 0.2)
+		await pop_tw.finished
+		goal_label.scale = Vector2.ONE
+		goal_label.modulate = Color.WHITE
 
 func _refresh_super_fs_choice_overlay() -> void:
 	if super_fs_choice_overlay == null:

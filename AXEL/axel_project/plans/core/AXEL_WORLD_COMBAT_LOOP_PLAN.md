@@ -17,7 +17,7 @@ Canon still wins: `plans/core/AI_DOCS.md`. Catalog text changes only in
 - All item ranks start Common; picking up in one area clears it and upgrades
   the rooms you have not taken from yet (those items_indicators change to the new rarity).
 - The locker shows lore pictures only. Equip and unequip live on the item wheel. `START RUN` is gone. After a correct board answer the name-tag picture becomes that floor item's icon.
-- The locker map and pause Map are the same overlay. A room with floor items travels after a visit and one pickup. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. The basement is not a travel button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed when the game starts. Each map items_indicator shows the rarity mark, and a rarity step redraws the items_indicators and the hover cards.
+- The locker map and pause Map are the same overlay. A room with floor items travels after a visit and one pickup. Entrance loads `1.2` only after `1.4` has been visited. Before that, the Entrance click does nothing. A click on the room you opened the map from does nothing. The basement is not a travel button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed when the game starts. Each map items_indicator shows the rarity mark, and a rarity step redraws the items_indicators and the hover cards.
 - A full-screen wipe plays on the way into every fight.
 - Winning puts you back in the room you left, on the spot you left.
 - Losing deletes that slot’s save files (no tombstone) and keeps **GONE** up with **Retry** / **Return To Main Menu** / **Exit**. Retry starts a new run from `1.1` on the slot that died. `AxelWorld.notify_fight_ended()` clears `_starting_fight` on a loss so New Game can fight again.
@@ -181,7 +181,8 @@ a cleared area.
    floor item's icon. The shovel is not on the locker. First hub visit sets the opened-locker flag (no C1/C2/C3 grant).
 10. `scenes/ui/locker_map_overlay.gd` — locker and pause Map share this overlay.
     Travel uses `AxelWorld.map_can_travel()`: a visit, plus one floor-item pickup
-    when that room has items_indicators. Entrance loads `1.2` after a visit. A click on the
+    when that room has items_indicators. Entrance loads `1.2` only after `1.4` has
+    been visited. Before that, the Entrance click does nothing. A click on the
     room you opened the map from does nothing. The basement is not a travel
     button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed
     when the game starts. Each pin shows the rarity mark. A rarity step redraws
@@ -220,9 +221,9 @@ a cleared area.
 - The first area's floor items are Common; after that pickup, every area you
   have not taken from reads one rank higher and its items_indicators show the new rarity.
 - The locker has no START RUN button and no LOCKER overlay; flashlight, key, and name pictures sit on the locker. Combat equip is the item wheel.
-- The locker map and pause Map are the same picture. A room with floor items travels only after a visit and one pickup there. Entrance loads `1.2` after a visit. A click on the room you opened the map from does nothing. Hallway on the map is `2.4`. The basement is not a travel button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed when the game starts. Each map items_indicator shows the rarity mark, and a rarity step redraws the items_indicators and the hover cards.
-- A wipe plays before each fight; a win shows Round Complete!, fades, and returns to the same room and spot.
-- The `1.4` chained door plays `"Not yet."` and stays in the room.
+- The locker map and pause Map are the same picture. A room with floor items travels only after a visit and one pickup there. Entrance loads `1.2` only after `1.4` has been visited. Before that, the Entrance click does nothing. A click on the room you opened the map from does nothing. Hallway on the map is `2.4`. The basement is not a travel button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed when the game starts. Each map items_indicator shows the rarity mark, and a rarity step redraws the items_indicators and the hover cards.
+- A wipe plays before each fight; a win settles winnings and the goal text, then shows Round Complete! with bets used and the post-win balance, fades, and returns to the same room and spot.
+- The `1.4` center door plays `"Not yet."` and stays in the room. Walking off the right edge loads `2.1`.
 
 ## Manual test checklist
 

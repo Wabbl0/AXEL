@@ -7,6 +7,12 @@ const GAP := 0.18
 const FPS := 10.0
 const CAP := 96
 const PUNCH_BLACK := 0.08
+const LINGER_GRAVITY := 1400.0
+const LINGER_BOUNCE_Y := 0.45
+const LINGER_BOUNCE_X := 0.8
+const LINGER_MAX_BOUNCES := 3
+const LINGER_FADE_SEC := 0.6
+const LINGER_MAX_AGE := 4.0
 const FLAME_COLORS: Array[Color] = [
 	Color(1.0, 0.0, 0.0, 1.0),
 	Color(1.0, 1.0, 1.0, 1.0),
@@ -32,7 +38,7 @@ func bind(parent: Control) -> void:
 
 func play_waves(origin: Vector2, counts: Array) -> void:
 	for i in counts.size():
-		_spawn_wave(origin, int(counts[i]))
+		_spawn_wave(origin, int(counts[i]), false)
 		if i + 1 < counts.size():
 			var tree := get_tree()
 			if tree == null:
@@ -40,7 +46,17 @@ func play_waves(origin: Vector2, counts: Array) -> void:
 			await CombatPace.await_seconds(GAP)
 
 
-func _spawn_wave(origin: Vector2, count: int) -> void:
+func play_waves_linger(origin: Vector2, counts: Array) -> void:
+	for i in counts.size():
+		_spawn_wave(origin, int(counts[i]), true)
+		if i + 1 < counts.size():
+			var tree := get_tree()
+			if tree == null:
+				return
+			await CombatPace.await_seconds(GAP)
+
+
+func _spawn_wave(origin: Vector2, count: int, linger: bool) -> void:
 	_ensure_frames()
 	if _parent == null or _frames.is_empty():
 		return
@@ -58,8 +74,34 @@ func _spawn_wave(origin: Vector2, count: int) -> void:
 		node.modulate = FLAME_COLORS[_rng.randi() % FLAME_COLORS.size()]
 		_parent.add_child(node)
 		var vel := Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(90.0, 240.0)
-		_items.append({"node": node, "vel": vel, "age": 0.0})
+		_items.append({
+			"node": node,
+			"vel": vel,
+			"age": 0.0,
+			"linger": linger,
+			"bounces": 0,
+			"fading": false,
+			"fade_t": 0.0,
+		})
 		_live += 1
+
+
+func _floor_y() -> float:
+	var h := 0.0
+	if _parent != null:
+		h = _parent.size.y
+	if h <= 0.0:
+		var vp := get_viewport()
+		if vp != null:
+			h = vp.get_visible_rect().size.y
+	return h - 8.0 - DRAW
+
+
+func _free_item(i: int, node: TextureRect) -> void:
+	if node != null and is_instance_valid(node):
+		node.queue_free()
+	_items.remove_at(i)
+	_live = maxi(_live - 1, 0)
 
 
 func _process(delta: float) -> void:
@@ -75,16 +117,50 @@ func _process(delta: float) -> void:
 			continue
 		var age := float(item["age"]) + delta
 		item["age"] = age
-		var vel: Vector2 = item["vel"]
-		vel.y += 30.0 * delta
-		item["vel"] = vel
-		node.position += vel * delta
-		var idx := int(floor(age * FPS)) % _frames.size()
-		node.texture = _frames[idx]
+		var linger := bool(item.get("linger", false))
+		if linger:
+			if bool(item.get("fading", false)):
+				var fade_t := float(item.get("fade_t", 0.0)) + delta
+				item["fade_t"] = fade_t
+				var c := node.modulate
+				c.a = clampf(1.0 - fade_t / LINGER_FADE_SEC, 0.0, 1.0)
+				node.modulate = c
+				var idx_f := int(floor(age * FPS)) % _frames.size()
+				node.texture = _frames[idx_f]
+				if fade_t >= LINGER_FADE_SEC or age >= LINGER_MAX_AGE:
+					_free_item(i, node)
+				i -= 1
+				continue
+			var vel: Vector2 = item["vel"]
+			vel.y += LINGER_GRAVITY * delta
+			item["vel"] = vel
+			node.position += vel * delta
+			var floor_y := _floor_y()
+			if node.position.y >= floor_y and vel.y > 0.0:
+				node.position.y = floor_y
+				vel.y = -vel.y * LINGER_BOUNCE_Y
+				vel.x *= LINGER_BOUNCE_X
+				item["vel"] = vel
+				var bounces := int(item.get("bounces", 0)) + 1
+				item["bounces"] = bounces
+				if bounces >= LINGER_MAX_BOUNCES:
+					item["vel"] = Vector2.ZERO
+					item["fading"] = true
+					item["fade_t"] = 0.0
+			var idx := int(floor(age * FPS)) % _frames.size()
+			node.texture = _frames[idx]
+			if age >= LINGER_MAX_AGE:
+				_free_item(i, node)
+			i -= 1
+			continue
+		var vel_n: Vector2 = item["vel"]
+		vel_n.y += 30.0 * delta
+		item["vel"] = vel_n
+		node.position += vel_n * delta
+		var idx_n := int(floor(age * FPS)) % _frames.size()
+		node.texture = _frames[idx_n]
 		if age >= LIFE:
-			node.queue_free()
-			_items.remove_at(i)
-			_live = maxi(_live - 1, 0)
+			_free_item(i, node)
 		i -= 1
 
 

@@ -41,6 +41,8 @@ var _round_root: Control
 var _round_scrim: ColorRect
 var _round_flames: Control
 var _round_label: RichTextLabel
+var _round_bets_label: Label
+var _round_balance_label: Label
 var _round_hop: Tween
 
 const LOAD_COVER_LAYER := 120
@@ -206,7 +208,7 @@ func register_walk_step() -> void:
 	return
 
 
-func show_round_complete_card() -> void:
+func show_round_complete_card(bets_used: int = 0, balance: int = 0) -> void:
 	skip_next_enter_glitch()
 	_ensure_round_complete_overlay()
 	_layout_round_complete()
@@ -220,6 +222,12 @@ func show_round_complete_card() -> void:
 	_round_label.text = _round_complete_bbcode()
 	_round_label.modulate.a = 1.0
 	_round_label.visible = true
+	if _round_bets_label != null:
+		_round_bets_label.text = "Bets used: %d" % bets_used
+		_round_bets_label.visible = true
+	if _round_balance_label != null:
+		_round_balance_label.text = "Current balance: %d" % balance
+		_round_balance_label.visible = true
 	_start_round_hop()
 	_start_round_flames()
 
@@ -238,6 +246,10 @@ func play_round_complete_fade() -> void:
 		_round_root.visible = true
 	_round_label.visible = true
 	_round_label.modulate.a = 1.0
+	if _round_bets_label != null:
+		_round_bets_label.visible = true
+	if _round_balance_label != null:
+		_round_balance_label.visible = true
 	var fade_in := CombatPace.bind(create_tween())
 	fade_in.tween_property(_round_scrim, "color:a", 1.0, 0.35)
 	await fade_in.finished
@@ -255,6 +267,10 @@ func finish_round_complete_fade() -> void:
 	_round_scrim.color = Color(0, 0, 0, 1)
 	if _round_label != null:
 		_round_label.visible = false
+	if _round_bets_label != null:
+		_round_bets_label.visible = false
+	if _round_balance_label != null:
+		_round_balance_label.visible = false
 	var fade_out := CombatPace.bind(create_tween())
 	fade_out.tween_property(_round_scrim, "color:a", 0.0, 0.35)
 	await fade_out.finished
@@ -382,6 +398,10 @@ func _hide_round_complete() -> void:
 		_round_label.visible = false
 		_round_label.modulate.a = 0.0
 		_round_label.position = Vector2.ZERO
+	if _round_bets_label != null:
+		_round_bets_label.visible = false
+	if _round_balance_label != null:
+		_round_balance_label.visible = false
 
 
 func _viewport_size() -> Vector2:
@@ -410,6 +430,13 @@ func _layout_round_complete() -> void:
 	if _round_label != null:
 		_round_label.position = Vector2.ZERO
 		_round_label.size = size
+	var stats_y := size.y * 0.5 + 40.0
+	if _round_bets_label != null:
+		_round_bets_label.position = Vector2(0.0, stats_y)
+		_round_bets_label.size = Vector2(size.x, 36.0)
+	if _round_balance_label != null:
+		_round_balance_label.position = Vector2(0.0, stats_y + 36.0 + 4.0)
+		_round_balance_label.size = Vector2(size.x, 36.0)
 
 
 func _build_round_complete_overlay() -> void:
@@ -441,12 +468,31 @@ func _build_round_complete_overlay() -> void:
 	_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_round_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_round_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_round_label.add_theme_font_override("normal_font", load("res://combat/ui/fonts/VT323-Regular.ttf"))
+	var round_font := load("res://combat/ui/fonts/VT323-Regular.ttf")
+	_round_label.add_theme_font_override("normal_font", round_font)
 	_round_label.add_theme_font_size_override("normal_font_size", 64)
 	_round_label.add_theme_color_override("default_color", Color.WHITE)
 	_round_label.modulate.a = 0.0
 	_round_label.visible = false
 	_round_root.add_child(_round_label)
+	_round_bets_label = Label.new()
+	_round_bets_label.name = "RoundBetsLabel"
+	_round_bets_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_round_bets_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_round_bets_label.add_theme_font_override("font", round_font)
+	_round_bets_label.add_theme_font_size_override("font_size", 32)
+	_round_bets_label.add_theme_color_override("font_color", Color.WHITE)
+	_round_bets_label.visible = false
+	_round_root.add_child(_round_bets_label)
+	_round_balance_label = Label.new()
+	_round_balance_label.name = "RoundBalanceLabel"
+	_round_balance_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_round_balance_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_round_balance_label.add_theme_font_override("font", round_font)
+	_round_balance_label.add_theme_font_size_override("font_size", 32)
+	_round_balance_label.add_theme_color_override("font_color", Color.WHITE)
+	_round_balance_label.visible = false
+	_round_root.add_child(_round_balance_label)
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_layout_round_complete):
 		vp.size_changed.connect(_layout_round_complete)
@@ -487,7 +533,7 @@ func _start_round_flames() -> void:
 	burst.name = "RoundFlameBurst"
 	_round_root.add_child(burst)
 	burst.bind(_round_flames)
-	burst.play_waves(_round_root.size * 0.5, [8, 16])
+	burst.play_waves_linger(_round_root.size * 0.5, [8, 16])
 
 
 func _clear_round_flames() -> void:

@@ -16,6 +16,7 @@ const SILENT_DB := -80.0
 const FULL_VOLUME_DB := 0.0
 const MENU_FADE_IN_SEC := 10.0
 const NEW_GAME_CROSSFADE_SEC := 10.0
+const DRUM_FADE_IN_SEC := 0.35
 const VICE_DRUM_FADE_SEC := 0.5
 
 enum MusicState {
@@ -88,7 +89,7 @@ func notify_trinity() -> void:
 	if not _music_enabled or _state != MusicState.COMBAT:
 		return
 	_drums2_up = true
-	_fade_drums2(FULL_VOLUME_DB, VICE_DRUM_FADE_SEC)
+	_fade_drums2(FULL_VOLUME_DB, DRUM_FADE_IN_SEC)
 
 
 func notify_trinity_ended(keep_for_free_spins: bool) -> void:
@@ -172,7 +173,7 @@ func _begin_combat_entry() -> void:
 	_drums2_up = false
 	_ensure_player_active()
 	_fade_layers(SILENT_DB, FULL_VOLUME_DB, NEW_GAME_CROSSFADE_SEC)
-	_fade_drums1(FULL_VOLUME_DB, NEW_GAME_CROSSFADE_SEC)
+	_fade_drums1(FULL_VOLUME_DB, DRUM_FADE_IN_SEC)
 	_fade_drums2(SILENT_DB, 0.0)
 
 
@@ -322,25 +323,21 @@ func _ensure_player_active() -> bool:
 func _on_player_finished() -> void:
 	if not _music_enabled:
 		return
+	if _state == MusicState.COMBAT:
+		return
 	_ensure_player_active()
 	if not _is_fading():
 		match _state:
 			MusicState.MENU:
 				_set_layer_volumes(FULL_VOLUME_DB, SILENT_DB)
-			MusicState.OVERWORLD, MusicState.COMBAT:
+			MusicState.OVERWORLD:
 				_set_layer_volumes(SILENT_DB, FULL_VOLUME_DB)
 			_:
 				_set_layer_volumes(SILENT_DB, SILENT_DB)
 	if not _is_tween_running(_drums1_tween):
-		if _state == MusicState.COMBAT:
-			_set_stream_db(DRUMS1_INDEX, FULL_VOLUME_DB)
-		else:
-			_set_stream_db(DRUMS1_INDEX, SILENT_DB)
+		_set_stream_db(DRUMS1_INDEX, SILENT_DB)
 	if not _is_tween_running(_drums2_tween):
-		if _state == MusicState.COMBAT and _drums2_up:
-			_set_stream_db(DRUMS2_INDEX, FULL_VOLUME_DB)
-		else:
-			_set_stream_db(DRUMS2_INDEX, SILENT_DB)
+		_set_stream_db(DRUMS2_INDEX, SILENT_DB)
 
 
 static func _is_combat_path(path: String) -> bool:

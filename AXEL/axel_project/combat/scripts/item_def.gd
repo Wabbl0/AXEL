@@ -14,7 +14,10 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
 const FILE_PX := 1024
 const COMBAT_RES_PX := 120
+const WHEEL_RES_PX := 64
 const RARITY_GLYPHS: PackedStringArray = ["◇", "◈", "◆", "★", "✦"]
+
+static var _wheel_cache: Dictionary = {}
 
 
 static func rarity_glyph(item: Resource) -> String:
@@ -41,6 +44,24 @@ static func rarity_name(item: Resource) -> String:
 	if base.is_empty():
 		return glyph
 	return "%s %s" % [glyph, base]
+
+
+static func cached_wheel_texture(item: Resource) -> Texture2D:
+	if item == null:
+		return null
+	var icon: Texture2D = item.get("icon") as Texture2D
+	var key := ""
+	if icon != null and not str(icon.resource_path).is_empty():
+		key = str(icon.resource_path)
+	else:
+		key = str(item.get("id"))
+	if key.is_empty():
+		return texture_at_res(icon, WHEEL_RES_PX)
+	if _wheel_cache.has(key):
+		return _wheel_cache[key] as Texture2D
+	var tex := texture_at_res(icon, WHEEL_RES_PX)
+	_wheel_cache[key] = tex
+	return tex
 
 
 static func texture_at_res(src: Texture2D, px: int) -> Texture2D:

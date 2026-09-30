@@ -11,6 +11,7 @@ var _art: TextureRect
 var _locked := false
 var _locked_xform := Transform2D.IDENTITY
 var _screen_offset := OFFSET
+var _color := COLOR
 
 
 static func softness_px(art_scale: float) -> int:
@@ -108,7 +109,7 @@ func setup(art: TextureRect) -> void:
 	clip_contents = false
 	var mat := ShaderMaterial.new()
 	mat.shader = SHADER
-	mat.set_shader_parameter("shadow_color", COLOR)
+	mat.set_shader_parameter("shadow_color", _color)
 	material = mat
 	set_process(true)
 	_sync()
@@ -119,6 +120,13 @@ func set_locked_global(xform: Transform2D, offset: Vector2) -> void:
 	_locked_xform = xform
 	_screen_offset = offset
 	_sync()
+
+
+func set_color(c: Color) -> void:
+	_color = c
+	var mat := material as ShaderMaterial
+	if mat != null:
+		mat.set_shader_parameter("shadow_color", _color)
 
 
 func set_art(art: TextureRect) -> void:
@@ -160,7 +168,7 @@ func _sync() -> void:
 	mat.set_shader_parameter("pad_px", pad)
 	mat.set_shader_parameter("blur_px", maxf(pad.x, pad.y))
 	mat.set_shader_parameter("shift_px", off)
-	mat.set_shader_parameter("shadow_color", COLOR)
+	mat.set_shader_parameter("shadow_color", _color)
 
 
 func _place(rect_pos: Vector2, rect_size: Vector2) -> void:

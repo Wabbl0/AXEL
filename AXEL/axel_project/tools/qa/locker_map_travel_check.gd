@@ -85,8 +85,11 @@ func _check_unlock(world: Node, run: Node, gm: Node) -> void:
 	if bool(world.call("map_can_travel", ENTRANCE)):
 		_fail("entrance traveled before a visit")
 	gm.visited_rooms[ENTRANCE] = true
+	if bool(world.call("map_can_travel", ENTRANCE)):
+		_fail("entrance should stay locked before 1.4")
+	gm.visited_rooms[BASEMENT] = true
 	if not bool(world.call("map_can_travel", ENTRANCE)):
-		_fail("entrance should travel after a visit")
+		_fail("entrance should travel after 1.4")
 	gm.visited_rooms[CORRIDOR] = true
 	if bool(world.call("map_can_travel", HALLWAY)):
 		_fail("hallway unlocked from the 1.2 visit")
@@ -347,6 +350,7 @@ func _check_same_room(world: Node, gm: Node) -> void:
 		return
 	for _i in 16:
 		await process_frame
+	gm.visited_rooms[BASEMENT] = true
 	if not bool(world.call("map_can_travel", ENTRANCE)):
 		_fail("corridor visit did not unlock entrance")
 		return

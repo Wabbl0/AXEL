@@ -514,12 +514,19 @@ func _check_combat_music() -> void:
 	if room_player == null or not room_player.playing:
 		_fail("room music should be playing before combat")
 		return
+	if not is_equal_approx(float(music.get("DRUM_FADE_IN_SEC")), 0.35):
+		_fail("DRUM_FADE_IN_SEC should be about 0.35")
 	music.call("to_combat")
 	if not room_player.playing:
 		_fail("room music should keep playing into combat")
 	if _sync_volume_db(music, 3) > -40.0:
 		_fail("drums 2 should start silent")
+	var pos_before := room_player.get_playback_position()
 	music.call("notify_trinity")
+	if pos_before > 0.2:
+		var pos_after := room_player.get_playback_position()
+		if pos_after < pos_before - 0.05:
+			_fail("vice restarted the music")
 	await create_timer(0.7).timeout
 	if _sync_volume_db(music, 3) < -6.0:
 		_fail("vice round should fade drums 2 in")
