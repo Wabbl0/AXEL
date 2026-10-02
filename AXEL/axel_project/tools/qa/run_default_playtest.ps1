@@ -1,4 +1,4 @@
-# Run default QA playtest gates; prints QA_PLAYTEST_RESULT lines.
+
 $ErrorActionPreference = "Continue"
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $repo = Split-Path (Split-Path $root -Parent) -Parent

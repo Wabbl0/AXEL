@@ -20,7 +20,6 @@ const GLYPH_OVERLAP_PX := 14.0
 
 var _pickup: Node2D = null
 var _glyph: Label = null
-# White pixels inside one frame, origin at the cell's top-left (not centered).
 var _ink_frame := Rect2(0, 0, 48, 48)
 
 

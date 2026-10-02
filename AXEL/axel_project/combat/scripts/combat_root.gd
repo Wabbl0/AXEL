@@ -46,7 +46,6 @@ signal goal_victory_requested()
 @export_group("Power Intro FX")
 @export var enable_power_intro_fx: bool = true
 @export var power_intro_scale_in_sec: float = 0.54
-# Hold is 0.31s so the icon plus the 0.48s symbol motion stays 1.75s.
 @export var power_intro_hold_sec: float = 0.31
 @export var power_intro_scale_out_sec: float = 0.42
 @export var power_intro_peak_scale: float = 1.8
@@ -378,7 +377,7 @@ func is_last_affordable_paid_spin() -> bool:
 		return false
 	if not _can_afford_spin():
 		return false
-	# All-in (bankroll equals the bet, e.g. 1000/1000) is this last spin.
+
 	return _bankroll_cents < _to_cents(total_bet) * 2
 
 func set_goal_progress_cents(n: int) -> void:
@@ -1642,7 +1641,7 @@ func _start_spin_with_new_grid() -> void:
 func _begin_spin_round() -> void:
 	_hold_item_pulses = true
 	if free_spins.active:
-		# The choice already filled spin 1. Each later free spin opens a new full grid.
+
 		_free_spin_opened_fresh = false
 		if free_spins.spins_remaining < free_spins.spins_awarded_total:
 			_repopulate_grid_handoff("free_spin_next")
@@ -1874,7 +1873,7 @@ func _to_cents(amount: float) -> int:
 func _dev_fill_meter_for_guarantee_trinity() -> void:
 	if not OS.is_debug_build():
 		return
-	# Free Spins only starts after Vice Round, so that switch fills the meter too.
+
 	if not _dev_guarantee_trinity and not _dev_guarantee_fs_clear:
 		return
 	if free_spins.active:

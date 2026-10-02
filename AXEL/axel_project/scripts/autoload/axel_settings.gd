@@ -220,8 +220,8 @@ func _apply_fps_cap() -> void:
 
 
 func _ready() -> void:
-	# Godot's Audio dock edits the editor, not the running game. It writes this
-	# file about a second after a slider move. Follow that while a windowed play is up.
+
+
 	if not OS.has_feature("editor_runtime") or DisplayServer.get_name() == "headless":
 		set_process(false)
 		return
@@ -269,7 +269,7 @@ func _set_bus_linear(bus_name: String, linear: float, respect_existing_mute: boo
 	var idx := AudioServer.get_bus_index(bus_name)
 	if idx < 0:
 		return
-	# A full Options slider is 0 dB on top of the Audio panel fader.
+
 	var base_db := float(_layout_volume_db.get(bus_name, 0.0))
 	AudioServer.set_bus_volume_db(idx, base_db + linear_to_db(maxf(linear, 0.0001)))
 	if linear <= 0.001:
@@ -300,7 +300,7 @@ func _read_layout_text() -> String:
 
 
 func _apply_input_overrides() -> void:
-	# Menu rebinds are gone. A saved [controls] block must not replace the project keys.
+
 	_mirror_ui_actions_from_gameplay()
 
 
@@ -317,7 +317,7 @@ func _is_locked(section: String, key: String) -> bool:
 
 
 func _mirror_ui_actions_from_gameplay() -> void:
-	# Godot Control focus still reads ui_*; keep those in sync with live gameplay binds.
+
 	for src_var in _UI_MIRROR.keys():
 		var src := String(src_var)
 		var dst := String(_UI_MIRROR[src])

@@ -16,7 +16,6 @@ const _OVERLAY_NAME_SCANLINE := "ScanlineOverlay"
 const _OVERLAY_NAME_CRT := "CrtPluginOverlay"
 const _OVERLAY_NAME_CRT_COMBAT := "CrtCombatOverlay"
 
-# Gradient starts this many pixels outside the background texture, at 0% opacity.
 const EDGE_START_PX := 3.0
 const EDGE_SPAN_PX := 40.0
 const EDGE_OPACITY := 0.8
@@ -314,7 +313,7 @@ func _set_texture_edge_shader(bounds: Rect2) -> void:
 func _apply_overworld_edge_rim(crt_mat: ShaderMaterial, combat: bool) -> void:
 	if combat:
 		return
-	# Same edge in every non-combat scene. No TV bend, so the border is not mirrored.
+
 	crt_mat.set_shader_parameter("curvature", 0.0)
 	crt_mat.set_shader_parameter("mirror_edges", 0.0)
 	crt_mat.set_shader_parameter("vignette", 0.0)
@@ -359,7 +358,7 @@ func _apply_graphics_quality() -> void:
 	if _crt != null:
 		crt_rect = _crt.get_node_or_null("FilterRect") as ColorRect
 	if crt_rect != null and crt_rect.material is ShaderMaterial:
-		# Copy so a 2.4 rim tweak cannot stick to the shared overlay material.
+
 		crt_rect.material = (crt_rect.material as ShaderMaterial).duplicate()
 		var crt_mat := crt_rect.material as ShaderMaterial
 		var combat := is_combat_scene(_attached_scene)

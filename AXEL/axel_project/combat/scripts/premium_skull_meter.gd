@@ -9,7 +9,6 @@ const HOVER_SCALE := 1.06
 const PRESS_SCALE := 0.94
 const FILL_SCALE_1_3 := 1.08
 const FILL_SCALE_2_3 := 1.1
-# About 8% smaller than the old 1.16 full face, so the spin bars can sit under the jaw.
 const FILL_SCALE_FULL := 1.067
 const FULL_FACE_LIFT := 70.0
 const GLOW_HOVER_ALPHA := 0.45

@@ -1,9 +1,7 @@
 shader_type canvas_item;
 render_mode blend_add;
 
-// Soft white outer glow around the memory blob (sits above noir — stay white).
-// Neighbor UVs are clamped to 0–1 so atlas-frame sampling does not leak into
-// the next 48px cell on the sheet.
+
 uniform float spread : hint_range(1.0, 28.0) = 10.0;
 uniform float intensity : hint_range(0.0, 1.0) = 0.42;
 uniform vec4 glow_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);

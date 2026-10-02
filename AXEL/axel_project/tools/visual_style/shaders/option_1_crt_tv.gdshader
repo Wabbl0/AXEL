@@ -1,6 +1,5 @@
 shader_type canvas_item;
-// Option 1 — CRT TV stack (nofacer / Asset Library CRT inspired).
-// Scanlines, curvature, phosphor mask, rolling line, interference noise, subtle glitch.
+
 
 #include "res://tools/visual_style/shaders/theme_post_fx.gdshaderinc"
 
@@ -51,7 +50,7 @@ void fragment() {
 	p_chroma = max(p_chroma, player_sprite_mask(texture(screen_texture, uv_screen + vec2(chroma, 0.0)).rgb));
 	p_chroma = max(p_chroma, player_sprite_mask(texture(screen_texture, uv_screen - vec2(chroma, 0.0)).rgb));
 
-	// Occasional horizontal glitch burst
+
 	float burst_id = floor(t * glitch_rate);
 	float burst_on = step(0.72, hash21(vec2(burst_id, 1.7)));
 	float burst_y = hash21(vec2(burst_id, 9.3));
@@ -74,18 +73,18 @@ void fragment() {
 	col.g = texture(screen_texture, uv_safe).g;
 	col.b = texture(screen_texture, clamp(uv - vec2(off, 0.0), vec2(0.0), vec2(1.0))).b;
 
-	// Animated scanlines
+
 	float scan = sin((uv_safe.y + t * 0.04) * 820.0) * 0.5 + 0.5;
 	col *= 1.0 - scan * scanline_strength;
 
-	// Phosphor shadow mask
+
 	float mask = sin(uv_safe.x * 920.0) * 0.5 + 0.5;
 	col = mix(col, col * 0.86, mask * mask_strength);
 
-	// Black bar. The picture shift above is the warp.
+
 	col = mix(col, roll_color, wave * roll_color_strength);
 
-	// Interference + white static grain
+
 	float grain_t = floor(t * 18.0);
 	float grain = hash21(uv_safe * 1400.0 + vec2(grain_t, grain_t * 0.37)) - 0.5;
 	float interf = sin(uv_safe.y * 180.0 + t * 14.0) * 0.5 + 0.5;

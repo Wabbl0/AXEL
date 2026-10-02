@@ -981,4 +981,3 @@ func _assert_goal_credits_full_round_winnings() -> void:
 		return
 	cr.queue_free()
 	await process_frame
-

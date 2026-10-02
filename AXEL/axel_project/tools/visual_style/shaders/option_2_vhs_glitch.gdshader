@@ -1,6 +1,5 @@
 shader_type canvas_item;
-// Option 2 — VHS glitch burst (Retro VHS Glitch for Godot 4 inspired, MIT).
-// Animated scanlines, white noise static, RGB split, slice/wave glitches.
+
 
 #include "res://tools/visual_style/shaders/theme_post_fx.gdshaderinc"
 
@@ -61,7 +60,7 @@ void fragment() {
 	float scanline = sin(uv.y * 320.0 + glitch_time * 2.0) * 0.5 + 0.5;
 	col *= 1.0 - scanline * scanline_intensity;
 
-	// Always-on subtle static; stronger during glitch bursts
+
 	float static_noise = random(uv + floor(TIME * 24.0)) - 0.5;
 	col += static_noise * noise_intensity * (0.35 + glitch_active * 0.65);
 

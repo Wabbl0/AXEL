@@ -406,7 +406,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_dismiss_event(event: InputEvent) -> bool:
-	# Interact (E / Space / Enter) and dialogue_advance must not close or skip the card.
+
 	if event.is_action_pressed("back"):
 		return true
 	if event.is_action_pressed("pause"):
@@ -486,7 +486,7 @@ func _layout_cards() -> void:
 		if not s1.laid_out:
 			y1 = base_y
 		_apply_slot_rect(s1, x, y1, width, h1, scale)
-	# Half the locker/memory X so it sits in the card corner without covering text.
+
 	if show0 and s0.exit != null:
 		UiViewportScale.apply_exit_button(s0.exit, scale * 0.5)
 	if show1 and s1.exit != null:

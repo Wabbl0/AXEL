@@ -248,7 +248,6 @@ func _play_fight(
 	return {"won": false, "wallet": wallet, "spins": spins}
 
 
-# The 1000 cap can end a fight while the carried wallet can still pay.
 func _reopen_false_bust(cr: CombatRoot) -> void:
 	cr._encounter_complete = false
 	cr._encounter_won = false
@@ -313,7 +312,6 @@ func _goal_base(fight_i: int) -> int:
 	return maxi(int(round(value / rounding)) * GOAL_ROUNDING, 1)
 
 
-# Four lore flags, spread through the 20 scripted fights.
 func _lore_for_fight(fight_i: int) -> float:
 	var steps := 0
 	if fight_i >= 4:

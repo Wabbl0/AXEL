@@ -20,7 +20,6 @@ COMBAT_ROOT_INSTANCE_MARKERS = (
     'instance=ExtResource("2_combat_root")',
 )
 
-# UTF-8 text mis-decoded as Windows-1252/latin-1 (common in combat_test.tscn glyphs).
 MOJIBAKE_SIGNATURES = (
     "Ã¢",
     "Ã—",
@@ -44,7 +43,7 @@ class _SceneNodeBlock:
     parent: str
     full_path: str
     start_line: int
-    end_line: int  # exclusive
+    end_line: int
 
 
 def _parent_is_direct_combat_root(parent: str) -> bool:
@@ -82,7 +81,6 @@ def _paths_to_remove(blocks: list[_SceneNodeBlock]) -> set[str]:
         if block.name in COMBAT_ROOT_GRID_UNIQUE and _parent_is_direct_combat_root(block.parent):
             marked.add(block.full_path)
         else:
-            # Catch numbered suffix drift like GridFrame2, GridFrame3, etc.
             for base in COMBAT_ROOT_GRID_UNIQUE:
                 if not block.name.startswith(base) or block.name == base:
                     continue
@@ -174,7 +172,6 @@ def check_duplicate_grid_overrides(text: str) -> list[str]:
                 f"(runtime duplicate grid)"
             )
     for name in COMBAT_ROOT_GRID_UNIQUE:
-        # Any numbered suffix is drift (GridFrame2, GridFrame3, ...).
         pattern = rf'\[node name="{re.escape(name)}([2-9][0-9]*)"'
         for match in re.finditer(pattern, text):
             violations.append(
@@ -198,7 +195,6 @@ def sanitize_orphan_economics_stacks(text: str) -> tuple[str, list[str]]:
         if block.parent == ECONOMICS_CENTER_NAME and block.name.startswith("@VBoxContainer@"):
             remove_paths.add(block.full_path)
 
-    # Remove descendants of removed blocks.
     if remove_paths:
         changed = True
         while changed:

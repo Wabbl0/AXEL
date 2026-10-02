@@ -1,4 +1,0 @@
-﻿Captured: 2026-05-24T13:38:20.6174367+03:00
-Commit hash to match on PC2: c99e410edd8d3580ae5ba4bc4d09d649bddb341a
-Ahead/behind origin/main: 0	0
-Status: ## main...origin/main ?? tools/account_migration_backups/

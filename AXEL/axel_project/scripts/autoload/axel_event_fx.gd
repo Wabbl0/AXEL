@@ -114,7 +114,7 @@ func _on_scene_changed() -> void:
 		return
 
 	_cadence_active = true
-	# Rest pulse stays on. The rolling wave is only the 30s burst.
+
 	_set_ambient(true)
 	_arm_cadence_targets()
 
@@ -212,7 +212,7 @@ func is_cadence_enabled() -> bool:
 
 
 func register_walk_step() -> void:
-	# Walk steps no longer advance cadence. Kept so Player.gd still compiles.
+
 	return
 
 
@@ -787,7 +787,7 @@ func apply_to_scene(scene: Node) -> void:
 		_set_ambient(false)
 		return
 	_cadence_active = true
-	# Rest pulse stays on. The rolling wave is only the 30s burst.
+
 	_set_ambient(true)
 	_arm_cadence_targets()
 

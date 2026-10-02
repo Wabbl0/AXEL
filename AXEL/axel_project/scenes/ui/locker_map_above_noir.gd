@@ -1,7 +1,5 @@
 extends Polygon2D
 
-# The drawing is already black and red. Noir would turn that black into red,
-# so the live copy is drawn above the noir layer and the original stays hidden.
 const ABOVE_NOIR_LAYER := 100
 const HOVER_TINT := Color(1, 0, 0, 0.22)
 

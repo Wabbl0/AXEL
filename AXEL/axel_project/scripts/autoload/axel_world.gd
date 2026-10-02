@@ -806,7 +806,7 @@ func _probe_place_room(path: String, pass_id: int) -> void:
 	var player := scene.find_child("Player", true, false) as Node
 	var args := _camera_layout_args(scene)
 	args["view"] = _game_view_size()
-	# Room scripts would play enter lines and steal the camera. Collision stays.
+
 	_silence_probe(scene, player)
 	var vp := SubViewport.new()
 	vp.name = "MapSpotProbe"
@@ -1933,7 +1933,7 @@ func _normalize_room_answer(typed: String) -> String:
 	text = text.replace("’", "")
 	text = text.replace(".", "")
 	var words := text.split(" ", false)
-	# "in kitchen" / "inside hallway" / "on basement door" still name the room.
+
 	if words.size() >= 2 and words[0] in ["in", "inside", "on"]:
 		words.remove_at(0)
 	return " ".join(words)

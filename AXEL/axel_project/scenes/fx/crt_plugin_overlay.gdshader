@@ -1,7 +1,5 @@
 shader_type canvas_item;
-// CRT post-pass (curvature, phosphor mask, vignette, chroma) — stacks above noir + scanline.
-// Geometry/darkening knobs are inert at 0.0 so the same shader serves round overworld TV and flat combat.
-// Built-ins (SCREEN_UV / SCREEN_PIXEL_SIZE) are only legal inside fragment(); pass them into helpers.
+
 
 uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
 uniform float curvature : hint_range(0.0, 0.25) = 0.08;
@@ -15,18 +13,18 @@ uniform float player_white_boost : hint_range(0.0, 1.0) = 0.2;
 uniform float edge_fade_px : hint_range(0.0, 64.0) = 0.0;
 uniform float corner_darkness : hint_range(0.0, 1.0) = 0.0;
 uniform float corner_radius : hint_range(0.0, 1.0) = 0.45;
-// 0 = darken from the centre. Higher values keep the picture bright until closer to the window edge.
+
 uniform float vignette_start : hint_range(0.0, 0.95) = 0.0;
-// Screen pixels of the background texture: min x, min y, max x, max y. Empty keeps the shared rim.
+
 uniform vec4 texture_bounds_px = vec4(0.0);
-// Gradient begins this many pixels outside the texture, at 0% opacity.
+
 uniform float edge_start_px = 3.0;
 uniform float edge_span_px = 40.0;
 uniform float edge_opacity : hint_range(0.0, 1.0) = 1.0;
-// 1 folds samples that leave the screen back in. 0 clamps them so the edge is not mirrored.
+
 uniform float mirror_edges : hint_range(0.0, 1.0) = 1.0;
 
-// Aspect-corrected barrel: round glass on 3:2 (and any) window. amount 0 = identity.
+
 vec2 curve_uv(vec2 uv, float amount, float aspect) {
 	vec2 c = (uv - 0.5) * vec2(aspect, 1.0);
 	float r2 = dot(c, c);
@@ -35,7 +33,7 @@ vec2 curve_uv(vec2 uv, float amount, float aspect) {
 	return uv + offset;
 }
 
-// Soft dark-glass rim: fade starts slightly inside the picture edge and reaches black outside.
+
 float rim_fade(vec2 warped_uv, float fade_px, vec2 px) {
 	if (fade_px <= 0.0001) {
 		return 1.0;
@@ -44,11 +42,11 @@ float rim_fade(vec2 warped_uv, float fade_px, vec2 px) {
 		min(warped_uv.x, 1.0 - warped_uv.x) / px.x,
 		min(warped_uv.y, 1.0 - warped_uv.y) / px.y
 	);
-	// Positive = inside; 0 = at edge; negative = outside. Soften from ~0.35*fade inside.
+
 	return smoothstep(0.0, fade_px, edge_dist_px + fade_px * 0.35);
 }
 
-// Reflect chroma taps that would leave the picture so the rim never smears the last column.
+
 vec2 reflect_uv(vec2 uv) {
 	if (mirror_edges < 0.5) {
 		return clamp(uv, vec2(0.0), vec2(1.0));
@@ -58,7 +56,7 @@ vec2 reflect_uv(vec2 uv) {
 	return clamp(uv, vec2(0.0), vec2(1.0));
 }
 
-// Overworld player uses white_sprite (balanced bright RGB); env is noir red/black.
+
 float player_sprite_mask(vec3 rgb) {
 	float lum = dot(rgb, vec3(0.299, 0.587, 0.114));
 	float balance = 1.0 - abs(rgb.r - rgb.g) - abs(rgb.g - rgb.b);
@@ -106,7 +104,7 @@ void fragment() {
 	float white_body = player_white_body_mask(bent_src);
 	col = mix(col, vec3(1.0), white_body * player_white_boost);
 
-	// Darkening last. Texture bounds keep the shade outside the drawing.
+
 	bool has_texture_bounds = texture_bounds_px.z > texture_bounds_px.x && texture_bounds_px.w > texture_bounds_px.y;
 	if (has_texture_bounds) {
 		vec2 screen_px = uv_screen / px;

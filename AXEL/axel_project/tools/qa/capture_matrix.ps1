@@ -1,8 +1,6 @@
-# Phase 0.3 resolution sweep: captures every real scene at the five target
-# sizes (windowed). Wraps capture_scene.ps1. PNGs land in out/captures/matrix/.
-#
-#   powershell -File AXEL/axel_project/tools/qa/capture_matrix.ps1
-#   powershell -File ...capture_matrix.ps1 -Sizes @("1920x1080") -Scenes @("res://scenes/Arc_1/1.2_Corridor.tscn")
+
+
+
 param(
     [string[]]$Sizes = @("1366x768", "1920x1080", "1920x1200", "2560x1440", "3840x2160"),
     [string[]]$Scenes = @(
@@ -38,7 +36,7 @@ $repo = Split-Path (Split-Path $proj -Parent) -Parent
 if ($OutDir -eq "") { $OutDir = Join-Path $repo "out/captures/matrix" }
 New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 
-# 1.1 forced intro takes ~10s; skip it so the capture shows free-roam state.
+
 $env:AXEL_SKIP_INTRO = "1"
 
 $fail = 0

@@ -25,25 +25,20 @@ RGBA = tuple[int, int, int, int]
 BLACK: RGBA = (0, 0, 0, 255)
 CLEAR: RGBA = (0, 0, 0, 0)
 RED: RGBA = (255, 0, 0, 255)
-# Dim grey so a 1px halo reads as a faint white edge on black.
 FAINT_WHITE: RGBA = (96, 96, 96, 255)
 
 CANVAS = 128
-# ~24px margin; all four share the same content box.
 CONTENT_MAX = 80
-# Uniform outline thickness (pixels) after fit-to-canvas.
 STROKE = 7
 THRESHOLD = 128
 
-# Wild keeps its painted art. Do not add a halo back onto satanic_wild.png.
 PREMIUM_FILES = ()
 
-# Filled Unicode silhouettes — outline is carved afterward (no fill in output).
 SUITS: list[tuple[str, str]] = [
-    ("green_circle.png", "\u25A0"),  # ■ BLACK SQUARE
-    ("yellow_triangle.png", "\u25B2"),  # ▲ BLACK UP-POINTING TRIANGLE
-    ("blue_star.png", "\u2605"),  # ★ BLACK STAR
-    ("red_heart.png", "\u2665"),  # ♥ BLACK HEART SUIT
+    ("green_circle.png", "\u25A0"),
+    ("yellow_triangle.png", "\u25B2"),
+    ("blue_star.png", "\u2605"),
+    ("red_heart.png", "\u2665"),
 ]
 
 _FONT_CANDIDATES = [
@@ -111,7 +106,6 @@ def _fit_mask(glyph: Image.Image, canvas: int = CANVAS, content_max: int = CONTE
     scale = min(content_max / max(gw, 1), content_max / max(gh, 1))
     nw = max(1, int(round(gw * scale)))
     nh = max(1, int(round(gh * scale)))
-    # Smooth scale then re-threshold — keeps heart curves clean.
     scaled = glyph.resize((nw, nh), Image.Resampling.LANCZOS)
     scaled = scaled.point(lambda v: 255 if v > THRESHOLD else 0)
 
@@ -132,7 +126,6 @@ def _distance_to_outside(inside: np.ndarray) -> np.ndarray:
             if not inside[y, x]:
                 dist[y, x] = 0.0
                 q.append((y, x))
-    # 8-connected chamfer (ortho=1, diag≈√2) — uniform stroke on curves and points.
     neighbors = (
         (-1, 0, 1.0),
         (1, 0, 1.0),

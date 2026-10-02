@@ -1,7 +1,5 @@
 extends Node
 
-# One-shot UI / combat cues. Music stays on AxelMusic → Music bus.
-# Options "Effects" fades the Effects bus; CombatSfx and UiSfx send into it.
 
 const COMBAT_BUS := &"CombatSfx"
 const UI_BUS := &"UiSfx"

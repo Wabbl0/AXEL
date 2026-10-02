@@ -161,7 +161,7 @@ float _near_edge_y_at_x(vec2 points[LEAF_POLY_MAX], int start, int count, float 
 }
 
 float _trunk_line_gate(float sample_y, float cutoff_y, float softness_px) {
-	// 1e9 = no trunk line (wall / unused). Allow the polygon mask to win.
+
 	if (cutoff_y > 1e8) {
 		return 1.0;
 	}
@@ -237,7 +237,7 @@ void fragment() {
 	vec4 tex = texture(TEXTURE, UV);
 	float base_alpha = tex.a * COLOR.a;
 	float blended_alpha = base_alpha * mix(1.0, leaf_fade_alpha, mask_coverage);
-	// Keep packed brush brightness (white ink, empty gaps). Multiply COLOR.rgb so
-	// ShadowOutline modulate (black) becomes a real silhouette; Mike stays white.
+
+
 	COLOR = vec4(tex.rgb * COLOR.rgb, blended_alpha);
 }

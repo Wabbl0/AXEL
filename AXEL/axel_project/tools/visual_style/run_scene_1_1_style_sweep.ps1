@@ -1,4 +1,4 @@
-# Run Scene 1.1 visual style screenshot sweep (all variants).
+
 $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..\..\..")
 Set-Location $repoRoot

@@ -2,9 +2,6 @@
 class_name LockerShelves
 extends Control
 
-# Drag Flashlight, Key, and Nametag. ItemAnchor follows the locker picture.
-# Each picture stays hidden until that item is picked up. The shovel is not here.
-# After a correct board answer, the name tag picture becomes that item's icon.
 
 const LORE_PROPS: Array[Dictionary] = [
 	{

@@ -14,12 +14,12 @@ void fragment() {
 	vec4 src = texture(screen_texture, SCREEN_UV);
 	float lum = dot(src.rgb, vec3(0.299, 0.587, 0.114));
 
-	// Contrast boost centered on midpoint to preserve dark line strokes
+
 	lum = clamp((lum - 0.5) * line_contrast + 0.5, 0.0, 1.0);
 
 	vec4 mapped = black_color;
 
-	// Inverted AXEL mapping: dark strokes -> red, mid/high luminance -> black fill.
+
 	if (lum < t0) {
 		mapped = blood_red_color;
 	} else if (lum < t1) {

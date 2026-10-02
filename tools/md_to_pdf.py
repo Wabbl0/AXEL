@@ -30,9 +30,6 @@ HEADER_BG = colors.HexColor("#2a2a2a")
 ROW_ALT = colors.HexColor("#f4f4f4")
 BORDER = colors.HexColor("#999999")
 
-# Emoji glyphs aren't in the base PDF fonts (they'd render as empty boxes).
-# The status emoji are always followed by a plain word ("Drawn" / "Needed"),
-# so we just drop the emoji itself; the star marking memory scenes becomes "*".
 EMOJI_SUBS = {
     "✅ ": "",
     "❌ ": "",

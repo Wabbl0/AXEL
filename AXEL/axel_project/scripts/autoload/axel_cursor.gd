@@ -2,7 +2,6 @@ extends Node
 
 const CURSOR_PATH := "res://exports/Drawings/axel_cursor.png"
 const DISPLAY_HEIGHT := 33.0
-# Drawing is reduced to this many pixels tall, then scaled up with nearest filtering.
 const PIXEL_TEX_HEIGHT := 16
 const INK_COVERAGE := 0.12
 const PAPER_BYTE := 235

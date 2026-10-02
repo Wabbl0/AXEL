@@ -2,8 +2,6 @@
 class_name LockerShelfClip
 extends Sprite2D
 
-# ClipPolygon is the kept shape. Outside it, the picture is cut off.
-# The edge softens by 1 screen pixel. The inside stays solid.
 
 const FEATHER_PX := 1.0
 const MAX_POINTS := 16

@@ -1,6 +1,6 @@
-# Scans capture PNGs and prints size + mean luminance so blank/broken frames
-# stand out (mean ~0 = black frame, ~255 = white frame; noir rooms sit ~5-45).
-#   powershell -File AXEL/axel_project/tools/qa/scan_captures.ps1 [-Dir out/captures/matrix]
+
+
+
 param([string]$Dir = "")
 
 $proj = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
@@ -10,7 +10,7 @@ if ($Dir -eq "") { $Dir = Join-Path $repo "out/captures/matrix" }
 Add-Type -AssemblyName System.Drawing
 Get-ChildItem $Dir -Filter *.png | Sort-Object Name | ForEach-Object {
     $bmp = [System.Drawing.Bitmap]::FromFile($_.FullName)
-    # Sample a 64x64 grid (fast, good enough for a blank-frame heuristic).
+
     $sum = 0.0; $n = 0
     $stepX = [Math]::Max(1, [int]($bmp.Width / 64))
     $stepY = [Math]::Max(1, [int]($bmp.Height / 64))

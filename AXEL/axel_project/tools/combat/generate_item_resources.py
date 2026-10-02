@@ -15,7 +15,6 @@ ITEMS_DIR = ROOT / "combat" / "data" / "items"
 ICONS_DIR = ROOT / "combat" / "art" / "item_icons"
 SCRIPT = "res://combat/scripts/item_def.gd"
 
-# 8-band + white (0-255)
 PAL = [
     (230, 0, 0),
     (178, 0, 0),
@@ -28,7 +27,6 @@ PAL = [
 ]
 WHITE = (255, 255, 255)
 
-# id, file_stem, display, rarity, family, desc, effect_id, params
 ITEMS = [
     ("C1", "C1_ash_spin_token", "Ash Spin Token", 0, "spinpay",
      "Each paid spin adds +0.06x encounter payout scalar (cap +0.36x)",
@@ -297,12 +295,10 @@ def write_png(path: Path, item_id: str) -> None:
             if x < 2 or y < 2 or x >= w - 2 or y >= h - 2:
                 pixels.append(stroke)
             elif 10 <= x < 38 and 10 <= y < 38:
-                # unique-ish inner mark
                 bit = ((x * 7 + y * 13 + hsh) % 11) < 4
                 pixels.append(stroke if bit else fill)
             else:
                 pixels.append(bg)
-    # tiny white highlight
     pixels[5 * w + 5] = WHITE
     pixels[5 * w + 6] = WHITE
     raw = b""

@@ -1,5 +1,5 @@
-# Convert music WAVs to Ogg Vorbis for the Phase 7 release pack.
-# Keeps the WAV beside the OGG until you delete it by hand.
+
+
 $ErrorActionPreference = "Stop"
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $music = Join-Path $root "assets\audio\music"

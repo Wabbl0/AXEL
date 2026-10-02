@@ -1,9 +1,5 @@
 shader_type canvas_item;
-// Stroke around one atlas frame. Not blend_add: a faint additive glow
-// disappears on the noir floor and through the CRT. Thickness is `spread`
-// texture pixels. Opacity is glow_color.a (75% on the item and memory strokes).
-// The quad grows by `spread` so the stroke is not clipped to the 48px cell.
-// A spread under 1 still searches 1 pixel so the thin stroke does not vanish.
+
 
 uniform float spread : hint_range(0.5, 8.0) = 1.92;
 uniform vec2 frame_px = vec2(48.0, 48.0);

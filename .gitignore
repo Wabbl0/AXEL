@@ -23,3 +23,6 @@ AXEL/axel_project/archive/**/exports/
 
 # Playtest export builds (Windows folder + Mac zip)
 /AXEL/out/
+
+# Personal PC migration backups (not needed to run the game)
+/tools/account_migration_backups/

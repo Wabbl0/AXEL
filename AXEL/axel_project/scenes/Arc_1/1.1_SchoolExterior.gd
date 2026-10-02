@@ -207,7 +207,7 @@ func _run_forced_intro_sequence() -> void:
 	_refresh_door_interact_prompt()
 	_arm_exit_trigger_grace()
 
-	# Walk-away lines and the left-edge ending wait until this one finishes.
+
 	_first_line_playing = true
 	await _play_first_dialogue_line()
 	_first_line_playing = false

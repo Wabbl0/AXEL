@@ -1,12 +1,6 @@
-# Generic scene-to-PNG capture driver (Master Build Plan Phase 0.1).
-# Runs Godot WINDOWED (never headless) via the console exe so stdout is visible.
-#
-# Examples (from anywhere):
-#   powershell -File AXEL/axel_project/tools/qa/capture_scene.ps1 -Scene res://scenes/Main_Menu/0.1_MainMenu.tscn -Out out/menu.png
-#   powershell -File ...capture_scene.ps1 -Scene res://combat/combat_test.tscn -Out out/hud_4k.png -Size 3840x2160 -Frames 90 -Mode borderless
-#
-# Optional env before calling (forwarded to the game): AXEL_SKIP_INTRO=1,
-# AXEL_DISABLE_POST_FX=1, AXEL_DISABLE_EVENT_FX=1, AXEL_DISABLE_MUSIC=1.
+
+
+
 param(
     [Parameter(Mandatory = $true)][string]$Scene,
     [Parameter(Mandatory = $true)][string]$Out,
@@ -16,8 +10,8 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
-$proj = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent    # tools/qa -> tools -> AXEL/axel_project
-$repo = Split-Path (Split-Path $proj -Parent) -Parent            # AXEL/axel_project -> AXEL -> repo root
+$proj = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$repo = Split-Path (Split-Path $proj -Parent) -Parent
 
 $godot = Join-Path $repo "Godot_v4.7.2-stable_win64_console.exe"
 if (-not (Test-Path $godot)) {
@@ -25,7 +19,7 @@ if (-not (Test-Path $godot)) {
     exit 1
 }
 
-# Resolve output to an absolute path unless it is a Godot virtual path.
+
 if ($Out -notmatch "^(user|res)://") {
     if (-not [System.IO.Path]::IsPathRooted($Out)) {
         $Out = Join-Path (Get-Location).Path $Out

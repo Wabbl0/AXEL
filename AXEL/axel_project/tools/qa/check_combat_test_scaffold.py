@@ -10,7 +10,7 @@ _TOOLS_QA_DIR = Path(__file__).resolve().parent
 if str(_TOOLS_QA_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_QA_DIR))
 
-from canon_validators_shared import (  # noqa: E402
+from canon_validators_shared import (
     check_duplicate_grid_overrides,
     check_orphan_economics_stacks,
     check_mojibake_signatures,

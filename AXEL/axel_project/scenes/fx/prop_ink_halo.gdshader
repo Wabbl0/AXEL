@@ -1,6 +1,6 @@
 shader_type canvas_item;
 
-// Soft halo around black ink. Authored black so 8-band noir remaps it to a faint red glow.
+
 uniform float spread : hint_range(1.0, 28.0) = 10.0;
 uniform float intensity : hint_range(0.0, 1.0) = 0.28;
 uniform vec4 glow_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);

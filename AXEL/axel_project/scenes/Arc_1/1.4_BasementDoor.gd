@@ -11,7 +11,6 @@ const HINT_SOON_WAIT_SEC := 0.6
 const HINT_SCREEN_SCALE := 1.67
 const HINT_RIGHT_INSET_PX := 48.0
 const HINT_Y_FRAC := 0.64
-# 3508×2480 plate. Room baseline stays 0.352. Mike matches 1.2: scale 0.198, speed 185.3.
 const _OLD_BG_SCALE := Vector2(0.352, 0.352)
 
 var _door_interact_area: Area2D

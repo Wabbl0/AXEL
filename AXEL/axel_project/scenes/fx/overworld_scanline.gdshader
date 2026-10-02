@@ -17,23 +17,23 @@ float hash(vec2 p, float t) {
 void fragment() {
 	vec2 uv = SCREEN_UV;
 
-	// High-frequency white noise (TV static grain)
+
 	float t = floor(TIME * noise_speed);
 	float grain = hash(uv * 1000.0, t);
 	grain = (grain - 0.5) * 2.0 * noise_intensity;
 
-	// Subtle fixed scanlines (soft sine, no hard step)
+
 	float scan = sin(uv.y * scan_density * 3.14159) * 0.5 + 0.5;
 	scan = scan * scan_strength;
 
-	// Vignette
+
 	vec2 center = uv - vec2(0.5);
 	float vig = 1.0 - dot(center, center) * vignette_strength * 3.5;
 
-	// Global brightness flicker (simulates old TV power instability)
+
 	float flicker = 1.0 + (sin(TIME * 7.3) * flicker_strength);
 
-	// Composite: additive white noise + darkening scanlines
+
 	float luminance = (grain - scan) * vig * flicker;
 
 	COLOR = vec4(vec3(luminance), blend_opacity);

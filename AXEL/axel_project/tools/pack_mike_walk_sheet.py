@@ -26,9 +26,7 @@ INK_THRESH = 8
 MIN_COL_INK = 6
 MIN_GAP = 10
 SPECK_MAX_PIXELS = 12
-# Isolated blobs this far from the main pose (pixels) are leftover brush, not body.
 FAR_BLOB_DIST = 40
-# After pack, drop extra islands smaller than this (stray strokes near head/feet).
 ISLAND_MAX_PIXELS = 120
 CELL_PAD = 20
 BODY_INK_RGBA = (255, 255, 255, 255)
@@ -36,7 +34,6 @@ NECK_WIDTH_RATIO = 0.28
 CHIN_PAD_PX = 6
 FACE_BELOW_PEAK = 0.62
 NECK_THIN_ROWS = 6
-# Soft painted-white overflow inverts to a dark halo; drop those faint pixels.
 FACE_FRINGE_LUMA = 90
 FACE_FRINGE_ALPHA = 80
 
@@ -244,7 +241,6 @@ def _keep_main_island(pose: Image.Image, max_extra: int = ISLAND_MAX_PIXELS) -> 
 def _extract_poses(path: str, expect: int) -> List[Image.Image]:
 	src = Image.open(path).convert("RGBA")
 	a = _alpha(src)
-	# Build binary mask and drop dust
 	mask = Image.new("L", a.size, 0)
 	ap = a.load()
 	mp = mask.load()
@@ -260,7 +256,6 @@ def _extract_poses(path: str, expect: int) -> List[Image.Image]:
 	poses: List[Image.Image] = []
 	for x0, x1 in spans:
 		xmin, ymin, xmax, ymax = _bbox_for_span(mask, x0, x1, thresh=1)
-		# Crop from source; keep original alpha so brush edges stay (mask only drops dust)
 		crop = src.crop((xmin, ymin, xmax + 1, ymax + 1)).copy()
 		m_crop = mask.crop((xmin, ymin, xmax + 1, ymax + 1))
 		r, g, b, oa = crop.split()
@@ -298,7 +293,6 @@ def _chin_y(pose: Image.Image) -> int:
 	peak_w = widths[peak_y]
 	if peak_w < 8:
 		return min(int(h * 0.28), h)
-	# Eyes sit near the widest row; never cut the plate above the lower face.
 	circle_bottom = min(h, peak_y + int(peak_w * FACE_BELOW_PEAK) + CHIN_PAD_PX)
 	neck_cut = max(8, int(peak_w * NECK_WIDTH_RATIO))
 	limit = min(h, circle_bottom + peak_w)
@@ -334,13 +328,11 @@ def _finish_pose(pose: Image.Image) -> Image.Image:
 def _pack(poses: List[Image.Image]) -> Tuple[Image.Image, int, int]:
 	max_w = max(p.size[0] for p in poses)
 	max_h = max(p.size[1] for p in poses)
-	# Shared head-top: all poses already cropped to their own top ink; pad keeps head near cell top
 	cell_w = max_w + CELL_PAD * 2
 	cell_h = max_h + CELL_PAD * 2
 	n = len(poses)
 	sheet = Image.new("RGBA", (cell_w * n, cell_h), (0, 0, 0, 0))
 	for i, pose in enumerate(poses):
-		# Head-top align: paste at CELL_PAD from top; center horizontally
 		ox = i * cell_w + (cell_w - pose.size[0]) // 2
 		oy = CELL_PAD
 		sheet.paste(pose, (ox, oy))
@@ -350,7 +342,6 @@ def _pack(poses: List[Image.Image]) -> Tuple[Image.Image, int, int]:
 def main() -> None:
 	etu_path = _find_source("kavely_etu.png", "etu")
 	sivu_path = _find_source("kavely_sivu.png", "sivu")
-	# Prefer ASCII copies if present
 	ascii_etu = os.path.join(DRAWINGS, "kavely_etu.png")
 	ascii_sivu = os.path.join(DRAWINGS, "kavely_sivu.png")
 	if os.path.isfile(ascii_etu):
@@ -363,7 +354,7 @@ def main() -> None:
 	print("Extracting sivu (5)…")
 	sivu = _extract_poses(sivu_path, 5)
 
-	all_poses = etu + sivu  # 0-3 front, 4-6 back, 7-11 side
+	all_poses = etu + sivu
 	assert len(all_poses) == 12
 
 	print("Invert whole figure (no head plate, no solid-white body)…")
@@ -376,12 +367,10 @@ def main() -> None:
 	if os.path.isfile(LEGACY_SHEET):
 		print(f"Legacy backup already exists: {LEGACY_SHEET}")
 	else:
-		# 13-frame sheet was archived 2026-09-17; do not recreate it on the live path.
 		print("pack_mike_walk_sheet: skip live legacy13 backup (archived 2026-09-17)")
 
 	sheet.save(OUT_SHEET, "PNG")
 	print(f"Wrote {OUT_SHEET}")
-	# Machine-readable for scale math
 	meta = os.path.join(SPRITES, "mike_walking-Sheet_meta.txt")
 	with open(meta, "w", encoding="utf-8") as f:
 		f.write(f"cell_w={cell_w}\ncell_h={cell_h}\nframes=12\n")

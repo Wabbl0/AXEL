@@ -94,14 +94,10 @@ const SPIN_BLOCK_W := 54.0
 const SPIN_BLOCK_H := 36.0
 const SPIN_BLOCK_GAP := 12.0
 const SPIN_BAR_SCREEN_PAD := 8.0
-# Mouth on the stage-3 skull. Nudge if the drip misses the teeth.
 const SKULL_MOUTH_FRAC := Vector2(0.50, 0.62)
-# Bottom of the dark mouth on axel_skull_3.png. Block tops sit on this line.
 const SKULL_MOUTH_LIP_FRAC := 0.80
 const SPIN_BAR_FILL_SEC := 0.08
 const FS_CHOICE_LAYER := 116
-# Noir (90), scanlines (105), and combat CRT (108) sit under this.
-# That filter turns white into black, which hides this count.
 const SPIN_COUNT_LAYER := 109
 const FS_SCRIM_ALPHA := 0.72
 const FS_ICON_PX := 128.0
@@ -3473,7 +3469,7 @@ func await_victory_prelude() -> void:
 	if tree == null:
 		return
 
-	# Wait for the gather counter; do not kill it at the start.
+
 	var waited := 0.0
 	while _winnings_counter_running and waited < 1.5:
 		await tree.create_timer(0.05).timeout
@@ -3497,7 +3493,7 @@ func await_victory_prelude() -> void:
 	var gain := 0
 	if combat.has_method("get_last_spin_summary"):
 		var summary: Dictionary = combat.get_last_spin_summary()
-		# Spin summary uses "payout" (see combat_root._empty_spin_summary).
+
 		gain = int(summary.get("payout", 0))
 
 	if goal_label != null:

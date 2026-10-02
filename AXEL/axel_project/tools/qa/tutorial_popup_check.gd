@@ -262,7 +262,7 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 		failures.append("first stacked card has no visible X")
 	if exit1 == null or not exit1.visible:
 		failures.append("second stacked card has no visible X")
-	# Interact must not close a tutorial card.
+
 	var open_before := bool(tutorial.call("is_open"))
 	Input.action_press("interact")
 	await process_frame
@@ -318,7 +318,7 @@ func _close_both_cards(tutorial: Node) -> void:
 		await process_frame
 		if not bool(tutorial.call("is_open")):
 			return
-	# Force-dismiss leftovers so the script can finish.
+
 	for _i in 4:
 		tutorial.call("debug_dismiss")
 		await process_frame

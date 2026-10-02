@@ -43,8 +43,8 @@ func wave_roll_amount() -> float:
 
 
 func _ensure_back_buffer_copy() -> void:
-	# Godot copies the screen only at the first hint_screen_texture draw (CRT 108).
-	# Recopy here so the wave samples dialogue 111, not the pre-CRT buffer.
+
+
 	var copy := get_node_or_null("BackBufferCopy") as BackBufferCopy
 	if copy == null:
 		copy = BackBufferCopy.new()

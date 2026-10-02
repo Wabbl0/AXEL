@@ -137,7 +137,7 @@ func _check_piece_shadow(piece: Control, name: String) -> void:
 	var art_rect := _plate_rect(picture)
 	var shadow_rect := _plate_rect(shadow)
 	if name == "NEW_Execute":
-		# Skull shadow sits slightly left and below (~4px / ~5px), not far like 16/18.
+
 		if shadow_rect.position.x > art_rect.position.x - 0.5 or shadow_rect.end.y < art_rect.end.y + 0.5:
 			_fail("%s skull shadow is not lower-left (%s vs %s)" % [name, shadow_rect, art_rect])
 		await _check_skull_shadow_follows(piece, shadow)
@@ -157,7 +157,7 @@ func _check_skull_shadow_follows(piece: Control, shadow: Control) -> void:
 	await process_frame
 	var skull_dx := skull.global_position.x - before_skull.x
 	var shadow_dx := shadow.global_position.x - before_shadow.x
-	# Local +20 becomes ~10 screen px under HudCanvas scale; shadow must match that delta.
+
 	if absf(shadow_dx - skull_dx) > 2.0:
 		_fail("NEW_Execute skull shadow did not follow move (shadow dx=%s, skull dx=%s)" % [shadow_dx, skull_dx])
 	skull.position = saved
@@ -216,7 +216,7 @@ func _check_on_plate(canvas: Control) -> void:
 		var min_x := -POS_TOLERANCE
 		var parent := ctrl.get_parent()
 		if ctrl.name == "NEW_Settings" or (parent != null and parent.name == "NEW_Settings"):
-			# The settings square sits in the left window margin, just off the plate.
+
 			min_x = -100.0
 		if r.position.x < min_x or r.position.y < -POS_TOLERANCE \
 				or r.position.x + r.size.x > PLATE.x + POS_TOLERANCE \

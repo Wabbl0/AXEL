@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# String-aware GDScript comment stripper.
-# Removes # and ## comments. Keeps # inside quotes / triple-quotes.
-# Skips archive/. Run from repo root:
-#   python AXEL/axel_project/tools/qa/strip_gd_comments.py
 
 from __future__ import annotations
 
@@ -16,7 +12,7 @@ def strip_gd(src: str) -> str:
 	out: list[str] = []
 	i = 0
 	n = len(src)
-	mode = "code"  # code, dq, sq, tdq, tsq
+	mode = "code"
 	line: list[str] = []
 
 	def flush_line(keep: bool) -> None:
@@ -66,7 +62,6 @@ def strip_gd(src: str) -> str:
 				i += 1
 				continue
 			if ch == "#":
-				# Drop the rest of this line (comment). Keep any code already on it.
 				while i < n and src[i] not in "\n\r":
 					i += 1
 				if line:
@@ -89,7 +84,6 @@ def strip_gd(src: str) -> str:
 			i += 1
 			continue
 
-		# string modes
 		if ch == "\\" and i + 1 < n and mode in ("dq", "sq"):
 			line.append(ch)
 			line.append(src[i + 1])
@@ -130,7 +124,6 @@ def strip_gd(src: str) -> str:
 	text = "\n".join(out)
 	if src.endswith("\n") and not text.endswith("\n"):
 		text += "\n"
-	# Collapse runs of 3+ blank lines to 2.
 	while "\n\n\n\n" in text:
 		text = text.replace("\n\n\n\n", "\n\n\n")
 	return text

@@ -1,6 +1,5 @@
 extends RefCounted
 
-# Texture pixels of stroke. The item stroke is the thicker one. Alpha is 75%.
 const MEMORY_SPREAD := 0.96
 const ITEM_SPREAD := 1.92
 const OUTLINE_ALPHA := 0.75

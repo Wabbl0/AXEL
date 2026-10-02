@@ -1,6 +1,5 @@
 extends TextureRect
 
-# Screen pixels. The free-spin bars use this same shift and softness.
 const COLOR := Color(0.15, 0.15, 0.15, 1.0)
 const OFFSET := Vector2(2.0, 3.0)
 const SHADER := preload("res://combat/shaders/piece_drop_shadow.gdshader")

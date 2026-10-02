@@ -3,7 +3,6 @@ extends CanvasLayer
 signal travel_requested(scene_path: String)
 signal closed
 
-# Room boxes are pixels on axel_map_v2.png.
 const MAP_TEXTURE := preload("res://exports/Drawings/axel_map_v2.png")
 const ITEMS_INDICATOR_SHEET := preload("res://assets/sprites/items_indicator-Sheet.png")
 const UI_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
@@ -31,7 +30,6 @@ const BACKYARD_SCENE := "res://scenes/Arc_3/3.1_Backyard.tscn"
 const LOUNGE_SCENE := "res://scenes/Arc_4/4.1_TeachersLounge.tscn"
 const CLASSROOM_SCENE := "res://scenes/Arc_5/5.1_Classroom.tscn"
 
-# fit: the hover fill stays inside this box, on the inside of the red line.
 const AREAS: Array[Dictionary] = [
 	{
 		"name": "Kitchen",
@@ -59,7 +57,7 @@ const AREAS: Array[Dictionary] = [
 		"fit": true,
 		"scene": HALLWAY_SCENE,
 		"plate": "res://exports/Drawings/2.4_ClassroomsCorridor.png",
-		# Right stem, then the bottom bar. It stops on the white bar.
+
 		"rects": [
 			Rect2(1424, 881, 140, 461),
 			Rect2(856, 1342, 708, 105),
@@ -70,7 +68,7 @@ const AREAS: Array[Dictionary] = [
 		"rect": Rect2(13, 533, 949, 95),
 		"fit": true,
 		"scene": ENTRANCE_SCENE,
-		# Basement items_indicator only. The click still travels the whole strip to 1.2.
+
 		"pin_scene": BASEMENT_SCENE,
 		"pin_plate": "res://exports/Drawings/1.4_BasementDoor_v2.png",
 		"pin_rect": ENTRANCE_PIN_RECT,
