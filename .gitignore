@@ -26,3 +26,4 @@ AXEL/axel_project/archive/**/exports/
 
 # Personal PC migration backups (not needed to run the game)
 /tools/account_migration_backups/
+__pycache__/
