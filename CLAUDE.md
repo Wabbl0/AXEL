@@ -65,7 +65,7 @@ The Godot project is in `AXEL/axel_project` (`project.godot`). Main scene: `res:
 
 ## Autoloads
 
-`AxelSettings`, `CombatPaceHost`, `AxelCursor`, `AxelSaves` (3 slots, `user://saves/`), `GameManager`, `AxelRun`, `AxelWorld`, `AxelPostFxStack`, `AxelEventFx`, `AxelMusic`, `AxelSfx`, `AxelCombatDevTools` (debug only), `AxelPause` (the only writer of `get_tree().paused`), `AxelTutorial`.
+The full list is in `project.godot`. `AxelPause` is the only writer of `get_tree().paused`. `AxelCombatDevTools` is debug only. `AxelSaves` uses 3 slots in `user://saves/`.
 
 ## Big files. Do not read them whole.
 
@@ -103,12 +103,4 @@ Notes:
 
 ## Release builds (only when I say "commit and push")
 
-Do this only when I ask you to git commit and push. Never after an ordinary edit or commit.
-
-1. Bump the version. Small playtest fixes bump the last number (0.0.3 → 0.0.4). Bigger changes bump the middle number (0.0.x → 0.1.0). Ask me if it's unclear which one.
-2. In `AXEL/axel_project/export_presets.cfg`, update all six version spots: both `export_path` names (`AXEL_x.y.z.exe`, `AXEL_x.y.z.zip`), Windows `file_version` and `product_version` (`x.y.z.0`), and Mac `short_version` and `version` (`x.y.z`).
-3. Export both builds from the repo root:
-   - `tools\cmd\godot.cmd --headless --path AXEL/axel_project --export-release "Windows Desktop" ../out/export/windows/AXEL_x.y.z.exe`
-   - `tools\cmd\godot.cmd --headless --path AXEL/axel_project --export-release "macOS" ../out/export/mac/AXEL_x.y.z.zip`
-4. After both new files exist, delete the previous version's `.exe` and `.zip` in `AXEL/out/export/`.
-5. Commit the code changes and the version bump, then push.
+Do this only when I ask you to git commit and push. Never after an ordinary edit or commit. Follow the `release-build` skill.
