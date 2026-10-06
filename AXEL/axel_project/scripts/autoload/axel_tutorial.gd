@@ -19,7 +19,7 @@ const TITLE_MARK_GAP := 18.0
 const AUTO_READING_BASE_SEC := 3.0
 const AUTO_READING_SQRT := 0.5774
 const AUTO_READING_MAX_SEC := 20.0
-const AUTO_SKIP_GRACE_SEC := 2.0
+const SLOT_READING_MULT := 2.0
 const GLOW_STEADY := 0.45
 const GLOW_PULSE_SEC := 1.6
 const GLOW_FADE_OUT_SEC := 0.35
@@ -51,17 +51,38 @@ const LESSONS := {
 		"title": "Items",
 		"body": "Tab, Q, R, or I opens your items. Clicking MIKE does too. Click to switch.",
 	},
+	"slot_match": {
+		"freeze": true,
+		"title": "Matches",
+		"body": "3 or more of the same picture in a row or a column is a win. Each win pays your bet times that picture's value, times the multiplier. Every win is listed in the history box.",
+	},
+	"slot_power": {
+		"freeze": true,
+		"title": "The Skull",
+		"body": "Cigarette, alcohol and bloody hand are powers. Matching them fills the skull meter. When the skull is full, something worse begins.",
+	},
+	"slot_vice": {
+		"freeze": true,
+		"title": "Vice Round",
+		"body": "The skull is full. Every power fires once, and the pictures are eaten. Clear the board to earn a prize.",
+	},
 }
 
 const GLOW_PIECES := {
 	"fight_spin": ["NEW_Execute", "NEW_Grid"],
 	"fight_stakes": ["NEW_Bets", "NEW_Goal"],
 	"fight_items": ["NEW_Items"],
+	"slot_match": ["NEW_History", "NEW_Grid"],
+	"slot_power": ["NEW_Execute"],
+	"slot_vice": ["NEW_Execute", "NEW_Grid"],
 }
 
 enum Phase { IDLE, OPENING, TYPING, WAITING, CLOSING }
 
+signal freeze_changed(on: bool)
+
 var _debug_enabled := false
+var _freeze_on := false
 var _queue: Array[String] = []
 var _marked: Dictionary = {}
 var _hud_rects: Dictionary = {}
@@ -86,7 +107,7 @@ class CardSlot:
 	var body_text: String = ""
 	var typed: int = 0
 	var type_acc: float = 0.0
-	var wait_left: float = 0.0
+	var wait_left: float = -1.0
 	var run_token: int = 0
 	var laid_out: bool = false
 	var card_host: Control
@@ -124,6 +145,36 @@ func request(id: String) -> void:
 	if _is_seen(id) or _queue.has(id) or _is_showing_id(id):
 		return
 	_queue.append(id)
+	_sync_freeze()
+
+
+func is_freezing() -> bool:
+	return _freeze_on
+
+
+func _lesson_freezes(id: String) -> bool:
+	return LESSONS.has(id) and bool(LESSONS[id].get("freeze", false))
+
+
+func _wants_freeze() -> bool:
+	for id in _queue:
+		if _lesson_freezes(id):
+			return true
+	for slot in _slots:
+		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		if _lesson_freezes(slot.open_id):
+			return true
+	return false
+
+
+func _sync_freeze() -> void:
+	var want := _wants_freeze()
+	if want == _freeze_on:
+		return
+	_freeze_on = want
+	CombatPace.set_freeze(want)
+	freeze_changed.emit(want)
 
 
 func is_open() -> bool:
@@ -131,6 +182,10 @@ func is_open() -> bool:
 		if slot.phase != Phase.IDLE:
 			return true
 	return false
+
+
+func is_typing() -> bool:
+	return _any_typing()
 
 
 func is_waiting() -> bool:
@@ -141,12 +196,28 @@ func is_waiting() -> bool:
 
 
 func blocks_spin() -> bool:
-	if is_open():
-		return true
-	for id in _queue:
-		if _is_fight(id):
-			return true
 	return false
+
+
+func complete(id: String) -> void:
+	if not LESSONS.has(id):
+		return
+	var idx := _queue.find(id)
+	if idx >= 0:
+		_queue.remove_at(idx)
+	if not _is_showing_id(id):
+		_mark_seen(id)
+		return
+	for slot in _slots:
+		if slot.open_id != id or slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		if slot.phase == Phase.TYPING or slot.phase == Phase.OPENING:
+			slot.body.text = slot.body_text
+			slot.typed = slot.body_text.length()
+			slot.phase = Phase.WAITING
+			_refresh_type_loop()
+		_start_close(slot)
+		return
 
 
 func suppresses_skull_hint() -> bool:
@@ -253,12 +324,13 @@ func _process(delta: float) -> void:
 	for slot in _slots:
 		if slot.phase == Phase.TYPING:
 			_advance_type(slot, delta)
-		elif slot.phase == Phase.WAITING:
+		elif slot.phase == Phase.WAITING and slot.wait_left >= 0.0:
 			slot.wait_left -= delta
 			if slot.wait_left <= 0.0:
 				_start_close(slot)
 	_sync_glows()
 	_try_start()
+	_sync_freeze()
 
 
 func _free_slot_index() -> int:
@@ -313,7 +385,7 @@ func _run_card(slot: CardSlot, id: String) -> void:
 
 func _advance_type(slot: CardSlot, delta: float) -> void:
 	if slot.body_text.is_empty():
-		_begin_wait(slot, false)
+		_begin_wait(slot)
 		return
 	slot.type_acc += delta * CHARS_PER_SEC
 	var add := int(slot.type_acc)
@@ -323,16 +395,15 @@ func _advance_type(slot: CardSlot, delta: float) -> void:
 	slot.typed = mini(slot.typed + add, slot.body_text.length())
 	slot.body.text = slot.body_text.substr(0, slot.typed)
 	if slot.typed >= slot.body_text.length():
-		_begin_wait(slot, false)
+		_begin_wait(slot)
 
 
-func _begin_wait(slot: CardSlot, from_skip: bool) -> void:
+func _begin_wait(slot: CardSlot) -> void:
 	slot.phase = Phase.WAITING
 	_refresh_type_loop()
-	if from_skip:
-		slot.wait_left = AUTO_SKIP_GRACE_SEC
-	else:
-		slot.wait_left = _reading_duration_sec(slot.body_text)
+	slot.wait_left = -1.0
+	if _lesson_freezes(slot.open_id):
+		slot.wait_left = _reading_duration_sec(slot.body_text) * SLOT_READING_MULT
 
 
 func _reading_duration_sec(text: String) -> float:
@@ -350,11 +421,7 @@ func _dismiss_one_card() -> void:
 		if slot.phase == Phase.TYPING:
 			slot.body.text = slot.body_text
 			slot.typed = slot.body_text.length()
-			_begin_wait(slot, true)
-			return
-	for slot in _slots:
-		if slot.phase == Phase.WAITING:
-			_start_close(slot)
+			_begin_wait(slot)
 			return
 
 
@@ -377,6 +444,7 @@ func _start_close(slot: CardSlot) -> void:
 		return
 	var id := slot.open_id
 	slot.phase = Phase.CLOSING
+	_sync_freeze()
 	_mark_seen(id)
 	_sync_glows()
 	_refresh_type_loop()
@@ -397,7 +465,7 @@ func _start_close(slot: CardSlot) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_open() or event.is_echo():
+	if not _any_typing() or event.is_echo():
 		return
 	if not _is_dismiss_event(event):
 		return
@@ -432,6 +500,12 @@ func _story_busy() -> bool:
 
 
 func _on_scene_changed() -> void:
+	var kept: Array[String] = []
+	for id in _queue:
+		if not _lesson_freezes(id):
+			kept.append(id)
+	_queue = kept
+	_sync_freeze()
 	_hud_rects.clear()
 	_hide_glows()
 

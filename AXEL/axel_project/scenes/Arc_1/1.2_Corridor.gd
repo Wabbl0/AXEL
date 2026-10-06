@@ -15,6 +15,7 @@ const _OLD_BG_SCALE := Vector2(0.546, 0.546)
 var _locker_interact_area: Area2D
 var _exterior_interact_area: Area2D
 var _exit_trigger: Area2D
+var _locker_pass_trigger: Area2D
 var _spawn_line_active := false
 var _locker_zone_active := false
 var _exterior_zone_active := false
@@ -58,6 +59,11 @@ func _ready() -> void:
 	) as Area2D
 	if is_instance_valid(_exit_trigger):
 		_exit_trigger.body_entered.connect(_on_exit_trigger_body_entered)
+	_locker_pass_trigger = get_node_or_null(
+		"WalkableWorld/EnvironmentColliders/LockerPassTrigger"
+	) as Area2D
+	if is_instance_valid(_locker_pass_trigger):
+		_locker_pass_trigger.body_entered.connect(_on_locker_pass_body_entered)
 	set_process(true)
 	set_process_unhandled_input(true)
 	_latch_corridor_arrival()
@@ -272,6 +278,13 @@ func _on_locker_body_entered(body: Node) -> void:
 		return
 	_locker_zone_active = true
 	_handle_locker_zone_entered()
+
+
+func _on_locker_pass_body_entered(body: Node) -> void:
+	if body != _player or _is_transitioning:
+		return
+	AxelWorld.queue_locker_tutorial_fight()
+	AxelWorld.start_pending_locker_tutorial()
 
 
 func _on_locker_body_exited(body: Node) -> void:

@@ -101,8 +101,8 @@ func open_wheel() -> bool:
 	_layout()
 	_play_sfx(&"item_wheel_open")
 	var tutorial := get_node_or_null("/root/AxelTutorial")
-	if tutorial != null and tutorial.has_method("request"):
-		tutorial.call("request", "items_wheel")
+	if tutorial != null and tutorial.has_method("complete"):
+		tutorial.call("complete", "items_wheel")
 	return true
 
 
@@ -183,8 +183,6 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if _tutorial_card_open():
-		return
 	if not _open or event.is_echo():
 		return
 	if _dialogue_busy():
@@ -208,8 +206,6 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _tutorial_card_open():
-		return
 	if event.is_action_pressed("item_wheel"):
 		if _dialogue_busy():
 			return
@@ -339,11 +335,6 @@ func _dialogue_busy() -> bool:
 	if overlay != null and overlay.has_method("is_sequence_busy"):
 		return bool(overlay.call("is_sequence_busy"))
 	return false
-
-
-func _tutorial_card_open() -> bool:
-	var tutorial := get_node_or_null("/root/AxelTutorial")
-	return tutorial != null and tutorial.has_method("is_open") and bool(tutorial.call("is_open"))
 
 
 func _sprite_local_rect(sprite: AnimatedSprite2D) -> Rect2:

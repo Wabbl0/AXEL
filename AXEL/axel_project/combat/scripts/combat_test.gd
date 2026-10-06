@@ -254,6 +254,10 @@ const FALLBACK_CELL_SIZE_MIN := 48.0
 var _fallback_grid_width: float = 0.0
 var _spin_busy: bool = false
 var _tutorial_skull_hold := false
+var _freeze_layer: CanvasLayer
+var _freeze_rect: ColorRect
+var _freeze_tween: Tween
+var _freeze_shown := false
 var _piece_goal: CombatHudPiece
 var _piece_items: CombatHudPiece
 var _piece_history: CombatHudPiece
@@ -1778,6 +1782,8 @@ func _request_spin() -> void:
 		spin_btn.disabled = true
 	_refresh_spin_button_state()
 	await combat.spin()
+	_tutorial_complete("fight_stakes")
+	_tutorial_complete("fight_items")
 	if spin_btn != null:
 		spin_btn.disabled = false
 	_release_spin_busy()
@@ -1877,6 +1883,9 @@ func _pulse_cascade_multiplier() -> void:
 	settle.parallel().tween_property(_cascade_mult_label, "position", rest, 0.1)
 
 func _on_spin_started(seed_value: int) -> void:
+	if combat != null and combat.get_spins_used() >= 1:
+		for lesson_id in ["fight_spin", "slot_match", "slot_power", "slot_vice"]:
+			_tutorial_complete(lesson_id)
 	_queued_seed = seed_value
 	_set_seed_spin_value_no_signal(seed_value)
 	_clear_history_spin_list()
@@ -1960,12 +1969,15 @@ func _run_winnings_counter_async() -> void:
 func _on_meter_full_transition_started() -> void:
 	if _piece_premium_bar != null:
 		_piece_premium_bar.pop()
+	_tutorial_request("slot_vice")
 
 func _on_premium_meter_changed(previous_sections: int, next_sections: int) -> void:
 	_sync_skull_meter(next_sections)
 	_sync_premium_bar_color(next_sections, true)
 	if next_sections > previous_sections:
 		_play_combat_sfx(&"skull")
+		if next_sections < 3:
+			_tutorial_request("slot_power")
 
 
 func _on_sfx_requested(cue: StringName) -> void:
@@ -1986,11 +1998,13 @@ func _on_seed_spin_value_changed(value: float) -> void:
 	_refresh_spin_button_state()
 
 func _on_bet_minus_pressed() -> void:
+	_tutorial_complete("fight_stakes")
 	combat.step_bet(-1)
 	_refresh_readouts()
 	_animate_bet_strip()
 
 func _on_bet_plus_pressed() -> void:
+	_tutorial_complete("fight_stakes")
 	combat.step_bet(1)
 	_refresh_readouts()
 	_animate_bet_strip()
@@ -2008,6 +2022,7 @@ func _on_line_win_resolved(event: Dictionary) -> void:
 	var payout_cents: int = int(event.get("payout_cents", 0))
 	if payout_cents <= 0:
 		return
+	_tutorial_request("slot_match")
 	_append_history_spin_row(event)
 
 func _append_history_spin_row(event: Dictionary) -> void:
@@ -2667,6 +2682,18 @@ func _tutorial_node() -> Node:
 	return get_node_or_null("/root/AxelTutorial")
 
 
+func _tutorial_request(lesson_id: String) -> void:
+	var tutorial := _tutorial_node()
+	if tutorial != null and tutorial.has_method("request"):
+		tutorial.call("request", lesson_id)
+
+
+func _tutorial_complete(lesson_id: String) -> void:
+	var tutorial := _tutorial_node()
+	if tutorial != null and tutorial.has_method("complete"):
+		tutorial.call("complete", lesson_id)
+
+
 func _tutorial_blocks_spin() -> bool:
 	var tutorial := _tutorial_node()
 	return tutorial != null and tutorial.has_method("blocks_spin") and bool(tutorial.call("blocks_spin"))
@@ -2675,6 +2702,79 @@ func _tutorial_blocks_spin() -> bool:
 func _tutorial_suppresses_skull() -> bool:
 	var tutorial := _tutorial_node()
 	return tutorial != null and tutorial.has_method("suppresses_skull_hint") and bool(tutorial.call("suppresses_skull_hint"))
+
+
+func _sync_freeze_overlay() -> void:
+	var tutorial := _tutorial_node()
+	var want := tutorial != null and tutorial.has_method("is_freezing") and bool(tutorial.call("is_freezing"))
+	if want == _freeze_shown:
+		if want:
+			_layout_freeze_overlay()
+		return
+	_freeze_shown = want
+	if want:
+		_show_freeze_overlay()
+	else:
+		_hide_freeze_overlay()
+
+
+func _ensure_freeze_overlay() -> void:
+	if _freeze_layer != null and is_instance_valid(_freeze_layer):
+		return
+	_freeze_layer = CanvasLayer.new()
+	_freeze_layer.name = "TutorialFreezeLayer"
+	_freeze_layer.layer = 40
+	add_child(_freeze_layer)
+	_freeze_rect = ColorRect.new()
+	_freeze_rect.name = "TutorialFreezeRect"
+	_freeze_rect.color = Color.WHITE
+	_freeze_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://combat/shaders/tutorial_freeze.gdshader")
+	_freeze_rect.material = mat
+	_freeze_layer.add_child(_freeze_rect)
+	_freeze_rect.visible = false
+
+
+func _layout_freeze_overlay() -> void:
+	if _freeze_rect == null or _piece_grid == null or not is_instance_valid(_piece_grid):
+		return
+	var rect := _piece_grid.get_global_rect()
+	_freeze_rect.position = rect.position
+	_freeze_rect.size = rect.size
+
+
+func _reduce_flashing_on() -> bool:
+	var settings := get_node_or_null("/root/AxelSettings")
+	return settings != null and settings.has_method("get_value") and bool(settings.call("get_value", "access", "reduce_flashing", false))
+
+
+func _show_freeze_overlay() -> void:
+	_ensure_freeze_overlay()
+	_layout_freeze_overlay()
+	var mat := _freeze_rect.material as ShaderMaterial
+	var calm := _reduce_flashing_on()
+	mat.set_shader_parameter("jitter", 0.0 if calm else 1.0)
+	mat.set_shader_parameter("burst", 0.0 if calm else 1.0)
+	mat.set_shader_parameter("amount", 0.0)
+	_freeze_rect.visible = true
+	if _freeze_tween != null and _freeze_tween.is_valid():
+		_freeze_tween.kill()
+	_freeze_tween = create_tween()
+	_freeze_tween.tween_property(mat, "shader_parameter/amount", 1.0, 0.18)
+	if not calm:
+		_freeze_tween.tween_property(mat, "shader_parameter/burst", 0.0, 0.5)
+
+
+func _hide_freeze_overlay() -> void:
+	if _freeze_rect == null or not is_instance_valid(_freeze_rect):
+		return
+	if _freeze_tween != null and _freeze_tween.is_valid():
+		_freeze_tween.kill()
+	var mat := _freeze_rect.material as ShaderMaterial
+	_freeze_tween = create_tween()
+	_freeze_tween.tween_property(mat, "shader_parameter/amount", 0.0, 0.15)
+	_freeze_tween.tween_callback(func() -> void: _freeze_rect.visible = false)
 
 
 func _sync_tutorial_skull_hint() -> void:
@@ -2723,6 +2823,7 @@ func _push_tutorial_hud_rects() -> void:
 	_put_tutorial_piece(rects, "MOVE_BetStrip", _piece_bet_strip)
 	_put_tutorial_piece(rects, "NEW_Goal", _piece_goal)
 	_put_tutorial_piece(rects, "NEW_Items", _piece_items)
+	_put_tutorial_piece(rects, "NEW_History", _piece_history)
 	tutorial.call("set_hud_rects", rects)
 
 
@@ -4265,6 +4366,7 @@ func _process(_delta: float) -> void:
 		_maybe_queue_fight_tutorials()
 		_push_tutorial_hud_rects()
 		_sync_tutorial_skull_hint()
+		_sync_freeze_overlay()
 	if Engine.is_editor_hint() and not editor_preview_enabled:
 		return
 	if _item_desc_panel == null or not _item_desc_panel.visible:

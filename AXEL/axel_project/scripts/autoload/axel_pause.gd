@@ -152,7 +152,7 @@ func _can_pause_here() -> bool:
 
 func _tutorial_open() -> bool:
 	var tutorial := get_node_or_null("/root/AxelTutorial")
-	return tutorial != null and tutorial.has_method("is_open") and bool(tutorial.call("is_open"))
+	return tutorial != null and tutorial.has_method("is_typing") and bool(tutorial.call("is_typing"))
 
 
 func _dialogue_busy(scene: Node) -> bool:

@@ -55,6 +55,7 @@ const EXIT_TRIGGER_GRACE_SEC := 0.15
 var _unlock_position: Vector2 = Vector2.ZERO
 var _second_dialogue_fired := false
 var _watching_movement := false
+var _walk_lesson_done := false
 var _first_line_playing := false
 var _exit_trigger: Area2D
 var _exit_trigger_armed := true
@@ -134,6 +135,11 @@ func _process(_delta: float) -> void:
 		_arrival_latched_door = false
 	if _intro_state == IntroState.PLAYER_FREE and not _is_transitioning:
 		_refresh_door_interact_prompt()
+	if not _walk_lesson_done and _player_moved_since_unlock():
+		_walk_lesson_done = true
+		var tutorial := get_node_or_null("/root/AxelTutorial")
+		if tutorial != null and tutorial.has_method("complete"):
+			tutorial.call("complete", "move_walk")
 	if not _watching_movement or _second_dialogue_fired:
 		return
 	if not is_instance_valid(_player):
@@ -143,6 +149,12 @@ func _process(_delta: float) -> void:
 	_second_dialogue_fired = true
 	_watching_movement = false
 	_play_second_then_pathetic()
+
+
+func _player_moved_since_unlock() -> bool:
+	if _intro_state != IntroState.PLAYER_FREE or not is_instance_valid(_player):
+		return false
+	return _player.global_position.distance_to(_unlock_position) > 8.0
 
 
 func _play_second_then_pathetic() -> void:

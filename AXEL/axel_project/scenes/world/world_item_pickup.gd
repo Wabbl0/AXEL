@@ -146,19 +146,12 @@ func _on_body_exited(body: Node) -> void:
 	_hide_info_card()
 
 
-func _tutorial_card_open() -> bool:
-	var tutorial := get_node_or_null("/root/AxelTutorial")
-	return tutorial != null and tutorial.has_method("is_open") and bool(tutorial.call("is_open"))
-
-
 static func _is_player(body: Node) -> bool:
 	return body != null and body.name == "Player"
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _taken or not _player_inside:
-		return
-	if _tutorial_card_open():
 		return
 	if not event.is_action_pressed("interact"):
 		return
@@ -182,6 +175,9 @@ func _take() -> void:
 	var world := get_node_or_null("/root/AxelWorld")
 	if world == null:
 		return
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	if tutorial != null and tutorial.has_method("complete"):
+		tutorial.call("complete", "items_hand")
 	world.call("take_item", room_path, slot_index)
 	world.call("start_fight_here", REASON_ITEM)
 

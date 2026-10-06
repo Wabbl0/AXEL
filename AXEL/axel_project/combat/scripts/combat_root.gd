@@ -96,7 +96,9 @@ const BET_LADDER: Array[float] = [
 	100.0, 200.0, 300.0, 400.0, 500.0, 1000.0,
 ]
 const BASELINE_PAYOUT_SCALAR := 0.431
+const PAYTABLE_SCALE := 10.0
 const TUTORIAL_LAST_SPIN_SEED := 12
+const TUTORIAL_SCRIPT_SEEDS: Array[int] = [10, 1, 12]
 
 var rng := CombatRNG.new()
 var multiplier := CombatMultiplier.new()
@@ -139,6 +141,7 @@ var _lore_goal_bonus: float = 0.0
 var _final_spin_goal_assist: float = 0.0
 var _final_spin_assist_rolled: bool = false
 var _tutorial_last_spin_lock: bool = false
+var _tutorial_script_seeds: Array[int] = []
 var _tutorial_last_spin_seed: int = TUTORIAL_LAST_SPIN_SEED
 var _playtest_spin_budget: int = 8
 var _playtest_limit_spins: bool = false
@@ -359,6 +362,14 @@ func set_final_spin_goal_assist(p: float) -> void:
 
 func get_final_spin_goal_assist() -> float:
 	return _final_spin_goal_assist
+
+func set_tutorial_script_seeds(seeds: Array) -> void:
+	_tutorial_script_seeds.clear()
+	for value in seeds:
+		_tutorial_script_seeds.append(int(value))
+
+func get_tutorial_script_seeds() -> Array[int]:
+	return _tutorial_script_seeds
 
 func set_tutorial_last_spin_lock(on: bool) -> void:
 	_tutorial_last_spin_lock = on
@@ -1609,7 +1620,8 @@ func _line_win_event_from_line(line: Dictionary, payout_cents: int) -> Dictionar
 	}
 
 func _start_spin_with_new_grid() -> void:
-	_maybe_reseed_tutorial_last_spin()
+	if not _maybe_reseed_tutorial_script():
+		_maybe_reseed_tutorial_last_spin()
 	_item_fx.reset_spin()
 	_refresh_spin_weights()
 	var used_before := _spins_used
@@ -1691,6 +1703,15 @@ func _repopulate_grid_handoff_async(_handoff: String) -> void:
 func _can_afford_spin() -> bool:
 	return _bankroll_cents >= _to_cents(total_bet)
 
+
+func _maybe_reseed_tutorial_script() -> bool:
+	if _spins_used >= _tutorial_script_seeds.size() or free_spins.active:
+		return false
+	var scripted_seed := _tutorial_script_seeds[_spins_used]
+	rng.seed(scripted_seed)
+	_current_seed = scripted_seed
+	powers.randomize_start(rng)
+	return true
 
 func _maybe_reseed_tutorial_last_spin() -> void:
 	if not _tutorial_last_spin_lock:
@@ -1864,7 +1885,7 @@ func _line_payout_cents(line: Dictionary) -> int:
 		return 0
 	var item_scalar := 1.0 + _get_item_payout_scalar() + _line_item_bonus(line)
 	return _to_cents(
-		total_bet * payout_multiplier * float(multiplier.value) * item_scalar * BASELINE_PAYOUT_SCALAR
+		total_bet * payout_multiplier * float(multiplier.value) * item_scalar * BASELINE_PAYOUT_SCALAR / PAYTABLE_SCALE
 	)
 
 func _to_cents(amount: float) -> int:

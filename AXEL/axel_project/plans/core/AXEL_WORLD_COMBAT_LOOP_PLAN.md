@@ -143,9 +143,9 @@ a cleared area.
 
 ## Numbers (tuning constants at the top of `axel_world.gd`)
 
-- `STEP_CHANCE_BASE` `0.001` (0.1% per 8 px step)
-- `STEP_CHANCE_PER_CLEARED_AREA` `0.0015`
-- `STEP_CHANCE_MAX` `0.01` (1% once all six areas are cleared)
+- `STEP_CHANCE_BASE` `0.0002` (0.02% per 8 px step, almost never in the first areas)
+- `STEP_CHANCE_BY_CLEARED` lookup by cleared areas: 0-1 `0.0002`, 2 `0.0005`, 3 `0.001`, 4 `0.004`, 5 `0.007`, 6+ `0.01`
+- `STEP_CHANCE_MAX` `0.01` (1% in the late areas)
 - `STEP_GRACE_AFTER_FIGHT` `200` steps with no step fight after any fight
 - `MAX_STEP_FIGHTS_PER_VISIT` `2` per room visit
 - `INTERACT_PAD_PX` `8` extra clearance around the 220 px pickup circle when choosing a spot (the live Area2D stays 220)

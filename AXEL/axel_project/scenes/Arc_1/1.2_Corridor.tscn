@@ -28,6 +28,9 @@ size = Vector2(38.5, 1515)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
 size = Vector2(80, 690.4762)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_locker_pass"]
+size = Vector2(40, 1100)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
 size = Vector2(2423.0767, 90)
 
@@ -112,6 +115,14 @@ monitorable = false
 position = Vector2(608.9528, 116.62136)
 scale = Vector2(0.9017174, 1.3375075)
 polygon = PackedVector2Array(-280, -60, -45.787476, -58.608032, -40.29297, 177.6557, -280.21973, 175.82416)
+
+[node name="LockerPassTrigger" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1200780301]
+position = Vector2(1790, 763)
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LockerPassTrigger" unique_id=1200780302]
+position = Vector2(0, 400)
+shape = SubResource("RectangleShape2D_locker_pass")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]
 script = ExtResource("14_camera_script")

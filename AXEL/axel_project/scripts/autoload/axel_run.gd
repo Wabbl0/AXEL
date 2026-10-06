@@ -361,6 +361,8 @@ func _wire_combat_root() -> void:
 		root.call("set_equipped_items", [] if tutorial else equipped_items())
 	if state.world_encounter and root.has_method("set_goal_base_target_cents"):
 		root.call("set_goal_base_target_cents", world_goal_base_cents())
+	if tutorial and root.has_method("set_tutorial_script_seeds"):
+		root.call("set_tutorial_script_seeds", CombatRoot.TUTORIAL_SCRIPT_SEEDS)
 	if is_tutorial_last_spin_lock() and root.has_method("set_tutorial_last_spin_lock"):
 		root.call("set_tutorial_last_spin_lock", true)
 	if encounter != null and root.has_method("set_spin_budget"):

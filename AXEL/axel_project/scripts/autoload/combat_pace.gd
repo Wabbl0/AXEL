@@ -9,6 +9,7 @@ const RUSH_MULT := 8.0
 static var _live: CombatPace
 
 var _rush := false
+var _freeze := false
 var _tweens: Array[Tween] = []
 var _applied := -1.0
 
@@ -33,6 +34,18 @@ static func clear_rush() -> void:
 	set_rush(false)
 
 
+static func set_freeze(on: bool) -> void:
+	if _live == null:
+		return
+	_live._set_freeze(on)
+
+
+static func is_frozen() -> bool:
+	if _live == null:
+		return false
+	return _live._freeze
+
+
 static func is_rushing() -> bool:
 	if _live == null:
 		return false
@@ -52,6 +65,8 @@ static func await_seconds(seconds: float, should_stop: Callable = Callable()) ->
 
 
 func _multiplier() -> float:
+	if _freeze:
+		return 0.0
 	var scale := _base_scale()
 	if _rush and not _is_paused():
 		scale *= RUSH_MULT
@@ -63,6 +78,13 @@ func _set_rush(on: bool) -> void:
 		_apply_tween_scales()
 		return
 	_rush = on
+	_apply_tween_scales()
+
+
+func _set_freeze(on: bool) -> void:
+	if _freeze == on:
+		return
+	_freeze = on
 	_apply_tween_scales()
 
 

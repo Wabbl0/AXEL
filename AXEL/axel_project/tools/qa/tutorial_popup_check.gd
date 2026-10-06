@@ -24,6 +24,7 @@ func _main() -> void:
 	await _check_move_card(tutorial, failures)
 	await _check_spin_card_moves_off_glow(tutorial, failures)
 	await _check_card_stack(tutorial, failures)
+	await _check_slot_freeze(tutorial, failures)
 	await _check_highlight_above_noir(failures)
 	_finish(failures)
 
@@ -42,6 +43,9 @@ func _check_glow_map(tutorial: Node, failures: Array[String]) -> void:
 	_expect_pieces(tutorial, failures, "fight_spin", ["NEW_Execute", "NEW_Grid"])
 	_expect_pieces(tutorial, failures, "fight_stakes", ["NEW_Bets", "NEW_Goal"])
 	_expect_pieces(tutorial, failures, "fight_items", ["NEW_Items"])
+	_expect_pieces(tutorial, failures, "slot_match", ["NEW_History", "NEW_Grid"])
+	_expect_pieces(tutorial, failures, "slot_power", ["NEW_Execute"])
+	_expect_pieces(tutorial, failures, "slot_vice", ["NEW_Execute", "NEW_Grid"])
 	var none: PackedStringArray = tutorial.call("glow_piece_names", "move_walk")
 	if not none.is_empty():
 		failures.append("move_walk should not glow a fight frame")
@@ -145,8 +149,8 @@ func _check_move_card(tutorial: Node, failures: Array[String]) -> void:
 			failures.append("tutorial X is still large (%s)" % exit_rect.size)
 	if card.position.x < vp.x * 0.5:
 		failures.append("move card is not on the right half")
-	if not bool(tutorial.call("blocks_spin")):
-		failures.append("an open card should block a spin")
+	if bool(tutorial.call("blocks_spin")):
+		failures.append("an open card must not block a spin")
 	for _i in 240:
 		await process_frame
 		if bool(tutorial.call("is_waiting")):
@@ -158,6 +162,11 @@ func _check_move_card(tutorial: Node, failures: Array[String]) -> void:
 	if card.end.y - body_rect.end.y > 36.0 * scale:
 		failures.append("tutorial card has empty space under the text (%s)" % (card.end.y - body_rect.end.y))
 	tutorial.call("debug_dismiss")
+	await create_timer(4.0).timeout
+	if not bool(tutorial.call("is_open")):
+		failures.append("move card closed without the walk action or X")
+		return
+	tutorial.call("complete", "move_walk")
 	var closed := false
 	for _i in 180:
 		await process_frame
@@ -165,7 +174,7 @@ func _check_move_card(tutorial: Node, failures: Array[String]) -> void:
 			closed = true
 			break
 	if not closed:
-		failures.append("move card did not close")
+		failures.append("move card did not close on its action")
 		return
 	var run := root.get_node_or_null("AxelRun")
 	if run == null or not run.state.tutorial_seen.has("move_walk"):
@@ -271,6 +280,37 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 	if open_before and not bool(tutorial.call("is_open")):
 		failures.append("interact closed a tutorial card")
 	await _close_both_cards(tutorial)
+
+
+func _check_slot_freeze(tutorial: Node, failures: Array[String]) -> void:
+	tutorial.call("request", "slot_match")
+	if not bool(tutorial.call("is_freezing")) or not CombatPace.is_frozen():
+		failures.append("slot_match did not freeze combat time")
+	if not is_zero_approx(CombatPace.multiplier()):
+		failures.append("combat pace is not zero while frozen")
+	var slot_ready := false
+	var waited := 0.0
+	while waited < 40.0:
+		await process_frame
+		waited += 1.0 / 60.0
+		if bool(tutorial.call("is_waiting")):
+			slot_ready = true
+			break
+	if not slot_ready:
+		failures.append("slot_match card never finished typing")
+		return
+	var body := tutorial.get_node_or_null("CardLayer/CardHost/FadeRoot/BarPanel/InnerPanel/TextColumn/BodyLabel") as Label
+	var want: float = float(tutorial.call("_reading_duration_sec", body.text)) * 2.0
+	var slot = tutorial.get("_slots")[0]
+	if slot.wait_left < want - 1.0 or slot.wait_left > want + 0.1:
+		failures.append("slot card wait is %.1f, want about %.1f" % [slot.wait_left, want])
+	if not CombatPace.is_frozen():
+		failures.append("time unfroze before the card closed")
+	await _close_card(tutorial)
+	if CombatPace.is_frozen() or bool(tutorial.call("is_freezing")):
+		failures.append("time stayed frozen after the card closed")
+	if CombatPace.multiplier() <= 0.0:
+		failures.append("combat pace stayed at zero after unfreeze")
 
 
 func _expect_flanked_title(tutorial: Node, failures: Array[String], want: String) -> void:

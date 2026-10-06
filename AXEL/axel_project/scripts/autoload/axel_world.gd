@@ -22,9 +22,9 @@ const RANK_NAMES: PackedStringArray = [
 ]
 const MAX_RANK := 4
 
-const STEP_CHANCE_BASE := 0.001
-const STEP_CHANCE_PER_CLEARED_AREA := 0.0015
+const STEP_CHANCE_BASE := 0.0002
 const STEP_CHANCE_MAX := 0.01
+const STEP_CHANCE_BY_CLEARED := [0.0002, 0.0002, 0.0005, 0.001, 0.004, 0.007, 0.01]
 const STEP_GRACE_AFTER_FIGHT := 200
 const MAX_STEP_FIGHTS_PER_VISIT := 2
 
@@ -288,8 +288,8 @@ func cleared_area_count() -> int:
 
 
 func step_chance() -> float:
-	var chance := STEP_CHANCE_BASE + STEP_CHANCE_PER_CLEARED_AREA * float(cleared_area_count())
-	return clampf(chance, STEP_CHANCE_BASE, STEP_CHANCE_MAX)
+	var idx := clampi(cleared_area_count(), 0, STEP_CHANCE_BY_CLEARED.size() - 1)
+	return clampf(float(STEP_CHANCE_BY_CLEARED[idx]), STEP_CHANCE_BASE, STEP_CHANCE_MAX)
 
 
 func register_walk_step() -> void:
@@ -391,6 +391,15 @@ func queue_locker_tutorial_fight() -> bool:
 	run.state.tutorial_fight_pending = true
 	_save()
 	return true
+
+
+func start_pending_locker_tutorial() -> void:
+	if not is_enabled() or not is_locker_tutorial_pending():
+		return
+	var scene := _current_scene()
+	if scene == null or scene.scene_file_path != TUTORIAL_SCENE:
+		return
+	_start_locker_tutorial(scene)
 
 
 func is_locker_tutorial_pending() -> bool:
