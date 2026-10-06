@@ -73,6 +73,16 @@ The full list is in `project.godot`. `AxelPause` is the only writer of `get_tree
 - `combat_test.gd` (~175 KB), `combat_root.gd` (~100 KB), `axel_world.gd` (~55 KB): search for what you need and read only that part.
 - Ignore `exports/*` (except `GameManager.gd`) and the archived HTML prototype unless I say otherwise.
 
+## Searching the project (save tokens)
+
+- When the main model is Opus, do not search the project broadly yourself, and never run an Explore subagent on Opus.
+- Before searching, make a quick internal plan: which files or folders the prompt needs, and which cheaper model should look for them.
+- Then start Explore subagents with `model: "haiku"` for simple lookups (find a file, a function, a node name) or `model: "sonnet"` for harder questions (trace how a system works across files). Give each helper a narrow question and ask for file paths with line numbers only, no file dumps.
+- Use at most 3 helpers per task. Run them in parallel when their questions are independent.
+- Skip helpers when the task is small and the file is already known. Open it directly.
+- Read the helpers' file list, then do the planning and editing on the main model.
+- Helpers only search. They never edit files.
+
 ## Checking your work
 
 Run these after any GDScript change. Run from the repo root. Exit code 0 means pass. On Windows use `tools\cmd\godot.cmd` in place of `godot`.
