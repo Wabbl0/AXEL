@@ -215,5 +215,5 @@ func _assert_overworld_crt(scene: Node) -> void:
 		_fail("overworld CRT FilterRect missing")
 		return
 	var curv := float((rect.material as ShaderMaterial).get_shader_parameter("curvature"))
-	if curv <= 0.0:
-		_fail("overworld CRT curvature %.3f should stay above 0" % curv)
+	if absf(curv) > 0.001:
+		_fail("overworld CRT curvature %.3f should stay at 0" % curv)
