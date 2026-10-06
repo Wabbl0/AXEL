@@ -476,6 +476,9 @@ func take_item(scene_path: String, index: int) -> void:
 		if not item_id.is_empty() and not owned.has(item_id):
 			owned.append(item_id)
 			run.state.owned_item_ids = PackedStringArray(owned)
+		var profile := get_node_or_null("/root/AxelProfile")
+		if profile != null and not item_id.is_empty():
+			profile.call("mark_item_found", item_id)
 		if not item_id.is_empty() and run.has_method("equip_owned_if_free"):
 			run.call("equip_owned_if_free", item_id)
 	var area_id := area_for_scene(scene_path)

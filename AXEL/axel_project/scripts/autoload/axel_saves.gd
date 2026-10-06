@@ -286,6 +286,9 @@ func load_slot(slot: int) -> bool:
 	var run := get_node_or_null("/root/AxelRun")
 	if run != null and run.has_method("from_dict"):
 		run.call("from_dict", body.get("run_state", {}))
+		var profile := get_node_or_null("/root/AxelProfile")
+		if profile != null:
+			profile.call("merge_from_run", run.get("state"))
 	active_slot = slot
 	_playtime_sec = float(body.get("playtime_sec", 0.0))
 	_write_index(slot)

@@ -252,8 +252,15 @@ func abort_encounter_as_loss() -> void:
 		return
 	_finish_busy = false
 	state.in_encounter = false
+	_unlock_guide()
 	_delete_active_run()
 	_permadeath_to_title()
+
+
+func _unlock_guide() -> void:
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile != null:
+		profile.call("unlock_guide")
 
 
 func write_tombstone_only() -> void:
@@ -380,6 +387,7 @@ func _wire_combat_root() -> void:
 func _on_root_finished(success: bool) -> void:
 	if _finish_busy:
 		return
+	_unlock_guide()
 	if success:
 		_finish_busy = true
 		capture_bankroll_from(_live_combat_root())

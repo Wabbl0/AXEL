@@ -180,6 +180,17 @@ func _build_ui() -> void:
 	skip_btn.pressed.connect(_on_skip_pressed)
 	vbox.add_child(skip_btn)
 
+	var reset_btn := Button.new()
+	reset_btn.name = "ResetProfileButton"
+	reset_btn.text = "Reset profile (guide, compendium, tutorials)"
+	reset_btn.focus_mode = Control.FOCUS_NONE
+	reset_btn.add_theme_font_override("font", VT323_FONT)
+	reset_btn.add_theme_font_size_override("font_size", 16)
+	reset_btn.add_theme_color_override("font_color", TEXT_COLOR)
+	reset_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	reset_btn.pressed.connect(_on_reset_profile_pressed)
+	vbox.add_child(reset_btn)
+
 
 func _add_section_label(parent: VBoxContainer, text: String) -> void:
 	var lab := Label.new()
@@ -403,3 +414,9 @@ func _on_skip_pressed() -> void:
 		return
 	if _combat.has_method("debug_skip_current_loop"):
 		_combat.call("debug_skip_current_loop")
+
+
+func _on_reset_profile_pressed() -> void:
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile != null:
+		profile.call("reset_profile")

@@ -288,6 +288,9 @@ func _is_fight(id: String) -> bool:
 func _is_seen(id: String) -> bool:
 	if _marked.has(id):
 		return true
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile != null and bool(profile.call("has_seen_tutorial", id)):
+		return true
 	var run := get_node_or_null("/root/AxelRun")
 	if run == null:
 		return false
@@ -305,6 +308,9 @@ func _mark_seen(id: String) -> void:
 	if id.is_empty() or _marked.has(id):
 		return
 	_marked[id] = true
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile != null:
+		profile.call("mark_tutorial_seen", id)
 	var run := get_node_or_null("/root/AxelRun")
 	if run != null:
 		var seen: PackedStringArray = run.state.tutorial_seen

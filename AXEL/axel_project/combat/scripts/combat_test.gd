@@ -4070,6 +4070,9 @@ func _submit_super_fs_choice(power_id: StringName) -> void:
 	_spin_busy = true
 	if spin_btn != null:
 		spin_btn.disabled = true
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile != null:
+		profile.call("mark_free_spins_seen")
 	combat.choose_free_spins_power(power_id)
 	_refresh_readouts()
 	await combat.run_free_spin_round()

@@ -7,6 +7,8 @@ const MENU_LAYER := 250
 var _root: Control
 var _menu: VBoxContainer
 var _options: OptionsPanel
+var _guide: GuidePanel
+var _guide_button: Button
 var _map_button: Button
 var _dev_button: Button
 var _seed_label: Label
@@ -25,6 +27,7 @@ func show_menu() -> void:
 	_refresh_map()
 	_refresh_seed()
 	_refresh_dev_tools()
+	_refresh_guide()
 	MenuLook.grab_first_focus(_menu)
 
 
@@ -34,6 +37,8 @@ func hide_menu() -> void:
 
 func is_submenu_open() -> bool:
 	if _dev_tools_open():
+		return true
+	if _guide != null and _guide.visible:
 		return true
 	return _options != null and _options.visible
 
@@ -82,6 +87,8 @@ func _build() -> void:
 
 	_add_menu_button("Resume", func() -> void: AxelPause.request_unpause())
 	_add_menu_button("Options", _open_options)
+	_guide_button = _add_menu_button("Guide", _open_guide)
+	_guide_button.name = "GuideButton"
 	_dev_button = _add_menu_button("Dev Tools", _open_dev_tools)
 	_dev_button.name = "DevToolsButton"
 	_map_button = _add_menu_button("Map", _open_map)
@@ -107,6 +114,12 @@ func _build() -> void:
 	_options.closed.connect(_show_main)
 	_root.add_child(_options)
 
+	_guide = GuidePanel.new()
+	_guide.name = "GuidePanel"
+	_guide.visible = false
+	_guide.closed.connect(_show_main)
+	_root.add_child(_guide)
+
 
 func _add_menu_button(caption: String, cb: Callable) -> Button:
 	var button := Button.new()
@@ -121,8 +134,11 @@ func _show_main() -> void:
 	_menu.visible = true
 	if _options != null:
 		_options.visible = false
+	if _guide != null:
+		_guide.visible = false
 	_refresh_map()
 	_refresh_dev_tools()
+	_refresh_guide()
 	if visible:
 		MenuLook.grab_first_focus(_menu)
 
@@ -131,6 +147,23 @@ func _open_options() -> void:
 	_menu.visible = false
 	_options.visible = true
 	MenuLook.grab_first_focus(_options)
+
+
+func _open_guide() -> void:
+	if not _guide_unlocked():
+		return
+	_menu.visible = false
+	_guide.open()
+
+
+func _guide_unlocked() -> bool:
+	var profile := get_node_or_null("/root/AxelProfile")
+	return profile != null and bool(profile.call("is_guide_unlocked"))
+
+
+func _refresh_guide() -> void:
+	if _guide_button != null:
+		_guide_button.visible = _guide_unlocked()
 
 
 func _open_map() -> void:
