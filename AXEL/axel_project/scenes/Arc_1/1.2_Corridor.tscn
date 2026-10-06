@@ -28,11 +28,11 @@ size = Vector2(38.5, 1515)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit_trigger"]
 size = Vector2(80, 690.4762)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_locker_pass"]
-size = Vector2(40, 1100)
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
 size = Vector2(2423.0767, 90)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_locker_pass"]
+size = Vector2(40, 1100)
 
 [node name="1_2_Corridor" type="Node2D" unique_id=1412693129]
 position = Vector2(1, -1)

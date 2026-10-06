@@ -29,6 +29,7 @@ There is only one pause menu (`scenes/ui/pause_menu.gd`), shared by rooms and co
 
 ## 3. Guide UI
 - New `scenes/ui/guide_panel.gd` (`class_name GuidePanel`). It is built in code and copies the `OptionsPanel` pattern: ScrollContainer → CenterContainer → column, `MenuLook` styling, VT323, `signal closed`, and a `BackButton` plus the `back` action.
+- Superseded look: see `2026-10-06_guide_look_plan.md` (centered RichTextLabel, bold words, pictures on every page).
 - Layout: a page title (`? Matching ?` style, the same as the tutorial cards), a body Label (`custom_maximum_size` set, because wrapping Labels need it in 4.7), and a bottom row with `< Prev`, `n / N`, `Next >` and `Back`. Left and right (`move_left` / `move_right`) also flip pages.
 - Page text lives in `scenes/ui/guide_pages.gd` (consts only). The paytable numbers are read live from `combat/data/symbols/sym_*.tres` so they never go stale.
 - Pause menu (`scenes/ui/pause_menu.gd`):

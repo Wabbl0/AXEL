@@ -5,14 +5,47 @@ signal profile_changed()
 const PROFILE_PATH := "user://axel_profile.cfg"
 const PATH_ENV := "AXEL_PROFILE_PATH"
 const SECTION := "profile"
+const PLAY_SCENE_PATH := "user://axel_profile_play_scene.cfg"
 
 var _config := ConfigFile.new()
 var _path := ""
+var _play_scene := false
+var _real_path := ""
 
 
 func _enter_tree() -> void:
+	_delete_play_scene_file()
 	_path = _resolve_path()
 	_load()
+
+
+func _exit_tree() -> void:
+	if _play_scene:
+		_delete_play_scene_file()
+
+
+func begin_play_scene_profile() -> void:
+	_delete_play_scene_file()
+	if not _play_scene:
+		_real_path = _path
+	_path = PLAY_SCENE_PATH
+	_config = ConfigFile.new()
+	_play_scene = true
+	profile_changed.emit()
+
+
+func is_play_scene_profile() -> bool:
+	return _play_scene
+
+
+func end_play_scene_profile() -> void:
+	if not _play_scene:
+		return
+	_play_scene = false
+	_delete_play_scene_file()
+	_path = _real_path
+	_load()
+	profile_changed.emit()
 
 
 func is_guide_unlocked() -> bool:
@@ -110,6 +143,12 @@ func _save() -> void:
 	var err := _config.save(_path)
 	if err != OK:
 		push_warning("AxelProfile: could not write %s (err %d)." % [_path, err])
+
+
+func _delete_play_scene_file() -> void:
+	var abs_path := ProjectSettings.globalize_path(PLAY_SCENE_PATH)
+	if FileAccess.file_exists(abs_path):
+		DirAccess.remove_absolute(abs_path)
 
 
 func _set_flag(key: String) -> void:

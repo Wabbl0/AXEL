@@ -5,33 +5,66 @@ signal closed
 
 const PAGE_WIDTH := 1180.0
 const SIDE_GUTTER := 32.0
-const SCROLL_MAX_HEIGHT := 760.0
+const SCROLL_MAX_HEIGHT := 740.0
 const SCROLL_MIN_HEIGHT := 200.0
-const CHROME_HEIGHT := 460.0
-const BODY_PX := 32
+const CHROME_HEIGHT := 500.0
+const FRAME_MARGIN := 18
+const FRAME_BORDER := 3
+const BODY_PX := 30
+const HEADING_PX := 38
+const CAPTION_PX := 26
 const DETAIL_PX := 30
+const INLINE_IMG_PX := 34
+const LINE_GAP := 4
 const ICON_PX := 64
 const ICON_PAD := 4
 const GRID_GAP := 8
 const SYMBOL_PX := 64
+const BOARD_CELL_PX := 52
+const DOT_PX := 14
 const LOCKED_TINT := Color(0.22, 0.22, 0.22, 1.0)
+const INK := Color(0.07, 0.02, 0.02, 1.0)
+const FRAME_FILL := Color(0.0, 0.0, 0.0, 0.62)
 const RARITY_NAMES: PackedStringArray = ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
 const SYMBOL_DIR := "res://combat/data/symbols/"
 const ITEM_DIR := "res://combat/data/items/"
 const DETAIL_IDLE := "Hover an item to read it."
+const ART_DIR := "res://combat/art/grid_symbols/"
+const HUD_DIR := "res://exports/Drawings/"
+const ART_HAND := ART_DIR + "bloody_hand.png"
+const ART_ALCOHOL := ART_DIR + "booze.png"
+const ART_CIG := ART_DIR + "cigarette.png"
+const ART_WILD := ART_DIR + "satanic_wild.png"
+const ART_HEART := ART_DIR + "red_heart.png"
+const ART_STAR := ART_DIR + "blue_star.png"
+const ART_SQUARE := ART_DIR + "green_circle.png"
+const HUD_GOAL := HUD_DIR + "axel_combat_goal.png"
+const HUD_BETS := HUD_DIR + "axel_combat_bets.png"
+const HUD_MULT := HUD_DIR + "axel_combat_multiplier.png"
+const HUD_SKULLS: PackedStringArray = [
+	HUD_DIR + "axel_skull_1.png",
+	HUD_DIR + "axel_skull_2.png",
+	HUD_DIR + "axel_skull_3.png",
+]
+const BET_STEPS: PackedStringArray = ["100", "200", "300", "400", "500", "1000"]
 
 var _page := 0
 var _page_title: Label
 var _page_count: Label
+var _dots: HBoxContainer
+var _frame: PanelContainer
 var _scroll: ScrollContainer
 var _body: VBoxContainer
 var _detail: Label
 var _prev: Button
 var _next: Button
-var _wrap_labels: Array[Label] = []
+var _rich_labels: Array[RichTextLabel] = []
+var _figures: Array[Control] = []
 var _compendium_grids: Array[GridContainer] = []
 var _symbols: Array = []
 var _items: Array = []
+var _textures: Dictionary = {}
+var _bold_font: FontVariation
 
 
 func _ready() -> void:
@@ -81,29 +114,21 @@ func show_page(index: int) -> void:
 	for child in _body.get_children():
 		_body.remove_child(child)
 		child.queue_free()
-	_wrap_labels.clear()
+	_rich_labels.clear()
+	_figures.clear()
 	_compendium_grids.clear()
 	var data: Dictionary = GuidePages.PAGES[_page]
 	var kind := String(data.get("kind", GuidePages.KIND_TEXT))
 	var title := String(data.get("title", ""))
-	match kind:
-		GuidePages.KIND_PAYTABLE:
-			_add_text(String(data.get("body", "")))
-			_add_paytable()
-			_add_text(String(data.get("footer", "")), MenuLook.ACCENT)
-		GuidePages.KIND_FREE_SPINS:
-			if _free_spins_seen():
-				_add_text(String(data.get("body", "")))
-			else:
-				title = GuidePages.FREE_SPINS_LOCKED_TITLE
-				_add_text(GuidePages.FREE_SPINS_LOCKED_BODY)
-		GuidePages.KIND_COMPENDIUM:
-			_add_text(String(data.get("body", "")))
-			_add_compendium()
-		_:
-			_add_text(String(data.get("body", "")))
+	var blocks: Array = data.get("blocks", [])
+	if kind == GuidePages.KIND_FREE_SPINS and not _free_spins_seen():
+		title = GuidePages.FREE_SPINS_LOCKED_TITLE
+		blocks = GuidePages.FREE_SPINS_LOCKED_BLOCKS
+	for block in blocks:
+		_add_block(block)
 	_page_title.text = "? %s ?" % title
 	_page_count.text = "%d / %d" % [_page + 1, page_count()]
+	_refresh_dots()
 	MenuLook.set_button_disabled(_prev, _page == 0)
 	MenuLook.set_button_disabled(_next, _page == page_count() - 1)
 	_detail.visible = kind == GuidePages.KIND_COMPENDIUM
@@ -118,9 +143,13 @@ func page_title_text() -> String:
 
 func page_body_text() -> String:
 	var parts: PackedStringArray = []
-	for label in _wrap_labels:
-		parts.append(label.text)
+	for label in _rich_labels:
+		parts.append(label.get_parsed_text())
 	return "\n".join(parts)
+
+
+func page_figure_count() -> int:
+	return _figures.size()
 
 
 func compendium_entries() -> Array[Button]:
@@ -133,6 +162,10 @@ func compendium_entries() -> Array[Button]:
 
 
 func _build() -> void:
+	_bold_font = FontVariation.new()
+	_bold_font.base_font = MenuLook.FONT
+	_bold_font.variation_embolden = 0.8
+
 	var center := CenterContainer.new()
 	center.name = "GuideCenter"
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -158,7 +191,28 @@ func _build() -> void:
 	_page_title.name = "GuidePageTitle"
 	_page_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	MenuLook.apply_label(_page_title, 44, MenuLook.ACCENT)
+	_page_title.add_theme_font_override("font", _bold_font)
 	col.add_child(_page_title)
+
+	_dots = HBoxContainer.new()
+	_dots.name = "GuideDots"
+	_dots.alignment = BoxContainer.ALIGNMENT_CENTER
+	_dots.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_dots.add_theme_constant_override("separation", 10)
+	for i in page_count():
+		var dot := ColorRect.new()
+		dot.name = "Dot%d" % i
+		dot.custom_minimum_size = Vector2(DOT_PX, DOT_PX)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_dots.add_child(dot)
+	col.add_child(_dots)
+
+	_frame = PanelContainer.new()
+	_frame.name = "GuideFrame"
+	_frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_frame.add_theme_stylebox_override("panel", _frame_style())
+	col.add_child(_frame)
 
 	_scroll = ScrollContainer.new()
 	_scroll.name = "GuideScroll"
@@ -166,12 +220,12 @@ func _build() -> void:
 	_scroll.follow_focus = true
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	MenuLook.apply_scroll(_scroll)
-	col.add_child(_scroll)
+	_frame.add_child(_scroll)
 
 	_body = VBoxContainer.new()
 	_body.name = "GuideBody"
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_body.add_theme_constant_override("separation", 14)
+	_body.add_theme_constant_override("separation", 16)
 	_scroll.add_child(_body)
 
 	_detail = Label.new()
@@ -230,9 +284,11 @@ func _apply_layout() -> void:
 		return
 	var width := minf(PAGE_WIDTH, vp.x - SIDE_GUTTER * 2.0)
 	var height := clampf(vp.y - CHROME_HEIGHT, SCROLL_MIN_HEIGHT, SCROLL_MAX_HEIGHT)
-	_scroll.custom_minimum_size = Vector2(width, height)
-	var text_w := width - 24.0
-	for label in _wrap_labels:
+	var inset := float(FRAME_MARGIN + FRAME_BORDER) * 2.0
+	var scroll_w := width - inset
+	_scroll.custom_minimum_size = Vector2(scroll_w, height)
+	var text_w := scroll_w - 24.0
+	for label in _rich_labels:
 		if is_instance_valid(label):
 			label.custom_minimum_size.x = text_w
 			label.custom_maximum_size.x = text_w
@@ -242,7 +298,13 @@ func _apply_layout() -> void:
 	var cols := maxi(int(floor(text_w / cell)), 1)
 	for grid in _compendium_grids:
 		if is_instance_valid(grid):
-			grid.columns = cols
+			grid.columns = mini(cols, grid.get_child_count())
+
+
+func _refresh_dots() -> void:
+	for i in _dots.get_child_count():
+		var dot := _dots.get_child(i) as ColorRect
+		dot.color = MenuLook.ACCENT if i == _page else MenuLook.DIM
 
 
 func _focus_nav() -> void:
@@ -258,25 +320,279 @@ func _grab_nav_focus() -> void:
 
 
 func _format(text: String) -> String:
-	return text.format({"rtp": GuidePages.RTP_PERCENT, "hit": GuidePages.HIT_RATE_IN_TEN})
+	var accent := MenuLook.ACCENT.to_html(false)
+	var out := text.format({
+		"rtp": GuidePages.RTP_PERCENT,
+		"hit": GuidePages.HIT_RATE_IN_TEN,
+		"hand": _inline_img(ART_HAND),
+		"alcohol": _inline_img(ART_ALCOHOL),
+		"cig": _inline_img(ART_CIG),
+		"wild": _inline_img(ART_WILD),
+	})
+	out = out.replace("[b]", "[b][color=#%s]" % accent).replace("[/b]", "[/color][/b]")
+	return out
 
 
-func _add_text(text: String, color: Color = MenuLook.TEXT) -> Label:
-	var label := Label.new()
-	label.text = _format(text)
+func _inline_img(path: String) -> String:
+	return "[img=%dx%d]%s[/img]" % [INLINE_IMG_PX, INLINE_IMG_PX, path]
+
+
+func _add_block(block: Dictionary) -> void:
+	if block.has("text"):
+		_add_text(String(block["text"]))
+	elif block.has("heading"):
+		_add_heading(String(block["heading"]))
+	elif block.has("divider"):
+		_add_divider()
+	elif block.has("figure"):
+		_add_figure(String(block["figure"]))
+
+
+func _add_text(text: String) -> RichTextLabel:
+	var label := RichTextLabel.new()
+	label.bbcode_enabled = true
+	label.fit_content = true
+	label.scroll_active = false
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.focus_mode = Control.FOCUS_NONE
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	MenuLook.apply_label(label, BODY_PX, color)
+	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	label.add_theme_font_override("normal_font", MenuLook.FONT)
+	label.add_theme_font_override("bold_font", _bold_font)
+	label.add_theme_font_size_override("normal_font_size", BODY_PX)
+	label.add_theme_font_size_override("bold_font_size", BODY_PX)
+	label.add_theme_color_override("default_color", MenuLook.TEXT)
+	label.add_theme_constant_override("line_separation", LINE_GAP)
+	label.text = "[center]%s[/center]" % _format(text)
 	_body.add_child(label)
-	_wrap_labels.append(label)
+	_rich_labels.append(label)
 	return label
 
 
-func _add_paytable() -> void:
+func _add_heading(text: String) -> Label:
+	var label := _caption(text, HEADING_PX, MenuLook.ACCENT, true)
+	label.name = "Heading"
+	_body.add_child(label)
+	return label
+
+
+func _add_divider() -> void:
 	var holder := CenterContainer.new()
-	holder.name = "PaytableHolder"
-	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.name = "Divider"
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bar := ColorRect.new()
+	bar.color = MenuLook.DIM
+	bar.custom_minimum_size = Vector2(260, 2)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(bar)
 	_body.add_child(holder)
+
+
+func _add_figure(id: String) -> void:
+	var fig: Control = null
+	match id:
+		GuidePages.FIG_FIGHT_HUD:
+			fig = _fig_fight_hud()
+		GuidePages.FIG_GOAL_LADDER:
+			fig = _fig_goal_ladder()
+		GuidePages.FIG_MATCH_LINE:
+			fig = _fig_match_line()
+		GuidePages.FIG_CASCADE:
+			fig = _fig_cascade()
+		GuidePages.FIG_PAYTABLE:
+			fig = _fig_paytable()
+		GuidePages.FIG_BET_STEPS:
+			fig = _fig_bet_steps()
+		GuidePages.FIG_MULTIPLIER:
+			fig = _fig_multiplier()
+		GuidePages.FIG_SKULLS:
+			fig = _fig_skulls()
+		GuidePages.FIG_POWERS:
+			fig = _fig_icons([ART_HAND, ART_ALCOHOL, ART_CIG], ["Bloody Hand", "Alcohol", "Cigarette"], false)
+		GuidePages.FIG_VICE_ORDER:
+			fig = _fig_icons([ART_HAND, ART_ALCOHOL, ART_CIG], ["1. Bloody Hand", "2. Alcohol", "3. Cigarette"], true)
+		GuidePages.FIG_FREE_SPINS:
+			fig = _fig_icons([ART_HAND, ART_ALCOHOL, ART_CIG], ["4 spins", "5 spins", "8 spins"], false)
+		GuidePages.FIG_LOCKED:
+			fig = _fig_locked()
+		GuidePages.FIG_ODDS:
+			fig = _fig_odds()
+		GuidePages.FIG_RARITY:
+			fig = _fig_rarity()
+		GuidePages.FIG_COMPENDIUM:
+			fig = _fig_compendium()
+	if fig == null:
+		return
+	fig.name = "Figure_%s" % id
+	fig.set_meta("guide_figure", id)
+	_body.add_child(fig)
+	_figures.append(fig)
+
+
+func _tex(path: String) -> Texture2D:
+	if not _textures.has(path):
+		_textures[path] = load(path) as Texture2D
+	return _textures[path]
+
+
+func _fig_row(separation: int = 28) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", separation)
+	return row
+
+
+func _pic(path: String, height: float, tint: Color = Color.WHITE) -> TextureRect:
+	var tex := _tex(path)
+	var rect := TextureRect.new()
+	rect.texture = tex
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.modulate = tint
+	var aspect := 1.0
+	if tex != null and tex.get_height() > 0:
+		aspect = float(tex.get_width()) / float(tex.get_height())
+	rect.custom_minimum_size = Vector2(roundf(height * aspect), height)
+	return rect
+
+
+func _caption(text: String, px: int = CAPTION_PX, color: Color = MenuLook.TEXT, bold: bool = false) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	MenuLook.apply_label(label, px, color)
+	if bold:
+		label.add_theme_font_override("font", _bold_font)
+	return label
+
+
+func _captioned(ctrl: Control, caption: String, color: Color = MenuLook.TEXT) -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 6)
+	ctrl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(ctrl)
+	box.add_child(_caption(caption, CAPTION_PX, color))
+	return box
+
+
+func _arrow() -> Label:
+	var label := _caption(">", 44, MenuLook.ACCENT, true)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return label
+
+
+func _framed(path: String, height: float, lines: Array) -> TextureRect:
+	var rect := _pic(path, height)
+	for line in lines:
+		var box: Rect2 = line[1]
+		var label := _caption(String(line[0]), int(line[2]), INK, true)
+		label.anchor_left = box.position.x
+		label.anchor_top = box.position.y
+		label.anchor_right = box.end.x
+		label.anchor_bottom = box.end.y
+		label.offset_left = 0
+		label.offset_top = 0
+		label.offset_right = 0
+		label.offset_bottom = 0
+		rect.add_child(label)
+	return rect
+
+
+func _board_cell(path: String, ringed: bool) -> PanelContainer:
+	var cell := PanelContainer.new()
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.custom_minimum_size = Vector2(BOARD_CELL_PX, BOARD_CELL_PX)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.02, 0.02, 0.85) if ringed else Color(0.0, 0.0, 0.0, 0.5)
+	style.border_color = MenuLook.ACCENT if ringed else Color(MenuLook.DIM, 0.6)
+	style.set_border_width_all(3 if ringed else 1)
+	style.anti_aliasing = false
+	style.set_content_margin_all(4)
+	cell.add_theme_stylebox_override("panel", style)
+	if not path.is_empty():
+		var pic := _pic(path, BOARD_CELL_PX - 10)
+		cell.add_child(pic)
+	return cell
+
+
+func _mini_board(rows: Array) -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = (rows[0] as Array).size()
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grid.add_theme_constant_override("h_separation", 2)
+	grid.add_theme_constant_override("v_separation", 2)
+	for row in rows:
+		for cell in row:
+			var spec: Array = cell
+			grid.add_child(_board_cell(String(spec[0]), bool(spec[1])))
+	return grid
+
+
+func _fig_fight_hud() -> Control:
+	var row := _fig_row(48)
+	var goal := _framed(HUD_GOAL, 140, [["GOAL\n100", Rect2(0.08, 0.12, 0.84, 0.76), 34]])
+	row.add_child(_captioned(goal, "how much to win"))
+	var bets := _framed(HUD_BETS, 120, [
+		["BET 100", Rect2(0.27, 0.06, 0.5, 0.4), 30],
+		["BALANCE 1000", Rect2(0.08, 0.57, 0.84, 0.36), 30],
+	])
+	row.add_child(_captioned(bets, "what you pay, what you have"))
+	return row
+
+
+func _fig_goal_ladder() -> Control:
+	var row := _fig_row(14)
+	var steps: PackedStringArray = ["100", "150", "225", "x1.5"]
+	for i in steps.size():
+		if i > 0:
+			row.add_child(_arrow())
+		row.add_child(_framed(HUD_GOAL, 64, [[steps[i], Rect2(0.08, 0.12, 0.84, 0.76), 28]]))
+	return row
+
+
+func _fig_match_line() -> Control:
+	var row := _fig_row(24)
+	var before := _mini_board([[
+		[ART_HEART, false], [ART_STAR, true], [ART_STAR, true], [ART_STAR, true], [ART_SQUARE, false],
+	]])
+	var after := _mini_board([[
+		[ART_HEART, false], ["", false], [ART_WILD, true], ["", false], [ART_SQUARE, false],
+	]])
+	row.add_child(_captioned(before, "a line of 3 wins"))
+	row.add_child(_arrow())
+	row.add_child(_captioned(after, "a Wild stays", MenuLook.ACCENT))
+	return row
+
+
+func _fig_cascade() -> Control:
+	var row := _fig_row(24)
+	var before := _mini_board([
+		[[ART_HEART, false], [ART_SQUARE, false], [ART_HEART, false]],
+		[[ART_STAR, true], [ART_STAR, true], [ART_STAR, true]],
+		[[ART_SQUARE, false], [ART_HEART, false], [ART_SQUARE, false]],
+	])
+	var after := _mini_board([
+		[["", false], [ART_SQUARE, false], ["", false]],
+		[[ART_HEART, true], [ART_WILD, false], [ART_HEART, true]],
+		[[ART_SQUARE, false], [ART_HEART, false], [ART_SQUARE, false]],
+	])
+	row.add_child(_captioned(before, "the line wins"))
+	row.add_child(_arrow())
+	row.add_child(_captioned(after, "the rest falls", MenuLook.ACCENT))
+	return row
+
+
+func _fig_paytable() -> Control:
+	var holder := CenterContainer.new()
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var grid := GridContainer.new()
 	grid.name = "PaytableGrid"
 	grid.columns = 5
@@ -284,7 +600,7 @@ func _add_paytable() -> void:
 	grid.add_theme_constant_override("v_separation", 8)
 	holder.add_child(grid)
 	for caption in ["", "Symbol", "x3", "x4", "x5"]:
-		grid.add_child(_cell_label(caption, MenuLook.ACCENT))
+		grid.add_child(_caption(caption, BODY_PX, MenuLook.ACCENT, true))
 	for sym in _load_symbols():
 		var icon := TextureRect.new()
 		icon.texture = sym.get("texture") as Texture2D
@@ -293,20 +609,159 @@ func _add_paytable() -> void:
 		icon.custom_minimum_size = Vector2(SYMBOL_PX, SYMBOL_PX)
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		grid.add_child(icon)
-		grid.add_child(_cell_label(String(sym.get("display_name")), MenuLook.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
-		grid.add_child(_cell_label(str(int(sym.get("payout_x3")))))
-		grid.add_child(_cell_label(str(int(sym.get("payout_x4")))))
-		grid.add_child(_cell_label(str(int(sym.get("payout_x5")))))
+		var name_label := _caption(String(sym.get("display_name")), BODY_PX)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		grid.add_child(name_label)
+		grid.add_child(_caption(str(int(sym.get("payout_x3"))), BODY_PX))
+		grid.add_child(_caption(str(int(sym.get("payout_x4"))), BODY_PX))
+		grid.add_child(_caption(str(int(sym.get("payout_x5"))), BODY_PX))
+	return holder
 
 
-func _cell_label(text: String, color: Color = MenuLook.TEXT, align: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.horizontal_alignment = align
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	MenuLook.apply_label(label, BODY_PX, color)
-	return label
+func _fig_bet_steps() -> Control:
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 14)
+	var top := _fig_row()
+	top.add_child(_framed(HUD_BETS, 120, [
+		["BET 100", Rect2(0.27, 0.06, 0.5, 0.4), 30],
+		["BALANCE 1000", Rect2(0.08, 0.57, 0.84, 0.36), 30],
+	]))
+	box.add_child(top)
+	var steps := _fig_row(10)
+	for i in BET_STEPS.size():
+		steps.add_child(_chip(BET_STEPS[i], i == 0))
+	box.add_child(steps)
+	return box
+
+
+func _chip(text: String, lit: bool) -> PanelContainer:
+	var chip := PanelContainer.new()
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = MenuLook.ACCENT if lit else Color(0, 0, 0, 0.5)
+	style.border_color = MenuLook.ACCENT
+	style.set_border_width_all(2)
+	style.anti_aliasing = false
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.content_margin_top = 2
+	style.content_margin_bottom = 2
+	chip.add_theme_stylebox_override("panel", style)
+	chip.add_child(_caption(text, CAPTION_PX, Color.BLACK if lit else MenuLook.TEXT, true))
+	return chip
+
+
+func _fig_multiplier() -> Control:
+	var row := _fig_row(14)
+	var marks: PackedStringArray = ["x1", "x2", "x3"]
+	var notes: PackedStringArray = ["spin starts", "after 1 win", "after 2 wins"]
+	for i in marks.size():
+		if i > 0:
+			row.add_child(_arrow())
+		var pic := _framed(HUD_MULT, 92, [[marks[i], Rect2(0.3, 0.2, 0.4, 0.6), 36]])
+		row.add_child(_captioned(pic, notes[i]))
+	return row
+
+
+func _fig_skulls() -> Control:
+	var row := _fig_row(40)
+	var notes: PackedStringArray = ["1 part", "2 parts", "FULL"]
+	for i in HUD_SKULLS.size():
+		var color := MenuLook.ACCENT if i == HUD_SKULLS.size() - 1 else MenuLook.TEXT
+		row.add_child(_captioned(_pic(HUD_SKULLS[i], 120), notes[i], color))
+	return row
+
+
+func _fig_icons(paths: Array, notes: Array, arrows: bool) -> Control:
+	var row := _fig_row(18 if arrows else 48)
+	for i in paths.size():
+		if arrows and i > 0:
+			row.add_child(_arrow())
+		row.add_child(_captioned(_pic(String(paths[i]), 76), String(notes[i])))
+	return row
+
+
+func _fig_locked() -> Control:
+	var row := _fig_row()
+	row.add_child(_pic(HUD_SKULLS[2], 170, LOCKED_TINT))
+	return row
+
+
+func _fig_odds() -> Control:
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 8)
+	var row := _fig_row(8)
+	for i in 10:
+		var square := Panel.new()
+		square.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		square.custom_minimum_size = Vector2(40, 40)
+		var style := StyleBoxFlat.new()
+		var lit := i < GuidePages.HIT_RATE_IN_TEN
+		style.bg_color = MenuLook.ACCENT if lit else Color(0, 0, 0, 0.5)
+		style.border_color = MenuLook.ACCENT if lit else MenuLook.DIM
+		style.set_border_width_all(2)
+		style.anti_aliasing = false
+		square.add_theme_stylebox_override("panel", style)
+		row.add_child(square)
+	box.add_child(row)
+	box.add_child(_caption("%d of 10 spins win something" % GuidePages.HIT_RATE_IN_TEN))
+	return box
+
+
+func _fig_rarity() -> Control:
+	var row := _fig_row(36)
+	for i in RARITY_NAMES.size():
+		var glyph := _caption(ItemDef.rarity_glyph_index(i), 52, MenuLook.ACCENT)
+		row.add_child(_captioned(glyph, RARITY_NAMES[i]))
+	return row
+
+
+func _fig_compendium() -> Control:
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 12)
+	var items := _load_items()
+	var found_count := 0
+	for item in items:
+		if _item_found(String(item.get("id"))):
+			found_count += 1
+	var counter := _caption("Found %d / %d" % [found_count, items.size()], BODY_PX, MenuLook.ACCENT, true)
+	counter.name = "CompendiumCount"
+	box.add_child(counter)
+	for rarity in RARITY_NAMES.size():
+		var group: Array = items.filter(func(it: Resource) -> bool: return int(it.get("rarity")) == rarity)
+		if group.is_empty():
+			continue
+		box.add_child(_caption(
+			"%s %s" % [ItemDef.rarity_glyph_index(rarity), RARITY_NAMES[rarity]],
+			BODY_PX,
+			MenuLook.ACCENT,
+			true
+		))
+		var grid := GridContainer.new()
+		grid.name = "CompendiumGrid%d" % rarity
+		grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		grid.add_theme_constant_override("h_separation", GRID_GAP)
+		grid.add_theme_constant_override("v_separation", GRID_GAP)
+		box.add_child(grid)
+		_compendium_grids.append(grid)
+		for item in group:
+			grid.add_child(_compendium_entry(item))
+	return box
+
+
+func _frame_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = FRAME_FILL
+	style.border_color = MenuLook.ACCENT
+	style.set_border_width_all(FRAME_BORDER)
+	style.anti_aliasing = false
+	style.corner_detail = 1
+	style.set_corner_radius_all(0)
+	style.set_content_margin_all(FRAME_MARGIN)
+	return style
 
 
 func _load_symbols() -> Array:
@@ -345,35 +800,6 @@ func _load_items() -> Array:
 		return String(a.get("id")).naturalnocasecmp_to(String(b.get("id"))) < 0
 	)
 	return _items
-
-
-func _add_compendium() -> void:
-	var items := _load_items()
-	var found_count := 0
-	for item in items:
-		if _item_found(String(item.get("id"))):
-			found_count += 1
-	var counter := _cell_label("Found %d / %d" % [found_count, items.size()], MenuLook.ACCENT)
-	counter.name = "CompendiumCount"
-	_body.add_child(counter)
-	for rarity in RARITY_NAMES.size():
-		var group: Array = items.filter(func(it: Resource) -> bool: return int(it.get("rarity")) == rarity)
-		if group.is_empty():
-			continue
-		var heading := _cell_label(
-			"%s %s" % [ItemDef.rarity_glyph_index(rarity), RARITY_NAMES[rarity]],
-			MenuLook.ACCENT,
-			HORIZONTAL_ALIGNMENT_LEFT
-		)
-		_body.add_child(heading)
-		var grid := GridContainer.new()
-		grid.name = "CompendiumGrid%d" % rarity
-		grid.add_theme_constant_override("h_separation", GRID_GAP)
-		grid.add_theme_constant_override("v_separation", GRID_GAP)
-		_body.add_child(grid)
-		_compendium_grids.append(grid)
-		for item in group:
-			grid.add_child(_compendium_entry(item))
 
 
 func _compendium_entry(item: Resource) -> Button:

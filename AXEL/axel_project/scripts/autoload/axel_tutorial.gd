@@ -10,21 +10,19 @@ const CARD_W := 520.0
 const CARD_H := 860.0
 const CARD_MARGIN := 36.0
 const STACK_GAP_PX := 16.0
-const STACK_OPEN_GAP_SEC := 5.0
+const STACK_OPEN_GAP_SEC := 0.5
 const REF_H := 1280.0
 const FONT_PX := 32.0
 const OUTLINE_PX := 4.0
 const CHARS_PER_SEC := 35.0
 const TITLE_MARK_GAP := 18.0
-const AUTO_READING_BASE_SEC := 3.0
-const AUTO_READING_SQRT := 0.5774
-const AUTO_READING_MAX_SEC := 20.0
-const SLOT_READING_MULT := 2.0
 const GLOW_STEADY := 0.45
-const GLOW_PULSE_SEC := 1.6
-const GLOW_FADE_OUT_SEC := 0.35
-const GLOW_ALPHA_MIN := 0.0
-const GLOW_ALPHA_MAX := 1.0
+const GLOW_PULSE_SEC := 2.6
+const GLOW_FADE_IN_SEC := 0.4
+const GLOW_FADE_OUT_SEC := 0.6
+const GLOW_ALPHA_MIN := 0.2
+const GLOW_ALPHA_MAX := 0.75
+const LINK_COLOR := "#ff6a6a"
 
 const LESSONS := {
 	"move_walk": {
@@ -36,8 +34,9 @@ const LESSONS := {
 		"body": "Click the skull, or press E, to spin. Match 3 or more of the same picture in a row or a column.",
 	},
 	"fight_stakes": {
+		"action_only": true,
 		"title": "Fights",
-		"body": "BALANCE is your chips. The bet is spent each spin. Fill GOAL to win. If you cannot pay another spin, you lose.",
+		"body": "BALANCE is your chips. The bet is spent each spin. Fill GOAL to win. If you cannot pay another spin, you lose. Press + or - to change the bet. Q and R work too.",
 	},
 	"fight_items": {
 		"title": "Fights",
@@ -66,6 +65,11 @@ const LESSONS := {
 		"title": "Vice Round",
 		"body": "The skull is full. Every power fires once, and the pictures are eaten. Clear the board to earn a prize.",
 	},
+	"guide_pause": {
+		"title": "Guide",
+		"body": "Forgot a rule? Press Esc and open the Guide. Every lesson is kept there.",
+		"link": {"word": "Guide", "target": "guide"},
+	},
 }
 
 const GLOW_PIECES := {
@@ -75,6 +79,7 @@ const GLOW_PIECES := {
 	"slot_match": ["NEW_History", "NEW_Grid"],
 	"slot_power": ["NEW_Execute"],
 	"slot_vice": ["NEW_Execute", "NEW_Grid"],
+	"guide_pause": ["NEW_Settings"],
 }
 
 enum Phase { IDLE, OPENING, TYPING, WAITING, CLOSING }
@@ -92,6 +97,8 @@ var _glow_pieces: Dictionary = {}
 var _glow_on_ms: Dictionary = {}
 var _glow_off: Dictionary = {}
 var _glow_last_alpha: Dictionary = {}
+var _first_fight_card_bottom := -1.0
+var _first_fight_card_id := ""
 
 var _card_layer: CanvasLayer
 var _slots: Array = []
@@ -118,6 +125,7 @@ class CardSlot:
 	var bloom: ColorRect
 	var title: Label
 	var body: Label
+	var body_rich: RichTextLabel
 	var mark: Label
 	var mark_end: Label
 	var header: HBoxContainer
@@ -144,8 +152,44 @@ func request(id: String) -> void:
 		return
 	if _is_seen(id) or _queue.has(id) or _is_showing_id(id):
 		return
-	_queue.append(id)
+	if _lesson_freezes(id):
+		_queue.insert(_first_calm_index(), id)
+		_bump_calm_cards()
+	else:
+		_queue.append(id)
 	_sync_freeze()
+
+
+func _first_calm_index() -> int:
+	for i in _queue.size():
+		if not _lesson_freezes(_queue[i]):
+			return i
+	return _queue.size()
+
+
+func _bump_calm_cards() -> void:
+	for slot in _slots:
+		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		if _lesson_freezes(slot.open_id):
+			continue
+		var id: String = slot.open_id
+		_force_waiting(slot)
+		_start_close(slot, false)
+		if not _queue.has(id):
+			_queue.insert(_first_calm_index(), id)
+		_stack_gap_left = 0.0
+
+
+func _force_waiting(slot: CardSlot) -> void:
+	if slot.phase == Phase.TYPING or slot.phase == Phase.OPENING:
+		_show_typed(slot, slot.body_text.length())
+		slot.phase = Phase.WAITING
+		_refresh_type_loop()
+
+
+func _lesson_action_only(id: String) -> bool:
+	return LESSONS.has(id) and bool(LESSONS[id].get("action_only", false))
 
 
 func is_freezing() -> bool:
@@ -196,6 +240,18 @@ func is_waiting() -> bool:
 
 
 func blocks_spin() -> bool:
+	return _freeze_on
+
+
+func close_freeze_card() -> bool:
+	for slot in _slots:
+		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		if not _lesson_freezes(slot.open_id):
+			continue
+		_force_waiting(slot)
+		_start_close(slot)
+		return true
 	return false
 
 
@@ -203,19 +259,19 @@ func complete(id: String) -> void:
 	if not LESSONS.has(id):
 		return
 	var idx := _queue.find(id)
-	if idx >= 0:
-		_queue.remove_at(idx)
 	if not _is_showing_id(id):
+		if _lesson_freezes(id):
+			return
+		if idx >= 0:
+			_queue.remove_at(idx)
 		_mark_seen(id)
 		return
+	if idx >= 0:
+		_queue.remove_at(idx)
 	for slot in _slots:
 		if slot.open_id != id or slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 			continue
-		if slot.phase == Phase.TYPING or slot.phase == Phase.OPENING:
-			slot.body.text = slot.body_text
-			slot.typed = slot.body_text.length()
-			slot.phase = Phase.WAITING
-			_refresh_type_loop()
+		_force_waiting(slot)
 		_start_close(slot)
 		return
 
@@ -325,15 +381,11 @@ func _mark_seen(id: String) -> void:
 func _process(delta: float) -> void:
 	if _focus_frozen():
 		return
-	if _stack_gap_left > 0.0:
+	if _stack_gap_left > 0.0 and not is_open():
 		_stack_gap_left = maxf(0.0, _stack_gap_left - delta)
 	for slot in _slots:
 		if slot.phase == Phase.TYPING:
 			_advance_type(slot, delta)
-		elif slot.phase == Phase.WAITING and slot.wait_left >= 0.0:
-			slot.wait_left -= delta
-			if slot.wait_left <= 0.0:
-				_start_close(slot)
 	_sync_glows()
 	_try_start()
 	_sync_freeze()
@@ -352,7 +404,7 @@ func _try_start() -> void:
 	var idx := _free_slot_index()
 	if idx < 0:
 		return
-	if is_open() and _stack_gap_left > 0.0:
+	if is_open() or _stack_gap_left > 0.0:
 		return
 	var id := _queue[0]
 	_queue.remove_at(0)
@@ -375,10 +427,11 @@ func _run_card(slot: CardSlot, id: String) -> void:
 	slot.typed = 0
 	slot.type_acc = 0.0
 	slot.title.text = String(lesson["title"])
-	slot.body.text = ""
+	_setup_body(slot, lesson)
+	_show_typed(slot, 0)
 	slot.card_host.visible = true
 	if slot.exit != null:
-		slot.exit.visible = true
+		slot.exit.visible = not _lesson_action_only(id)
 	_layout_cards()
 	_sync_glows()
 	_play_open()
@@ -398,35 +451,68 @@ func _advance_type(slot: CardSlot, delta: float) -> void:
 	if add <= 0:
 		return
 	slot.type_acc -= float(add)
-	slot.typed = mini(slot.typed + add, slot.body_text.length())
-	slot.body.text = slot.body_text.substr(0, slot.typed)
+	_show_typed(slot, mini(slot.typed + add, slot.body_text.length()))
 	if slot.typed >= slot.body_text.length():
 		_begin_wait(slot)
+
+
+func _setup_body(slot: CardSlot, lesson: Dictionary) -> void:
+	var link: Dictionary = lesson.get("link", {})
+	var use_rich := not link.is_empty() and slot.body_rich != null
+	slot.body.visible = not use_rich
+	if slot.body_rich == null:
+		return
+	slot.body_rich.visible = use_rich
+	if not use_rich:
+		slot.body_rich.text = ""
+		return
+	var word := String(link.get("word", ""))
+	var target := String(link.get("target", ""))
+	var plain := slot.body_text
+	var at := plain.find(word)
+	if word.is_empty() or at < 0:
+		slot.body_rich.text = plain.replace("[", "[lb]")
+		return
+	var before := plain.substr(0, at).replace("[", "[lb]")
+	var after := plain.substr(at + word.length()).replace("[", "[lb]")
+	slot.body_rich.text = "%s[url=%s][color=%s][u]%s[/u][/color][/url]%s" % [before, target, LINK_COLOR, word, after]
+
+
+func _show_typed(slot: CardSlot, count: int) -> void:
+	slot.typed = count
+	slot.body.text = slot.body_text.substr(0, count)
+	if slot.body_rich != null:
+		slot.body_rich.visible_characters = count
+
+
+func _on_body_meta_clicked(meta: Variant, idx: int) -> void:
+	if idx < 0 or idx >= _slots.size():
+		return
+	var slot: CardSlot = _slots[idx]
+	if slot.phase == Phase.TYPING:
+		_show_typed(slot, slot.body_text.length())
+		_begin_wait(slot)
+		return
+	if String(meta) != "guide":
+		return
+	var id := slot.open_id
+	if not id.is_empty():
+		complete(id)
+	var pause := get_node_or_null("/root/AxelPause")
+	if pause != null and pause.has_method("open_guide"):
+		pause.call("open_guide")
 
 
 func _begin_wait(slot: CardSlot) -> void:
 	slot.phase = Phase.WAITING
 	_refresh_type_loop()
 	slot.wait_left = -1.0
-	if _lesson_freezes(slot.open_id):
-		slot.wait_left = _reading_duration_sec(slot.body_text) * SLOT_READING_MULT
-
-
-func _reading_duration_sec(text: String) -> float:
-	var word_count := text.split(" ", false).size()
-	var extra_words := maxf(float(word_count - 1), 0.0)
-	return clampf(
-		AUTO_READING_BASE_SEC + AUTO_READING_SQRT * sqrt(extra_words),
-		AUTO_READING_BASE_SEC,
-		AUTO_READING_MAX_SEC,
-	)
 
 
 func _dismiss_one_card() -> void:
 	for slot in _slots:
 		if slot.phase == Phase.TYPING:
-			slot.body.text = slot.body_text
-			slot.typed = slot.body_text.length()
+			_show_typed(slot, slot.body_text.length())
 			_begin_wait(slot)
 			return
 
@@ -437,21 +523,22 @@ func _on_exit_pressed_slot(idx: int) -> void:
 	var slot: CardSlot = _slots[idx]
 	if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 		return
-	if slot.phase == Phase.TYPING or slot.phase == Phase.OPENING:
-		slot.body.text = slot.body_text
-		slot.typed = slot.body_text.length()
-		slot.phase = Phase.WAITING
-		_refresh_type_loop()
+	if _lesson_action_only(slot.open_id):
+		return
+	_force_waiting(slot)
 	_start_close(slot)
 
 
-func _start_close(slot: CardSlot) -> void:
+func _start_close(slot: CardSlot, mark: bool = true) -> void:
 	if slot.phase != Phase.WAITING:
 		return
 	var id := slot.open_id
 	slot.phase = Phase.CLOSING
 	_sync_freeze()
-	_mark_seen(id)
+	if mark:
+		_mark_seen(id)
+		if id == "slot_vice":
+			request("guide_pause")
 	_sync_glows()
 	_refresh_type_loop()
 	_play_close()
@@ -471,12 +558,20 @@ func _start_close(slot: CardSlot) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not _any_typing() or event.is_echo():
+	if event.is_echo():
 		return
-	if not _is_dismiss_event(event):
+	if _any_typing():
+		if not _is_dismiss_event(event):
+			return
+		get_viewport().set_input_as_handled()
+		_dismiss_one_card()
 		return
-	get_viewport().set_input_as_handled()
-	_dismiss_one_card()
+	if not _freeze_on:
+		return
+	if not _is_dismiss_event(event) and not event.is_action_pressed("interact"):
+		return
+	if close_freeze_card():
+		get_viewport().set_input_as_handled()
 
 
 func _is_dismiss_event(event: InputEvent) -> bool:
@@ -511,8 +606,16 @@ func _on_scene_changed() -> void:
 		if not _lesson_freezes(id):
 			kept.append(id)
 	_queue = kept
+	for slot in _slots:
+		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		if _lesson_action_only(slot.open_id) or _lesson_freezes(slot.open_id):
+			_force_waiting(slot)
+			_start_close(slot, false)
 	_sync_freeze()
 	_hud_rects.clear()
+	_first_fight_card_id = ""
+	_first_fight_card_bottom = -1.0
 	_hide_glows()
 
 
@@ -560,17 +663,39 @@ func _layout_cards() -> void:
 		_apply_slot_rect(s0, x, y0, width, h0, scale)
 		_apply_slot_rect(s1, x, y1, width, h1, scale)
 	elif show0:
-		_apply_slot_rect(s0, x, base_y, width, h0, scale)
+		_apply_slot_rect(s0, x, _single_card_top(s0, base_y, x, width, h0, gap, margin, vp), width, h0, scale)
 	elif show1:
 		var y1 := s1.card_host.position.y
 		if not s1.laid_out:
-			y1 = base_y
+			y1 = _single_card_top(s1, base_y, x, width, h1, gap, margin, vp)
 		_apply_slot_rect(s1, x, y1, width, h1, scale)
 
 	if show0 and s0.exit != null:
 		UiViewportScale.apply_exit_button(s0.exit, scale * 0.5)
 	if show1 and s1.exit != null:
 		UiViewportScale.apply_exit_button(s1.exit, scale * 0.5)
+
+
+func _single_card_top(
+	slot: CardSlot, base_y: float, x: float, width: float, height: float, gap: float, margin: float, vp: Vector2
+) -> float:
+	if not _is_fight(slot.open_id):
+		return base_y
+	if _first_fight_card_id.is_empty():
+		_first_fight_card_id = slot.open_id
+	if slot.open_id == _first_fight_card_id:
+		_first_fight_card_bottom = base_y + height
+		return base_y
+	var y := base_y
+	if _first_fight_card_bottom > 0.0:
+		y = _first_fight_card_bottom + gap
+	if _hud_rects.has("NEW_History"):
+		var history: Rect2 = _hud_rects["NEW_History"]
+		var card := Rect2(x, y, width, height)
+		if card.intersects(history):
+			y = history.end.y + gap
+	var limit := vp.y - margin - height
+	return clampf(y, margin, maxf(margin, limit))
 
 
 func _apply_slot_rect(
@@ -607,6 +732,10 @@ func _apply_chrome(slot: CardSlot, scale: float, host_w: float) -> void:
 	var side := float(outline) + 2.0 * scale
 	slot.title.custom_minimum_size.x = title_w + side * 2.0
 	slot.body.custom_maximum_size = Vector2(inner_w, -1.0)
+	if slot.body_rich != null:
+		slot.body_rich.add_theme_font_size_override("normal_font_size", font_size)
+		slot.body_rich.add_theme_constant_override("outline_size", outline)
+		slot.body_rich.custom_minimum_size = Vector2(inner_w, 0.0)
 
 
 func _outer_style(scale: float) -> StyleBoxFlat:
@@ -680,9 +809,9 @@ func _sync_glows() -> void:
 		if piece == null:
 			continue
 		if wanted.has(piece_name):
-			_glow_off.erase(piece_name)
 			if not _glow_on_ms.has(piece_name):
-				_glow_on_ms[piece_name] = now
+				_glow_on_ms[piece_name] = now - _glow_resume_ms(piece_name, now)
+			_glow_off.erase(piece_name)
 			PieceHighlightGlow.set_highlight(piece, true)
 			var alpha := _glow_alpha(float(now - int(_glow_on_ms[piece_name])) * 0.001)
 			_glow_last_alpha[piece_name] = alpha
@@ -695,7 +824,7 @@ func _sync_glows() -> void:
 			var t := float(now - int(_glow_off[piece_name])) * 0.001 / GLOW_FADE_OUT_SEC
 			if t < 1.0:
 				var from := float(_glow_last_alpha.get(piece_name, GLOW_ALPHA_MAX))
-				PieceHighlightGlow.pulse_highlights(piece, from * (1.0 - t))
+				PieceHighlightGlow.pulse_highlights(piece, from * (1.0 - smoothstep(0.0, 1.0, t)))
 				continue
 			_glow_off.erase(piece_name)
 			_glow_last_alpha.erase(piece_name)
@@ -707,10 +836,19 @@ func _glow_alpha(elapsed_sec: float) -> float:
 	var steady := false
 	if settings != null and settings.has_method("get_value"):
 		steady = bool(settings.call("get_value", "access", "reduce_flashing", false))
+	var fade_in := smoothstep(0.0, 1.0, clampf(elapsed_sec / GLOW_FADE_IN_SEC, 0.0, 1.0))
 	if steady:
-		return GLOW_STEADY
+		return GLOW_STEADY * fade_in
 	var wave := 0.5 - 0.5 * cos(elapsed_sec * TAU / GLOW_PULSE_SEC)
-	return lerpf(GLOW_ALPHA_MIN, GLOW_ALPHA_MAX, wave)
+	return lerpf(GLOW_ALPHA_MIN, GLOW_ALPHA_MAX, wave) * fade_in
+
+
+func _glow_resume_ms(piece_name: String, now: int) -> int:
+	if not _glow_off.has(piece_name):
+		return 0
+	var t := clampf(float(now - int(_glow_off[piece_name])) * 0.001 / GLOW_FADE_OUT_SEC, 0.0, 1.0)
+	var left := 1.0 - smoothstep(0.0, 1.0, t)
+	return int(left * GLOW_FADE_IN_SEC * 1000.0)
 
 
 func _focus_frozen() -> bool:
@@ -858,6 +996,23 @@ func _make_slot(index: int, host_name: String) -> CardSlot:
 	slot.body = _make_label("BodyLabel")
 	slot.body.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	slot.column.add_child(slot.body)
+
+	slot.body_rich = RichTextLabel.new()
+	slot.body_rich.name = "BodyRich"
+	slot.body_rich.bbcode_enabled = true
+	slot.body_rich.fit_content = true
+	slot.body_rich.scroll_active = false
+	slot.body_rich.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	slot.body_rich.mouse_filter = Control.MOUSE_FILTER_PASS
+	slot.body_rich.meta_underlined = false
+	slot.body_rich.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slot.body_rich.add_theme_font_override("normal_font", FONT)
+	slot.body_rich.add_theme_color_override("default_color", Color.WHITE)
+	slot.body_rich.add_theme_color_override("font_outline_color", Color.BLACK)
+	slot.body_rich.add_theme_constant_override("outline_size", 4)
+	slot.body_rich.visible = false
+	slot.body_rich.meta_clicked.connect(_on_body_meta_clicked.bind(index))
+	slot.column.add_child(slot.body_rich)
 
 	slot.bloom = ColorRect.new()
 	slot.bloom.name = "Bloom"

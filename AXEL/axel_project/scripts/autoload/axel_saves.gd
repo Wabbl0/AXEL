@@ -229,7 +229,12 @@ func maybe_begin_play_scene() -> bool:
 	var scene_path := _cmdline_scene_path()
 	if scene_path.is_empty() or _is_menu_path(scene_path):
 		return false
-	return begin_play_scene_session(scene_path)
+	if not begin_play_scene_session(scene_path):
+		return false
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile != null and profile.has_method("begin_play_scene_profile"):
+		profile.call("begin_play_scene_profile")
+	return true
 
 
 func begin_play_scene_session(scene_path: String, save_dir: String = "") -> bool:

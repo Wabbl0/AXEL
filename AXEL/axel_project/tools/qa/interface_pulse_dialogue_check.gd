@@ -173,8 +173,8 @@ func _check_intro_roll_once(fx: Node, pulse: CanvasLayer) -> void:
 		if red > 0.05 or green > 0.05 or blue > 0.05:
 			_fail("wave color should be black, got %s" % raw)
 		var strength := float(mat.get_shader_parameter("roll_color_strength"))
-		if absf(strength - 0.335) > 0.02:
-			_fail("wave opacity %.3f should stay near 0.335" % strength)
+		if absf(strength - 0.224) > 0.02:
+			_fail("wave opacity %.3f should stay near 0.224" % strength)
 		var warp := _shader_number(pulse, "roll_warp")
 		if absf(warp - 0.0045) > 0.0005:
 			_fail("wave warp %.4f should stay near 0.0045" % warp)

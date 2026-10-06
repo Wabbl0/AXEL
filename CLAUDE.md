@@ -111,6 +111,7 @@ Notes:
 - When I say "update docs", update `AI_DOCS.md` and the matching plans. Do not add entries to `AI_CHANGELOG.md`; it is retired.
 - Git commits are the change history. Write clear commit messages: what changed and why.
 
-## Release builds (only when I say "commit and push")
+## Commit and push vs. new release
 
-Do this only when I ask you to git commit and push. Never after an ordinary edit or commit. Follow the `release-build` skill.
+- "Commit and push" means only: git commit, then push. No version bump and no export. Most testing happens inside Godot.
+- Make a release build only when I clearly ask for a new release (for example "make a new release"). Then follow the `release-build` skill.

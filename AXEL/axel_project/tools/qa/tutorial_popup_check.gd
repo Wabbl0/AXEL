@@ -26,7 +26,92 @@ func _main() -> void:
 	await _check_card_stack(tutorial, failures)
 	await _check_slot_freeze(tutorial, failures)
 	await _check_highlight_above_noir(failures)
+	await _check_guide_link(tutorial, failures)
 	_finish(failures)
+
+
+func _check_guide_link(tutorial: Node, failures: Array[String]) -> void:
+	var pause := root.get_node_or_null("AxelPause")
+	var profile := root.get_node_or_null("AxelProfile")
+	if pause == null or profile == null:
+		failures.append("guide link check needs AxelPause and AxelProfile")
+		return
+	profile.call("debug_use_memory_only")
+	profile.call("unlock_guide")
+	var scene := Node2D.new()
+	scene.name = "GuideLinkProbeScene"
+	root.add_child(scene)
+	current_scene = scene
+	await process_frame
+
+	var menu: Node = pause.get("_menu")
+	await _open_guide_card(tutorial)
+	if _open_lesson(tutorial) != "guide_pause":
+		failures.append("guide card did not open")
+		return
+	var rich := tutorial.get_node_or_null("CardLayer/CardHost/FadeRoot/BarPanel/InnerPanel/TextColumn/BodyRich") as RichTextLabel
+	if rich == null or not rich.visible:
+		failures.append("guide card has no rich body")
+		return
+	if not rich.text.contains("[url=guide]") or not rich.text.contains("[u]Guide[/u]"):
+		failures.append("guide word is not an underlined link: %s" % rich.text)
+	if rich.get_parsed_text() != String(tutorial.get("LESSONS")["guide_pause"]["body"]):
+		failures.append("guide card text changed: %s" % rich.get_parsed_text())
+	rich.emit_signal("meta_clicked", "guide")
+	await process_frame
+	if not get_tree_paused():
+		failures.append("guide link did not pause the game")
+	if menu == null or not bool(menu.call("is_guide_open")):
+		failures.append("guide link did not open the Guide")
+	for _i in 120:
+		await process_frame
+		if not bool(tutorial.call("is_open")):
+			break
+	if bool(tutorial.call("is_open")):
+		failures.append("guide card stayed after the link opened the Guide")
+	pause.call("request_unpause")
+	await process_frame
+
+	await _open_guide_card(tutorial)
+	if _open_lesson(tutorial) != "guide_pause":
+		failures.append("guide card did not reopen for the pause route")
+	else:
+		pause.call("request_pause")
+		menu.call("_open_guide")
+		for _i in 120:
+			await process_frame
+			if not bool(tutorial.call("is_open")):
+				break
+		if bool(tutorial.call("is_open")):
+			failures.append("guide card stayed after opening the Guide from pause")
+		pause.call("request_unpause")
+	current_scene = null
+	scene.queue_free()
+	await process_frame
+
+
+func _open_guide_card(tutorial: Node) -> void:
+	var marked: Dictionary = tutorial.get("_marked")
+	marked.erase("guide_pause")
+	var run := root.get_node_or_null("AxelRun")
+	if run != null:
+		var seen: PackedStringArray = run.state.tutorial_seen
+		var at := seen.find("guide_pause")
+		if at >= 0:
+			seen.remove_at(at)
+			run.state.tutorial_seen = seen
+	root.get_node("AxelProfile").call("debug_use_memory_only")
+	root.get_node("AxelProfile").call("unlock_guide")
+	tutorial.call("request", "guide_pause")
+	await _wait_lesson(tutorial, "guide_pause")
+	for _i in 600:
+		await process_frame
+		if bool(tutorial.call("is_waiting")):
+			return
+
+
+func get_tree_paused() -> bool:
+	return paused
 
 
 func _check_roundtrip(failures: Array[String]) -> void:
@@ -199,6 +284,7 @@ func _check_spin_card_moves_off_glow(tutorial: Node, failures: Array[String]) ->
 	var right := Rect2(vp.x - margin - width, (vp.y - height) * 0.5, width, height)
 	var skull := right.grow(2.0)
 	tutorial.call("set_hud_rects", {"NEW_Execute": skull})
+	await create_timer(0.7).timeout
 	tutorial.call("request", "fight_spin")
 	var placed := false
 	var card := Rect2()
@@ -217,6 +303,7 @@ func _check_spin_card_moves_off_glow(tutorial: Node, failures: Array[String]) ->
 		failures.append("spin card left the right half at %s" % card)
 	_expect_flanked_title(tutorial, failures, "Fights")
 	await _close_card(tutorial)
+	await create_timer(0.7).timeout
 	tutorial.call("request", "items_hand")
 	var items_title := ""
 	var title_label := tutorial.get_node_or_null("CardLayer/CardHost/FadeRoot/BarPanel/InnerPanel/TextColumn/HeaderRow/TitleLabel") as Label
@@ -240,37 +327,21 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 	if host == null or host2 == null:
 		failures.append("card hosts missing for stack check")
 		return
-	var opened := false
-	for _i in 90:
-		await process_frame
-		if bool(tutorial.call("is_open")) and host.visible:
-			opened = true
-			break
-	if not opened:
-		failures.append("stack first card did not open")
+	if not await _wait_lesson(tutorial, "fight_stakes"):
+		failures.append("stakes card did not open")
 		return
-	if host2.visible:
-		failures.append("second card host visible too early")
-	await create_timer(4.0).timeout
-	if host2.visible:
-		failures.append("second card opened before the 5s stack gap")
-	await create_timer(1.5).timeout
-	if not host2.visible:
-		failures.append("CardHost2 did not open after stack gap")
-		return
-	var top0 := host.get_global_rect().position.y
-	var bottom0 := host.get_global_rect().end.y
-	var top1 := host2.get_global_rect().position.y
-	if top1 <= bottom0:
-		failures.append("CardHost2 top %s is not below CardHost bottom %s" % [top1, bottom0])
-	if top1 <= top0:
-		failures.append("CardHost2 is not under CardHost")
 	var exit0 := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
-	var exit1 := tutorial.get_node_or_null("CardLayer/CardHost2/ExitButton") as Button
-	if exit0 == null or not exit0.visible:
-		failures.append("first stacked card has no visible X")
-	if exit1 == null or not exit1.visible:
-		failures.append("second stacked card has no visible X")
+	if exit0 != null and exit0.visible:
+		failures.append("stakes card should have no X")
+	await create_timer(2.0).timeout
+	if host2.visible:
+		failures.append("a second card opened while the first was still up")
+	if exit0 != null:
+		exit0.emit_signal("pressed")
+	for _i in 30:
+		await process_frame
+	if _open_lesson(tutorial) != "fight_stakes":
+		failures.append("stakes card closed without a bet change")
 
 	var open_before := bool(tutorial.call("is_open"))
 	Input.action_press("interact")
@@ -279,7 +350,40 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 	await process_frame
 	if open_before and not bool(tutorial.call("is_open")):
 		failures.append("interact closed a tutorial card")
+
+	tutorial.call("request", "slot_power")
+	if not await _wait_lesson(tutorial, "slot_power"):
+		failures.append("freeze card did not cut in front of the stakes card")
+	if bool(tutorial.call("_is_seen", "fight_stakes")):
+		failures.append("cut-in marked the stakes card as seen")
+	if host2.visible:
+		failures.append("cut-in opened a second card host")
+	tutorial.call("close_freeze_card")
+	if not await _wait_lesson(tutorial, "fight_stakes"):
+		failures.append("stakes card did not come back after the cut-in")
+	tutorial.call("complete", "fight_stakes")
+	if not await _wait_lesson(tutorial, "fight_items"):
+		failures.append("items card did not follow the stakes card")
+	if not bool(tutorial.call("_is_seen", "fight_stakes")):
+		failures.append("stakes card not marked seen after the bet change")
 	await _close_both_cards(tutorial)
+
+
+func _open_lesson(tutorial: Node) -> String:
+	var slot = tutorial.get("_slots")[0]
+	if slot.phase == 0 or slot.phase == 4:
+		return ""
+	return String(slot.open_id)
+
+
+func _wait_lesson(tutorial: Node, id: String) -> bool:
+	var left := 4.0
+	while left > 0.0:
+		await process_frame
+		left -= 1.0 / 60.0
+		if _open_lesson(tutorial) == id:
+			return true
+	return false
 
 
 func _check_slot_freeze(tutorial: Node, failures: Array[String]) -> void:
@@ -299,11 +403,11 @@ func _check_slot_freeze(tutorial: Node, failures: Array[String]) -> void:
 	if not slot_ready:
 		failures.append("slot_match card never finished typing")
 		return
-	var body := tutorial.get_node_or_null("CardLayer/CardHost/FadeRoot/BarPanel/InnerPanel/TextColumn/BodyLabel") as Label
-	var want: float = float(tutorial.call("_reading_duration_sec", body.text)) * 2.0
-	var slot = tutorial.get("_slots")[0]
-	if slot.wait_left < want - 1.0 or slot.wait_left > want + 0.1:
-		failures.append("slot card wait is %.1f, want about %.1f" % [slot.wait_left, want])
+	await create_timer(1.0).timeout
+	if not bool(tutorial.call("is_waiting")):
+		failures.append("slot card closed by itself without X")
+	if not bool(tutorial.call("blocks_spin")):
+		failures.append("slot card should block spinning while frozen")
 	if not CombatPace.is_frozen():
 		failures.append("time unfroze before the card closed")
 	await _close_card(tutorial)

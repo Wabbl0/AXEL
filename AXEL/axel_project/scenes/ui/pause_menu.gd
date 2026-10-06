@@ -149,11 +149,25 @@ func _open_options() -> void:
 	MenuLook.grab_first_focus(_options)
 
 
+func open_guide() -> bool:
+	if not _guide_unlocked():
+		return false
+	_open_guide()
+	return true
+
+
+func is_guide_open() -> bool:
+	return _guide != null and _guide.visible
+
+
 func _open_guide() -> void:
 	if not _guide_unlocked():
 		return
 	_menu.visible = false
 	_guide.open()
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	if tutorial != null and tutorial.has_method("complete"):
+		tutorial.call("complete", "guide_pause")
 
 
 func _guide_unlocked() -> bool:

@@ -357,6 +357,7 @@ func _wire_combat_root() -> void:
 	if _wired_root == root:
 		return
 	_wired_root = root
+	_unlock_guide()
 	var encounter := current_encounter()
 	if encounter != null:
 		root.set("encounter_def", encounter)

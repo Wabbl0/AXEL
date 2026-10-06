@@ -115,6 +115,14 @@ func request_unpause() -> bool:
 	return true
 
 
+func open_guide() -> bool:
+	if _menu == null or not _menu.has_method("open_guide"):
+		return false
+	if not get_tree().paused and not request_pause():
+		return false
+	return bool(_menu.call("open_guide"))
+
+
 func toggle_pause() -> bool:
 	return request_unpause() if get_tree().paused else request_pause()
 

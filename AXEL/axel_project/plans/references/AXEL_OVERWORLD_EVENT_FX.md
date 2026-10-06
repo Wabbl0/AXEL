@@ -50,7 +50,7 @@ AxelEventFx.set_cadence_enabled(true)              # resume after intro unlock
 
 After a non-combat scene change, `start_ambient()` turns the quiet pulse on. The rolling band is not drawn at rest (`roll_amount` `0`). A roll that is already going keeps going when a dialogue line opens — do not stop it just because the bar is up. Layer 112 + viewport `BackBufferCopy` make the roll apply to the box.
 
-**Surges** (scripted distortion, cadence pulses) rise to **peak** alpha (`0.536`) and fade back to the quiet pulse. The rolling line is **black** (`roll_color` `0`, strength `0.335`) and shifts the picture sideways (`roll_warp` `0.0045`, 50% more than the old `0.003` glitch shift). Each pass moves from below the screen to above it. The interference shimmer (phase) is not recolored.
+**Surges** (scripted distortion, cadence pulses) rise to **peak** alpha (`0.536`) and fade back to the quiet pulse. The rolling line is **black** (`roll_color` `0`, strength `0.224`) and shifts the picture sideways (`roll_warp` `0.0045`, 50% more than the old `0.003` glitch shift). Each pass moves from below the screen to above it. The interference shimmer (phase) is not recolored.
 
 Combat, `AXEL_DISABLE_POST_FX=1`, `AXEL_DISABLE_EVENT_FX=1`, and style-sweep scenes keep the wave off. `reduce_flashing` still skips pulses.
 

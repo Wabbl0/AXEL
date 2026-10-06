@@ -103,6 +103,14 @@ func _check_menu(pause: Node, profile: Node) -> void:
 			_fail("page %d has no body text" % page_i)
 		if guide.page_body_text().contains("{"):
 			_fail("page %d has an unfilled placeholder" % page_i)
+		if guide.page_body_text().contains("[b]") or guide.page_body_text().contains("[/"):
+			_fail("page %d shows raw bold tags" % page_i)
+		if guide.page_figure_count() < 1:
+			_fail("page %d has no picture" % page_i)
+		await process_frame
+		var page_scroll := guide.find_child("GuideScroll", true, false) as Control
+		if page_scroll != null and page_scroll.get_global_rect().end.x > float(root.size.x):
+			_fail("page %d runs off the window" % page_i)
 
 	var fs_index := _page_index(GuidePages.KIND_FREE_SPINS)
 	guide.show_page(fs_index)

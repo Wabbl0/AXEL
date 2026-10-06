@@ -66,7 +66,6 @@ signal goal_victory_requested()
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
 const WIN_SKULL := preload("res://combat/art/grid_symbols/satanic_wild.png")
-const FLAME_BURST_SCRIPT := preload("res://combat/scripts/flame_burst.gd")
 const PowerControllerScript := preload("res://combat/scripts/power_controller.gd")
 const LineDetectorScript := preload("res://combat/scripts/line_detector.gd")
 const MeterScript := preload("res://combat/scripts/meter.gd")
@@ -586,6 +585,8 @@ func setup_new_grid(seed_value: int) -> void:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
 	_music_reset_combat_encounter()
+	_item_fx.note_param(inventory.items, &"true_path_goal", "goal_percent")
+	_flush_item_procs()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
 
@@ -741,6 +742,7 @@ func choose_free_spins_power(power_id: StringName) -> void:
 
 	var fs_mods: Dictionary = _item_fx.free_spins_mods(inventory.items)
 	free_spins.start_with_power(power_id, int(fs_mods.get("extra_spins", 0)))
+	_item_fx.note_param(inventory.items, &"free_spins", "extra_spins")
 	powers.set_current_id(power_id)
 	_repopulate_grid_handoff("super_fs_entry")
 	_start_free_spin_winnings_hold()
@@ -750,6 +752,8 @@ func choose_free_spins_power(power_id: StringName) -> void:
 		_add_round_winnings(burst_cents)
 		_bankroll_cents += burst_cents
 		_clamp_bankroll()
+		_item_fx.note_param(inventory.items, &"free_spins", "enter_burst")
+	_flush_item_procs()
 	_awaiting_free_spin_choice = false
 	multiplier.cap_enabled = true
 	multiplier.cap_value = free_spins.multiplier_cap
@@ -845,6 +849,8 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
 	_music_reset_combat_encounter()
+	_item_fx.note_param(inventory.items, &"true_path_goal", "goal_percent")
+	_flush_item_procs()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
 
@@ -920,8 +926,10 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
 		var fs_mods_sync: Dictionary = _item_fx.free_spins_mods(inventory.items)
-		if free_spins.active:
+		if free_spins.active and int(fs_mods_sync.get("cascade_payout_step", 0)) != 0:
 			multiplier.add(int(fs_mods_sync.get("cascade_payout_step", 0)))
+			_item_fx.note_param(inventory.items, &"free_spins", "cascade_payout_step")
+			_flush_item_procs()
 		_apply_board_count_bonus(out, true)
 		_apply_glyph_payouts(lines, out)
 		_refresh_multiplier_label()
@@ -951,8 +959,10 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
 		var fs_mods_sync: Dictionary = _item_fx.free_spins_mods(inventory.items)
-		if free_spins.active:
+		if free_spins.active and int(fs_mods_sync.get("cascade_payout_step", 0)) != 0:
 			multiplier.add(int(fs_mods_sync.get("cascade_payout_step", 0)))
+			_item_fx.note_param(inventory.items, &"free_spins", "cascade_payout_step")
+			_flush_item_procs()
 		_apply_board_count_bonus(out, true)
 		_apply_glyph_payouts(lines, out)
 	return out
@@ -982,8 +992,10 @@ func _resolve_trinity_cascade_loop_async() -> Dictionary:
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
 		var fs_mods_sync: Dictionary = _item_fx.free_spins_mods(inventory.items)
-		if free_spins.active:
+		if free_spins.active and int(fs_mods_sync.get("cascade_payout_step", 0)) != 0:
 			multiplier.add(int(fs_mods_sync.get("cascade_payout_step", 0)))
+			_item_fx.note_param(inventory.items, &"free_spins", "cascade_payout_step")
+			_flush_item_procs()
 		_apply_board_count_bonus(out, true)
 		_apply_glyph_payouts(lines, out)
 		_refresh_multiplier_label()
@@ -1015,8 +1027,10 @@ func _resolve_trinity_cascade_loop_sync() -> Dictionary:
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
 		multiplier.add(1)
 		var fs_mods_sync: Dictionary = _item_fx.free_spins_mods(inventory.items)
-		if free_spins.active:
+		if free_spins.active and int(fs_mods_sync.get("cascade_payout_step", 0)) != 0:
 			multiplier.add(int(fs_mods_sync.get("cascade_payout_step", 0)))
+			_item_fx.note_param(inventory.items, &"free_spins", "cascade_payout_step")
+			_flush_item_procs()
 		_apply_board_count_bonus(out, true)
 		_apply_glyph_payouts(lines, out)
 	return out
@@ -1425,30 +1439,6 @@ func _play_goal_win_burst() -> void:
 	if tree == null:
 		return
 	await _pause_visual(0.4)
-	var layer := CanvasLayer.new()
-	layer.name = "GoalFlameLayer"
-	layer.layer = 180
-	add_child(layer)
-	var host := Control.new()
-	host.name = "GoalFlameHost"
-	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var view := get_viewport_rect().size
-	host.position = Vector2.ZERO
-	host.size = view
-	layer.add_child(host)
-	var burst = FLAME_BURST_SCRIPT.new()
-	burst.name = "GoalFlameBurst"
-	add_child(burst)
-	burst.bind(host)
-	var rect := grid_ui.get_global_rect()
-	await burst.play_waves(rect.position + rect.size * 0.5, [8, 16, 32])
-	if is_instance_valid(burst):
-		await burst.await_done()
-	if is_instance_valid(burst):
-		burst.queue_free()
-	if is_instance_valid(layer):
-		layer.queue_free()
 	if tree != null:
 		await _pause_visual(0.25)
 
@@ -2015,22 +2005,33 @@ func _apply_meter_from_lines(lines: Array) -> void:
 		var diag_frac := float(mods.get("diag_meter_frac", 0.0))
 		if not is_premium and not (axis == "d" and diag_frac > 0.0):
 			continue
-		var add := meter.sections_for_length(int(line["length"])) + int(mods.get("length_boost", 0))
+		var base_add := meter.sections_for_length(int(line["length"]))
+		var add := base_add + int(mods.get("length_boost", 0))
+		if add != base_add:
+			_item_fx.note_param(inventory.items, &"premium_meter", "length_boost")
 		if bool(mods.get("first_fills_section", false)) and _item_fx.first_premium_this_spin:
 			add = 1
-		if bool(mods.get("any_line_fills", false)):
-			add = maxi(add, 3)
+			_item_fx.note_param(inventory.items, &"premium_meter", "first_fills_section")
+		if bool(mods.get("any_line_fills", false)) and add < 3:
+			add = 3
+			_item_fx.note_param(inventory.items, &"premium_meter", "any_line_fills")
+		var pre_mult := add
 		add = int(round(float(add) * float(mods.get("gain_mult", 1.0))))
-		if _item_fx.first_premium_this_spin:
+		if add != pre_mult:
+			_item_fx.note_param(inventory.items, &"premium_meter", "gain_mult")
+		if _item_fx.first_premium_this_spin and int(mods.get("first_line_bonus", 0)) != 0:
 			add += int(mods.get("first_line_bonus", 0))
-		if _line_has_wild(line):
+			_item_fx.note_param(inventory.items, &"premium_meter", "first_line_bonus")
+		if _line_has_wild(line) and int(mods.get("wild_extra", 0)) != 0:
 			add += int(mods.get("wild_extra", 0))
+			_item_fx.note_param(inventory.items, &"premium_meter", "wild_extra")
 		if axis == "d" and diag_frac > 0.0:
 			_item_fx.meter_frac_accum += float(add) * diag_frac
 			add = int(floor(_item_fx.meter_frac_accum))
 			_item_fx.meter_frac_accum -= float(add)
 		meter.add_sections(add)
 		_item_fx.first_premium_this_spin = false
+	_flush_item_procs()
 	var after_sections := meter.sections_filled
 	if after_sections != before_sections:
 		emit_signal("premium_meter_changed", before_sections, after_sections)
@@ -2267,6 +2268,8 @@ func _grant_trinity_first_miss_extra_spins_sync(out: Dictionary, chosen: StringN
 	var extra_n := _trinity_first_miss_extra_spin_count()
 	if extra_n <= 0:
 		return false
+	_item_fx.note_param(inventory.items, &"trinity_run", "first_miss_extra_spins")
+	_flush_item_procs()
 	for _i in extra_n:
 		_repopulate_grid_handoff("trinity_first_miss")
 		var extra := _resolve_trinity_cascade_loop_sync()
@@ -2284,6 +2287,8 @@ func _grant_trinity_first_miss_extra_spins_async(out: Dictionary, chosen: String
 	var extra_n := _trinity_first_miss_extra_spin_count()
 	if extra_n <= 0:
 		return false
+	_item_fx.note_param(inventory.items, &"trinity_run", "first_miss_extra_spins")
+	_flush_item_procs()
 	for _i in extra_n:
 		await _repopulate_grid_handoff_async("trinity_first_miss")
 		var extra := await _resolve_trinity_cascade_loop_async()
@@ -2498,6 +2503,8 @@ func _note_paid_line_procs(lines: Array) -> void:
 			tier = int(sd.tier)
 			power_id = sd.power_id
 		_item_fx.line_payout_bonus(inventory.items, tier, power_id, _in_trinity_round, true)
+		if str(line.get("axis", "")) == "d":
+			_item_fx.note_effect(inventory.items, &"diagonal")
 	_flush_item_procs()
 
 
@@ -2586,6 +2593,8 @@ func _maybe_fs_first_win_wild(lines: Array) -> void:
 	var empty: Vector2i = grid.nearest_empty(from)
 	if empty.x >= 0:
 		grid.set_cell(empty, wild_symbol)
+		_item_fx.note_param(inventory.items, &"free_spins", "first_win_wild")
+		_flush_item_procs()
 
 
 func _open_power_fx_log() -> void:
@@ -2674,12 +2683,17 @@ func _trigger_item_power(power_id: StringName, potency: float, is_chain: bool, i
 	var ctx := _make_power_ctx(pot, power_id)
 	ctx["fx_log"] = _power_fx_log
 	powers.trigger_power_by_id(power_id, ctx)
+	if bool(ctx.get("charm_hit", false)):
+		_item_fx.note_charm(inventory.items, power_id)
+		_flush_item_procs()
 	if is_girl_power:
 		_item_fx.girl_power_this_spin = true
 		var echo: Dictionary = _item_fx.trinity_echo(inventory.items)
 		if float(echo.get("chance", 0.0)) > 0.0 and rng.randf() <= float(echo.get("chance", 0.0)):
 			var others := _item_fx.other_powers(power_id)
 			if not others.is_empty():
+				_item_fx.note_effect(inventory.items, &"trinity_echo")
+				_flush_item_procs()
 				_trigger_item_power(others[rng.randi_range(0, others.size() - 1)], float(echo.get("potency", 0.5)), true, false)
 	if is_chain:
 		_power_fx_depth = maxi(_power_fx_depth - 1, 0)
@@ -2690,6 +2704,8 @@ func _trigger_item_power(power_id: StringName, potency: float, is_chain: bool, i
 	if free_spins.active and chain_p > 0.0:
 		var others_fs := _item_fx.other_powers(power_id)
 		if not others_fs.is_empty():
+			_item_fx.note_param(inventory.items, &"free_spins", "chain_random_potency")
+			_flush_item_procs()
 			_trigger_item_power(others_fs[rng.randi_range(0, others_fs.size() - 1)], chain_p, true, false)
 	_power_fx_depth = maxi(_power_fx_depth - 1, 0)
 
@@ -2727,6 +2743,8 @@ func _maybe_trinity_crucible(power_id: StringName, tmods: Dictionary) -> void:
 	var others := _item_fx.other_powers(power_id)
 	if others.is_empty():
 		return
+	_item_fx.note_param(inventory.items, &"trinity_run", "chosen_plus_random")
+	_flush_item_procs()
 	_trigger_item_power(others[rng.randi_range(0, others.size() - 1)], pot, true, false)
 
 
@@ -2742,12 +2760,16 @@ func _apply_trinity_spin_followup_sync(out: Dictionary, step: Dictionary, chosen
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
 	if bool(step.get("produced_any_win", false)):
 		_item_fx.trinity_win_scalar_accum += float(tmods.get("win_scalar", 0.0))
+		_item_fx.note_param(inventory.items, &"trinity_run", "win_scalar")
+		_flush_item_procs()
 		return
 	if _item_fx.trinity_first_dead_done:
 		return
 	if not bool(tmods.get("first_dead_chosen", false)):
 		return
 	_item_fx.trinity_first_dead_done = true
+	_item_fx.note_param(inventory.items, &"trinity_run", "first_dead_chosen")
+	_flush_item_procs()
 	_trigger_item_power(chosen, 1.0, false, false)
 	var extra := _resolve_trinity_cascade_loop_sync()
 	_merge_spin_summary(out, extra)
@@ -2757,12 +2779,16 @@ func _apply_trinity_spin_followup_async(out: Dictionary, step: Dictionary, chose
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
 	if bool(step.get("produced_any_win", false)):
 		_item_fx.trinity_win_scalar_accum += float(tmods.get("win_scalar", 0.0))
+		_item_fx.note_param(inventory.items, &"trinity_run", "win_scalar")
+		_flush_item_procs()
 		return
 	if _item_fx.trinity_first_dead_done:
 		return
 	if not bool(tmods.get("first_dead_chosen", false)):
 		return
 	_item_fx.trinity_first_dead_done = true
+	_item_fx.note_param(inventory.items, &"trinity_run", "first_dead_chosen")
+	_flush_item_procs()
 	_trigger_item_power(chosen, 1.0, false, false)
 	var extra := await _resolve_trinity_cascade_loop_async()
 	_merge_spin_summary(out, extra)
@@ -2776,6 +2802,8 @@ func _finish_item_spin_hooks(spin_summary: Dictionary) -> void:
 		var ng := _item_fx.null_gravity_chance(inventory.items)
 		if ng > 0.0 and rng.randf() <= ng:
 			var pid := _pick_power_for_current_spin()
+			_item_fx.note_effect(inventory.items, &"null_gravity")
+			_flush_item_procs()
 			_trigger_item_power(pid, 1.0, false, false)
 			spin_summary["power_triggered"] = true
 			powered = true

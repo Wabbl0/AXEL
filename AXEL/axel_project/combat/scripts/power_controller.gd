@@ -128,6 +128,7 @@ func _bloody_hand_transform(ctx: Dictionary) -> void:
 					grid.set_cell(p, target)
 	var extra_transform: float = float(ctx.get("extra_transform_chance", 0.0))
 	if extra_transform > 0.0 and rng.randf() <= extra_transform:
+		ctx["charm_hit"] = true
 		var candidates: Array[Vector2i] = []
 		for y2 in GridManagerScript.ROWS:
 			for x2 in GridManagerScript.COLS:
@@ -154,6 +155,7 @@ func _alcohol_add_wilds(ctx: Dictionary) -> void:
 		placements = maxi(1, int(round(float(placements) * potency)))
 	if float(ctx.get("extra_wild_chance", 0.0)) > 0.0 and rng.randf() <= float(ctx.get("extra_wild_chance", 0.0)):
 		placements += 1
+		ctx["charm_hit"] = true
 	var blocked: Dictionary = {}
 	for _i in placements:
 		var best_score := -1
@@ -203,6 +205,7 @@ func _cigarette_remove_lowpays(ctx: Dictionary) -> void:
 		remove_ids[ids[1]] = true
 	if rng != null and float(ctx.get("extra_set_chance", 0.0)) > 0.0 and rng.randf() <= float(ctx.get("extra_set_chance", 0.0)):
 		if ids.size() > remove_ids.size():
+			ctx["charm_hit"] = true
 			for cand in ids:
 				if not remove_ids.has(cand):
 					remove_ids[cand] = true

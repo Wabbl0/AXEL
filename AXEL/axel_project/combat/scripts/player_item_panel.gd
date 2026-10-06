@@ -27,6 +27,7 @@ var _desc_text_w := 0.0
 var _icons: Dictionary = {}
 var _pulse_counts: Dictionary = {}
 var _pulse_tweens: Dictionary = {}
+var _pending_pulses: Array[String] = []
 
 
 func _ready() -> void:
@@ -64,6 +65,17 @@ func set_equipped_items(items: Array) -> void:
 			continue
 		_list.add_child(_make_row(item))
 	call_deferred("_fit_row_names")
+	_play_pending_pulses()
+
+
+func _play_pending_pulses() -> void:
+	if _pending_pulses.is_empty():
+		return
+	var ids := _pending_pulses.duplicate()
+	_pending_pulses.clear()
+	for item_id in ids:
+		if _icons.has(item_id):
+			pulse_item(item_id)
 
 
 func pulse_items(item_ids: Array) -> void:
@@ -74,6 +86,8 @@ func pulse_items(item_ids: Array) -> void:
 func pulse_item(item_id: String) -> void:
 	var icon: TextureRect = _icons.get(item_id) as TextureRect
 	if icon == null or not is_instance_valid(icon):
+		if not _pending_pulses.has(item_id):
+			_pending_pulses.append(item_id)
 		return
 	_pulse_counts[item_id] = int(_pulse_counts.get(item_id, 0)) + 1
 	var existing: Tween = _pulse_tweens.get(item_id) as Tween

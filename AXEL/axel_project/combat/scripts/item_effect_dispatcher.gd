@@ -67,6 +67,26 @@ func note_same_params(items: Array, params: Dictionary) -> void:
 			return
 
 
+func note_param(items: Array, effect_id: StringName, key: String) -> void:
+	for item in items:
+		if _eff(item) != effect_id:
+			continue
+		var v = _params(item).get(key, null)
+		if v == null:
+			continue
+		if v is bool and not v:
+			continue
+		if (v is int or v is float) and float(v) == 0.0:
+			continue
+		note_proc(item)
+
+
+func note_charm(items: Array, power_id: StringName) -> void:
+	for item in items:
+		if _eff(item) == &"power_charm" and StringName(str(_params(item).get("power", ""))) == power_id:
+			note_proc(item)
+
+
 func note_paid_spin_passives(items: Array) -> void:
 	for item in items:
 		var eid := _eff(item)
@@ -538,12 +558,14 @@ func apply_c5_c9_from_items(items: Array, produced_win: bool, power_triggered: b
 			if dead_power_streak >= need:
 				pending_power_chance += float(_params(item).get("amount", 0.0))
 				dead_power_streak = 0
+				note_proc(item)
 	pending_power_spawn = 0.0
 	if not produced_win and not first_dead_used:
 		first_dead_used = true
 		for item in items:
 			if _eff(item) == &"first_dead_power_spawn":
 				pending_power_spawn += float(_params(item).get("amount", 0.0))
+				note_proc(item)
 
 
 func other_powers(except_id: StringName) -> Array[StringName]:

@@ -83,6 +83,10 @@ const STAKE_BUTTON_SIZE_NARROW := 28.0
 const WINNINGS_COUNTER_MAX_DURATION := 0.25
 const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
+const FIRST_TUTORIAL_DELAY_SEC := 2.5
+const FREEZE_LESSONS: Array[String] = ["slot_match", "slot_power", "slot_vice"]
+const HELD_FREEZE_BEAT_SEC := 0.2
+const HELD_FREEZE_TIMEOUT_SEC := 2.0
 const HISTORY_MINI_ICON_SIZE := int(round(18.0 * COMBAT_TEXT_SCALE))
 const HISTORY_ROW_SEPARATION := 3
 const HUD_WHITE_TEXT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
@@ -238,6 +242,10 @@ var _displayed_round_winnings: int = 0
 var _target_round_winnings: int = 0
 var _winnings_counter_running: bool = false
 var _winnings_counter_generation: int = 0
+var _first_tutorial_idle_sec := 0.0
+var _held_freeze_lessons: Array[String] = []
+var _held_freeze_sec := 0.0
+var _held_freeze_settled_sec := 0.0
 var _runtime_initialized: bool = false
 var _editor_preview_refresh_queued: bool = false
 var _editor_tree_ready_attempts: int = 0
@@ -1650,6 +1658,11 @@ func _style_stake_buttons() -> void:
 		btn.add_theme_stylebox_override("disabled", flat.duplicate())
 
 func _input(event: InputEvent) -> void:
+	if _wants_spin_hotkey(event) and _close_tutorial_freeze_card():
+		get_viewport().set_input_as_handled()
+		return
+	if _handle_bet_hotkey(event):
+		return
 	if _wants_spin_hotkey(event) and _rush_allowed():
 		get_viewport().set_input_as_handled()
 		CombatPace.set_rush(true)
@@ -1669,6 +1682,51 @@ func _wants_spin_hotkey(event: InputEvent) -> bool:
 	if Engine.is_editor_hint():
 		return false
 	return event.is_action_pressed("interact")
+
+
+func _close_tutorial_freeze_card() -> bool:
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("close_freeze_card"):
+		return false
+	if not bool(tutorial.call("is_freezing")):
+		return false
+	return bool(tutorial.call("close_freeze_card"))
+
+
+func _handle_bet_hotkey(event: InputEvent) -> bool:
+	if Engine.is_editor_hint() or event.is_echo():
+		return false
+	var step := 0
+	if event.is_action_pressed("bet_down"):
+		step = -1
+	elif event.is_action_pressed("bet_up"):
+		step = 1
+	if step == 0 or not _bet_hotkey_allowed():
+		return false
+	get_viewport().set_input_as_handled()
+	if step < 0:
+		_on_bet_minus_pressed()
+	else:
+		_on_bet_plus_pressed()
+	return true
+
+
+func _bet_hotkey_allowed() -> bool:
+	if _spin_busy or combat == null or not _can_use_combat_api():
+		return false
+	if _tutorial_blocks_spin():
+		return false
+	if combat.free_spins.active or combat.is_encounter_complete():
+		return false
+	if _safe_is_waiting_for_free_spin_choice():
+		return false
+	var pause := get_node_or_null("/root/AxelPause")
+	if pause != null and pause.has_method("is_paused") and bool(pause.call("is_paused")):
+		return false
+	var tools := get_node_or_null("/root/AxelCombatDevTools")
+	if tools != null and tools.has_method("is_menu_open") and bool(tools.call("is_menu_open")):
+		return false
+	return true
 
 
 func _rush_allowed() -> bool:
@@ -1782,7 +1840,6 @@ func _request_spin() -> void:
 		spin_btn.disabled = true
 	_refresh_spin_button_state()
 	await combat.spin()
-	_tutorial_complete("fight_stakes")
 	_tutorial_complete("fight_items")
 	if spin_btn != null:
 		spin_btn.disabled = false
@@ -1884,8 +1941,7 @@ func _pulse_cascade_multiplier() -> void:
 
 func _on_spin_started(seed_value: int) -> void:
 	if combat != null and combat.get_spins_used() >= 1:
-		for lesson_id in ["fight_spin", "slot_match", "slot_power", "slot_vice"]:
-			_tutorial_complete(lesson_id)
+		_tutorial_complete("fight_spin")
 	_queued_seed = seed_value
 	_set_seed_spin_value_no_signal(seed_value)
 	_clear_history_spin_list()
@@ -2683,6 +2739,10 @@ func _tutorial_node() -> Node:
 
 
 func _tutorial_request(lesson_id: String) -> void:
+	if FREEZE_LESSONS.has(lesson_id):
+		if not _held_freeze_lessons.has(lesson_id):
+			_held_freeze_lessons.append(lesson_id)
+		return
 	var tutorial := _tutorial_node()
 	if tutorial != null and tutorial.has_method("request"):
 		tutorial.call("request", lesson_id)
@@ -2737,11 +2797,19 @@ func _ensure_freeze_overlay() -> void:
 
 
 func _layout_freeze_overlay() -> void:
-	if _freeze_rect == null or _piece_grid == null or not is_instance_valid(_piece_grid):
+	if _freeze_rect == null:
 		return
-	var rect := _piece_grid.get_global_rect()
-	_freeze_rect.position = rect.position
-	_freeze_rect.size = rect.size
+	var target: Control = null
+	if combat != null and is_instance_valid(combat) and combat.grid_ui != null and is_instance_valid(combat.grid_ui):
+		target = combat.grid_ui
+	elif _piece_grid != null and is_instance_valid(_piece_grid):
+		target = _piece_grid
+	if target == null:
+		return
+	var xform := target.get_global_transform_with_canvas()
+	var scale_now := xform.get_scale()
+	_freeze_rect.position = xform.origin
+	_freeze_rect.size = Vector2(target.size.x * absf(scale_now.x), target.size.y * absf(scale_now.y))
 
 
 func _reduce_flashing_on() -> bool:
@@ -2773,7 +2841,7 @@ func _hide_freeze_overlay() -> void:
 		_freeze_tween.kill()
 	var mat := _freeze_rect.material as ShaderMaterial
 	_freeze_tween = create_tween()
-	_freeze_tween.tween_property(mat, "shader_parameter/amount", 0.0, 0.15)
+	_freeze_tween.tween_property(mat, "shader_parameter/amount", 0.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_freeze_tween.tween_callback(func() -> void: _freeze_rect.visible = false)
 
 
@@ -2785,14 +2853,12 @@ func _sync_tutorial_skull_hint() -> void:
 	_refresh_skull_first_spin_hint()
 
 
-func _maybe_queue_fight_tutorials() -> void:
-	if not _can_use_combat_api() or combat == null:
+func _maybe_queue_fight_tutorials(delta: float) -> void:
+	if not _first_fight_idle():
+		_first_tutorial_idle_sec = 0.0
 		return
-	if combat.is_encounter_complete() or combat.get_spins_used() != 0:
-		return
-	if combat.get_state() != CombatRoot.State.IDLE:
-		return
-	if combat.is_waiting_for_free_spin_choice():
+	_first_tutorial_idle_sec += delta
+	if _first_tutorial_idle_sec < FIRST_TUTORIAL_DELAY_SEC:
 		return
 	var tutorial := _tutorial_node()
 	if tutorial == null or not tutorial.has_method("request"):
@@ -2801,6 +2867,44 @@ func _maybe_queue_fight_tutorials() -> void:
 	tutorial.call("request", "fight_stakes")
 	if _tutorial_equipped_count() > 0:
 		tutorial.call("request", "fight_items")
+
+
+func _first_fight_idle() -> bool:
+	if not _can_use_combat_api() or combat == null:
+		return false
+	if combat.is_encounter_complete() or combat.get_spins_used() != 0:
+		return false
+	if combat.get_state() != CombatRoot.State.IDLE:
+		return false
+	return not combat.is_waiting_for_free_spin_choice()
+
+
+func _winnings_bar_settled() -> bool:
+	if _winnings_counter_running:
+		return false
+	var combat_total := int(_safe_get_round_winnings())
+	return _displayed_round_winnings == _target_round_winnings and _target_round_winnings == combat_total
+
+
+func _release_held_freeze_lessons(delta: float) -> void:
+	if _held_freeze_lessons.is_empty():
+		return
+	_held_freeze_sec += delta
+	if _winnings_bar_settled():
+		_held_freeze_settled_sec += delta
+	else:
+		_held_freeze_settled_sec = 0.0
+	if _held_freeze_settled_sec < HELD_FREEZE_BEAT_SEC and _held_freeze_sec < HELD_FREEZE_TIMEOUT_SEC:
+		return
+	var lessons := _held_freeze_lessons.duplicate()
+	_held_freeze_lessons.clear()
+	_held_freeze_sec = 0.0
+	_held_freeze_settled_sec = 0.0
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("request"):
+		return
+	for lesson_id in lessons:
+		tutorial.call("request", lesson_id)
 
 
 func _tutorial_equipped_count() -> int:
@@ -2830,7 +2934,9 @@ func _push_tutorial_hud_rects() -> void:
 func _put_tutorial_piece(rects: Dictionary, piece_name: String, piece: Control) -> void:
 	if piece == null or not is_instance_valid(piece):
 		return
-	rects[piece_name] = piece.get_global_rect()
+	var xform := piece.get_global_transform_with_canvas()
+	var scale_now := xform.get_scale()
+	rects[piece_name] = Rect2(xform.origin, Vector2(piece.size.x * absf(scale_now.x), piece.size.y * absf(scale_now.y)))
 
 
 func _sync_premium_bar_color(sections: int, animate: bool = false) -> void:
@@ -4363,10 +4469,11 @@ func _stop_item_desc_fade() -> void:
 	_item_desc_fade = null
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_tick_cascade_multiplier_idle()
 	if not Engine.is_editor_hint():
-		_maybe_queue_fight_tutorials()
+		_maybe_queue_fight_tutorials(delta)
+		_release_held_freeze_lessons(delta)
 		_push_tutorial_hud_rects()
 		_sync_tutorial_skull_hint()
 		_sync_freeze_overlay()
