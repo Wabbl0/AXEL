@@ -1,4 +1,4 @@
-# 2026-10-09 Touch move stick (plan, not built yet)
+# 2026-10-09 Touch move stick and tap to interact (plan, not built yet)
 
 ## Goal
 On a phone, the player presses anywhere on the screen and slides a finger toward where Mike should walk. A faint stick (a small circle inside a bigger circle) shows where the finger went down and which way Mike is heading.
@@ -33,8 +33,20 @@ On a phone, the player presses anywhere on the screen and slides a finger toward
 - `AxelCursor` should hide on mobile (there is no mouse).
 - Walk-step fight rolls (`_report_walk_steps_for_cadence`) should keep working, because Mike still moves through the normal path.
 
+## Tap to interact (decided 2026-10-09)
+The player interacts by tapping the object itself. On mobile there is no `[E]` chip. Instead, a soft pulsing highlight shows that something can be tapped.
+
+- **When it shows:** only when the `[E]` chip would show today, meaning Mike is inside an armed interact zone. Walk up to an object and it starts pulsing.
+- **Where it shows:** the same spot `InteractPromptOverlay` already uses for the chip. On mobile the overlay draws a pulsing ring there instead of the `[E]` box. Every room gets this for free, and no per-room work is needed.
+- **Tap vs. walk:**
+  - A touch that lifts within about 0.25 s and moves less than the dead zone is a **tap**.
+  - Anything else is a **walk**.
+  - A tap never moves Mike.
+- **What a tap hits:** the tap counts if it lands on the pulse or on the active zone's `InteractArea` (with a small margin). Taps elsewhere do nothing.
+- **How it fires:** the tap sends a fake `interact` action press (`Input.parse_input_event` with an `InputEventAction`). So `exploration_room.gd`, `world_item_pickup.gd`, `1.1`, `1.2` and the dialogue all work as they do today, with no per-room changes.
+- **Out of range:** tapping an object Mike is not near does nothing for now. Walking there on tap could come later.
+
 ## Not in this plan (later)
-- How to **interact** on touch (tapping the `[E]` chip or the object). Needs its own small plan.
 - A **pause** button on screen.
 - **Item wheel** on touch. Another agent is revamping it, so leave it alone.
 
