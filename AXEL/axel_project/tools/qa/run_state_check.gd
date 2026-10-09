@@ -26,8 +26,8 @@ func _main() -> void:
 
 	var world := root.get_node_or_null("AxelWorld")
 	var seed_a := int(run.state.seed)
-	if int(run.state.bankroll_cents) != 1000:
-		failures.append("new game bankroll should be 1000")
+	if int(run.state.bankroll_cents) != 3000:
+		failures.append("new game bankroll should be 3000")
 	if world != null:
 		var item_a := int((world.call("to_dict") as Dictionary).get("item_seed", 0))
 		if item_a != seed_a:
@@ -41,8 +41,8 @@ func _main() -> void:
 
 	run.call("reset_run")
 	run.state.seed = 42
-	if int(run.state.bankroll_cents) != 1000:
-		failures.append("reset_run bankroll should be 1000")
+	if int(run.state.bankroll_cents) != 3000:
+		failures.append("reset_run bankroll should be 3000")
 	run.state.bankroll_cents = 250
 	if int(run.state.bankroll_cents) != 250:
 		failures.append("save balance should stay at 250, fights do not reset it")

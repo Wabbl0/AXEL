@@ -2,6 +2,8 @@ class_name ItemEffectDispatcher
 extends RefCounted
 
 const ALL_POWERS: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
+const PAID_SPIN_SCALAR_TOTAL_CAP := 2.0
+const EXTRA_WILDS_PER_CREATE_CAP := 1
 
 var dead_power_streak: int = 0
 var pending_power_chance: float = 0.0
@@ -143,7 +145,7 @@ func paid_spin_payout_scalar(items: Array, spins_used: int) -> float:
 		var per := float(p.get("per_paid_spin", 0.0))
 		var cap := float(p.get("cap", 99.0))
 		total += minf(float(spins_used) * per, cap)
-	return total
+	return minf(total, PAID_SPIN_SCALAR_TOTAL_CAP)
 
 
 func sealed_payout(items: Array, regular_mode: bool) -> float:
@@ -541,7 +543,7 @@ func extra_wilds_for_create(items: Array, rng: CombatRNG) -> int:
 			extra += 1
 			note_proc(item)
 	first_wild_this_spin = false
-	return extra
+	return mini(extra, EXTRA_WILDS_PER_CREATE_CAP)
 
 
 func apply_c5_c9_from_items(items: Array, produced_win: bool, power_triggered: bool) -> void:

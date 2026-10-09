@@ -213,18 +213,18 @@ func _check_pins_and_cards(world: Node, run: Node) -> void:
 
 func _check_card_text(overlay: Node) -> void:
 	var name_label := overlay.find_child("ItemName", true, false) as Label
-	var desc_label := overlay.find_child("ItemDescription", true, false) as Label
+	var desc_label := overlay.find_child("ItemDescription", true, false) as RichTextLabel
 	var card := overlay.find_child("ItemCard", true, false) as Control
 	if name_label == null or desc_label == null or card == null:
 		_fail("hover did not show an item card")
 		return
-	if name_label.text.is_empty() or desc_label.text.is_empty():
+	if name_label.text.is_empty() or desc_label.get_parsed_text().is_empty():
 		_fail("item card is missing a name or description")
-	if name_label.get_visible_line_count() < 1 or desc_label.get_visible_line_count() < 1:
+	if name_label.get_visible_line_count() < 1 or desc_label.get_line_count() < 1:
 		_fail("item card text did not wrap into a visible line")
 	if name_label.get_character_bounds(0).size == Vector2.ZERO:
 		_fail("item name has no drawn characters")
-	if desc_label.get_character_bounds(0).size == Vector2.ZERO:
+	if desc_label.size.y < 4.0:
 		_fail("item description has no drawn characters")
 	var host := card.get_global_rect()
 	if not host.encloses(name_label.get_global_rect()):

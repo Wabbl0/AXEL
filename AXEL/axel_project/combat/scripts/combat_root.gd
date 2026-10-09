@@ -15,6 +15,7 @@ signal free_spins_bonus_granted(added: int)
 signal encounter_finished(success: bool)
 signal sfx_requested(cue: StringName)
 signal goal_victory_requested()
+signal vice_banner_finished()
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -82,7 +83,7 @@ const ECONOMY_DISPLAY_SCALE := 1
 const CHIP_BAR_SECTIONS := 11
 const CHIP_BAR_FULL_CENTS := 1000
 const CHIP_BAR_GOAL_MULTIPLE := 10
-const STARTING_BANKROLL_CENTS := CHIP_BAR_FULL_CENTS
+const STARTING_BANKROLL_CENTS := 3000
 const GRID_VISUAL_SCALE := 1.5
 const GRID_EDGE_MARGIN := 8.0
 const VIEWPORT_TOP_SAFE := 84.0
@@ -170,6 +171,7 @@ var _dev_guarantee_trinity: bool = false
 var _dev_guarantee_fs_clear: bool = false
 var _dev_guarantee_payout_1000x: bool = false
 var _dev_skip_visuals: bool = false
+var vice_entry_gate_open: bool = true
 var _goal_burst_playing: bool = false
 var _power_fx_log: Array = []
 var _power_fx_depth: int = 0
@@ -314,7 +316,7 @@ func get_goal_base_target_cents() -> int:
 func get_effective_goal_target_cents() -> int:
 	var pct := _item_fx.goal_percent(inventory.items) + _lore_goal_bonus
 	var raw := int(round(float(_encounter_goal_base_target_cents) * (1.0 + pct)))
-	return _ceil_to_multiple(raw, 25)
+	return _ceil_to_multiple(raw, 5)
 
 
 func _ceil_to_multiple(n: int, step: int) -> int:
@@ -2098,6 +2100,7 @@ func _play_meter_full_transition_async() -> void:
 	if _feel != null and not _dev_skip_visuals:
 		await _feel.play_banner("VICE ROUND", 1.8, 0.82, false, grid_ui)
 		_feel.highlight_power(powers.current_id())
+	vice_banner_finished.emit()
 	if _dev_skip_visuals or not enable_transition_fx:
 		await _pause_visual(pause_after_power_sec * 0.6)
 		return
@@ -2302,6 +2305,12 @@ func _grant_trinity_first_miss_extra_spins_async(out: Dictionary, chosen: String
 	return false
 
 
+func _await_vice_entry_gate() -> void:
+	var tree := get_tree()
+	while not vice_entry_gate_open and tree != null and is_inside_tree():
+		await tree.process_frame
+
+
 func _run_trinity_round_async() -> Dictionary:
 	var out := _empty_spin_summary()
 	meter.saved_active_power = powers.current_id()
@@ -2315,6 +2324,7 @@ func _run_trinity_round_async() -> Dictionary:
 	_item_fx.trinity_first_dead_done = false
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
 	await _play_meter_full_transition_async()
+	await _await_vice_entry_gate()
 	await _repopulate_grid_handoff_async("trinity_entry")
 	if await _grant_trinity_first_miss_extra_spins_async(out, chosen):
 		return out

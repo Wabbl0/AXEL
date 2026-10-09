@@ -38,14 +38,14 @@ const PAGES: Array[Dictionary] = [
 		"blocks": [
 			{"figure": FIG_FIGHT_HUD},
 			{"text": "Every fight has a [b]GOAL[/b]. Win that many chips on the board and the fight is over."},
-			{"text": "Each paid spin costs your [b]bet[/b]. Your [b]BALANCE[/b] carries over from fight to fight. A new save starts with 1000 and there is no cap."},
+			{"text": "Each paid spin costs your [b]bet[/b]. Your [b]BALANCE[/b] carries over from fight to fight. A new save starts with 3000 and there is no cap."},
 			{"divider": true},
 			{"heading": "LOSING"},
 			{"text": "If you cannot pay for another spin, [b]you lose[/b]. Losing ends the run and [b]deletes that save[/b]."},
 			{"divider": true},
 			{"heading": "GOALS GROW"},
 			{"figure": FIG_GOAL_LADDER},
-			{"text": "GOAL counts every win in full the moment it lands, [b]Vice Round[/b] and [b]Free Spins[/b] included.\n\nGoals grow: 100, then 150, then 225, then [b]x1.5[/b] for each fight after that. Every lore item on the true path makes goals a little higher."},
+			{"text": "GOAL counts every win in full the moment it lands, [b]Vice Round[/b] and [b]Free Spins[/b] included.\n\nGoals grow every fight: 50, 60, 70, 80, 90, 110, 175, 300, 550, then [b]x1.5[/b] for each fight after that. Every lore item on the true path makes goals a little higher."},
 		],
 	},
 	{

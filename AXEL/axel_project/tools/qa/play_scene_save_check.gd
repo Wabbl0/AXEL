@@ -109,8 +109,8 @@ func _expect_scene(
 	if int(header.get("seed", 0)) == 0:
 		failures.append("%s header is missing seed" % scene_path.get_file())
 	var run_state: Dictionary = body.get("run_state", {})
-	if int(run_state.get("bankroll_cents", 0)) != 1000:
-		failures.append("%s did not start at 1000 chips" % scene_path.get_file())
+	if int(run_state.get("bankroll_cents", 0)) != 3000:
+		failures.append("%s did not start at 3000 chips" % scene_path.get_file())
 	if bool(gm.get("corridor_spawn_line_seen")) != spawn_seen:
 		failures.append("%s corridor spawn line flag" % scene_path.get_file())
 	if bool(gm.get("corridor_locker_line_seen")) != locker_seen:

@@ -10,9 +10,10 @@ const FADE_COLOR := Color(0, 0, 0, 0.75)
 const HIGHLIGHT_COLOR := Color(0.85, 0.0, 0.0, 0.62)
 const LABEL_COLOR := Color(1, 1, 1, 1)
 const LABEL_FONT_BASE := 36
-const CARD_NAME_FONT := 26
-const CARD_DESC_FONT := 20
-const CARD_ICON_PX := 64.0
+const CARD_NAME_FONT := 34
+const CARD_DESC_FONT := 28
+const CARD_DESC_MIN_W := 380.0
+const CARD_ICON_PX := 96.0
 const CARD_GAP := 12.0
 const PIN_PX := 28.0
 const HOVER_GROW := 1.08
@@ -763,14 +764,15 @@ func _make_item_card(entry: Dictionary, chrome: float) -> Control:
 	var title := String(view.get("name", ""))
 	var body := String(view.get("description", ""))
 	var title_w := maxf(UI_FONT.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, name_px).x, 32.0)
+	var text_w := maxf(title_w, CARD_DESC_MIN_W * chrome)
 	var desc_size := UI_FONT.get_multiline_string_size(
-		body, HORIZONTAL_ALIGNMENT_LEFT, title_w, desc_px
+		body, HORIZONTAL_ALIGNMENT_LEFT, text_w, desc_px
 	)
 	var text_h := UI_FONT.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, name_px).y + 2.0 + desc_size.y
 	var row_h := maxf(icon_px, text_h)
 	var pad_x := 12.0 * chrome
 	var pad_y := 8.0 * chrome
-	var card_size := Vector2(pad_x * 2.0 + icon_px + CARD_GAP * chrome + title_w, pad_y * 2.0 + row_h)
+	var card_size := Vector2(pad_x * 2.0 + icon_px + CARD_GAP * chrome + text_w, pad_y * 2.0 + row_h)
 
 	var panel := PanelContainer.new()
 	panel.name = "ItemCard"
@@ -822,14 +824,8 @@ func _make_item_card(entry: Dictionary, chrome: float) -> Control:
 	MenuLook.apply_label(name_label, name_px, MenuLook.ACCENT)
 	text_col.add_child(name_label)
 
-	var desc_label := Label.new()
-	desc_label.name = "ItemDescription"
-	desc_label.text = body
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.custom_minimum_size = Vector2(title_w, desc_size.y)
-	desc_label.custom_maximum_size = Vector2(title_w, -1.0)
-	desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	MenuLook.apply_label(desc_label, desc_px, MenuLook.TEXT)
+	var desc_label := ItemDescFormat.make_label("ItemDescription", desc_px, text_w)
+	ItemDescFormat.set_text(desc_label, body)
 	text_col.add_child(desc_label)
 	return panel
 

@@ -549,7 +549,7 @@ func _fig_fight_hud() -> Control:
 
 func _fig_goal_ladder() -> Control:
 	var row := _fig_row(14)
-	var steps: PackedStringArray = ["100", "150", "225", "x1.5"]
+	var steps: PackedStringArray = ["50", "60", "70", "x1.5"]
 	for i in steps.size():
 		if i > 0:
 			row.add_child(_arrow())

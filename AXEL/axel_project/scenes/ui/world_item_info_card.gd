@@ -4,9 +4,10 @@ const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 
 const CARD_LAYER := 109
 const HOVER_LAYER := 110
-const ICON_PX := 64.0
-const NAME_FONT := 26
-const DESC_FONT := 20
+const ICON_PX := 96.0
+const NAME_FONT := 34
+const DESC_FONT := 28
+const DESC_MIN_W := 380.0
 const KEY_TEXT := "[E]"
 const ITEMS_INDICATOR_GAP_PX := 10.0
 const WINDOW_PAD := 8.0
@@ -20,7 +21,7 @@ var _bloom: ColorRect
 var _icon: TextureRect
 var _text_col: VBoxContainer
 var _name_label: Label
-var _desc_label: Label
+var _desc_label: RichTextLabel
 var _key_label: Label
 var _world_anchor := Vector2.ZERO
 var _anchor: Node
@@ -105,10 +106,7 @@ func _build() -> void:
 	MenuLook.apply_label(_name_label, NAME_FONT, MenuLook.ACCENT)
 	_text_col.add_child(_name_label)
 
-	_desc_label = Label.new()
-	_desc_label.name = "ItemDescription"
-	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	MenuLook.apply_label(_desc_label, DESC_FONT, MenuLook.TEXT)
+	_desc_label = ItemDescFormat.make_label("ItemDescription", DESC_FONT, DESC_MIN_W)
 	_text_col.add_child(_desc_label)
 
 	_key_label = Label.new()
@@ -142,11 +140,11 @@ func _title_px() -> float:
 
 func _apply_wrap_sizes(f: float) -> void:
 	var title_w := _title_px()
+	var text_w := maxf(title_w, DESC_MIN_W * f)
 	if _name_label != null:
 		_name_label.custom_minimum_size = Vector2(title_w, 0.0)
 	if _desc_label != null:
-		_desc_label.custom_minimum_size = Vector2(0.0, 0.0)
-		_desc_label.custom_maximum_size = Vector2(title_w, -1.0)
+		ItemDescFormat.apply_size(_desc_label, _desc_label.get_theme_font_size("normal_font_size"), text_w)
 	if _icon != null:
 		var icon_px := ICON_PX * f
 		_icon.custom_minimum_size = Vector2(icon_px, icon_px)
@@ -159,7 +157,7 @@ func _apply_scale() -> void:
 	var name_px := maxi(roundi(NAME_FONT * f), 10)
 	var desc_px := maxi(roundi(DESC_FONT * f), 10)
 	_name_label.add_theme_font_size_override("font_size", name_px)
-	_desc_label.add_theme_font_size_override("font_size", desc_px)
+	_desc_label.add_theme_font_size_override("normal_font_size", desc_px)
 	if _key_label != null:
 		_key_label.add_theme_font_size_override("font_size", desc_px)
 	_apply_wrap_sizes(f)
@@ -206,7 +204,7 @@ func show_screen_item(
 
 func _apply_payload(item_name: String, description: String, icon: Texture2D, show_key: bool) -> void:
 	_name_label.text = item_name
-	_desc_label.text = description
+	ItemDescFormat.set_text(_desc_label, description)
 	_icon.texture = icon
 	_icon.visible = icon != null
 	if _key_label != null:

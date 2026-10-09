@@ -224,8 +224,8 @@ func _check_goal_round() -> void:
 	combat.set("_encounter_goal_base_target_cents", 800)
 	combat.call("set_lore_goal_bonus", 0.0775)
 	var got := int(combat.call("get_effective_goal_target_cents"))
-	if got != 875:
-		_fail("goal 862 should round up to 875, got %d" % got)
+	if got != 865:
+		_fail("goal 862 should round up to 865, got %d" % got)
 	combat.set("_encounter_goal_base_target_cents", 225)
 	combat.call("set_lore_goal_bonus", 0.0)
 	if int(combat.call("get_effective_goal_target_cents")) != 225:

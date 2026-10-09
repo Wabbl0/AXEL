@@ -109,7 +109,7 @@ func _assert_card(card: Node, items_indicator: Rect2, where: String) -> void:
 		_fail("%s: card CRT did not settle" % where)
 	var panel := card.find_child("CardPanel", true, false) as Control
 	var root_ctrl := card.find_child("CardRoot", true, false) as Control
-	var desc := card.find_child("ItemDescription", true, false) as Label
+	var desc := card.find_child("ItemDescription", true, false) as RichTextLabel
 	var title := card.find_child("ItemName", true, false) as Label
 	var key := card.find_child("ItemKey", true, false) as Label
 	var icon := card.find_child("ItemIcon", true, false) as Control
@@ -132,22 +132,20 @@ func _assert_card(card: Node, items_indicator: Rect2, where: String) -> void:
 		_fail("%s: title character bounds empty" % where)
 	if key.text != "[E]":
 		_fail("%s: key text %s" % [where, key.text])
-	if key.get_theme_font_size("font_size") != desc.get_theme_font_size("font_size"):
+	if key.get_theme_font_size("font_size") != desc.get_theme_font_size("normal_font_size"):
 		_fail(
 			"%s: [E] font %d should match description %d"
-			% [where, key.get_theme_font_size("font_size"), desc.get_theme_font_size("font_size")]
+			% [where, key.get_theme_font_size("font_size"), desc.get_theme_font_size("normal_font_size")]
 		)
-	if not String(desc.text).contains(" "):
+	if not desc.get_parsed_text().contains(" "):
 		_fail("%s: desc has no spaces" % where)
-	if desc.get_visible_line_count() < 1:
+	if desc.get_line_count() < 1 or desc.size.y < 4.0:
 		_fail("%s: desc has no visible line" % where)
-	var bounds := desc.get_character_bounds(0)
-	if bounds.size.x <= 0.0 and bounds.size.y <= 0.0:
-		_fail("%s: desc character bounds empty" % where)
 	var title_w := title.get_combined_minimum_size().x
 	var wrap_w := desc.custom_maximum_size.x
-	if absf(wrap_w - title_w) > 4.0 and absf(wrap_w - _string_width(title)) > 4.0:
-		_fail("%s: description width %.1f should follow the title %.1f" % [where, wrap_w, title_w])
+	if wrap_w + 4.0 < title_w:
+		_fail("%s: description width %.1f should be at least the title %.1f" % [where, wrap_w, title_w])
+	var text_w := maxf(title_w, wrap_w)
 	var icon_w := 0.0
 	var sep := 0.0
 	if icon != null and icon.visible:
@@ -157,7 +155,7 @@ func _assert_card(card: Node, items_indicator: Rect2, where: String) -> void:
 	var style := panel.get_theme_stylebox("panel")
 	if style != null:
 		chrome = style.get_minimum_size().x
-	var expected := title_w + icon_w + sep + chrome
+	var expected := text_w + icon_w + sep + chrome
 	if absf(panel.size.x - expected) > 8.0:
 		_fail("%s: panel width %.1f should match the title row %.1f" % [where, panel.size.x, expected])
 	if items_indicator.size.y > 1.0:

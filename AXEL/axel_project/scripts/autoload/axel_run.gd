@@ -10,12 +10,12 @@ const ITEM_DIR := "res://combat/data/items/"
 const LORE_FLAGS: PackedStringArray = ["hasFlashlight", "hasKey", "hasShovel", "hasName"]
 const LORE_GOAL_BONUS := 0.15
 const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
-	100, 150, 225,
+	50, 60, 70, 80, 90, 110, 175, 300, 550,
 ]
 const WORLD_GOAL_LADDER_GROWTH := 1.5
-const WORLD_GOAL_LADDER_ROUNDING := 25
+const WORLD_GOAL_LADDER_ROUNDING := 5
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
-const STARTING_BANKROLL_CENTS := 1000
+const STARTING_BANKROLL_CENTS := 3000
 const MAX_PLAYABLE_ACT := 3
 const NEW_GAME_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
 const WORLD_ENCOUNTER_PATHS: PackedStringArray = [
@@ -138,7 +138,7 @@ func lore_goal_bonus() -> float:
 
 func current_encounter_path() -> String:
 	if state.world_encounter:
-		var world_i: int = clampi(int(state.world_encounter_index), 0, WORLD_ENCOUNTER_PATHS.size() - 1)
+		var world_i: int = posmod(int(state.world_encounter_index), WORLD_ENCOUNTER_PATHS.size())
 		return String(WORLD_ENCOUNTER_PATHS[world_i])
 	if state.act < 1 or state.act > MAX_PLAYABLE_ACT:
 		return ""
@@ -203,7 +203,7 @@ func enter_world_encounter(
 	state.world_return_tex_x = return_tex.x
 	state.world_return_tex_y = return_tex.y
 	state.world_return_tex_valid = has_tex
-	state.world_encounter_index = (int(state.world_encounter_index) + 1) % WORLD_ENCOUNTER_PATHS.size()
+	state.world_encounter_index = int(state.world_encounter_index) + 1
 	state.world_fight_count = int(state.world_fight_count) + 1
 	state.in_encounter = true
 	_persist_now()

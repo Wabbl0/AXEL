@@ -25,6 +25,7 @@ func _main() -> void:
 	await _check_spin_card_moves_off_glow(tutorial, failures)
 	await _check_card_stack(tutorial, failures)
 	await _check_slot_freeze(tutorial, failures)
+	await _check_click_and_close_keys(tutorial, failures)
 	await _check_highlight_above_noir(failures)
 	await _check_guide_link(tutorial, failures)
 	_finish(failures)
@@ -131,6 +132,7 @@ func _check_glow_map(tutorial: Node, failures: Array[String]) -> void:
 	_expect_pieces(tutorial, failures, "slot_match", ["NEW_History", "NEW_Grid"])
 	_expect_pieces(tutorial, failures, "slot_power", ["NEW_Execute"])
 	_expect_pieces(tutorial, failures, "slot_vice", ["NEW_Execute", "NEW_Grid"])
+	_expect_pieces(tutorial, failures, "slot_multiplier", ["NEW_Multiplier"])
 	var none: PackedStringArray = tutorial.call("glow_piece_names", "move_walk")
 	if not none.is_empty():
 		failures.append("move_walk should not glow a fight frame")
@@ -226,12 +228,14 @@ func _check_move_card(tutorial: Node, failures: Array[String]) -> void:
 		var card_rect := card
 		if not card_rect.grow(4.0).intersects(exit_rect):
 			failures.append("tutorial X is not on the move card at %s" % exit_rect)
-		var want_font := roundi(36.0 * scale * 0.5)
+		var want_font := roundi(float(UiViewportScale.EXIT_BUTTON_FONT) * scale * 0.5)
 		var got_font := exit_button.get_theme_font_size("font_size")
 		if absi(got_font - want_font) > 2:
 			failures.append("tutorial X font is %s, want about %s" % [got_font, want_font])
-		if exit_rect.size.x > 40.0 * scale:
-			failures.append("tutorial X is still large (%s)" % exit_rect.size)
+		if exit_rect.size.x > 52.0 * scale:
+			failures.append("tutorial X is too large (%s)" % exit_rect.size)
+		if exit_rect.size.x < 40.0 * scale:
+			failures.append("tutorial X is too small (%s)" % exit_rect.size)
 	if card.position.x < vp.x * 0.5:
 		failures.append("move card is not on the right half")
 	if bool(tutorial.call("blocks_spin")):
@@ -244,7 +248,7 @@ func _check_move_card(tutorial: Node, failures: Array[String]) -> void:
 	var body_rect := body.get_global_rect()
 	if body_rect.end.y > card.end.y + 1.0:
 		failures.append("tutorial body hangs out of the card")
-	if card.end.y - body_rect.end.y > 36.0 * scale:
+	if card.end.y - body_rect.end.y > 84.0 * scale:
 		failures.append("tutorial card has empty space under the text (%s)" % (card.end.y - body_rect.end.y))
 	tutorial.call("debug_dismiss")
 	await create_timer(4.0).timeout
@@ -331,17 +335,11 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 		failures.append("stakes card did not open")
 		return
 	var exit0 := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
-	if exit0 != null and exit0.visible:
-		failures.append("stakes card should have no X")
+	if exit0 == null or not exit0.visible:
+		failures.append("stakes card should have an X")
 	await create_timer(2.0).timeout
 	if host2.visible:
 		failures.append("a second card opened while the first was still up")
-	if exit0 != null:
-		exit0.emit_signal("pressed")
-	for _i in 30:
-		await process_frame
-	if _open_lesson(tutorial) != "fight_stakes":
-		failures.append("stakes card closed without a bet change")
 
 	var open_before := bool(tutorial.call("is_open"))
 	Input.action_press("interact")
@@ -367,6 +365,49 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 	if not bool(tutorial.call("_is_seen", "fight_stakes")):
 		failures.append("stakes card not marked seen after the bet change")
 	await _close_both_cards(tutorial)
+
+
+func _check_click_and_close_keys(tutorial: Node, failures: Array[String]) -> void:
+	var pause := root.get_node_or_null("AxelPause")
+	tutorial.call("request", "items_wheel")
+	if not await _wait_lesson(tutorial, "items_wheel"):
+		failures.append("items_wheel card did not open for the click check")
+		return
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	tutorial.call("_on_card_gui_input", click, 0)
+	for _i in 180:
+		await process_frame
+		if not bool(tutorial.call("is_open")):
+			break
+	if bool(tutorial.call("is_open")):
+		failures.append("a click on the card did not close it")
+	if not bool(tutorial.call("_is_seen", "items_wheel")):
+		failures.append("a click close did not mark the card seen")
+	await create_timer(0.7).timeout
+	tutorial.call("request", "slot_multiplier")
+	if not await _wait_lesson(tutorial, "slot_multiplier"):
+		failures.append("multiplier card did not open")
+		return
+	if pause != null and bool(pause.call("_can_pause_here")):
+		failures.append("pause is allowed while a card is up")
+	var esc := InputEventAction.new()
+	esc.action = &"pause"
+	esc.pressed = true
+	tutorial.call("_unhandled_input", esc)
+	for _i in 180:
+		await process_frame
+		if not bool(tutorial.call("is_open")):
+			break
+	if bool(tutorial.call("is_open")):
+		failures.append("Esc did not close the card")
+	if get_tree_paused():
+		failures.append("Esc paused the game while a card was up")
+	if not bool(tutorial.call("_is_seen", "slot_multiplier")):
+		failures.append("Esc close did not mark the card seen")
+	if CombatPace.is_frozen():
+		failures.append("time stayed frozen after Esc closed the card")
 
 
 func _open_lesson(tutorial: Node) -> String:

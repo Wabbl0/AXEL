@@ -2,16 +2,16 @@ extends SceneTree
 
 const CombatRootScene := preload("res://combat/scenes/combat_root.tscn")
 const FS_PICK: StringName = &"cigarette"
-const STARTING_WALLET := 1000
+const STARTING_WALLET := 3000
 const MIN_BET := 100
 const ENGINE_CAP := 1000
 const MAX_FIGHTS := 20
 const RUNS_PER_SETUP := 16
 const MAX_SPINS_PER_FIGHT := 8000
 const LORE_STEP := 0.15
-const GOAL_LADDER: Array[int] = [100, 150, 225]
+const GOAL_LADDER: Array[int] = [50, 60, 70, 80, 90, 110, 175, 300, 550]
 const GOAL_GROWTH := 1.5
-const GOAL_ROUNDING := 25
+const GOAL_ROUNDING := 5
 const FLOORS: Array[float] = [0.0, 0.10, 0.15, 0.20]
 const BET_STYLES: Array[String] = ["min", "fifth", "max"]
 const STRONG_PATHS: PackedStringArray = [

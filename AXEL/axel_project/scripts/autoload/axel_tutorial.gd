@@ -16,13 +16,15 @@ const FONT_PX := 32.0
 const OUTLINE_PX := 4.0
 const CHARS_PER_SEC := 35.0
 const TITLE_MARK_GAP := 18.0
-const GLOW_STEADY := 0.45
+const GLOW_STEADY := 0.7
 const GLOW_PULSE_SEC := 2.6
 const GLOW_FADE_IN_SEC := 0.4
 const GLOW_FADE_OUT_SEC := 0.6
-const GLOW_ALPHA_MIN := 0.2
-const GLOW_ALPHA_MAX := 0.75
+const GLOW_ALPHA_MIN := 0.45
+const GLOW_ALPHA_MAX := 1.0
 const LINK_COLOR := "#ff6a6a"
+const EXIT_SCALE := 0.5
+const EXIT_ROOM := 0.9
 
 const LESSONS := {
 	"move_walk": {
@@ -60,6 +62,11 @@ const LESSONS := {
 		"title": "The Skull",
 		"body": "Cigarette, alcohol and bloody hand are powers. Matching them fills the skull meter. When the skull is full, something worse begins.",
 	},
+	"slot_multiplier": {
+		"freeze": true,
+		"title": "Multiplier",
+		"body": "Each win in a chain adds 1 to the multiplier. Wins after it pay that many times more. It drops back to 1X when you spin again.",
+	},
 	"slot_vice": {
 		"freeze": true,
 		"title": "Vice Round",
@@ -78,6 +85,7 @@ const GLOW_PIECES := {
 	"fight_items": ["NEW_Items"],
 	"slot_match": ["NEW_History", "NEW_Grid"],
 	"slot_power": ["NEW_Execute"],
+	"slot_multiplier": ["NEW_Multiplier"],
 	"slot_vice": ["NEW_Execute", "NEW_Grid"],
 	"guide_pause": ["NEW_Settings"],
 }
@@ -88,6 +96,7 @@ signal freeze_changed(on: bool)
 
 var _debug_enabled := false
 var _freeze_on := false
+var _freeze_pending := false
 var _queue: Array[String] = []
 var _marked: Dictionary = {}
 var _hud_rects: Dictionary = {}
@@ -194,6 +203,45 @@ func _lesson_action_only(id: String) -> bool:
 
 func is_freezing() -> bool:
 	return _freeze_on
+
+
+func is_showing(id: String) -> bool:
+	return _is_showing_id(id)
+
+
+func wants(id: String) -> bool:
+	return _allows() and LESSONS.has(id) and not _is_seen(id)
+
+
+func set_freeze_pending(on: bool) -> void:
+	_freeze_pending = on
+
+
+func has_active_card() -> bool:
+	for slot in _slots:
+		if slot.phase != Phase.IDLE and slot.phase != Phase.CLOSING:
+			return true
+	return false
+
+
+func blocks_pause() -> bool:
+	for slot in _slots:
+		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		if slot.open_id == "guide_pause" and slot.phase == Phase.WAITING:
+			continue
+		return true
+	return false
+
+
+func dismiss_open_card() -> bool:
+	for slot in _slots:
+		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		_force_waiting(slot)
+		_start_close(slot)
+		return true
+	return false
 
 
 func _lesson_freezes(id: String) -> bool:
@@ -406,6 +454,8 @@ func _try_start() -> void:
 		return
 	if is_open() or _stack_gap_left > 0.0:
 		return
+	if _freeze_pending and not _lesson_freezes(_queue[0]):
+		return
 	var id := _queue[0]
 	_queue.remove_at(0)
 	_open_slot(idx, id)
@@ -431,7 +481,7 @@ func _run_card(slot: CardSlot, id: String) -> void:
 	_show_typed(slot, 0)
 	slot.card_host.visible = true
 	if slot.exit != null:
-		slot.exit.visible = not _lesson_action_only(id)
+		slot.exit.visible = true
 	_layout_cards()
 	_sync_glows()
 	_play_open()
@@ -523,10 +573,18 @@ func _on_exit_pressed_slot(idx: int) -> void:
 	var slot: CardSlot = _slots[idx]
 	if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 		return
-	if _lesson_action_only(slot.open_id):
-		return
 	_force_waiting(slot)
 	_start_close(slot)
+
+
+func _on_card_gui_input(event: InputEvent, idx: int) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse := event as InputEventMouseButton
+	if not mouse.pressed or mouse.button_index != MOUSE_BUTTON_LEFT:
+		return
+	_slots[idx].bar_panel.accept_event()
+	_on_exit_pressed_slot(idx)
 
 
 func _start_close(slot: CardSlot, mark: bool = true) -> void:
@@ -560,6 +618,10 @@ func _start_close(slot: CardSlot, mark: bool = true) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
+	if _is_close_key(event) and not get_tree().paused and blocks_pause():
+		get_viewport().set_input_as_handled()
+		dismiss_open_card()
+		return
 	if _any_typing():
 		if not _is_dismiss_event(event):
 			return
@@ -572,6 +634,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if close_freeze_card():
 		get_viewport().set_input_as_handled()
+
+
+func _is_close_key(event: InputEvent) -> bool:
+	return event.is_action_pressed("back") or event.is_action_pressed("pause")
 
 
 func _is_dismiss_event(event: InputEvent) -> bool:
@@ -671,9 +737,9 @@ func _layout_cards() -> void:
 		_apply_slot_rect(s1, x, y1, width, h1, scale)
 
 	if show0 and s0.exit != null:
-		UiViewportScale.apply_exit_button(s0.exit, scale * 0.5)
+		UiViewportScale.apply_exit_button(s0.exit, scale * EXIT_SCALE, false)
 	if show1 and s1.exit != null:
-		UiViewportScale.apply_exit_button(s1.exit, scale * 0.5)
+		UiViewportScale.apply_exit_button(s1.exit, scale * EXIT_SCALE, false)
 
 
 func _single_card_top(
@@ -865,7 +931,8 @@ func _measured_height(slot: CardSlot, scale: float, host_w: float) -> float:
 	var title_h := _block_height_font(_title_font, slot.title.text, title_w, font_size)
 	var body_h := _block_height(slot.body_text, inner_w, font_size)
 	var chrome_y := (10.0 + 6.0) * 2.0 * scale + 6.0
-	return title_h + body_h + chrome_y
+	var exit_room := UiViewportScale.EXIT_BUTTON_SIZE * EXIT_SCALE * EXIT_ROOM * scale
+	return title_h + body_h + chrome_y + exit_room
 
 
 func _block_height(text: String, width: float, font_size: int) -> float:
@@ -942,7 +1009,8 @@ func _make_slot(index: int, host_name: String) -> CardSlot:
 	slot.bar_panel = PanelContainer.new()
 	slot.bar_panel.name = "BarPanel"
 	slot.bar_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	slot.bar_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.bar_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	slot.bar_panel.gui_input.connect(_on_card_gui_input.bind(index))
 	slot.fade_root.add_child(slot.bar_panel)
 
 	var add_mat := CanvasItemMaterial.new()

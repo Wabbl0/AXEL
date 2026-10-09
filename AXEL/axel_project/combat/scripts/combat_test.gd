@@ -84,7 +84,7 @@ const WINNINGS_COUNTER_MAX_DURATION := 0.25
 const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
 const FIRST_TUTORIAL_DELAY_SEC := 2.5
-const FREEZE_LESSONS: Array[String] = ["slot_match", "slot_power", "slot_vice"]
+const FREEZE_LESSONS: Array[String] = ["slot_match", "slot_multiplier", "slot_power", "slot_vice"]
 const HELD_FREEZE_BEAT_SEC := 0.2
 const HELD_FREEZE_TIMEOUT_SEC := 2.0
 const HISTORY_MINI_ICON_SIZE := int(round(18.0 * COMBAT_TEXT_SCALE))
@@ -240,10 +240,13 @@ var _cascade_mult_font: FontVariation
 var _last_displayed_cascade_mult: int = 1
 var _displayed_round_winnings: int = 0
 var _target_round_winnings: int = 0
+var _goal_bar_base: int = 0
+var _shown_goal_value: int = 0
 var _winnings_counter_running: bool = false
 var _winnings_counter_generation: int = 0
 var _first_tutorial_idle_sec := 0.0
 var _held_freeze_lessons: Array[String] = []
+var _after_match_lessons: Array[String] = []
 var _held_freeze_sec := 0.0
 var _held_freeze_settled_sec := 0.0
 var _runtime_initialized: bool = false
@@ -773,6 +776,8 @@ func _connect_runtime_signals() -> void:
 		combat.premium_meter_changed.connect(_on_premium_meter_changed)
 	if not combat.meter_full_transition_started.is_connected(_on_meter_full_transition_started):
 		combat.meter_full_transition_started.connect(_on_meter_full_transition_started)
+	if not combat.vice_banner_finished.is_connected(_on_vice_banner_finished):
+		combat.vice_banner_finished.connect(_on_vice_banner_finished)
 	if not combat.winnings_popup_border_touched.is_connected(_on_winnings_popup_border_touched):
 		combat.winnings_popup_border_touched.connect(_on_winnings_popup_border_touched)
 	if not combat.round_winnings_hold_started.is_connected(_on_round_winnings_hold_started):
@@ -1840,7 +1845,9 @@ func _request_spin() -> void:
 		spin_btn.disabled = true
 	_refresh_spin_button_state()
 	await combat.spin()
-	_tutorial_complete("fight_items")
+	var tutorial := _tutorial_node()
+	if tutorial != null and tutorial.has_method("is_showing") and bool(tutorial.call("is_showing", "fight_items")):
+		_tutorial_complete("fight_items")
 	if spin_btn != null:
 		spin_btn.disabled = false
 	_release_spin_busy()
@@ -1868,8 +1875,7 @@ func _refresh_readouts() -> void:
 	var bankroll_units := int(_safe_get_bankroll())
 	if bankroll_label != null:
 		bankroll_label.text = "BALANCE: %d" % bankroll_units
-	if goal_label != null:
-		goal_label.text = "GOAL:\n%s" % _goal_progress_only(_safe_get_goal_label())
+	_apply_goal_readout_text()
 	_refresh_bet_strip()
 	_sync_skull_meter(_safe_get_meter_sections_filled())
 	_sync_premium_bar_color(_safe_get_meter_sections_filled())
@@ -1974,6 +1980,7 @@ func _on_winnings_popup_border_touched(event: Dictionary) -> void:
 
 func _reset_winnings_counter_display() -> void:
 	_kill_winnings_counter()
+	_goal_bar_base = _safe_get_goal_progress() - int(_safe_get_round_winnings())
 	_displayed_round_winnings = 0
 	_target_round_winnings = 0
 	_apply_winnings_readout_text()
@@ -1983,12 +1990,36 @@ func _sync_winnings_counter_to_combat_truth() -> void:
 	var combat_total := int(_safe_get_round_winnings())
 	_displayed_round_winnings = combat_total
 	_target_round_winnings = combat_total
+	_goal_bar_base = _safe_get_goal_progress() - combat_total
 	_apply_winnings_readout_text()
 
 func _apply_winnings_readout_text() -> void:
-	if mult_label == null:
+	if mult_label != null:
+		mult_label.text = "%d" % _displayed_round_winnings
+	_apply_goal_readout_text()
+
+func _safe_get_goal_progress() -> int:
+	if _can_use_combat_api() and combat.has_method("get_chip_bar_goal_progress_cents"):
+		return int(combat.get_chip_bar_goal_progress_cents())
+	return 0
+
+func _safe_get_goal_target() -> int:
+	if _can_use_combat_api() and combat.has_method("get_chip_bar_goal_target_cents"):
+		return int(combat.get_chip_bar_goal_target_cents())
+	return 0
+
+func _goal_display_value() -> int:
+	var truth := _safe_get_goal_progress()
+	if _winnings_bar_settled():
+		_goal_bar_base = truth - _displayed_round_winnings
+		return truth
+	return maxi(_goal_bar_base + _displayed_round_winnings, 0)
+
+func _apply_goal_readout_text() -> void:
+	if goal_label == null or not _can_use_combat_api():
 		return
-	mult_label.text = "%d" % _displayed_round_winnings
+	_shown_goal_value = _goal_display_value()
+	goal_label.text = "GOAL:\n%d / %d" % [_shown_goal_value, _safe_get_goal_target()]
 
 func _kill_winnings_counter() -> void:
 	_winnings_counter_generation += 1
@@ -2025,6 +2056,12 @@ func _run_winnings_counter_async() -> void:
 func _on_meter_full_transition_started() -> void:
 	if _piece_premium_bar != null:
 		_piece_premium_bar.pop()
+
+func _on_vice_banner_finished() -> void:
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("wants") or not bool(tutorial.call("wants", "slot_vice")):
+		return
+	combat.vice_entry_gate_open = false
 	_tutorial_request("slot_vice")
 
 func _on_premium_meter_changed(previous_sections: int, next_sections: int) -> void:
@@ -2079,6 +2116,8 @@ func _on_line_win_resolved(event: Dictionary) -> void:
 	if payout_cents <= 0:
 		return
 	_tutorial_request("slot_match")
+	if int(event.get("cascade_multiplier", 1)) >= 2:
+		_tutorial_request("slot_multiplier")
 	_append_history_spin_row(event)
 
 func _append_history_spin_row(event: Dictionary) -> void:
@@ -2864,9 +2903,42 @@ func _maybe_queue_fight_tutorials(delta: float) -> void:
 	if tutorial == null or not tutorial.has_method("request"):
 		return
 	tutorial.call("request", "fight_spin")
-	tutorial.call("request", "fight_stakes")
-	if _tutorial_equipped_count() > 0:
-		tutorial.call("request", "fight_items")
+	if not _after_match_lessons.has("fight_stakes"):
+		_after_match_lessons.append("fight_stakes")
+	if _tutorial_equipped_count() > 0 and not _after_match_lessons.has("fight_items"):
+		_after_match_lessons.append("fight_items")
+
+
+func _release_after_match_lessons() -> void:
+	if _after_match_lessons.is_empty():
+		return
+	if not _can_use_combat_api() or combat == null:
+		return
+	if combat.get_spins_used() < 1 or combat.get_state() != CombatRoot.State.IDLE:
+		return
+	if not _held_freeze_lessons.is_empty():
+		return
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("request"):
+		return
+	if bool(tutorial.call("is_freezing")):
+		return
+	var lessons := _after_match_lessons.duplicate()
+	_after_match_lessons.clear()
+	for lesson_id in lessons:
+		tutorial.call("request", lesson_id)
+
+
+func _sync_tutorial_gates() -> void:
+	var tutorial := _tutorial_node()
+	if tutorial == null:
+		return
+	if tutorial.has_method("set_freeze_pending"):
+		tutorial.call("set_freeze_pending", not _held_freeze_lessons.is_empty())
+	if combat == null or combat.vice_entry_gate_open:
+		return
+	if _held_freeze_lessons.is_empty() and not bool(tutorial.call("is_freezing")):
+		combat.vice_entry_gate_open = true
 
 
 func _first_fight_idle() -> bool:
@@ -3681,8 +3753,8 @@ func await_victory_prelude() -> void:
 	while _winnings_counter_running and waited < 1.5:
 		await tree.create_timer(0.05).timeout
 		waited += 0.05
-	if _displayed_round_winnings < _target_round_winnings or _winnings_counter_running:
-		_sync_winnings_counter_to_combat_truth()
+	var shown_before := _shown_goal_value
+	_sync_winnings_counter_to_combat_truth()
 
 	var final_current := 0
 	if combat.has_method("get_chip_bar_goal_progress_cents"):
@@ -3697,11 +3769,7 @@ func await_victory_prelude() -> void:
 	if combat.has_method("get_chip_bar_goal_target_cents"):
 		target = int(combat.get_chip_bar_goal_target_cents())
 
-	var gain := 0
-	if combat.has_method("get_last_spin_summary"):
-		var summary: Dictionary = combat.get_last_spin_summary()
-
-		gain = int(summary.get("payout", 0))
+	var gain := maxi(final_current - shown_before, 0)
 
 	if goal_label != null:
 		if gain <= 0:
@@ -4474,6 +4542,8 @@ func _process(delta: float) -> void:
 	if not Engine.is_editor_hint():
 		_maybe_queue_fight_tutorials(delta)
 		_release_held_freeze_lessons(delta)
+		_sync_tutorial_gates()
+		_release_after_match_lessons()
 		_push_tutorial_hud_rects()
 		_sync_tutorial_skull_hint()
 		_sync_freeze_overlay()

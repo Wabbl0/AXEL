@@ -38,7 +38,7 @@ The Godot project is in `AXEL/axel_project` (`project.godot`). Main scene: `res:
 
 **Narrative / overworld** (`scenes/`): `GameManager` (`exports/GameManager.gd`) holds flags, memories and spawn sides. `AxelWorld` decides when a fight starts. The true ending needs the name item equipped, otherwise Ending 4.
 
-**Combat** (`combat/`): 5×5 grid, deterministic RNG, wins are 3+ lines (no cluster wins), wild spawns on exactly-3 lines. Powers: cigarette, alcohol, bloody hand. Bonus flow: normal spins, then Vice Round, then Free Spins. Fights end at GOAL or when a paid spin cannot be afforded. Goal ladder 100/150/225, then ×1.5.
+**Combat** (`combat/`): 5×5 grid, deterministic RNG, wins are 3+ lines (no cluster wins), wild spawns on exactly-3 lines. Powers: cigarette, alcohol, bloody hand. Bonus flow: normal spins, then Vice Round, then Free Spins. Fights end at GOAL or when a paid spin cannot be afforded. Start balance 3000. Goal ladder 50/60/70/80/90/110/175/300/550, then ×1.5 (rounded to 5); every fight is a new seed.
 
 - Keep combat deterministic.
 - Only `AxelRun` starts a fight. Combat reads no story flags.

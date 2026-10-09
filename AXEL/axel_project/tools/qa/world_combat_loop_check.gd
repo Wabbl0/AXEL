@@ -489,7 +489,7 @@ func _check_walk_gate(world: Node, run: Node) -> void:
 
 func _check_goal_ladder(run: Node) -> void:
 	run.call("reset_run")
-	var want := [100, 150, 225]
+	var want := [50, 60, 70, 80, 90, 110, 175, 300, 550]
 	for i in want.size():
 		run.state.world_fight_count = i + 1
 		var got := int(run.call("world_goal_base_cents"))
@@ -497,12 +497,24 @@ func _check_goal_ladder(run: Node) -> void:
 			_fail("world fight %d should need %d cents, got %d" % [i + 1, want[i], got])
 
 	var previous := int(want[want.size() - 1])
-	for extra in range(want.size() + 1, want.size() + 5):
+	for extra in range(want.size() + 1, 31):
 		run.state.world_fight_count = extra
 		var got := int(run.call("world_goal_base_cents"))
 		if got <= previous:
 			_fail("world fight %d goal did not grow past %d (got %d)" % [extra, previous, got])
 		previous = got
+
+	run.state.world_encounter = true
+	var seen_seeds := {}
+	for index in range(1, 31):
+		run.state.world_encounter_index = index
+		var seed_value := int(run.call("encounter_seed"))
+		if seen_seeds.has(seed_value):
+			_fail("world fight %d reuses seed %d" % [index, seed_value])
+		seen_seeds[seed_value] = true
+		if String(run.call("current_encounter_path")).is_empty():
+			_fail("world fight %d has no encounter def" % index)
+	run.state.world_encounter = false
 	run.call("reset_run")
 
 

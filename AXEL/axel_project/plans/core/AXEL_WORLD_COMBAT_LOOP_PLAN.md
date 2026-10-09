@@ -76,10 +76,10 @@ unwired.
 
 ### World goal ladder
 
-`AxelRun.WORLD_GOAL_LADDER_CENTS` = `100, 150, 225`
-(HUD units = raw cents), indexed by `RunState.world_fight_count` (monotonic; **not**
-`world_encounter_index`, which wraps at 3). Past the last rung each further
-fight multiplies by `1.5`, rounded to 25 cents (337.5 → 350). It reaches combat as a plain
+`AxelRun.WORLD_GOAL_LADDER_CENTS` = `50, 60, 70, 80, 90, 110, 175, 300, 550`
+(HUD units = raw cents), indexed by `RunState.world_fight_count` (monotonic).
+`world_encounter_index` also counts up without wrapping, so each fight gets its own
+seed. Past the last rung each further fight multiplies by `1.5`, rounded to 5. It reaches combat as a plain
 number through the pre-existing `CombatRoot.set_goal_base_target_cents()`; the
 lore goal bonus and family-H percents still multiply on top. Act fights are
 untouched and keep combat's own 10x default.
@@ -217,7 +217,7 @@ a cleared area.
   room; walking near one shows its real name, description and icon.
 - Floor items show `[E]` on the walk-near card, join the item inventory (and auto-equip if a slot is free), and start a fight. The first walk-up opens the Items lesson, and E does not take the item while that card is open.
 - `1.1` and `1.2` never hold a floor item. `3.1` holds two.
-- Fight goals climb 100, 150, 225, then ×1.5 (rounded to 25).
+- Fight goals climb 50, 60, 70, 80, 90, 110, 175, 300, 550, then ×1.5 (rounded to 5).
 - The first area's floor items are Common; after that pickup, every area you
   have not taken from reads one rank higher and its items_indicators show the new rarity.
 - The locker has no START RUN button and no LOCKER overlay; flashlight, key, and name pictures sit on the locker. Combat equip is the item wheel.
