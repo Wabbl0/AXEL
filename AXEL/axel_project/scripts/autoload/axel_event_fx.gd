@@ -20,6 +20,9 @@ var _glitch: CanvasLayer
 var _pulse: CanvasLayer
 var _combat_wipe: CanvasLayer
 var _wipe_guard_left := 0.0
+var _wipe_rng := RandomNumberGenerator.new()
+var _last_wipe_style := -1
+var _next_wipe_style := -1
 
 var _active_scene: Node = null
 var _cadence_enabled := true
@@ -68,6 +71,7 @@ func _ready() -> void:
 		add_child(_glitch)
 	if _pulse != null:
 		add_child(_pulse)
+	_wipe_rng.randomize()
 	_combat_wipe = CombatWipeScript.new()
 	_combat_wipe.name = "CombatWipeOverlay"
 	add_child(_combat_wipe)
@@ -700,7 +704,25 @@ func play_combat_wipe() -> void:
 	var sfx := get_node_or_null("/root/AxelSfx")
 	if sfx != null and sfx.has_method("play"):
 		sfx.call("play", &"combat_transition")
-	await _combat_wipe.call("close_wipe")
+	await _combat_wipe.call("close_wipe", pick_combat_wipe_style())
+
+
+func set_next_wipe_style(style: int) -> void:
+	_next_wipe_style = style
+
+
+func pick_combat_wipe_style() -> int:
+	var count: int = CombatWipeScript.Style.size()
+	var style := 0
+	if _next_wipe_style >= 0:
+		style = clampi(_next_wipe_style, 0, count - 1)
+		_next_wipe_style = -1
+	else:
+		style = _wipe_rng.randi_range(0, count - 1)
+		if count > 1 and style == _last_wipe_style:
+			style = (style + 1 + _wipe_rng.randi_range(0, count - 2)) % count
+	_last_wipe_style = style
+	return style
 
 
 func clear_combat_wipe() -> void:

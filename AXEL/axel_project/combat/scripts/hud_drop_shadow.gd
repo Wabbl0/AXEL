@@ -141,7 +141,7 @@ func _sync() -> void:
 	if _art == null or not is_instance_valid(_art):
 		visible = false
 		return
-	if _art.size.x < 2.0 or _art.size.y < 2.0:
+	if _art.size.x < 2.0 or _art.size.y < 2.0 or not _art.is_visible_in_tree():
 		visible = false
 		return
 	var xform := _art.get_global_transform()

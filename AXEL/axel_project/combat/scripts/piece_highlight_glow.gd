@@ -6,9 +6,19 @@ const GLOW_PREFIX := "HighlightGlow_"
 const LAYER_NAME := "HudHighlightLayer"
 const HOST_NAME := "HighlightRoot"
 const HIGHLIGHT_LAYER := 93
+const BLOOM_PAD_PX := 28.0
+const ECHO_SCALE := 0.12
+const ECHO_ALPHA := 0.75
+const FLICKER_CYCLES := 1.35
+const FLICKER_WINDOW := 0.035
+const FLICKER_PX := 2.0
 
 var _art: TextureRect
 var _alpha := 1.0
+var _phase := -1.0
+var _steady := false
+var _bloom: TextureRect
+var _echo: TextureRect
 
 
 static func set_highlight(piece: Control, on: bool) -> void:
@@ -23,7 +33,7 @@ static func set_highlight(piece: Control, on: bool) -> void:
 			_remove_glow(art)
 
 
-static func pulse_highlights(piece: Control, alpha: float) -> void:
+static func pulse_highlights(piece: Control, alpha: float, phase := -1.0, steady := false) -> void:
 	if piece == null or not is_instance_valid(piece):
 		return
 	var arts: Array[TextureRect] = []
@@ -32,6 +42,7 @@ static func pulse_highlights(piece: Control, alpha: float) -> void:
 		var glow := _find_glow(art)
 		if glow == null:
 			continue
+		glow.call("set_motion", phase, steady)
 		glow.call("set_alpha", alpha)
 
 
@@ -128,9 +139,9 @@ func setup(art: TextureRect) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stretch_mode = TextureRect.STRETCH_SCALE
-	var mat := ShaderMaterial.new()
-	mat.shader = SHADER
-	material = mat
+	material = _make_material(0)
+	_bloom = _make_child("Bloom", 1)
+	_echo = _make_child("Echo", 2)
 	set_process(true)
 	_sync()
 
@@ -138,6 +149,72 @@ func setup(art: TextureRect) -> void:
 func set_alpha(alpha: float) -> void:
 	_alpha = alpha
 	_sync()
+
+
+func set_motion(phase: float, steady: bool) -> void:
+	_phase = phase
+	_steady = steady
+	_sync()
+
+
+func _make_material(mode: int) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = SHADER
+	mat.set_shader_parameter("mode", mode)
+	return mat
+
+
+func _make_child(child_name: String, mode: int) -> TextureRect:
+	var child := TextureRect.new()
+	child.name = child_name
+	child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	child.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	child.stretch_mode = TextureRect.STRETCH_SCALE
+	child.show_behind_parent = true
+	child.material = _make_material(mode)
+	add_child(child)
+	return child
+
+
+func _moving() -> bool:
+	return _phase >= 0.0 and not _steady
+
+
+func _sync_children(local_size: Vector2) -> void:
+	var cycle := fposmod(_phase, 1.0) if _moving() else 0.0
+	var wave := 0.5 - 0.5 * cos(_phase * TAU) if _phase >= 0.0 else 0.5
+	var main_mat := material as ShaderMaterial
+	if main_mat != null:
+		main_mat.set_shader_parameter("pulse", wave)
+		main_mat.set_shader_parameter("sweep", -0.25 + 1.5 * cycle if _moving() else -1.0)
+	if _bloom != null:
+		var pad := Vector2(BLOOM_PAD_PX, BLOOM_PAD_PX)
+		var full := local_size + pad * 2.0
+		_bloom.position = -pad
+		_bloom.size = full
+		_bloom.texture = texture
+		var bloom_mat := _bloom.material as ShaderMaterial
+		bloom_mat.set_shader_parameter("pad_uv", pad / full)
+		bloom_mat.set_shader_parameter("bloom_reach", pad * 0.9 / local_size)
+		bloom_mat.set_shader_parameter("pulse", wave)
+	if _echo != null:
+		_echo.visible = _moving()
+		_echo.texture = texture
+		_echo.position = Vector2.ZERO
+		_echo.size = local_size
+		_echo.pivot_offset = local_size * 0.5
+		var grow := 1.0 - pow(1.0 - cycle, 3.0)
+		_echo.scale = Vector2.ONE * (1.0 + ECHO_SCALE * grow)
+		_echo.self_modulate = Color(1, 1, 1, ECHO_ALPHA * pow(1.0 - cycle, 2.0))
+
+
+func _flicker_offset() -> Vector2:
+	if not _moving():
+		return Vector2.ZERO
+	var t := fposmod(_phase, FLICKER_CYCLES)
+	if t > FLICKER_WINDOW:
+		return Vector2.ZERO
+	return Vector2(FLICKER_PX if t < FLICKER_WINDOW * 0.5 else -FLICKER_PX, 0.0)
 
 
 func _process(_delta: float) -> void:
@@ -169,9 +246,10 @@ func _sync() -> void:
 	anchor_top = 0.0
 	anchor_right = 0.0
 	anchor_bottom = 0.0
-	position = origin
+	position = origin + _flicker_offset().rotated(turn)
 	size = local_size
 	pivot_offset = Vector2.ZERO
 	rotation = turn
 	texture = _art.texture
 	modulate = Color(1, 1, 1, _alpha)
+	_sync_children(local_size)

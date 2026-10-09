@@ -65,6 +65,7 @@ In `combat/shaders/piece_highlight_glow.gdshader` and `axel_tutorial.gd:19-24, 8
 - Add a wider soft outer halo.
 - Raise the pulse range: alpha 20–75% → 45–100%, plus a small brightness swell on the halo, still on the 2.6s cycle.
 - Reduce flashing still holds it steady.
+- Follow-up: the outline alone still read as plain. Added a red bloom that spreads past the piece edge, a white shine band that sweeps across the outline each pulse, a sonar echo that grows outward (1.0 → 1.12) and fades, and a short 2 px CRT jitter about every 3.5 s. Reduce flashing keeps only the steady glow and bloom.
 
 ## 8. Esc / Backspace / Delete close cards before pause
 - `scripts/autoload/axel_pause.gd:140 _unhandled_input`: if `AxelTutorial.is_open()` (any card, typing or not), call a new `AxelTutorial.dismiss_open_card()`, mark the event handled, and return. Pause opens only when no card is up.
@@ -147,3 +148,11 @@ No comments in scripts. Input stays on named actions. `CombatPace` only.
   - Colored numbers are in the overworld cards only (walk-near card and map cards). The in-fight item description panels still use plain Labels.
   - The pause Guide already explains the multiplier, so no new Guide page was added.
 - Cause of 90 vs 69: the win pop-ups fill the bar while symbols clear, but GOAL was only credited after gravity. GOAL was read straight from combat, while the bar counted up from pop-ups. Now one counter drives both.
+
+---
+
+## Free Spins skull flames (2026-10-09)
+- Problem: the flame crown behind the full-face skull was on during Free Spins but almost invisible. It sat behind the cranium, and its bright yellow art became black under the inverted noir filter.
+- Fix: `flame_crown.gdshader` flips the art's brightness so it maps to the red bands. `premium_skull_meter.gd` crown constants: copies 5→6, thin 0.72→0.45, arc 0.22→0.5, pos (40,-46)→(-46,-26), size (612,240)→(780,330). The ring now hugs the top and sides of the skull and stays about 10 px under the history frame.
+- Checked with windowed 1920×1280 captures in real Free Spins (crown visible, centered, clear of the history frame, spin blocks and count) and after the round (crown hidden).
+- Follow-up: the flames are taller (thin 0.56, arc 0.41, pos (-46,-97), size (780,400)), so their tips reach a little into the History box. `combat_test.gd` passes the history panel to `set_flame_dim_target`. Each frame the skull turns that box into the crown's local space. The shader draws flames inside the box as faint dark red (`dim_level` 0.44) and hides them on a 14 px border band, so the border and the history text stay on top.

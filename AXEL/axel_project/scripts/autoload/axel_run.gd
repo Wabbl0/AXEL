@@ -15,6 +15,7 @@ const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
 const WORLD_GOAL_LADDER_GROWTH := 1.5
 const WORLD_GOAL_LADDER_ROUNDING := 5
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
+const GUIDE_LESSON := "guide_pause"
 const STARTING_BANKROLL_CENTS := 3000
 const MAX_PLAYABLE_ACT := 3
 const NEW_GAME_SCENE := "res://scenes/Arc_1/1.1_SchoolExterior.tscn"
@@ -393,6 +394,7 @@ func _on_root_finished(success: bool) -> void:
 		_finish_busy = true
 		capture_bankroll_from(_live_combat_root())
 		await _show_round_complete_card()
+		await _show_guide_lesson()
 		var root := _live_combat_root()
 		if root != null and root.has_method("await_victory_confirm"):
 			await root.call("await_victory_confirm")
@@ -582,6 +584,28 @@ func _show_round_complete_card() -> void:
 		if root != null and root.has_method("get_bankroll"):
 			balance = int(root.call("get_bankroll"))
 		fx.call("show_round_complete_card", bets, balance)
+
+
+func _show_guide_lesson() -> void:
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	if tutorial == null or not bool(tutorial.call("wants", GUIDE_LESSON)):
+		return
+	tutorial.call("request", GUIDE_LESSON)
+	var tree := get_tree()
+	var can_close := false
+	var was_down := true
+	while tree != null:
+		if not bool(tutorial.call("wants", GUIDE_LESSON)) and not bool(tutorial.call("is_showing", GUIDE_LESSON)):
+			break
+		var down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+		var pressed := (down and not was_down) or Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("dialogue_advance")
+		was_down = down
+		if can_close and pressed and not tree.paused:
+			tutorial.call("complete", GUIDE_LESSON)
+		can_close = bool(tutorial.call("is_waiting")) and bool(tutorial.call("is_showing", GUIDE_LESSON))
+		await tree.process_frame
+	if tree != null:
+		await tree.create_timer(0.2).timeout
 
 
 func _fade_out_of_combat() -> void:

@@ -25,6 +25,9 @@ const GLOW_ALPHA_MAX := 1.0
 const LINK_COLOR := "#ff6a6a"
 const EXIT_SCALE := 0.5
 const EXIT_ROOM := 0.9
+const CARD_LAYER := 114
+const TOP_CARD_LAYER := 230
+const TOP_LESSONS: Array[String] = ["guide_pause"]
 
 const LESSONS := {
 	"move_walk": {
@@ -33,16 +36,16 @@ const LESSONS := {
 	},
 	"fight_spin": {
 		"title": "Fights",
-		"body": "Click the skull, or press E, to spin. Match 3 or more of the same picture in a row or a column.",
+		"body": "Click the SKULL, or press E, to spin. Match 3 or more of the same picture in a row or a column.",
 	},
 	"fight_stakes": {
 		"action_only": true,
 		"title": "Fights",
-		"body": "BALANCE is your chips. The bet is spent each spin. Fill GOAL to win. If you cannot pay another spin, you lose. Press + or - to change the bet. Q and R work too.",
+		"body": "BALANCE is your chips. The BET is spent each spin. Fill GOAL to win. If you cannot pay another spin, you lose. Press + or - to change the BET. Q and R work too.",
 	},
 	"fight_items": {
 		"title": "Fights",
-		"body": "Equipped items sit on the left. They act on their own. Hover a name to read it.",
+		"body": "Equipped ITEMS sit on the left. They act on their own. Hover a name to read it.",
 	},
 	"items_hand": {
 		"title": "Items",
@@ -55,22 +58,22 @@ const LESSONS := {
 	"slot_match": {
 		"freeze": true,
 		"title": "Matches",
-		"body": "3 or more of the same picture in a row or a column is a win. Each win pays your bet times that picture's value, times the multiplier. Every win is listed in the history box.",
+		"body": "3 or more of the same picture in a row or a column is a win. Each win pays your BET times that picture's value, times the MULTIPLIER. Every win is listed in the HISTORY box.",
 	},
 	"slot_power": {
 		"freeze": true,
 		"title": "The Skull",
-		"body": "Cigarette, alcohol and bloody hand are powers. Matching them fills the skull meter. When the skull is full, something worse begins.",
+		"body": "Cigarette, alcohol and bloody hand are powers. Matching them fills the SKULL meter. When the SKULL is full, something worse begins.",
 	},
 	"slot_multiplier": {
 		"freeze": true,
 		"title": "Multiplier",
-		"body": "Each win in a chain adds 1 to the multiplier. Wins after it pay that many times more. It drops back to 1X when you spin again.",
+		"body": "Each win in a chain adds 1 to the MULTIPLIER. Wins after it pay that many times more. It drops back to 1X when you spin again.",
 	},
 	"slot_vice": {
 		"freeze": true,
 		"title": "Vice Round",
-		"body": "The skull is full. Every power fires once, and the pictures are eaten. Clear the board to earn a prize.",
+		"body": "The SKULL is full. Every power fires once, and the ICONS are eaten. Clear the board to earn a prize.",
 	},
 	"guide_pause": {
 		"title": "Guide",
@@ -467,6 +470,7 @@ func _open_slot(idx: int, id: String) -> void:
 	slot.open_id = id
 	slot.phase = Phase.OPENING
 	slot.laid_out = false
+	_card_layer.layer = TOP_CARD_LAYER if TOP_LESSONS.has(id) else CARD_LAYER
 	_run_card(slot, id)
 
 
@@ -595,8 +599,6 @@ func _start_close(slot: CardSlot, mark: bool = true) -> void:
 	_sync_freeze()
 	if mark:
 		_mark_seen(id)
-		if id == "slot_vice":
-			request("guide_pause")
 	_sync_glows()
 	_refresh_type_loop()
 	_play_close()
@@ -879,9 +881,10 @@ func _sync_glows() -> void:
 				_glow_on_ms[piece_name] = now - _glow_resume_ms(piece_name, now)
 			_glow_off.erase(piece_name)
 			PieceHighlightGlow.set_highlight(piece, true)
-			var alpha := _glow_alpha(float(now - int(_glow_on_ms[piece_name])) * 0.001)
+			var elapsed := float(now - int(_glow_on_ms[piece_name])) * 0.001
+			var alpha := _glow_alpha(elapsed)
 			_glow_last_alpha[piece_name] = alpha
-			PieceHighlightGlow.pulse_highlights(piece, alpha)
+			PieceHighlightGlow.pulse_highlights(piece, alpha, elapsed / GLOW_PULSE_SEC, _glow_steady())
 			continue
 		if _glow_on_ms.has(piece_name):
 			_glow_on_ms.erase(piece_name)
@@ -890,20 +893,23 @@ func _sync_glows() -> void:
 			var t := float(now - int(_glow_off[piece_name])) * 0.001 / GLOW_FADE_OUT_SEC
 			if t < 1.0:
 				var from := float(_glow_last_alpha.get(piece_name, GLOW_ALPHA_MAX))
-				PieceHighlightGlow.pulse_highlights(piece, from * (1.0 - smoothstep(0.0, 1.0, t)))
+				PieceHighlightGlow.pulse_highlights(piece, from * (1.0 - smoothstep(0.0, 1.0, t)), 0.0, true)
 				continue
 			_glow_off.erase(piece_name)
 			_glow_last_alpha.erase(piece_name)
 		PieceHighlightGlow.set_highlight(piece, false)
 
 
-func _glow_alpha(elapsed_sec: float) -> float:
+func _glow_steady() -> bool:
 	var settings := get_node_or_null("/root/AxelSettings")
-	var steady := false
 	if settings != null and settings.has_method("get_value"):
-		steady = bool(settings.call("get_value", "access", "reduce_flashing", false))
+		return bool(settings.call("get_value", "access", "reduce_flashing", false))
+	return false
+
+
+func _glow_alpha(elapsed_sec: float) -> float:
 	var fade_in := smoothstep(0.0, 1.0, clampf(elapsed_sec / GLOW_FADE_IN_SEC, 0.0, 1.0))
-	if steady:
+	if _glow_steady():
 		return GLOW_STEADY * fade_in
 	var wave := 0.5 - 0.5 * cos(elapsed_sec * TAU / GLOW_PULSE_SEC)
 	return lerpf(GLOW_ALPHA_MIN, GLOW_ALPHA_MAX, wave) * fade_in
@@ -964,7 +970,7 @@ func _hide_glows() -> void:
 func _build() -> void:
 	_card_layer = CanvasLayer.new()
 	_card_layer.name = "CardLayer"
-	_card_layer.layer = 114
+	_card_layer.layer = CARD_LAYER
 	add_child(_card_layer)
 
 	_title_font = FontVariation.new()

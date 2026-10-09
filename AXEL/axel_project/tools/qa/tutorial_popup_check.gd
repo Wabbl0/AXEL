@@ -559,6 +559,21 @@ func _check_highlight_above_noir(failures: Array[String]) -> void:
 			failures.append("highlight glow does not sit on the art: %s vs %s" % [glow.get_global_rect(), art.get_global_rect()])
 		if absf(glow.modulate.a - 0.8) > 0.01:
 			failures.append("highlight glow pulse alpha is %.2f" % glow.modulate.a)
+		var bloom := glow.get_node_or_null("Bloom") as TextureRect
+		var echo := glow.get_node_or_null("Echo") as TextureRect
+		if bloom == null or echo == null:
+			failures.append("highlight glow is missing its bloom or echo")
+		else:
+			if bloom.size.x <= glow.size.x or bloom.size.y <= glow.size.y:
+				failures.append("highlight bloom does not reach past the art")
+			PieceHighlightGlow.pulse_highlights(piece, 0.8, 0.3, false)
+			await process_frame
+			if not echo.visible or echo.scale.x <= 1.0:
+				failures.append("highlight echo does not grow while pulsing")
+			PieceHighlightGlow.pulse_highlights(piece, 0.8, 0.3, true)
+			await process_frame
+			if echo.visible:
+				failures.append("highlight echo still moves with reduce flashing")
 	if not art.is_visible_in_tree():
 		failures.append("highlighted art went hidden")
 	PieceHighlightGlow.set_highlight(piece, false)

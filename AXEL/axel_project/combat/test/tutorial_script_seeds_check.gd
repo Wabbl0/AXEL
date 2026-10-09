@@ -85,6 +85,17 @@ func _ok_match(info: Dictionary) -> bool:
 	return info["lines"].size() == 1 and not _has_premium(info) and info["meter"] == 0 and not info["vice"]
 
 
+func _max_chain(info: Dictionary) -> int:
+	var best := 1
+	for event in info["lines"]:
+		best = maxi(best, int(event.get("cascade_multiplier", 1)))
+	return best
+
+
+func _ok_multiplier(info: Dictionary) -> bool:
+	return info["lines"].size() >= 2 and _max_chain(info) >= 2 and not _has_premium(info) and info["meter"] == 0 and not info["vice"]
+
+
 func _ok_power(info: Dictionary) -> bool:
 	var meter: int = info["meter"]
 	return info["lines"].size() <= 2 and _has_premium(info) and meter >= 1 and meter <= 2 and not info["vice"]
@@ -103,21 +114,27 @@ func _find(prefix: Array, checker: Callable) -> int:
 
 func _scan() -> void:
 	var first := _find([], _ok_match)
-	var second := _find([first], _ok_power) if first > 0 else -1
-	var third := _find([first, second], _ok_vice) if second > 0 else -1
-	print("SCAN RESULT: [", first, ", ", second, ", ", third, "]")
-	if first < 0 or second < 0 or third < 0:
-		_errors.append("scan did not find all three seeds")
+	var second := _find([first], _ok_multiplier) if first > 0 else -1
+	var third := _find([first, second], _ok_power) if second > 0 else -1
+	var fourth := _find([first, second, third], _ok_vice) if third > 0 else -1
+	print("SCAN RESULT: [", first, ", ", second, ", ", third, ", ", fourth, "]")
+	if first < 0 or second < 0 or third < 0 or fourth < 0:
+		_errors.append("scan did not find all four seeds")
 
 
 func _verify() -> void:
 	var seeds: Array = CombatRoot.TUTORIAL_SCRIPT_SEEDS
-	if seeds.size() != 3:
-		_errors.append("expected 3 scripted seeds")
+	if seeds.size() != 4:
+		_errors.append("expected 4 scripted seeds")
 		return
-	if not _ok_match(_spin_with([], seeds[0])):
+	var first := _spin_with([], seeds[0])
+	if not _ok_match(first):
 		_errors.append("spin 1 is not a single plain match")
-	if not _ok_power(_spin_with([seeds[0]], seeds[1])):
-		_errors.append("spin 2 does not partly fill the skull meter")
-	if not _ok_vice(_spin_with([seeds[0], seeds[1]], seeds[2])):
-		_errors.append("spin 3 does not start the Vice Round")
+	if _max_chain(first) >= 2:
+		_errors.append("spin 1 already raises the multiplier")
+	if not _ok_multiplier(_spin_with([seeds[0]], seeds[1])):
+		_errors.append("spin 2 does not raise the multiplier on its own")
+	if not _ok_power(_spin_with([seeds[0], seeds[1]], seeds[2])):
+		_errors.append("spin 3 does not partly fill the skull meter")
+	if not _ok_vice(_spin_with([seeds[0], seeds[1], seeds[2]], seeds[3])):
+		_errors.append("spin 4 does not start the Vice Round")

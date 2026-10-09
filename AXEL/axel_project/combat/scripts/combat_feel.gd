@@ -8,6 +8,20 @@ const ENCOUNTER_BANNER_HOLD_SEC := 1.6
 const ENCOUNTER_BANNER_SCRIM := 0.85
 const BANNER_FADE_IN_SEC := 0.36
 const BANNER_FADE_OUT_SEC := 0.70
+const LOSS_SHATTER_SCRIPT := preload("res://combat/scripts/loss_shatter.gd")
+const LOSS_PAIRS := [["NEW_Goal", "NEW_Multiplier"], ["NEW_Items", "NEW_History"], ["NEW_Bets", "NEW_Execute"]]
+const LOSS_LAST := ["NEW_Settings"]
+const LOSS_COMPANIONS := {"NEW_Grid": ["MOVE_SpinMoney"], "NEW_Execute": ["MOVE_PremiumBar"]}
+const LOSS_HIT_SEC := 0.10
+const LOSS_COLUMN_GAP_SEC := 0.07
+const LOSS_ROW_STAGGER_SEC := 0.02
+const LOSS_AFTER_SYMBOLS_SEC := 0.20
+const LOSS_AFTER_GRID_SEC := 0.40
+const LOSS_PAIR_GAP_SEC := 0.22
+const LOSS_SCRIM_FADE_SEC := 0.60
+const LOSS_SETTLE_CAP_SEC := 0.90
+const LOSS_LINE_GAP := 40.0
+const LOSS_REVEAL_SEC := 0.25
 
 var _root: Node2D
 var _grid_ui: Control
@@ -26,6 +40,11 @@ var _game_over_open := false
 var _banner_anchor: Control
 var _loss_presentation := false
 var _loss_rush_frame := -1
+var _loss_banner_shift := 0.0
+var _loss_hud_canvas: Control
+var _loss_jolt_rest := Vector2.ZERO
+var _loss_jolt_tween: Tween
+var _loss_flames = null
 
 
 func setup(root: Node2D, grid_ui: Control) -> void:
@@ -139,12 +158,22 @@ func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62, pe
 
 
 func _on_banner_viewport_resized() -> void:
+	if _game_over_open and _menu_box != null and _menu_box.visible:
+		_loss_banner_shift = _layout_loss_block()
 	if _banner != null and _banner.modulate.a > 0.01:
 		_place_banner()
 
 
 func _place_banner() -> void:
 	if _banner == null:
+		return
+	if _game_over_open and (_banner_anchor == null or not is_instance_valid(_banner_anchor)):
+		_banner.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_banner.offset_left = 0.0
+		_banner.offset_top = _loss_banner_shift
+		_banner.offset_right = 0.0
+		_banner.offset_bottom = _loss_banner_shift
+		_banner.add_theme_font_size_override("font_size", 96)
 		return
 	if _banner_anchor == null or not is_instance_valid(_banner_anchor):
 		_banner.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -185,6 +214,7 @@ func note_rush_press() -> void:
 func show_game_over_menu(retry: Callable, to_menu: Callable, quit_app: Callable) -> void:
 	_game_over_open = true
 	_loss_presentation = true
+	_loss_banner_shift = 0.0
 	set_process_unhandled_input(true)
 	_kill(_banner_tween)
 	_banner_anchor = null
@@ -195,7 +225,7 @@ func show_game_over_menu(retry: Callable, to_menu: Callable, quit_app: Callable)
 		_banner.text = ""
 		_banner.modulate.a = 0.0
 	if _banner_scrim != null:
-		_banner_scrim.color = Color(0.0, 0.0, 0.0, ENCOUNTER_BANNER_SCRIM)
+		_banner_scrim.color = Color(0.0, 0.0, 0.0, 0.0)
 		_banner_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
 	await _play_loss_collapse()
 	var rng := RandomNumberGenerator.new()
@@ -227,82 +257,266 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _play_loss_collapse() -> void:
-	var pieces := _loss_pieces()
-	if pieces.is_empty():
+	var beats := _loss_beats()
+	if beats.is_empty():
+		await _fade_loss_scrim()
 		return
 	var view := _loss_view_size()
-	var layer := CanvasLayer.new()
-	layer.name = "LossFallLayer"
-	layer.layer = 114
+	var shatter = LOSS_SHATTER_SCRIPT.new()
+	shatter.name = "LossShatter"
+	add_child(shatter)
+	shatter.set_view(view)
+	_loss_hud_canvas = _loss_find("HudCanvas", false)
+	if _loss_hud_canvas != null:
+		_loss_jolt_rest = _loss_hud_canvas.position
+	_loss_flames = _make_loss_flames(view)
+	_loss_hit()
+	await CombatPace.await_seconds(LOSS_HIT_SEC)
+	var scrim_started := false
+	for beat in beats:
+		var kind: StringName = beat["kind"]
+		if kind == &"symbols":
+			await _drop_loss_symbols(shatter, beat["columns"])
+			await CombatPace.await_seconds(LOSS_AFTER_SYMBOLS_SEC)
+		elif kind == &"break":
+			var big := bool(beat["big"])
+			for node in beat["nodes"]:
+				_break_loss_piece(shatter, node, int(beat["spokes"]), float(beat["crack"]), big)
+			await CombatPace.await_seconds(LOSS_AFTER_GRID_SEC if big else LOSS_PAIR_GAP_SEC)
+		elif kind == &"drop":
+			_fade_loss_scrim()
+			scrim_started = true
+			for node in beat["nodes"]:
+				shatter.drop(node, 0.0, _loss_seed(node))
+				_drop_loss_text(shatter, node)
+	if not scrim_started:
+		_fade_loss_scrim()
+	var waited := 0.0
+	while waited < LOSS_SETTLE_CAP_SEC and (waited < LOSS_SCRIM_FADE_SEC or not shatter.is_done()):
+		await CombatPace.await_seconds(0.05)
+		waited += 0.05
+
+
+func _loss_beats() -> Array[Dictionary]:
+	var beats: Array[Dictionary] = []
+	var columns := _loss_symbol_columns()
+	if not columns.is_empty():
+		beats.append({"kind": &"symbols", "columns": columns})
+	var grid := _loss_find("NEW_Grid")
+	if grid != null:
+		beats.append({"kind": &"break", "nodes": [grid], "spokes": 8, "crack": 0.18, "big": true})
+	for pair in LOSS_PAIRS:
+		var nodes: Array = []
+		for piece_name in pair:
+			var node := _loss_find(piece_name)
+			if node != null:
+				nodes.append(node)
+		if not nodes.is_empty():
+			beats.append({"kind": &"break", "nodes": nodes, "spokes": 5, "crack": 0.12, "big": false})
+	var last: Array = []
+	for piece_name in LOSS_LAST:
+		var node := _loss_find(piece_name)
+		if node != null:
+			last.append(node)
 	if _root != null:
-		_root.add_child(layer)
+		var frame := _root.get_node_or_null("GridFrame") as Control
+		if frame != null and frame.visible:
+			last.append(frame)
+	if not last.is_empty():
+		beats.append({"kind": &"drop", "nodes": last})
+	return beats
+
+
+func _loss_find(piece_name: String, need_visible: bool = true) -> Control:
+	var tree := get_tree()
+	var scene := tree.current_scene if tree != null else null
+	if scene == null:
+		return null
+	var node := scene.find_child(piece_name, true, false) as Control
+	if node == null or (need_visible and not node.is_visible_in_tree()):
+		return null
+	return node
+
+
+func _loss_symbol_columns() -> Array:
+	var out: Array = []
+	if _grid_ui == null:
+		return out
+	var cols := 5
+	if _grid_ui is GridContainer:
+		cols = maxi((_grid_ui as GridContainer).columns, 1)
+	var index := 0
+	for child in _grid_ui.get_children():
+		if not (child is Control) or not (child as Control).visible:
+			continue
+		var col := index % cols
+		while out.size() <= col:
+			out.append([])
+		out[col].push_front(child)
+		index += 1
+	return out
+
+
+func _drop_loss_symbols(shatter, columns: Array) -> void:
+	if _grid_ui == null:
+		return
+	var parent: CanvasItem = _grid_ui
+	while parent.get_parent() is CanvasItem:
+		parent = parent.get_parent() as CanvasItem
+	if parent == _grid_ui:
+		return
+	var holder := Control.new()
+	holder.name = "LossSymbols"
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(holder)
+	var local := parent.get_global_transform().affine_inverse() * _grid_ui.get_global_transform()
+	holder.position = local.origin
+	holder.rotation = local.get_rotation()
+	holder.scale = local.get_scale()
+	for c in columns.size():
+		var column: Array = columns[c]
+		for k in column.size():
+			var node := column[k] as Control
+			if node == null or not is_instance_valid(node):
+				continue
+			var at := node.position
+			node.get_parent().remove_child(node)
+			holder.add_child(node)
+			node.position = at
+			shatter.drop(node, float(k) * LOSS_ROW_STAGGER_SEC, _loss_seed(node) + c)
+		if c + 1 < columns.size():
+			await CombatPace.await_seconds(LOSS_COLUMN_GAP_SEC)
+
+
+func _break_loss_piece(shatter, piece: Control, spokes: int, crack_sec: float, big: bool) -> void:
+	var host := _loss_shard_host(piece)
+	await shatter.break_piece(piece, host, _loss_seed(piece), spokes, crack_sec, _loss_shake_scale())
+	if piece == null or not is_instance_valid(piece):
+		return
+	_drop_loss_text(shatter, piece)
+	for companion_name in LOSS_COMPANIONS.get(str(piece.name), []):
+		var companion := _loss_find(companion_name)
+		if companion != null:
+			shatter.drop(companion, 0.0, _loss_seed(companion))
+			_drop_loss_text(shatter, companion)
+	_loss_flame_at(piece, [4, 4] if big else [4])
+	if big:
+		shake(4, get_node_or_null("/root/AxelSettings"))
+		_loss_jolt(10.0)
+	else:
+		_loss_jolt(4.0)
+
+
+func _drop_loss_text(shatter, piece: Node) -> void:
+	var layer := _loss_widget_layer()
+	if layer == null:
+		return
+	var hosts: Array = layer.call("release_for", piece)
+	for i in hosts.size():
+		var host := hosts[i] as Control
+		if host == null or not is_instance_valid(host) or not host.visible:
+			continue
+		if _root != null and host.is_ancestor_of(_root):
+			continue
+		shatter.drop(host, 0.03, _loss_seed(piece) + i)
+
+
+func _loss_widget_layer() -> Node:
+	var tree := get_tree()
+	var scene := tree.current_scene if tree != null else null
+	if scene == null:
+		return null
+	var layer := scene.find_child("WidgetLayer", true, false)
+	if layer != null and layer.has_method("release_for"):
+		return layer
+	return null
+
+
+func _loss_shard_host(piece: Control) -> Control:
+	var base: Node = piece.get_parent()
+	var walk: Node = piece
+	while walk != null:
+		if str(walk.name) == "HudCanvas" and walk is Control:
+			base = walk
+			break
+		walk = walk.get_parent()
+	if not (base is Control):
+		return null
+	var host := base.get_node_or_null("LossShards") as Control
+	if host == null:
+		host = Control.new()
+		host.name = "LossShards"
+		host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		base.add_child(host)
+	return host
+
+
+func _loss_seed(node: Node) -> int:
+	return hash(str(node.name)) if node != null else 0
+
+
+func _loss_hit() -> void:
+	var settings := get_node_or_null("/root/AxelSettings")
+	glitch_flash(settings)
+	shake(3, settings)
+	_loss_jolt(6.0)
+
+
+func _loss_jolt(amp_px: float) -> void:
+	var node := _loss_hud_canvas
+	var amp := amp_px * _loss_shake_scale()
+	if node == null or not is_instance_valid(node) or amp <= 0.01:
+		return
+	_kill(_loss_jolt_tween)
+	node.position = _loss_jolt_rest
+	_loss_jolt_tween = CombatPace.bind(create_tween())
+	for i in 4:
+		var kick := Vector2(amp if i % 2 == 0 else -amp, amp * 0.5 if i % 2 == 0 else -amp * 0.5)
+		_loss_jolt_tween.tween_property(node, "position", _loss_jolt_rest + kick, 0.03)
+	_loss_jolt_tween.tween_property(node, "position", _loss_jolt_rest, 0.05)
+
+
+func _loss_shake_scale() -> float:
+	if _reduce_flashing():
+		return 0.0
+	var settings := get_node_or_null("/root/AxelSettings")
+	if settings != null and settings.has_method("get_value"):
+		return clampf(float(settings.call("get_value", "access", "screen_shake", 1.0)), 0.0, 1.0)
+	return 1.0
+
+
+func _make_loss_flames(view: Vector2):
+	if _reduce_flashing() or _root == null:
+		return null
+	var layer := CanvasLayer.new()
+	layer.name = "LossFlameLayer"
+	layer.layer = 114
+	_root.add_child(layer)
 	var host := Control.new()
 	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.position = Vector2.ZERO
 	host.size = view
 	layer.add_child(host)
-	var burst = null
-	if not _reduce_flashing():
-		burst = FLAME_BURST_SCRIPT.new()
-		burst.name = "LossFlameBurst"
-		if _root != null:
-			_root.add_child(burst)
-		burst.bind(host)
-	var spin := RandomNumberGenerator.new()
-	spin.randomize()
-	for i in pieces.size():
-		var piece := pieces[i] as Control
-		if piece == null or not is_instance_valid(piece):
-			continue
-		if burst != null:
-			var rect := piece.get_global_rect()
-			burst.play_waves(rect.position + rect.size * 0.5, [4])
-		var global_pos: Vector2 = piece.global_position
-		var parent := piece.get_parent()
-		if parent != null:
-			parent.remove_child(piece)
-		host.add_child(piece)
-		piece.global_position = global_pos
-		var drop := CombatPace.bind(create_tween())
-		var delay := float(i) * 0.04
-		if delay > 0.0:
-			drop.tween_interval(delay)
-		drop.tween_property(piece, "global_position:y", view.y + 80.0, 0.8)
-		drop.parallel().tween_property(piece, "rotation", spin.randf_range(-0.6, 0.6), 0.8)
-		drop.finished.connect(_hide_loss_piece.bind(piece))
-	var tree := get_tree()
-	if tree != null:
-		await CombatPace.await_seconds(minf(float(pieces.size()) * 0.04, 0.4) + 0.15)
+	var burst = FLAME_BURST_SCRIPT.new()
+	burst.name = "LossFlameBurst"
+	_root.add_child(burst)
+	burst.bind(host)
+	return burst
 
 
-func _hide_loss_piece(piece: CanvasItem) -> void:
-	if is_instance_valid(piece):
-		piece.visible = false
+func _loss_flame_at(piece: Control, counts: Array) -> void:
+	if _loss_flames == null or not is_instance_valid(_loss_flames):
+		return
+	var center := piece.get_global_transform_with_canvas() * (piece.size * 0.5)
+	_loss_flames.play_waves(center, counts)
 
 
-func _loss_pieces() -> Array[CanvasItem]:
-	var out: Array[CanvasItem] = []
-	var scene := get_tree().current_scene if get_tree() != null else null
-	if scene != null:
-		for piece_name in [
-			"NEW_Grid", "NEW_History", "NEW_Items", "NEW_Bets",
-			"NEW_Goal", "NEW_Multiplier", "NEW_Settings", "NEW_Execute",
-		]:
-			var node := scene.find_child(piece_name, true, false) as CanvasItem
-			if node != null and node.visible:
-				out.append(node)
-		var dvd := scene.find_child("EmptyItemDvd", true, false) as CanvasItem
-		if dvd != null and dvd.visible:
-			out.append(dvd)
-	if _grid_ui != null:
-		for child in _grid_ui.get_children():
-			if child is CanvasItem:
-				out.append(child as CanvasItem)
-	if _root != null:
-		var frame := _root.get_node_or_null("GridFrame") as CanvasItem
-		if frame != null and frame.visible:
-			out.append(frame)
-	return out
+func _fade_loss_scrim() -> void:
+	if _banner_scrim == null:
+		return
+	_banner_scrim.color = Color(0.0, 0.0, 0.0, 0.0)
+	var fade := CombatPace.bind(create_tween())
+	fade.tween_property(_banner_scrim, "color:a", ENCOUNTER_BANNER_SCRIM, LOSS_SCRIM_FADE_SEC)
+	await fade.finished
 
 
 func _loss_view_size() -> Vector2:
@@ -358,8 +572,30 @@ func _reveal_loss_buttons(retry: Callable, to_menu: Callable, quit_app: Callable
 	_add_game_over_button("Retry", retry)
 	_add_game_over_button("Return To Main Menu", to_menu)
 	_add_game_over_button("Exit", quit_app)
+	var shift := _layout_loss_block()
+	_menu_box.modulate.a = 0.0
 	_menu_box.visible = true
 	MenuLook.grab_first_focus(_menu_box)
+	_loss_banner_shift = shift
+	if _banner == null:
+		_menu_box.modulate.a = 1.0
+		return
+	var glide := CombatPace.bind(create_tween())
+	glide.tween_property(_banner, "offset_top", shift, LOSS_REVEAL_SEC).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	glide.parallel().tween_property(_banner, "offset_bottom", shift, LOSS_REVEAL_SEC).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	glide.parallel().tween_property(_menu_box, "modulate:a", 1.0, LOSS_REVEAL_SEC)
+
+
+func _layout_loss_block() -> float:
+	if _menu_box == null:
+		return 0.0
+	var view := _loss_view_size()
+	var banner_h := _banner.get_combined_minimum_size().y if _banner != null else 0.0
+	var menu_h := _menu_box.get_combined_minimum_size().y
+	var top := (view.y - (banner_h + LOSS_LINE_GAP + menu_h)) * 0.5
+	_menu_box.offset_top = top + banner_h + LOSS_LINE_GAP - view.y * 0.5
+	_menu_box.offset_bottom = _menu_box.offset_top + menu_h
+	return top + banner_h * 0.5 - view.y * 0.5
 
 
 func _add_game_over_button(caption: String, cb: Callable) -> void:

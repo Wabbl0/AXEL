@@ -2,6 +2,8 @@
 
 Plan only. Do not implement in the planning chat.
 
+Superseded on 2026-10-09 by [2026-10-09_death_screen_shatter.md](2026-10-09_death_screen_shatter.md).
+
 ## What you asked
 
 When you lose:

@@ -31,7 +31,15 @@ func _main() -> void:
 		failures.append("GameOverMenu missing")
 	elif menu.visible:
 		failures.append("loss buttons were visible before the wait")
-	await create_timer(4.2).timeout
+	await create_timer(1.6).timeout
+	var banner := host.find_child("FeelBanner", true, false) as Label
+	if banner == null:
+		failures.append("FeelBanner missing")
+	else:
+		var line_center := banner.get_global_rect().get_center().y
+		if absf(line_center - 640.0) > 2.0:
+			failures.append("loss line center was %.1f, not 640" % line_center)
+	await create_timer(3.4).timeout
 	if menu != null and not menu.visible:
 		failures.append("loss buttons did not appear after 3 seconds")
 	var captions: Array[String] = []
@@ -43,7 +51,15 @@ func _main() -> void:
 		failures.append("loss buttons were %s" % [captions])
 	if int(presses["retry"]) != 0:
 		failures.append("Retry was pressed by the reveal itself")
-	var banner := host.find_child("FeelBanner", true, false) as Label
+	if menu != null and banner != null and menu.visible:
+		var line_h := banner.get_combined_minimum_size().y
+		var block_top := banner.get_global_rect().get_center().y - line_h * 0.5
+		var block_bottom := menu.get_global_rect().end.y
+		var block_center := (block_top + block_bottom) * 0.5
+		if absf(block_center - 640.0) > 4.0:
+			failures.append("line and buttons center was %.1f, not 640" % block_center)
+		if menu.modulate.a < 0.99:
+			failures.append("loss buttons did not finish fading in")
 	if banner == null or (banner.text != "GONE" and banner.text != "IT TAKES YOU"):
 		var shown := "" if banner == null else banner.text
 		failures.append("loss line was '%s'" % shown)

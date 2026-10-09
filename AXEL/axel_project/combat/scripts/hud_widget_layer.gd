@@ -96,3 +96,18 @@ func _sync_one(pair: Dictionary) -> void:
 	host.global_position = gp
 	host.scale = sc
 	host.size = sz
+
+
+func release_for(piece: Node) -> Array[Control]:
+	var out: Array[Control] = []
+	if piece == null:
+		return out
+	var i := _pairs.size() - 1
+	while i >= 0:
+		var box := _pairs[i].get("box") as Control
+		var host := _pairs[i].get("host") as Control
+		if is_instance_valid(box) and is_instance_valid(host) and (box == piece or piece.is_ancestor_of(box)):
+			out.append(host)
+			_pairs.remove_at(i)
+		i -= 1
+	return out

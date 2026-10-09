@@ -167,9 +167,13 @@ a cleared area.
 4. `scenes/world/world_item_pickup.gd` (new) — `[E]` floor pickup. Adds the item
    to `AxelRun`, marks it taken, then starts a fight.
 5. `scenes/fx/combat_wipe_overlay.gd` (new) + `AxelEventFx.play_combat_wipe()` /
-   `clear_combat_wipe()` — red-bar wipe on an autoload layer above CRT so it
-   survives the scene change. No sound (D15). `reduce_flashing` gets a plain
-   fade. Safety timeout clears a stuck wipe.
+   `clear_combat_wipe()` — red/black bar wipe on an autoload layer above CRT so it
+   survives the scene change. 13 rows (red top and bottom), all driven by one
+   progress value. Four styles (Bars, Blinds, Slash, Center split), picked at
+   random per fight by a visual-only RNG, never the same twice in a row. Bars
+   pass through: red enters left and leaves right, black the mirror.
+   `reduce_flashing` skips the pre-flashes. Safety timeout clears a stuck wipe.
+   Check: `tools/qa/combat_wipe_styles_check.gd`.
 6. `combat/scripts/combat_test.gd` — clear the wipe once the board is up.
 7. `exports/GameManager.gd` — `visited_rooms` set plus `mark_room_visited()` /
    `has_visited()`; save body carries `visited_rooms` and the `AxelWorld` block.

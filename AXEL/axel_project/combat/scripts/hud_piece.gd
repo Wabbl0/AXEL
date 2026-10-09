@@ -3,6 +3,8 @@ class_name CombatHudPiece
 extends Control
 
 signal activated
+signal hover_changed(on: bool)
+signal press_changed(on: bool)
 
 @export var clickable: bool = false
 @export var use_alpha_hit: bool = false
@@ -145,10 +147,12 @@ func play_press() -> void:
 		return
 	_pressing = true
 	_apply_feel()
+	press_changed.emit(true)
 	var tree := get_tree()
 	if tree == null:
 		_pressing = false
 		_apply_feel()
+		press_changed.emit(false)
 		return
 	var timer := tree.create_timer(0.08)
 	timer.timeout.connect(_release_press_feel, CONNECT_ONE_SHOT)
@@ -157,6 +161,7 @@ func play_press() -> void:
 func _release_press_feel() -> void:
 	_pressing = false
 	_apply_feel()
+	press_changed.emit(false)
 
 
 func set_clickable(enabled: bool) -> void:
@@ -193,11 +198,13 @@ func _gui_input(event: InputEvent) -> void:
 		if mb.pressed:
 			_pressing = true
 			_apply_feel()
+			press_changed.emit(true)
 			accept_event()
 		else:
 			if _pressing:
 				_pressing = false
 				_apply_feel()
+				press_changed.emit(false)
 				activated.emit()
 				accept_event()
 
@@ -207,12 +214,17 @@ func _on_mouse_entered() -> void:
 		return
 	_hovering = true
 	_apply_feel()
+	hover_changed.emit(true)
 
 
 func _on_mouse_exited() -> void:
+	var was_pressing := _pressing
 	_hovering = false
 	_pressing = false
 	_apply_feel()
+	if was_pressing:
+		press_changed.emit(false)
+	hover_changed.emit(false)
 
 
 func _apply_feel() -> void:

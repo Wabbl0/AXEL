@@ -1663,6 +1663,7 @@ func _style_stake_buttons() -> void:
 		btn.add_theme_stylebox_override("disabled", flat.duplicate())
 
 func _input(event: InputEvent) -> void:
+	_note_skull_input(event)
 	if _wants_spin_hotkey(event) and _close_tutorial_freeze_card():
 		get_viewport().set_input_as_handled()
 		return
@@ -1844,6 +1845,8 @@ func _request_spin() -> void:
 	if spin_btn != null:
 		spin_btn.disabled = true
 	_refresh_spin_button_state()
+	if _premium_skull != null and _premium_skull.has_method("play_fire"):
+		_premium_skull.call("play_fire")
 	await combat.spin()
 	var tutorial := _tutorial_node()
 	if tutorial != null and tutorial.has_method("is_showing") and bool(tutorial.call("is_showing", "fight_items")):
@@ -2614,6 +2617,15 @@ func _bind_grid_host_to_piece() -> void:
 func _wire_piece_input_signals() -> void:
 	if _piece_execute != null and not _piece_execute.activated.is_connected(_on_piece_execute_activated):
 		_piece_execute.activated.connect(_on_piece_execute_activated)
+	if _piece_execute != null and _premium_skull != null and _premium_skull.has_method("set_hovered"):
+		_piece_execute.hover_scale = 1.0
+		_piece_execute.press_scale = 1.0
+		var on_hover := Callable(_premium_skull, "set_hovered")
+		var on_press := Callable(_premium_skull, "set_pressed")
+		if not _piece_execute.hover_changed.is_connected(on_hover):
+			_piece_execute.hover_changed.connect(on_hover)
+		if not _piece_execute.press_changed.is_connected(on_press):
+			_piece_execute.press_changed.connect(on_press)
 
 	if _skull_click_polygon != null:
 		if _skull_click_polygon is Control:
@@ -2751,6 +2763,8 @@ func _sync_skull_meter(sections: int) -> void:
 	if _premium_skull.has_method("set_fill"):
 		_premium_skull.set_fill(float(filled) / 3.0)
 	var crown_on := _can_use_combat_api() and combat != null and combat.free_spins.active
+	if _premium_skull.has_method("set_flame_dim_target"):
+		_premium_skull.set_flame_dim_target(_spin_history_panel)
 	if _premium_skull.has_method("set_flame_crown"):
 		_premium_skull.set_flame_crown(crown_on)
 	_refresh_skull_first_spin_hint()
@@ -2882,6 +2896,22 @@ func _hide_freeze_overlay() -> void:
 	_freeze_tween = create_tween()
 	_freeze_tween.tween_property(mat, "shader_parameter/amount", 0.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_freeze_tween.tween_callback(func() -> void: _freeze_rect.visible = false)
+
+
+func _sync_skull_ready() -> void:
+	if _premium_skull == null or not _premium_skull.has_method("set_ready"):
+		return
+	var ready_now := _spin_hotkey_allowed() and combat != null and not combat.free_spins.active
+	if ready_now and combat.is_encounter_complete():
+		ready_now = false
+	_premium_skull.call("set_ready", ready_now, not _tutorial_suppresses_skull())
+
+
+func _note_skull_input(event: InputEvent) -> void:
+	if _premium_skull == null or not _premium_skull.has_method("note_input"):
+		return
+	if (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton) and event.is_pressed():
+		_premium_skull.call("note_input")
 
 
 func _sync_tutorial_skull_hint() -> void:
@@ -4546,6 +4576,7 @@ func _process(delta: float) -> void:
 		_release_after_match_lessons()
 		_push_tutorial_hud_rects()
 		_sync_tutorial_skull_hint()
+		_sync_skull_ready()
 		_sync_freeze_overlay()
 	if Engine.is_editor_hint() and not editor_preview_enabled:
 		return

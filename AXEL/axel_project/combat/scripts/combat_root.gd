@@ -98,7 +98,7 @@ const BET_LADDER: Array[float] = [
 const BASELINE_PAYOUT_SCALAR := 0.431
 const PAYTABLE_SCALE := 10.0
 const TUTORIAL_LAST_SPIN_SEED := 12
-const TUTORIAL_SCRIPT_SEEDS: Array[int] = [10, 1, 12]
+const TUTORIAL_SCRIPT_SEEDS: Array[int] = [10, 8, 1, 12]
 
 var rng := CombatRNG.new()
 var multiplier := CombatMultiplier.new()
