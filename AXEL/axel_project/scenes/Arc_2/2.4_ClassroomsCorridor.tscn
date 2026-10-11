@@ -30,7 +30,7 @@ size = Vector2(220, 3228)
 size = Vector2(1316, 352)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lounge_interact_h"]
-size = Vector2(960, 1248)
+size = Vector2(176, 1248)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_classroom_interact"]
 size = Vector2(832, 1408)
@@ -130,7 +130,7 @@ position = Vector2(5933, 4580)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LoungeInteractArea" unique_id=1022168182]
-position = Vector2(915, -436)
+position = Vector2(523, -436)
 shape = SubResource("RectangleShape2D_lounge_interact_h")
 
 [node name="ClassroomInteractArea" type="Area2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1576588016]

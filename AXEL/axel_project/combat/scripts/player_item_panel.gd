@@ -21,13 +21,22 @@ const DESC_MARGIN_R := 8.0
 const DESC_MARGIN_T := 4.0
 const DESC_MARGIN_B := 4.0
 const DESC_UNDER_TITLE_PX := 8.0
-const PULSE_SCALE := 1.12
-const PULSE_SEC := 0.22
+const PULSE_SCALE := 1.35
+const PULSE_SEC := 0.45
+const PULSE_ICON_COLOR := Color(1.8, 1.25, 1.25, 1.0)
+const PULSE_NAME_COLOR := Color(1.0, 0.25, 0.25, 1.0)
+const PULSE_BACK_COLOR := Color(0.85, 0.0, 0.0, 0.55)
+const COUNT_FONT := 40
+const COUNT_COLOR := Color(1.0, 1.0, 1.0, 0.6)
+const COUNT_MIN_ITEMS := 3
 
 var _list: VBoxContainer
 var _fitting: bool = false
 var _desc_text_w := 0.0
 var _icons: Dictionary = {}
+var _count_label: Label
+var _slot_cap := 0
+var _item_count := 0
 var _pulse_counts: Dictionary = {}
 var _pulse_tweens: Dictionary = {}
 var _pending_pulses: Array[String] = []
@@ -40,19 +49,46 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	if not resized.is_connected(_on_resized):
 		resized.connect(_on_resized)
+	var body := VBoxContainer.new()
+	body.name = "Body"
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 4)
+	add_child(body)
 	var scroll := ScrollContainer.new()
 	scroll.name = "Scroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	add_child(scroll)
+	body.add_child(scroll)
 	_list = VBoxContainer.new()
 	_list.name = "List"
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.propagate_maximum_size = true
 	_list.add_theme_constant_override("separation", LIST_SEP)
 	scroll.add_child(_list)
+	_count_label = Label.new()
+	_count_label.name = "SlotCount"
+	_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_count_label.add_theme_font_override("font", VT323_FONT)
+	_count_label.add_theme_font_size_override("font_size", COUNT_FONT)
+	_count_label.add_theme_color_override("font_color", COUNT_COLOR)
+	_count_label.visible = false
+	body.add_child(_count_label)
+
+
+func set_slot_cap(cap: int) -> void:
+	_slot_cap = maxi(cap, 0)
+	_refresh_count()
+
+
+func _refresh_count() -> void:
+	if _count_label == null:
+		return
+	_count_label.visible = _slot_cap > 0 and _item_count >= COUNT_MIN_ITEMS
+	_count_label.text = "%d / %d" % [_item_count, _slot_cap]
 
 
 func set_equipped_items(items: Array) -> void:
@@ -61,6 +97,11 @@ func set_equipped_items(items: Array) -> void:
 	_icons.clear()
 	for child in _list.get_children():
 		child.queue_free()
+	_item_count = 0
+	for item in items:
+		if item != null:
+			_item_count += 1
+	_refresh_count()
 	if items.is_empty():
 		return
 	for item in items:
@@ -99,12 +140,42 @@ func pulse_item(item_id: String) -> void:
 	icon.scale = Vector2.ONE
 	icon.modulate = Color.WHITE
 	icon.pivot_offset = Vector2(ICON_PX, ICON_PX) * 0.5
+	var row := icon.get_parent()
+	var back := row.get_node_or_null("PulseBack") as ColorRect
+	var name_lab := _row_name_label(row)
+	if back != null:
+		back.color = Color(PULSE_BACK_COLOR, 0.0)
+	if name_lab != null:
+		name_lab.add_theme_color_override("font_color", NAME_COLOR)
 	var tw := CombatPace.bind(create_tween())
 	_pulse_tweens[item_id] = tw
-	tw.tween_property(icon, "scale", Vector2(PULSE_SCALE, PULSE_SCALE), PULSE_SEC * 0.45)
-	tw.parallel().tween_property(icon, "modulate", Color(1.35, 0.9, 0.9, 1.0), PULSE_SEC * 0.45)
-	tw.tween_property(icon, "scale", Vector2.ONE, PULSE_SEC * 0.55)
-	tw.parallel().tween_property(icon, "modulate", Color.WHITE, PULSE_SEC * 0.55)
+	tw.tween_property(icon, "scale", Vector2(PULSE_SCALE, PULSE_SCALE), PULSE_SEC * 0.3)
+	tw.parallel().tween_property(icon, "modulate", PULSE_ICON_COLOR, PULSE_SEC * 0.3)
+	if back != null:
+		tw.parallel().tween_property(back, "color", PULSE_BACK_COLOR, PULSE_SEC * 0.3)
+	if name_lab != null:
+		tw.parallel().tween_method(func(c: Color) -> void: _tint_name(name_lab, c), NAME_COLOR, PULSE_NAME_COLOR, PULSE_SEC * 0.3)
+	tw.tween_property(icon, "scale", Vector2.ONE, PULSE_SEC * 0.7)
+	tw.parallel().tween_property(icon, "modulate", Color.WHITE, PULSE_SEC * 0.7)
+	if back != null:
+		tw.parallel().tween_property(back, "color", Color(PULSE_BACK_COLOR, 0.0), PULSE_SEC * 0.7)
+	if name_lab != null:
+		tw.parallel().tween_method(func(c: Color) -> void: _tint_name(name_lab, c), PULSE_NAME_COLOR, NAME_COLOR, PULSE_SEC * 0.7)
+
+
+func _tint_name(name_lab: Label, c: Color) -> void:
+	if is_instance_valid(name_lab):
+		name_lab.add_theme_color_override("font_color", c)
+
+
+func _row_name_label(row: Node) -> Label:
+	if row == null:
+		return null
+	for child in row.get_children():
+		var lab := child as Label
+		if lab != null and bool(lab.get_meta("item_row_name", false)):
+			return lab
+	return null
 
 
 func pulse_play_count(item_id: String) -> int:
@@ -125,6 +196,12 @@ func _make_row(item: Resource) -> Control:
 	var row := Control.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.custom_minimum_size = Vector2(0, ICON_PX)
+	var back := ColorRect.new()
+	back.name = "PulseBack"
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	back.color = Color(PULSE_BACK_COLOR, 0.0)
+	back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.add_child(back)
 	var icon := TextureRect.new()
 	icon.set_meta("item_row_icon", true)
 	icon.position = Vector2.ZERO

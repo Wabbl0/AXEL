@@ -2504,6 +2504,8 @@ func _refresh_equipped_list() -> void:
 	var items: Array = []
 	if inv.get("items") != null:
 		items = inv.items
+	if _player_box.has_method("set_slot_cap") and inv.has_method("get_current_max_slots"):
+		_player_box.call("set_slot_cap", int(inv.get_current_max_slots()))
 	_player_box.call("set_equipped_items", items)
 
 

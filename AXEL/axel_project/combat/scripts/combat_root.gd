@@ -119,6 +119,7 @@ var _weights: Dictionary = {}
 var _base_weights: Dictionary = {}
 var _spins_used: int = 0
 var _bets_used_cents: int = 0
+var _goal_head_start_cents: int = 0
 var _lifetime_spins_used: int = 0
 var _current_seed: int = 0
 var _encounter_complete: bool = false
@@ -315,9 +316,25 @@ func get_goal_base_target_cents() -> int:
 	return _encounter_goal_base_target_cents
 
 func get_effective_goal_target_cents() -> int:
-	var pct := _item_fx.goal_percent(inventory.items) + _lore_goal_bonus
+	var pct := _lore_goal_bonus
 	var raw := int(round(float(_encounter_goal_base_target_cents) * (1.0 + pct)))
 	return _ceil_to_multiple(raw, 5)
+
+
+func get_goal_head_start_cents() -> int:
+	return _goal_head_start_cents
+
+
+func _refresh_goal_head_start() -> void:
+	if _bets_used_cents > 0 or _encounter_complete:
+		return
+	var goal := get_effective_goal_target_cents()
+	var pct := _item_fx.head_start_percent(inventory.items)
+	var head_start := int(floor(float(goal) * pct / 5.0)) * 5
+	head_start = clampi(head_start, 0, maxi(goal - 5, 0))
+	if _encounter_goal_winnings_cents == _goal_head_start_cents:
+		_encounter_goal_winnings_cents = head_start
+	_goal_head_start_cents = head_start
 
 
 func _ceil_to_multiple(n: int, step: int) -> int:
@@ -570,6 +587,7 @@ func setup_new_grid(seed_value: int) -> void:
 	_feature_hold = &""
 	_feature_held_cents = 0
 	_encounter_goal_winnings_cents = 0
+	_goal_head_start_cents = 0
 	_final_spin_assist_rolled = false
 	_last_spin_summary = _empty_spin_summary()
 	_bankroll_cents = STARTING_BANKROLL_CENTS
@@ -588,7 +606,8 @@ func setup_new_grid(seed_value: int) -> void:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
 	_music_reset_combat_encounter()
-	_item_fx.note_param(inventory.items, &"true_path_goal", "goal_percent")
+	_refresh_goal_head_start()
+	_item_fx.note_param(inventory.items, &"goal_head_start", "paid_percent")
 	_flush_item_procs()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
@@ -836,6 +855,7 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	_feature_hold = &""
 	_feature_held_cents = 0
 	_encounter_goal_winnings_cents = 0
+	_goal_head_start_cents = 0
 	_final_spin_assist_rolled = false
 	_bankroll_cents = preserved_bankroll
 	_clamp_bankroll()
@@ -852,7 +872,8 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
 	_music_reset_combat_encounter()
-	_item_fx.note_param(inventory.items, &"true_path_goal", "goal_percent")
+	_refresh_goal_head_start()
+	_item_fx.note_param(inventory.items, &"goal_head_start", "paid_percent")
 	_flush_item_procs()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
@@ -2291,7 +2312,7 @@ func _trinity_first_miss_extra_spin_count() -> int:
 	return extra_n
 
 
-func _grant_trinity_first_miss_extra_spins_sync(out: Dictionary, chosen: StringName) -> bool:
+func _grant_trinity_first_miss_extra_spins_sync(out: Dictionary) -> bool:
 	var extra_n := _trinity_first_miss_extra_spin_count()
 	if extra_n <= 0:
 		return false
@@ -2301,7 +2322,7 @@ func _grant_trinity_first_miss_extra_spins_sync(out: Dictionary, chosen: StringN
 		_repopulate_grid_handoff("trinity_first_miss")
 		var extra := _resolve_trinity_cascade_loop_sync()
 		_merge_spin_summary(out, extra)
-		_apply_trinity_spin_followup_sync(out, extra, chosen)
+		_apply_trinity_spin_followup(extra)
 		_dev_clear_non_wild_for_fs_guarantee()
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
@@ -2310,7 +2331,7 @@ func _grant_trinity_first_miss_extra_spins_sync(out: Dictionary, chosen: StringN
 	return false
 
 
-func _grant_trinity_first_miss_extra_spins_async(out: Dictionary, chosen: StringName) -> bool:
+func _grant_trinity_first_miss_extra_spins_async(out: Dictionary) -> bool:
 	var extra_n := _trinity_first_miss_extra_spin_count()
 	if extra_n <= 0:
 		return false
@@ -2320,7 +2341,7 @@ func _grant_trinity_first_miss_extra_spins_async(out: Dictionary, chosen: String
 		await _repopulate_grid_handoff_async("trinity_first_miss")
 		var extra := await _resolve_trinity_cascade_loop_async()
 		_merge_spin_summary(out, extra)
-		await _apply_trinity_spin_followup_async(out, extra, chosen)
+		_apply_trinity_spin_followup(extra)
 		_dev_clear_non_wild_for_fs_guarantee()
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
@@ -2338,26 +2359,25 @@ func _await_vice_entry_gate() -> void:
 func _run_trinity_round_async() -> Dictionary:
 	var out := _empty_spin_summary()
 	meter.saved_active_power = powers.current_id()
-	var chosen: StringName = meter.saved_active_power
 	multiplier.reset()
 	_refresh_multiplier_label()
 	_in_trinity_round = true
 	_begin_vice_winnings_hold()
 	_music_notify_trinity()
 	_item_fx.trinity_win_scalar_accum = 0.0
-	_item_fx.trinity_first_dead_done = false
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
 	await _play_meter_full_transition_async()
 	await _await_vice_entry_gate()
 	await _repopulate_grid_handoff_async("trinity_entry")
-	if await _grant_trinity_first_miss_extra_spins_async(out, chosen):
+	if await _grant_trinity_first_miss_extra_spins_async(out):
 		return out
 	var order: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
 	for id in order:
 		powers.set_current_id(id)
 		await _play_power_intro_flash_async(id)
 		_open_power_fx_log()
-		_trigger_item_power(id, 1.0, false, false)
+		_note_vice_potency(tmods)
+		_trigger_item_power(id, float(tmods.get("vice_potency", 1.0)), false, false)
 		_maybe_trinity_crucible(id, tmods)
 		var fx_log := _power_fx_log.duplicate()
 		_close_power_fx_log()
@@ -2365,7 +2385,7 @@ func _run_trinity_round_async() -> Dictionary:
 		await _play_power_act_fx(fx_log)
 		var post_power := await _resolve_trinity_cascade_loop_async()
 		_merge_spin_summary(out, post_power)
-		await _apply_trinity_spin_followup_async(out, post_power, chosen)
+		_apply_trinity_spin_followup(post_power)
 		_dev_clear_non_wild_for_fs_guarantee()
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
@@ -2376,28 +2396,27 @@ func _run_trinity_round_async() -> Dictionary:
 func _run_trinity_round_sync() -> Dictionary:
 	var out := _empty_spin_summary()
 	meter.saved_active_power = powers.current_id()
-	var chosen: StringName = meter.saved_active_power
 	multiplier.reset()
 	_in_trinity_round = true
 	_begin_vice_winnings_hold()
 	_music_notify_trinity()
 	_item_fx.trinity_win_scalar_accum = 0.0
-	_item_fx.trinity_first_dead_done = false
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
 	_play_meter_full_transition_sync()
 	_repopulate_grid_handoff("trinity_entry")
-	if _grant_trinity_first_miss_extra_spins_sync(out, chosen):
+	if _grant_trinity_first_miss_extra_spins_sync(out):
 		return out
 	var order: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
 	for id in order:
 		powers.set_current_id(id)
-		_trigger_item_power(id, 1.0, false, false)
+		_note_vice_potency(tmods)
+		_trigger_item_power(id, float(tmods.get("vice_potency", 1.0)), false, false)
 		_maybe_trinity_crucible(id, tmods)
 		out["power_triggered"] = true
 		_refresh_cells_visual()
 		var post_power := _resolve_trinity_cascade_loop_sync()
 		_merge_spin_summary(out, post_power)
-		_apply_trinity_spin_followup_sync(out, post_power, chosen)
+		_apply_trinity_spin_followup(post_power)
 		_dev_clear_non_wild_for_fs_guarantee()
 		if _count_non_wild_symbols() == 0:
 			_pending_free_spins = true
@@ -2504,6 +2523,7 @@ func _refresh_spin_weights() -> void:
 
 func _on_loadout_or_goal_changed() -> void:
 	_refresh_spin_weights()
+	_refresh_goal_head_start()
 	_finalize_encounter_if_needed()
 	emit_signal("readouts_progressed")
 
@@ -2782,6 +2802,13 @@ func _maybe_trinity_crucible(power_id: StringName, tmods: Dictionary) -> void:
 	_trigger_item_power(others[rng.randi_range(0, others.size() - 1)], pot, true, false)
 
 
+func _note_vice_potency(tmods: Dictionary) -> void:
+	if float(tmods.get("vice_potency", 1.0)) <= 1.0:
+		return
+	_item_fx.note_param(inventory.items, &"trinity_run", "vice_potency")
+	_flush_item_procs()
+
+
 func _finish_trinity_round() -> void:
 	_in_trinity_round = false
 	_commit_feature_hold()
@@ -2790,42 +2817,12 @@ func _finish_trinity_round() -> void:
 	_music_notify_trinity_ended(_pending_free_spins)
 
 
-func _apply_trinity_spin_followup_sync(out: Dictionary, step: Dictionary, chosen: StringName) -> void:
+func _apply_trinity_spin_followup(step: Dictionary) -> void:
 	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
 	if bool(step.get("produced_any_win", false)):
 		_item_fx.trinity_win_scalar_accum += float(tmods.get("win_scalar", 0.0))
 		_item_fx.note_param(inventory.items, &"trinity_run", "win_scalar")
 		_flush_item_procs()
-		return
-	if _item_fx.trinity_first_dead_done:
-		return
-	if not bool(tmods.get("first_dead_chosen", false)):
-		return
-	_item_fx.trinity_first_dead_done = true
-	_item_fx.note_param(inventory.items, &"trinity_run", "first_dead_chosen")
-	_flush_item_procs()
-	_trigger_item_power(chosen, 1.0, false, false)
-	var extra := _resolve_trinity_cascade_loop_sync()
-	_merge_spin_summary(out, extra)
-
-
-func _apply_trinity_spin_followup_async(out: Dictionary, step: Dictionary, chosen: StringName) -> void:
-	var tmods: Dictionary = _item_fx.trinity_mods(inventory.items)
-	if bool(step.get("produced_any_win", false)):
-		_item_fx.trinity_win_scalar_accum += float(tmods.get("win_scalar", 0.0))
-		_item_fx.note_param(inventory.items, &"trinity_run", "win_scalar")
-		_flush_item_procs()
-		return
-	if _item_fx.trinity_first_dead_done:
-		return
-	if not bool(tmods.get("first_dead_chosen", false)):
-		return
-	_item_fx.trinity_first_dead_done = true
-	_item_fx.note_param(inventory.items, &"trinity_run", "first_dead_chosen")
-	_flush_item_procs()
-	_trigger_item_power(chosen, 1.0, false, false)
-	var extra := await _resolve_trinity_cascade_loop_async()
-	_merge_spin_summary(out, extra)
 
 
 func _finish_item_spin_hooks(spin_summary: Dictionary) -> void:
@@ -2925,11 +2922,6 @@ func _apply_glyph_payouts(lines: Array, out: Dictionary) -> void:
 				out["payout"] = int(out["payout"]) + extra2
 				_add_round_winnings(extra2)
 				multiplier.add(maxi(1, int(round((mult - 1.0) * (1.0 - win_frac)))))
-			elif dest == "majority_mult":
-				var extra3 := _to_cents(float(line_pay) * (mult - 1.0) * 0.3)
-				out["payout"] = int(out["payout"]) + extra3
-				_add_round_winnings(extra3)
-				multiplier.add(maxi(1, int(round(mult * 0.7))))
 			else:
 				multiplier.add(maxi(1, int(round(mult))))
 

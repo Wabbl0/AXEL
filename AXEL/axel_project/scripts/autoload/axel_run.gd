@@ -464,8 +464,20 @@ func _return_to_world_room() -> void:
 			gm.call("set_basement_hint_soon", true)
 	_to_overworld_music()
 	get_tree().change_scene_to_file(dest)
+	await _wait_return_placement(world)
 	await _fade_in_after_combat()
 	_finish_busy = false
+
+
+func _wait_return_placement(world: Node) -> void:
+	if world == null or not world.has_method("is_return_placement_pending"):
+		return
+	for _i in 60:
+		if get_tree() == null:
+			return
+		await get_tree().process_frame
+		if not bool(world.call("is_return_placement_pending")):
+			return
 
 
 func _clear_world_encounter() -> void:

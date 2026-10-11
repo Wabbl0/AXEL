@@ -4,6 +4,7 @@ extends RefCounted
 const ALL_POWERS: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
 const PAID_SPIN_SCALAR_TOTAL_CAP := 2.0
 const EXTRA_WILDS_PER_CREATE_CAP := 1
+const HEAD_START_CAP := 0.5
 
 var dead_power_streak: int = 0
 var pending_power_chance: float = 0.0
@@ -14,7 +15,6 @@ var first_wild_this_spin: bool = true
 var first_premium_this_spin: bool = true
 var overclock_used_this_spin: bool = false
 var trinity_win_scalar_accum: float = 0.0
-var trinity_first_dead_done: bool = false
 var fs_first_win_this_spin: bool = true
 var glyphs: Dictionary = {}
 var meter_frac_accum: float = 0.0
@@ -30,7 +30,6 @@ func reset_encounter() -> void:
 	first_dead_used = false
 	wilds_created_encounter = 0
 	trinity_win_scalar_accum = 0.0
-	trinity_first_dead_done = false
 	glyphs.clear()
 	meter_frac_accum = 0.0
 	chaining = false
@@ -127,13 +126,13 @@ func _params(item: Resource) -> Dictionary:
 	return {}
 
 
-func goal_percent(items: Array) -> float:
+func head_start_percent(items: Array) -> float:
 	var total := 0.0
 	for item in items:
-		if _eff(item) != &"true_path_goal":
+		if _eff(item) != &"goal_head_start":
 			continue
-		total += float(_params(item).get("goal_percent", 0.0))
-	return total
+		total += float(_params(item).get("paid_percent", 0.0))
+	return minf(total, HEAD_START_CAP)
 
 
 func paid_spin_payout_scalar(items: Array, spins_used: int) -> float:
@@ -256,9 +255,6 @@ func line_payout_bonus(
 			&"normal_payout_bonus":
 				if symbol_tier == 0:
 					add = float(p.get("amount", 0.0))
-			&"girl_power_chance":
-				if symbol_tier == 0:
-					add = float(p.get("normal_value", 0.0))
 			&"power_payout_bonus":
 				if power_id != &"" and StringName(str(p.get("power", ""))) == power_id:
 					add = float(p.get("amount", 0.0))
@@ -376,7 +372,7 @@ func trinity_mods(items: Array) -> Dictionary:
 	var mods := {
 		"first_miss_extra_spins": 0,
 		"win_scalar": 0.0,
-		"first_dead_chosen": false,
+		"vice_potency": 1.0,
 		"chosen_plus_random": 0.0,
 	}
 	for item in items:
@@ -385,8 +381,8 @@ func trinity_mods(items: Array) -> Dictionary:
 		var p := _params(item)
 		mods["first_miss_extra_spins"] = int(mods["first_miss_extra_spins"]) + int(p.get("first_miss_extra_spins", 0))
 		mods["win_scalar"] = float(mods["win_scalar"]) + float(p.get("win_scalar", 0.0))
-		if p.has("first_dead_chosen"):
-			mods["first_dead_chosen"] = bool(p.get("first_dead_chosen", false))
+		if p.has("vice_potency"):
+			mods["vice_potency"] = maxf(float(mods["vice_potency"]), float(p.get("vice_potency", 1.0)))
 		if p.has("chosen_plus_random"):
 			mods["chosen_plus_random"] = float(p.get("chosen_plus_random", 0.0))
 	return mods

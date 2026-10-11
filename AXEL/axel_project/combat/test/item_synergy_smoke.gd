@@ -333,10 +333,14 @@ func _test_h_changes_effective_goal() -> void:
 		await cr.ready
 	cr.set_goal_base_target_cents(10000)
 	_assert(cr.get_effective_goal_target_cents() == 10000, "base effective without H")
-	var h := _make_mock_item(&"E-H", "Confession Card", 3, &"true_path_goal", {"goal_percent": 0.25})
+	_assert(cr.get_chip_bar_goal_progress_cents() == 0, "no head start without H")
+	var h := _make_mock_item(&"E-H", "Confession Card", 3, &"goal_head_start", {"paid_percent": 0.2})
 	h.family = "H"
 	cr.equip_item(h)
-	_assert(cr.get_effective_goal_target_cents() == 12500, "H Epic raises effective to 12500")
+	_assert(cr.get_effective_goal_target_cents() == 10000, "H keeps the goal unchanged")
+	_assert(cr.get_chip_bar_goal_progress_cents() == 2000, "H Epic pre-pays 20% of the goal")
+	cr.set_goal_base_target_cents(20000)
+	_assert(cr.get_chip_bar_goal_progress_cents() == 4000, "head start follows a new goal before the first spin")
 	cr.queue_free()
 	await process_frame
 

@@ -383,8 +383,8 @@ func _check_item_rows() -> void:
 		_fail("preview payout must not proc an item")
 	var goal_item: Resource = defs.new()
 	goal_item.set("id", &"C-H")
-	goal_item.set("effect_id", &"true_path_goal")
-	goal_item.set("effect_params", {"goal_percent": 0.08})
+	goal_item.set("effect_id", &"goal_head_start")
+	goal_item.set("effect_params", {"paid_percent": 0.08})
 	fx.call("note_paid_spin_passives", [goal_item])
 	var goal_procs: Array = fx.call("drain_procs")
 	if not goal_procs.is_empty():

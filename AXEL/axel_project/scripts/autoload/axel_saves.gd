@@ -202,6 +202,12 @@ func new_game(slot: int) -> bool:
 	_write_blocked.erase(slot)
 	_delete_slot_files(slot)
 	GameManager.reset_state()
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile != null and profile.has_method("begin_new_run"):
+		profile.call("begin_new_run")
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	if tutorial != null and tutorial.has_method("forget_session_marks"):
+		tutorial.call("forget_session_marks")
 	var run := get_node_or_null("/root/AxelRun")
 	if run != null and run.has_method("reset_run"):
 		run.call("reset_run", slot)

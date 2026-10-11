@@ -11,6 +11,7 @@ var _config := ConfigFile.new()
 var _path := ""
 var _play_scene := false
 var _real_path := ""
+var _session := ConfigFile.new()
 
 
 func _enter_tree() -> void:
@@ -49,18 +50,25 @@ func end_play_scene_profile() -> void:
 
 
 func is_guide_unlocked() -> bool:
-	return bool(_config.get_value(SECTION, "guide_unlocked", false))
+	return bool(_tutorial_config().get_value(SECTION, "guide_unlocked", false))
 
 
 func unlock_guide() -> void:
+	if _fresh_tutorials():
+		_session.set_value(SECTION, "guide_unlocked", true)
+		profile_changed.emit()
+		return
 	_set_flag("guide_unlocked")
 
 
 func has_seen_free_spins() -> bool:
-	return bool(_config.get_value(SECTION, "free_spins_seen", false))
+	return bool(_tutorial_config().get_value(SECTION, "free_spins_seen", false))
 
 
 func mark_free_spins_seen() -> void:
+	if _fresh_tutorials():
+		_session.set_value(SECTION, "free_spins_seen", true)
+		return
 	_set_flag("free_spins_seen")
 
 
@@ -77,10 +85,14 @@ func mark_item_found(item_id: String) -> void:
 
 
 func has_seen_tutorial(id: String) -> bool:
+	if _fresh_tutorials():
+		return false
 	return _list("tutorials_seen").has(id)
 
 
 func mark_tutorial_seen(id: String) -> void:
+	if _fresh_tutorials():
+		return
 	_add_to_list("tutorials_seen", id)
 
 
@@ -93,6 +105,13 @@ func merge_from_run(state: Object) -> void:
 		if not item_id.is_empty() and not found.has(item_id):
 			found.append(item_id)
 			changed = true
+	if _fresh_tutorials():
+		if bool(state.get("tutorial_fight_done")):
+			_session.set_value(SECTION, "guide_unlocked", true)
+		if changed:
+			_config.set_value(SECTION, "items_found", found)
+			_save()
+		return
 	var seen := _list("tutorials_seen")
 	for id in PackedStringArray(state.get("tutorial_seen")):
 		if not id.is_empty() and not seen.has(id):
@@ -107,14 +126,27 @@ func merge_from_run(state: Object) -> void:
 		_save()
 
 
+func begin_new_run() -> void:
+	_session = ConfigFile.new()
+
+
 func reset_profile() -> void:
 	_config = ConfigFile.new()
+	_session = ConfigFile.new()
 	_save()
 
 
 func debug_use_memory_only() -> void:
 	_path = ""
 	_config = ConfigFile.new()
+
+
+func _fresh_tutorials() -> bool:
+	return OS.has_feature("editor_runtime") and DisplayServer.get_name() != "headless"
+
+
+func _tutorial_config() -> ConfigFile:
+	return _session if _fresh_tutorials() else _config
 
 
 func _resolve_path() -> String:

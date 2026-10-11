@@ -46,11 +46,11 @@ const LESSONS := {
 	},
 	"fight_items": {
 		"title": "Fights",
-		"body": "Equipped ITEMS sit on the left. They act on their own. Hover a name to read it.",
+		"body": "Equipped ITEMS sit on the left. They act on their own and are how you win. Hover a name to read it.",
 	},
 	"items_hand": {
 		"title": "Items",
-		"body": "That is an item. Press E to take it. It equips by itself if you have a free slot.",
+		"body": "That is an item. Press E to take it. It equips by itself if you have a free slot. Items are how you win fights. Keep every one you find.",
 	},
 	"items_wheel": {
 		"title": "Items",
@@ -406,6 +406,10 @@ func _allows() -> bool:
 
 func _is_fight(id: String) -> bool:
 	return GLOW_PIECES.has(id)
+
+
+func forget_session_marks() -> void:
+	_marked.clear()
 
 
 func _is_seen(id: String) -> bool:

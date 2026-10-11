@@ -647,10 +647,11 @@ func _slot_angles(count: int) -> Array:
 	var left := ARC_START + 0.48
 	var right := ARC_END - 0.48
 	var mid := (left + right) * 0.5
+	var step := (right - left) * 0.5
 	if count <= 1:
 		return [mid]
 	if count == 2:
-		return [left, right]
+		return [mid - step * 0.5, mid + step * 0.5]
 	return [left, mid, right]
 
 

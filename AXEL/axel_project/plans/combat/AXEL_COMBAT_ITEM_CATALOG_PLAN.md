@@ -106,7 +106,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![C-F](../../combat/art/item_icons/C-F.png) | `C-F` | **Threshold Trace**   | `F`    | If 8+ matching symbols on board after cascade, award `0.25×` stake (then `0.431` payout scalar)                            |
 | ![C-M](../../combat/art/item_icons/C-M.png) | `C-M` | **Chalk Mark**        | `M`    | 1 random cell, multiplier `x2`–`x2.5`; bonus to that spin’s winnings only                                                  |
 | ![C-G](../../combat/art/item_icons/C-G.png) | `C-G` | **Locker Tape**       | `G`    | Regular spins only — payout bonus `+15%`. Skip-guard if refill is ever invoked. Does not apply in Vice Round or Free Spins |
-| ![C-H](../../combat/art/item_icons/C-H.png) | `C-H` | **Loose Thread**      | `H`    | Encounter goal **+10%** at start (playtest Base and world ladder). Additive with other `*-H`                               |
+| ![C-H](../../combat/art/item_icons/C-H.png) | `C-H` | **Loose Thread**      | `H`    | Each fight starts with **5%** of the goal already paid. Additive with other `*-H`                               |
 
 
 ---
@@ -141,7 +141,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![U-F](../../combat/art/item_icons/U-F.png) | `U-F` | **Threshold Knot**    | `F`    | Threshold `7+`; bonus `0.50×` stake (then `0.431` payout scalar)      |
 | ![U-M](../../combat/art/item_icons/U-M.png) | `U-M` | **Ink Tag**           | `M`    | 3 cells, multiplier `x2`–`x3`; winnings-only bonus                    |
 | ![U-G](../../combat/art/item_icons/U-G.png) | `U-G` | **Rusted Hasp**       | `G`    | Same as `C-G` with stronger payout bonus (`+20%`); regular spins only |
-| ![U-H](../../combat/art/item_icons/U-H.png) | `U-H` | **Torn Label**        | `H`    | Encounter goal **+15%** (playtest Base and world ladder)              |
+| ![U-H](../../combat/art/item_icons/U-H.png) | `U-H` | **Torn Label**        | `H`    | Each fight starts with **10%** of the goal already paid              |
 
 
 ---
@@ -156,7 +156,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![R1](../../combat/art/item_icons/R1.png) | `R1` | **Fractured Reel** | Each paid spin adds `+0.10x` payout scalar (cap `+1.00x`); first paid spin per encounter is free |
 | ![R2](../../combat/art/item_icons/R2.png) | `R2` | **Gilded Commons** | Normal-symbols pay 35% more and are 10% more likely to appear                                                  |
 | ![R3](../../combat/art/item_icons/R3.png) | `R3` | **Triune Sigil**   | Power symbols are 15% more likely to appear and pay 15% more                                                   |
-| ![R4](../../combat/art/item_icons/R4.png) | `R4` | **Glitch Button**  | Random power activation chance doubled; normal-symbol value `-10%` (risk/reward)                               |
+| ![R4](../../combat/art/item_icons/R4.png) | `R4` | **Glitch Button**  | Random power activation chance doubled (no downside)                               |
 | ![R5](../../combat/art/item_icons/R5.png) | `R5` | **Chain Wildseed** | Every 3rd wild created in an encounter automatically creates a bonus wild                                      |
 | ![R6](../../combat/art/item_icons/R6.png) | `R6` | **Vice Echo**      | When a random power triggers, `30%` chance to trigger a second at `50%` potency                                |
 
@@ -174,7 +174,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![R-F](../../combat/art/item_icons/R-F.png) | `R-F` | **Threshold Brand**     | `F`    | Threshold `6+`; `0.75×` stake (then `0.431` scalar); once per cascade step                     |
 | ![R-M](../../combat/art/item_icons/R-M.png) | `R-M` | **Scratch Ticket**      | `M`    | 3 cells, `x2`–`x3`; on match split **60%** to spin winnings, **40%** bump to active multiplier |
 | ![R-G](../../combat/art/item_icons/R-G.png) | `R-G` | **Basement Bar**        | `G`    | Stronger seal + payout trade (`+30%`); regular spins only                                      |
-| ![R-H](../../combat/art/item_icons/R-H.png) | `R-H` | **Witness Slip**        | `H`    | Encounter goal **+20%** (playtest Base and world ladder)                                       |
+| ![R-H](../../combat/art/item_icons/R-H.png) | `R-H` | **Witness Slip**        | `H`    | Each fight starts with **15%** of the goal already paid                                       |
 
 
 ---
@@ -199,13 +199,13 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ------------------------------------------- | ----- | ---------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------- |
 | ![E-A](../../combat/art/item_icons/E-A.png) | `E-A` | **Vice Relay Spine**   | `A`    | Each power activation triggers both other powers at `50%` potency                                                       |
 | ![E-B](../../combat/art/item_icons/E-B.png) | `E-B` | **Meter Furnace**      | `B`    | Premium meter fills on any winning premium line (live: at least a full 3-section fill) |
-| ![E-C](../../combat/art/item_icons/E-C.png) | `E-C` | **Vice Halo**          | `C`    | During Vice Round, first non-winning spin triggers guaranteed chosen power                                              |
+| ![E-C](../../combat/art/item_icons/E-C.png) | `E-C` | **Vice Halo**          | `C`    | During the Vice Round, every power fires at **150%** strength (`vice_potency: 1.5`)                                              |
 | ![E-D](../../combat/art/item_icons/E-D.png) | `E-D` | **Free Spins Engine**  | `D`    | First win each Free Spins spin duplicates 1 winning symbol into wild                                                    |
 | ![E-E](../../combat/art/item_icons/E-E.png) | `E-E` | **Diagonal Cruciform** | `E`    | Both major diagonals; diagonal wins contribute to premium meter at `75%` normal contribution                            |
 | ![E-F](../../combat/art/item_icons/E-F.png) | `E-F` | **Threshold Tribunal** | `F`    | Threshold `6+`; `0.75×` stake (then `0.431` scalar); board-count also grants **one** premium meter section              |
-| ![E-M](../../combat/art/item_icons/E-M.png) | `E-M` | **CRT Etching**        | `M`    | 4 cells, `x2`–`x3`; live split is **30%** winnings / **70%** active multiplier (hardcoded, not in the `.tres`)          |
+| ![E-M](../../combat/art/item_icons/E-M.png) | `E-M` | **CRT Etching**        | `M`    | 4 cells, `x2`–`x3`; a marked win adds the full mark (rounded) to the active multiplier (`dest: all_mult`)          |
 | ![E-G](../../combat/art/item_icons/E-G.png) | `E-G` | **Mason Lock**         | `G`    | Large payout trade (`+40%`); regular spins only                                                                         |
-| ![E-H](../../combat/art/item_icons/E-H.png) | `E-H` | **Confession Card**    | `H`    | Encounter goal **+25%** (playtest Base and world ladder)                                                                |
+| ![E-H](../../combat/art/item_icons/E-H.png) | `E-H` | **Confession Card**    | `H`    | Each fight starts with **20%** of the goal already paid                                                                |
 
 
 ---
@@ -236,7 +236,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![L-F](../../combat/art/item_icons/L-F.png) | `L-F` | **Threshold Dominion**     | `F`    | Threshold `8+`; board-count wins become full resolver wins (line wins first; leftover matching cells clear)                                      |
 | ![L-M](../../combat/art/item_icons/L-M.png) | `L-M` | **Red Glyph**              | `M`    | 4 cells, `x2.5`–`x3.5`; glyph value immediately to active total multiplier for the spin                                                          |
 | ![L-G](../../combat/art/item_icons/L-G.png) | `L-G` | **Iron Lung**              | `G`    | Maximum seal + payout trade (`+50%`); regular spins only. Not combat-gated — basement floor scatter is the only world roll for family `G`        |
-| ![L-H](../../combat/art/item_icons/L-H.png) | `L-H` | **True Name Tag**          | `H`    | Encounter goal **+35%** (playtest Base and world ladder). Strongest live H percent. True Ending meta flags are **not wired**                     |
+| ![L-H](../../combat/art/item_icons/L-H.png) | `L-H` | **True Name Tag**          | `H`    | Each fight starts with **25%** of the goal already paid. Strongest live H percent. True Ending meta flags are **not wired**                     |
 
 
 ---
@@ -261,10 +261,10 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 
 ## True-path passives (`*-H`) — live
 
-- **Effect:** increases the **current encounter goal** by a fixed percent at encounter start: **10 / 15 / 20 / 25 / 35**.
-- **Stacking:** percents **add**, then multiply once: `effective = round(base * (1 + sum H% + lore bonus))`. Example: C-H + U-H → `base * 1.25`, not `1.10 * 1.15`.
-- **Where:** same formula on the playtest Base target **and** live world-fight ladder bases (`AxelRun.set_goal_base_target_cents()`). `.tres` text still says “playtest Base target”; the code is not playtest-only.
-- **True Ending:** not wired. H items only bump the goal. Exact ending gate (single legendary vs full set) is still a design choice.
+- **Effect (`goal_head_start`, `paid_percent`):** each fight starts with a share of the goal already counted toward GOAL: **5 / 10 / 15 / 20 / 25%**. The goal itself does not change.
+- **Stacking:** percents **add**, capped at **50%** (`HEAD_START_CAP` in `item_effect_dispatcher.gd`), then `floor(goal * pct)` to a multiple of 5, never the full goal. Example: C-H + U-H → 15%.
+- **Where:** `CombatRoot._refresh_goal_head_start()` on fight setup and on loadout or goal change, until the first paid spin. Same on the playtest Base target and live world-fight ladder.
+- **True Ending:** not wired. H items only give the head start. Exact ending gate (single legendary vs full set) is still a design choice.
 
 ---
 
@@ -286,7 +286,7 @@ Live combat never calls `grid.refill()`. Empty cells already stay empty for ever
 | `C-M` | 1     | `x2`–`x2.5`   | winnings                                                        |
 | `U-M` | 3     | `x2`–`x3`     | winnings                                                        |
 | `R-M` | 3     | `x2`–`x3`     | split 60% winnings / 40% multiplier                             |
-| `E-M` | 4     | `x2`–`x3`     | majority_mult — code uses **30%** winnings / **70%** multiplier |
+| `E-M` | 4     | `x2`–`x3`     | all_mult — full mark value to the multiplier |
 | `L-M` | 4     | `x2.5`–`x3.5` | all_mult                                                        |
 
 
@@ -368,7 +368,7 @@ Rough shape over a playthrough:
 ## Still future
 
 1. Mythic variants after a balance pass.
-2. True Ending meta flags for `*-H` (items only bump the goal today).
+2. True Ending meta flags for `*-H` (items only give a goal head start today).
 
 ## Validation / Acceptance Checks
 
@@ -381,7 +381,7 @@ Rough shape over a playthrough:
 ## Risks and Fallbacks
 
 - **G + empty grid:** edge cases if refill returns — define lose-stuck or forced end-spin behavior then.
-- **H stacking:** playtest and world fights use **additive** goal percents on the Base target.
+- **H stacking:** playtest and world fights use **additive** head-start percents (cap 50%).
 - Resolver overrides (E/F families): keep scoped and logged. **Family F vs lines:** line wins resolve first; L-F board-count full-resolver clears leftover matching cells not already paid this cascade step.
 
 ## Playtest HUD (combat_test only)
@@ -392,7 +392,7 @@ Not player-final. Right-hand ITEMS list:
 - **Family rows** (C→E rank button, no Legendary on the slider): A Power Chain, B Premium Meter, C Vice Round, D Free Spins, E Diagonal, F Board-count, M Corner glyphs, G Sealed grid, H True-path, plus baseline lines (Paid spin payout, Normal payout, Power-symbol weight, Power chance, Cigarette, Alcohol, Bloody Hand, Extra wild). Legendary of a line is a unique row (`L2` Overclock is the A legendary unique; `L1` is the Extra-wild legendary unique; `L-B`…`L-H` unique).
 - **Unique items** grouped by rarity (rainbow rarity text). Common-only leftovers stay here (`C3`, `C5`, `C9`, `C10`). Within a rarity group, sort by real item number (`C3` before `C10`, not string order). `L-A` is not listed.
 - Header `ITEMS (n/max)` plus debug **Ignore slot cap** (off by default). Default cap 7, or 9 with Void Satchel.
-- **GOAL:** Base Target + Progress live in **AxelCombatDevTools** (debug wrench menu), not the ITEMS panel. Effective = `round(base * (1 + sum of equipped H percents + lore bonus))`. `%GoalLabel` stays as display. **Live world fights do not use the 10000 default** — `AxelRun` pushes the ladder rung (`100 / 150 / 225`, then ×1.5 per further fight rounded to 25) through `set_goal_base_target_cents()`, and H percents multiply on top of that. Act fights keep 10000.
+- **GOAL:** Base Target + Progress live in **AxelCombatDevTools** (debug wrench menu), not the ITEMS panel. Effective = `round(base * (1 + lore bonus))`; H items add a head start instead. `%GoalLabel` stays as display. **Live world fights do not use the 10000 default** — `AxelRun` pushes the ladder rung (`100 / 150 / 225`, then ×1.5 per further fight rounded to 25) through `set_goal_base_target_cents()`, and H items pre-pay part of it. Act fights keep 10000.
 - **Hover description:** runtime `ItemDescOverlay` (not saved in the `.tscn`). Own **CanvasLayer 107** (above WidgetLayer 106, below CRT 108) so it **can draw over** item rows. Solid black fill, whole card **90%** opacity, word wrap, 0.08s fade-in (text swap while open stays instant). Tries to sit under the cursor / below the row and clip to the ITEMS rectangle.
 
 ## Player-facing descriptions

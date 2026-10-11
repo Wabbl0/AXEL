@@ -772,7 +772,7 @@ func _assert_uc_grants_extra_trinity_spin_only_on_first_miss() -> void:
 		return
 	var before_extra := _snapshot_ids(cr)
 	var extra_out: Dictionary = cr._empty_spin_summary()
-	cr._grant_trinity_first_miss_extra_spins_sync(extra_out, cr.powers.current_id())
+	cr._grant_trinity_first_miss_extra_spins_sync(extra_out)
 	if before_extra == _snapshot_ids(cr):
 		push_error("U-C extra Vice Round spin should fill a new board when the first spin misses.")
 		quit(1)

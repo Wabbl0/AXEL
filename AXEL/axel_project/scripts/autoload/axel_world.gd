@@ -129,6 +129,7 @@ var _rng := RandomNumberGenerator.new()
 var _pending_return_scene: String = ""
 var _pending_return_tex := Vector2.ZERO
 var _pending_return_valid := false
+var _return_placing := false
 var _starting_fight := false
 var _populate_token: Dictionary = {}
 var _encounters_suppressed := false
@@ -608,6 +609,7 @@ func _on_scene_changed() -> void:
 		_apply_return_placement(scene)
 	elif _pending_return_scene == path:
 		_pending_return_scene = ""
+		_pending_return_valid = false
 	if is_enabled() and is_indoor_scene(path):
 		_populate_room(scene)
 	if is_enabled() and path == TUTORIAL_SCENE and is_locker_tutorial_pending():
@@ -633,18 +635,26 @@ func _mark_visited_if_walkable(scene: Node) -> void:
 		gm.call("mark_room_visited", scene.scene_file_path)
 
 
+func is_return_placement_pending() -> bool:
+	return _pending_return_valid or _return_placing
+
+
 func _apply_return_placement(scene: Node) -> void:
 	var tex := _pending_return_tex
 	_pending_return_scene = ""
 	_pending_return_valid = false
-	await _settle_frames(scene, 10)
-	if scene != _current_scene():
-		return
-	var env := _env_of(scene)
+	_return_placing = true
 	var player := scene.find_child("Player", true, false) as Node2D
-	if env == null or player == null:
-		return
-	PlayerSpawnSync.apply_tex(env, player, tex)
+	var was_visible := player != null and player.visible
+	if player != null:
+		player.visible = false
+	await _settle_frames(scene, 10)
+	if scene == _current_scene() and is_instance_valid(player):
+		var env := _env_of(scene)
+		if env != null:
+			PlayerSpawnSync.apply_tex(env, player, tex)
+		player.visible = was_visible
+	_return_placing = false
 
 
 func _ensure_opening_room() -> void:
