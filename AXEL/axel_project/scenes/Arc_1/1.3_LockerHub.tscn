@@ -150,4 +150,15 @@ theme_override_fonts/font = ExtResource("4_font")
 theme_override_font_sizes/font_size = 36
 text = "X"
 
+[node name="EscHint" type="Label" parent="ExitLayer"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 124.0
+offset_bottom = 72.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 48
+text = "[ESC]"
+
 [node name="TopDialogueOverlay" parent="." unique_id=665918630 instance=ExtResource("3_top_dialogue")]

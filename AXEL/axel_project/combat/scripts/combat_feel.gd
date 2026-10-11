@@ -503,6 +503,28 @@ func _make_loss_flames(view: Vector2):
 	return burst
 
 
+func play_win_flames(piece: Control, counts: Array) -> void:
+	if _reduce_flashing() or _root == null or piece == null:
+		return
+	var layer := CanvasLayer.new()
+	layer.name = "WinFlameLayer"
+	layer.layer = 114
+	_root.add_child(layer)
+	var host := Control.new()
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.size = _loss_view_size()
+	layer.add_child(host)
+	var burst = FLAME_BURST_SCRIPT.new()
+	burst.name = "WinFlameBurst"
+	layer.add_child(burst)
+	burst.bind(host)
+	var center := piece.get_global_transform_with_canvas() * (piece.size * 0.5)
+	await burst.play_waves(center, counts)
+	await burst.await_done()
+	if is_instance_valid(layer):
+		layer.queue_free()
+
+
 func _loss_flame_at(piece: Control, counts: Array) -> void:
 	if _loss_flames == null or not is_instance_valid(_loss_flames):
 		return

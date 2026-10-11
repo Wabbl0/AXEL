@@ -92,7 +92,7 @@ Run these after any GDScript change. Run from the repo root. Exit code 0 means p
 Scripts:
 - `combat/test/determinism_check.gd`
 - `combat/test/powers_check.gd`
-- `combat/combat_test_scaffold_check.gd`
+- `combat/test/combat_test_scaffold_check.gd`
 - `tools/scene_smoke_check.gd`
 - `tools/qa/audio_bus_layout_check.gd`
 - `settings_persistence_check.gd`

@@ -5,10 +5,11 @@ const SPEED_SLOW := 0.5
 const SPEED_NORMAL := 1.0
 const SPEED_FAST := 2.0
 const RUSH_MULT := 8.0
+const RUSH_STEPS: Array[float] = [1.0, 3.0, RUSH_MULT]
 
 static var _live: CombatPace
 
-var _rush := false
+var _rush_level := 0
 var _freeze := false
 var _tweens: Array[Tween] = []
 var _applied := -1.0
@@ -30,6 +31,18 @@ static func set_rush(on: bool) -> void:
 	_live._set_rush(on)
 
 
+static func step_rush() -> void:
+	if _live == null:
+		return
+	_live._set_rush_level(_live._rush_level + 1)
+
+
+static func rush_level() -> int:
+	if _live == null:
+		return 0
+	return _live._rush_level
+
+
 static func clear_rush() -> void:
 	set_rush(false)
 
@@ -49,7 +62,7 @@ static func is_frozen() -> bool:
 static func is_rushing() -> bool:
 	if _live == null:
 		return false
-	return _live._rush
+	return _live._rush_level > 0
 
 
 static func bind(tween: Tween) -> Tween:
@@ -68,16 +81,17 @@ func _multiplier() -> float:
 	if _freeze:
 		return 0.0
 	var scale := _base_scale()
-	if _rush and not _is_paused():
-		scale *= RUSH_MULT
+	if _rush_level > 0 and not _is_paused():
+		scale *= RUSH_STEPS[_rush_level]
 	return scale
 
 
 func _set_rush(on: bool) -> void:
-	if _rush == on:
-		_apply_tween_scales()
-		return
-	_rush = on
+	_set_rush_level(RUSH_STEPS.size() - 1 if on else 0)
+
+
+func _set_rush_level(level: int) -> void:
+	_rush_level = clampi(level, 0, RUSH_STEPS.size() - 1)
 	_apply_tween_scales()
 
 

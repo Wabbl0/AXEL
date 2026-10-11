@@ -240,7 +240,7 @@ var _cascade_mult_font: FontVariation
 var _last_displayed_cascade_mult: int = 1
 var _displayed_round_winnings: int = 0
 var _target_round_winnings: int = 0
-var _goal_bar_base: int = 0
+var _popup_credit_cents: int = 0
 var _shown_goal_value: int = 0
 var _winnings_counter_running: bool = false
 var _winnings_counter_generation: int = 0
@@ -1671,7 +1671,10 @@ func _input(event: InputEvent) -> void:
 		return
 	if _wants_spin_hotkey(event) and _rush_allowed():
 		get_viewport().set_input_as_handled()
-		CombatPace.set_rush(true)
+		if _loss_presentation_open():
+			CombatPace.set_rush(true)
+		else:
+			CombatPace.step_rush()
 		_note_loss_rush_press()
 		return
 	if not _wants_spin_hotkey(event):
@@ -1720,7 +1723,7 @@ func _handle_bet_hotkey(event: InputEvent) -> bool:
 func _bet_hotkey_allowed() -> bool:
 	if _spin_busy or combat == null or not _can_use_combat_api():
 		return false
-	if _tutorial_blocks_spin():
+	if _tutorial_freezing():
 		return false
 	if combat.free_spins.active or combat.is_encounter_complete():
 		return false
@@ -1765,13 +1768,19 @@ func _rush_presentation_open() -> bool:
 	return feel != null and feel.has_method("is_loss_presentation") and bool(feel.is_loss_presentation())
 
 
+func _loss_presentation_open() -> bool:
+	if combat == null or not combat.has_method("get_feel"):
+		return false
+	var feel: Node = combat.get_feel()
+	return feel != null and feel.has_method("is_loss_presentation") and bool(feel.is_loss_presentation())
+
+
 func _note_loss_rush_press() -> void:
-	if not _rush_presentation_open() or combat == null or not combat.has_method("get_feel"):
+	if not _loss_presentation_open():
 		return
 	var feel: Node = combat.get_feel()
-	if feel != null and feel.has_method("is_loss_presentation") and bool(feel.is_loss_presentation()):
-		if feel.has_method("note_rush_press"):
-			feel.call("note_rush_press")
+	if feel.has_method("note_rush_press"):
+		feel.call("note_rush_press")
 
 
 func _release_spin_busy() -> void:
@@ -1978,12 +1987,18 @@ func _on_winnings_popup_border_touched(event: Dictionary) -> void:
 	var cents: int = int(event.get("payout_cents", 0))
 	if cents <= 0:
 		return
+	if _popup_credit_cents > 0:
+		var used := mini(_popup_credit_cents, cents)
+		_popup_credit_cents -= used
+		cents -= used
+		if cents <= 0:
+			return
 	_target_round_winnings += cents
 	_start_winnings_counter_if_needed()
 
 func _reset_winnings_counter_display() -> void:
 	_kill_winnings_counter()
-	_goal_bar_base = _safe_get_goal_progress() - int(_safe_get_round_winnings())
+	_popup_credit_cents = 0
 	_displayed_round_winnings = 0
 	_target_round_winnings = 0
 	_apply_winnings_readout_text()
@@ -1991,9 +2006,9 @@ func _reset_winnings_counter_display() -> void:
 func _sync_winnings_counter_to_combat_truth() -> void:
 	_kill_winnings_counter()
 	var combat_total := int(_safe_get_round_winnings())
+	_popup_credit_cents += maxi(combat_total - _target_round_winnings, 0)
 	_displayed_round_winnings = combat_total
 	_target_round_winnings = combat_total
-	_goal_bar_base = _safe_get_goal_progress() - combat_total
 	_apply_winnings_readout_text()
 
 func _apply_winnings_readout_text() -> void:
@@ -2013,10 +2028,12 @@ func _safe_get_goal_target() -> int:
 
 func _goal_display_value() -> int:
 	var truth := _safe_get_goal_progress()
+	if truth < _shown_goal_value:
+		_shown_goal_value = 0
 	if _winnings_bar_settled():
-		_goal_bar_base = truth - _displayed_round_winnings
 		return truth
-	return maxi(_goal_bar_base + _displayed_round_winnings, 0)
+	var lag := maxi(int(_safe_get_round_winnings()) - _displayed_round_winnings, 0)
+	return clampi(truth - lag, _shown_goal_value, truth)
 
 func _apply_goal_readout_text() -> void:
 	if goal_label == null or not _can_use_combat_api():
@@ -2812,6 +2829,18 @@ func _tutorial_blocks_spin() -> bool:
 	return tutorial != null and tutorial.has_method("blocks_spin") and bool(tutorial.call("blocks_spin"))
 
 
+func _tutorial_freezing() -> bool:
+	var tutorial := _tutorial_node()
+	return tutorial != null and tutorial.has_method("is_freezing") and bool(tutorial.call("is_freezing"))
+
+
+func _tutorial_gate_pending() -> bool:
+	if _after_match_lessons.has("fight_stakes"):
+		return true
+	var tutorial := _tutorial_node()
+	return tutorial != null and tutorial.has_method("is_gate_open") and bool(tutorial.call("is_gate_open"))
+
+
 func _tutorial_suppresses_skull() -> bool:
 	var tutorial := _tutorial_node()
 	return tutorial != null and tutorial.has_method("suppresses_skull_hint") and bool(tutorial.call("suppresses_skull_hint"))
@@ -2946,7 +2975,7 @@ func _release_after_match_lessons() -> void:
 		return
 	if combat.get_spins_used() < 1 or combat.get_state() != CombatRoot.State.IDLE:
 		return
-	if not _held_freeze_lessons.is_empty():
+	if not _held_freeze_lessons.is_empty() and not _after_match_lessons.has("fight_stakes"):
 		return
 	var tutorial := _tutorial_node()
 	if tutorial == null or not tutorial.has_method("request"):
@@ -2990,6 +3019,8 @@ func _winnings_bar_settled() -> bool:
 
 func _release_held_freeze_lessons(delta: float) -> void:
 	if _held_freeze_lessons.is_empty():
+		return
+	if _tutorial_gate_pending():
 		return
 	_held_freeze_sec += delta
 	if _winnings_bar_settled():

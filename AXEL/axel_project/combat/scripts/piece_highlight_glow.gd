@@ -7,18 +7,12 @@ const LAYER_NAME := "HudHighlightLayer"
 const HOST_NAME := "HighlightRoot"
 const HIGHLIGHT_LAYER := 93
 const BLOOM_PAD_PX := 28.0
-const ECHO_SCALE := 0.12
-const ECHO_ALPHA := 0.75
-const FLICKER_CYCLES := 1.35
-const FLICKER_WINDOW := 0.035
-const FLICKER_PX := 2.0
 
 var _art: TextureRect
 var _alpha := 1.0
 var _phase := -1.0
 var _steady := false
 var _bloom: TextureRect
-var _echo: TextureRect
 
 
 static func set_highlight(piece: Control, on: bool) -> void:
@@ -141,7 +135,6 @@ func setup(art: TextureRect) -> void:
 	stretch_mode = TextureRect.STRETCH_SCALE
 	material = _make_material(0)
 	_bloom = _make_child("Bloom", 1)
-	_echo = _make_child("Echo", 2)
 	set_process(true)
 	_sync()
 
@@ -197,24 +190,27 @@ func _sync_children(local_size: Vector2) -> void:
 		bloom_mat.set_shader_parameter("pad_uv", pad / full)
 		bloom_mat.set_shader_parameter("bloom_reach", pad * 0.9 / local_size)
 		bloom_mat.set_shader_parameter("pulse", wave)
-	if _echo != null:
-		_echo.visible = _moving()
-		_echo.texture = texture
-		_echo.position = Vector2.ZERO
-		_echo.size = local_size
-		_echo.pivot_offset = local_size * 0.5
-		var grow := 1.0 - pow(1.0 - cycle, 3.0)
-		_echo.scale = Vector2.ONE * (1.0 + ECHO_SCALE * grow)
-		_echo.self_modulate = Color(1, 1, 1, ECHO_ALPHA * pow(1.0 - cycle, 2.0))
+		_bloom.flip_h = flip_h
+		_bloom.flip_v = flip_v
 
 
-func _flicker_offset() -> Vector2:
-	if not _moving():
-		return Vector2.ZERO
-	var t := fposmod(_phase, FLICKER_CYCLES)
-	if t > FLICKER_WINDOW:
-		return Vector2.ZERO
-	return Vector2(FLICKER_PX if t < FLICKER_WINDOW * 0.5 else -FLICKER_PX, 0.0)
+func _drawn_rect(art: TextureRect) -> Rect2:
+	var full := Rect2(Vector2.ZERO, art.size)
+	var tex_size := art.texture.get_size()
+	if tex_size.x <= 0.0 or tex_size.y <= 0.0:
+		return full
+	match art.stretch_mode:
+		TextureRect.STRETCH_KEEP_ASPECT, TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+			var fit := minf(art.size.x / tex_size.x, art.size.y / tex_size.y)
+			var drawn := tex_size * fit
+			if art.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT:
+				return Rect2(Vector2.ZERO, drawn)
+			return Rect2((art.size - drawn) * 0.5, drawn)
+		TextureRect.STRETCH_KEEP:
+			return Rect2(Vector2.ZERO, tex_size)
+		TextureRect.STRETCH_KEEP_CENTERED:
+			return Rect2((art.size - tex_size) * 0.5, tex_size)
+	return full
 
 
 func _process(_delta: float) -> void:
@@ -237,7 +233,9 @@ func _sync() -> void:
 	var origin := host_xform.affine_inverse() * xform.origin
 	var turn := xform.get_rotation() - host_xform.get_rotation()
 	var scale_now := xform.get_scale()
-	var local_size := Vector2(_art.size.x * absf(scale_now.x), _art.size.y * absf(scale_now.y))
+	var drawn := _drawn_rect(_art)
+	var drawn_offset := Vector2(drawn.position.x * absf(scale_now.x), drawn.position.y * absf(scale_now.y))
+	var local_size := Vector2(drawn.size.x * absf(scale_now.x), drawn.size.y * absf(scale_now.y))
 	visible = true
 	@warning_ignore("int_as_enum_without_cast")
 	@warning_ignore("int_as_enum_without_match")
@@ -246,10 +244,12 @@ func _sync() -> void:
 	anchor_top = 0.0
 	anchor_right = 0.0
 	anchor_bottom = 0.0
-	position = origin + _flicker_offset().rotated(turn)
+	position = origin + drawn_offset.rotated(turn)
 	size = local_size
 	pivot_offset = Vector2.ZERO
 	rotation = turn
 	texture = _art.texture
+	flip_h = _art.flip_h
+	flip_v = _art.flip_v
 	modulate = Color(1, 1, 1, _alpha)
 	_sync_children(local_size)

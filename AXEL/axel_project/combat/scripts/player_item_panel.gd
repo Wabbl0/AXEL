@@ -5,14 +5,17 @@ const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const ICON_PX := 144
 const ICON_RES_PX := 120
 const BODY_FONT := 84
-const DESC_FONT := 48
+const DESC_FONT := 58
 const ROW_SEP := 8
 const LIST_SEP := 10
 const NAME_RIGHT_PAD := 8.0
 const NAME_MAX_LINES := 2
 const NAME_COLOR := Color(1.0, 1.0, 1.0, 1.0)
-const DESC_COLOR := Color(1.0, 1.0, 1.0, 0.75)
-const DESC_BG := Color(0.25, 0.0, 0.0, 0.45)
+const DESC_COLOR := Color(1.0, 1.0, 1.0, 1.0)
+const DESC_BG := Color(0.1, 0.0, 0.0, 0.96)
+const DESC_BORDER := Color(0.6, 0.05, 0.05, 1.0)
+const DESC_BORDER_PX := 2
+const DESC_Z := 60
 const DESC_MARGIN_L := 8.0
 const DESC_MARGIN_R := 8.0
 const DESC_MARGIN_T := 4.0
@@ -157,9 +160,12 @@ func _make_row(item: Resource) -> Control:
 	desc_panel.set_meta("item_row_desc_panel", true)
 	desc_panel.visible = false
 	desc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	desc_panel.z_index = 4
+	desc_panel.z_as_relative = false
+	desc_panel.z_index = DESC_Z
 	var style := StyleBoxFlat.new()
 	style.bg_color = DESC_BG
+	style.border_color = DESC_BORDER
+	style.set_border_width_all(DESC_BORDER_PX)
 	style.content_margin_left = DESC_MARGIN_L
 	style.content_margin_right = DESC_MARGIN_R
 	style.content_margin_top = DESC_MARGIN_T

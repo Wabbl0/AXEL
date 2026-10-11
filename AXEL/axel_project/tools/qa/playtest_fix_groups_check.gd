@@ -413,8 +413,8 @@ func _check_item_rows() -> void:
 		if icon.global_position.distance_to(before) > 0.5:
 			_fail("hovering the item name moved the icon")
 		var style := desc_panel.get_theme_stylebox("panel") as StyleBoxFlat
-		if style == null or style.bg_color.a < 0.2 or style.bg_color.r < 0.15:
-			_fail("item description should have a faint dark red background")
+		if style == null or style.bg_color.a < 0.9 or style.bg_color.r < 0.05:
+			_fail("item description should have a solid dark red background")
 		if desc_panel.size.x > name_lab.size.x - 40.0:
 			_fail(
 				"short description box should end after the text, width %.1f name %.1f"

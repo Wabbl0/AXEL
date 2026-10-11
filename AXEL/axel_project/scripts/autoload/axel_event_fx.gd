@@ -38,23 +38,34 @@ var _skip_next_enter_glitch := false
 const ROUND_COMPLETE_SCRIM_A := 0.72
 const ROUND_COMPLETE_TEXT := "Round Complete!"
 const FLAME_BURST_SCRIPT := preload("res://combat/scripts/flame_burst.gd")
+const JACKPOT_FX_SCRIPT := preload("res://scenes/fx/round_jackpot_fx.gd")
+const JACKPOT_TEXT_SCRIPT := preload("res://scenes/fx/jackpot_text_effect.gd")
 
 var _round_fade: CanvasLayer
 var _round_root: Control
 var _round_scrim: ColorRect
+var _round_stage: Control
 var _round_flames: Control
 var _round_label: RichTextLabel
 var _round_bets_label: RichTextLabel
 var _round_balance_label: RichTextLabel
-var _round_hop: Tween
+var _jackpot: Control
+var _jackpot_front: Control
 var _round_intro: Tween
-var _round_punch: Tween
 var _round_land: Tween
+var _round_shake: Tween
 var _round_stats_tween: Tween
+var _round_stats_punch: Tween
 var _round_bets_value := 0
 var _round_balance_value := 0
-const ROUND_LETTER_SEC := 0.06
+var _round_stats_rest: Array[float] = [0.0, 0.0]
 const ROUND_NUMBER_COLOR := "#dc1414"
+const ROUND_TITLE_SIZE := 104
+const ROUND_STAT_SIZE := 36
+const ROUND_STAT_HEIGHT := 44.0
+const ROUND_STATS_OFFSET := 80.0
+const ROUND_SLAM_SCALE := 3.2
+const ROUND_SHAKE_PX := 14.0
 
 const LOAD_COVER_LAYER := 120
 const LOAD_FADE_SEC := 0.35
@@ -226,9 +237,16 @@ func show_round_complete_card(bets_used: int = 0, balance: int = 0) -> void:
 	_layout_round_complete()
 	if _round_fade == null or _round_scrim == null or _round_label == null:
 		return
+	_stop_round_intro()
+	_clear_round_flames()
+	_clear_jackpot()
 	_round_fade.visible = true
 	if _round_root != null:
 		_round_root.visible = true
+	if _round_stage != null:
+		_round_stage.position = Vector2.ZERO
+	if _round_flames != null:
+		_round_flames.modulate = Color.WHITE
 	_round_scrim.color = Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A)
 	_round_scrim.visible = true
 	_round_label.text = _round_complete_bbcode()
@@ -237,19 +255,28 @@ func show_round_complete_card(bets_used: int = 0, balance: int = 0) -> void:
 	_round_label.visible = true
 	_round_bets_value = bets_used
 	_round_balance_value = balance
+	_spawn_jackpot()
 	if _load_fade_instant():
-		_snap_round_intro()
-		_start_round_hop()
-		_start_round_flames()
+		_snap_round_intro(false)
 		return
 	_play_round_intro()
 
 
+func is_round_intro_playing() -> bool:
+	return _round_intro_running()
+
+
+func skip_round_intro() -> void:
+	if _round_intro_running():
+		_snap_round_intro(true)
+
+
 func play_round_complete_fade() -> void:
 	if _round_intro_running():
-		_snap_round_intro()
+		_snap_round_intro(true)
 	_stop_round_intro()
-	_stop_round_hop()
+	if _jackpot != null and is_instance_valid(_jackpot):
+		_jackpot.call("stop_spawning")
 	skip_next_enter_glitch()
 	if _event_fx_disabled():
 		return
@@ -268,6 +295,9 @@ func play_round_complete_fade() -> void:
 		_round_balance_label.visible = true
 	var fade_in := CombatPace.bind(create_tween())
 	fade_in.tween_property(_round_scrim, "color:a", 1.0, 0.35)
+	for node in [_jackpot, _jackpot_front, _round_flames]:
+		if node != null and is_instance_valid(node):
+			fade_in.parallel().tween_property(node, "modulate:a", 0.0, 0.35)
 	await fade_in.finished
 
 
@@ -410,8 +440,12 @@ func _hide_round_complete() -> void:
 	if _round_scrim != null:
 		_round_scrim.color = Color(0, 0, 0, 0)
 	_stop_round_intro()
-	_stop_round_hop()
 	_clear_round_flames()
+	_clear_jackpot()
+	if _round_stage != null:
+		_round_stage.position = Vector2.ZERO
+	if _round_flames != null:
+		_round_flames.modulate = Color.WHITE
 	if _round_label != null:
 		_round_label.visible = false
 		_round_label.modulate.a = 0.0
@@ -438,25 +472,22 @@ func _viewport_size() -> Vector2:
 
 func _layout_round_complete() -> void:
 	var size := _viewport_size()
-	if _round_root != null:
-		_round_root.position = Vector2.ZERO
-		_round_root.size = size
-	if _round_scrim != null:
-		_round_scrim.position = Vector2.ZERO
-		_round_scrim.size = size
-	if _round_flames != null:
-		_round_flames.position = Vector2.ZERO
-		_round_flames.size = size
+	for node in [_round_root, _round_scrim, _round_stage, _round_flames, _round_label, _jackpot, _jackpot_front]:
+		if node != null and is_instance_valid(node):
+			(node as Control).position = Vector2.ZERO
+			(node as Control).size = size
 	if _round_label != null:
-		_round_label.position = Vector2.ZERO
-		_round_label.size = size
-	var stats_y := size.y * 0.5 + 40.0
-	if _round_bets_label != null:
-		_round_bets_label.position = Vector2(0.0, stats_y)
-		_round_bets_label.size = Vector2(size.x, 36.0)
-	if _round_balance_label != null:
-		_round_balance_label.position = Vector2(0.0, stats_y + 36.0 + 4.0)
-		_round_balance_label.size = Vector2(size.x, 36.0)
+		_round_label.pivot_offset = size * 0.5
+	var stats_y := size.y * 0.5 + ROUND_STATS_OFFSET
+	_round_stats_rest = [stats_y, stats_y + ROUND_STAT_HEIGHT + 6.0]
+	var labs := [_round_bets_label, _round_balance_label]
+	for i in labs.size():
+		var lab := labs[i] as RichTextLabel
+		if lab == null:
+			continue
+		lab.position = Vector2(0.0, _round_stats_rest[i])
+		lab.size = Vector2(size.x, ROUND_STAT_HEIGHT)
+		lab.pivot_offset = lab.size * 0.5
 
 
 func _build_round_complete_overlay() -> void:
@@ -475,30 +506,41 @@ func _build_round_complete_overlay() -> void:
 	_round_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_round_scrim.color = Color(0, 0, 0, 0)
 	_round_root.add_child(_round_scrim)
+	_round_stage = Control.new()
+	_round_stage.name = "RoundStage"
+	_round_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_round_root.add_child(_round_stage)
 	_round_flames = Control.new()
 	_round_flames.name = "RoundFlames"
 	_round_flames.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_round_root.add_child(_round_flames)
+	_round_stage.add_child(_round_flames)
 	_round_label = RichTextLabel.new()
 	_round_label.name = "RoundCompleteLabel"
 	_round_label.bbcode_enabled = true
 	_round_label.scroll_active = false
 	_round_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_round_label.install_effect(JACKPOT_TEXT_SCRIPT.new())
 	_round_label.text = _round_complete_bbcode()
 	_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_round_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_round_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var round_font := load("res://combat/ui/fonts/VT323-Regular.ttf")
 	_round_label.add_theme_font_override("normal_font", round_font)
-	_round_label.add_theme_font_size_override("normal_font_size", 64)
+	_round_label.add_theme_font_size_override("normal_font_size", ROUND_TITLE_SIZE)
 	_round_label.add_theme_color_override("default_color", Color.WHITE)
+	_round_label.add_theme_constant_override("outline_size", 10)
+	_round_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_round_label.add_theme_color_override("font_shadow_color", Color(0.35, 0.0, 0.0, 1.0))
+	_round_label.add_theme_constant_override("shadow_offset_x", 6)
+	_round_label.add_theme_constant_override("shadow_offset_y", 6)
+	_round_label.add_theme_constant_override("shadow_outline_size", 10)
 	_round_label.modulate.a = 0.0
 	_round_label.visible = false
-	_round_root.add_child(_round_label)
+	_round_stage.add_child(_round_label)
 	_round_bets_label = _make_round_stat_label("RoundBetsLabel", round_font)
-	_round_root.add_child(_round_bets_label)
+	_round_stage.add_child(_round_bets_label)
 	_round_balance_label = _make_round_stat_label("RoundBalanceLabel", round_font)
-	_round_root.add_child(_round_balance_label)
+	_round_stage.add_child(_round_balance_label)
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_layout_round_complete):
 		vp.size_changed.connect(_layout_round_complete)
@@ -506,12 +548,9 @@ func _build_round_complete_overlay() -> void:
 
 
 func _round_complete_bbcode() -> String:
-	var out := ""
-	for i in ROUND_COMPLETE_TEXT.length():
-		var ch := ROUND_COMPLETE_TEXT.substr(i, 1)
-		var color := "white" if i % 2 == 0 else "red"
-		out += "[color=%s]%s[/color]" % [color, ch]
-	return out
+	var amp := 0.0 if _reduce_flashing() else 6.0
+	var chase := 0 if _reduce_flashing() else 1
+	return "[jackpot amp=%.1f chase=%d]%s[/jackpot]" % [amp, chase, ROUND_COMPLETE_TEXT]
 
 
 func _make_round_stat_label(node_name: String, font: Font) -> RichTextLabel:
@@ -524,8 +563,10 @@ func _make_round_stat_label(node_name: String, font: Font) -> RichTextLabel:
 	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lab.add_theme_font_override("normal_font", font)
-	lab.add_theme_font_size_override("normal_font_size", 32)
+	lab.add_theme_font_size_override("normal_font_size", ROUND_STAT_SIZE)
 	lab.add_theme_color_override("default_color", Color.WHITE)
+	lab.add_theme_constant_override("outline_size", 6)
+	lab.add_theme_color_override("font_outline_color", Color.BLACK)
 	lab.visible = false
 	return lab
 
@@ -552,92 +593,97 @@ func _round_intro_running() -> bool:
 
 
 func _stop_round_intro() -> void:
-	for tw in [_round_intro, _round_punch, _round_land, _round_stats_tween]:
+	for tw in [_round_intro, _round_land, _round_shake, _round_stats_tween, _round_stats_punch]:
 		if tw != null and is_instance_valid(tw):
 			tw.kill()
 	_round_intro = null
-	_round_punch = null
 	_round_land = null
+	_round_shake = null
 	_round_stats_tween = null
+	_round_stats_punch = null
 
 
-func _snap_round_intro() -> void:
+func _snap_round_intro(keep_spawning: bool) -> void:
 	_stop_round_intro()
 	_layout_round_complete()
 	if _round_scrim != null:
 		_round_scrim.color = Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A)
+	if _round_stage != null:
+		_round_stage.position = Vector2.ZERO
 	if _round_label != null:
 		_round_label.visible_characters = -1
 		_round_label.scale = Vector2.ONE
 		_round_label.modulate = Color.WHITE
-		_round_label.position.x = 0.0
 	for lab in [_round_bets_label, _round_balance_label]:
 		if lab != null:
 			lab.modulate = Color.WHITE
+			lab.scale = Vector2.ONE
 			lab.visible = true
 	_set_round_bets(_round_bets_value)
 	_set_round_balance(_round_balance_value)
+	if _jackpot != null and is_instance_valid(_jackpot):
+		_jackpot.call("snap_final", _round_center())
+		if not keep_spawning:
+			_jackpot.call("stop_spawning")
+
+
+func _round_center() -> Vector2:
+	if _round_stage != null and _round_stage.size.x > 0.0:
+		return _round_stage.size * 0.5
+	return _viewport_size() * 0.5
 
 
 func _play_round_intro() -> void:
 	_stop_round_intro()
-	_clear_round_flames()
-	_round_label.visible_characters = 0
-	_round_label.pivot_offset = _round_label.size * 0.5
 	for lab in [_round_bets_label, _round_balance_label]:
 		if lab != null:
 			lab.visible = false
 			lab.modulate = Color(1, 1, 1, 0)
 	_set_round_bets(0)
 	_set_round_balance(0)
+	_round_label.visible_characters = -1
+	_round_label.pivot_offset = _round_label.size * 0.5
+	_round_label.scale = Vector2(ROUND_SLAM_SCALE, ROUND_SLAM_SCALE)
+	_round_label.modulate = Color(1, 1, 1, 0)
+	if not _reduce_flashing() and _round_scrim != null:
+		_round_scrim.color = Color(0.45, 0.0, 0.0, 0.85)
 	var tw := CombatPace.bind(create_tween())
 	_round_intro = tw
-	for i in ROUND_COMPLETE_TEXT.length():
-		tw.tween_callback(_slam_round_letter.bind(i))
-		tw.tween_interval(ROUND_LETTER_SEC)
+	tw.tween_property(_round_label, "scale", Vector2(0.92, 0.92), 0.14).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(_round_label, "modulate:a", 1.0, 0.1)
 	tw.tween_callback(_round_title_landed)
-	tw.tween_interval(0.3)
+	tw.tween_property(_round_label, "scale", Vector2(1.12, 0.9), 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_round_label, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.2)
 	tw.tween_callback(_reveal_round_stats)
-
-
-func _slam_round_letter(index: int) -> void:
-	if _round_label == null:
-		return
-	_round_label.visible_characters = index + 1
-	if ROUND_COMPLETE_TEXT.substr(index, 1) == " ":
-		return
-	if _round_punch != null and is_instance_valid(_round_punch):
-		_round_punch.kill()
-	_round_label.scale = Vector2(1.08, 1.08)
-	var flash := Color(1.6, 0.45, 0.45, 1.0) if not _reduce_flashing() else Color.WHITE
-	_round_label.modulate = flash
-	_round_punch = CombatPace.bind(create_tween())
-	_round_punch.tween_property(_round_label, "scale", Vector2.ONE, ROUND_LETTER_SEC * 1.5)
-	_round_punch.parallel().tween_property(_round_label, "modulate", Color.WHITE, ROUND_LETTER_SEC * 1.5)
 
 
 func _round_title_landed() -> void:
 	if _round_label == null:
 		return
-	if _round_punch != null and is_instance_valid(_round_punch):
-		_round_punch.kill()
-	_round_label.visible_characters = -1
-	_round_label.scale = Vector2(1.22, 1.22)
 	_round_label.modulate = Color.WHITE
-	var flashing_ok := not _reduce_flashing()
 	_round_land = CombatPace.bind(create_tween())
-	_round_land.tween_property(_round_label, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	if flashing_ok and _round_scrim != null:
-		_round_scrim.color = Color(0.4, 0.0, 0.0, ROUND_COMPLETE_SCRIM_A)
-		_round_land.parallel().tween_property(_round_scrim, "color", Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A), 0.3)
-		var jitter := 10.0 * _glitch_scale()
-		var steps := [jitter, -jitter * 0.8, jitter * 0.5, -jitter * 0.3, 0.0]
-		var flicker := [0.35, 1.0, 0.6, 1.0, 1.0]
-		for i in steps.size():
-			_round_land.tween_property(_round_label, "position:x", steps[i], 0.035)
-			_round_land.parallel().tween_property(_round_label, "modulate:a", flicker[i], 0.035)
-	_start_round_hop()
+	if _round_scrim != null:
+		_round_land.tween_property(_round_scrim, "color", Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A), 0.35)
+	if _jackpot != null and is_instance_valid(_jackpot):
+		_jackpot.call("play_intro", _round_center())
 	_start_round_flames()
+	_play_round_sfx(&"power")
+	if not _reduce_flashing():
+		_shake_round_stage(ROUND_SHAKE_PX * _glitch_scale())
+
+
+func _shake_round_stage(amp: float) -> void:
+	if _round_stage == null or amp <= 0.5:
+		return
+	if _round_shake != null and is_instance_valid(_round_shake):
+		_round_shake.kill()
+	_round_stage.position = Vector2.ZERO
+	_round_shake = CombatPace.bind(create_tween())
+	var kicks := [Vector2(1.0, 0.5), Vector2(-0.9, -0.4), Vector2(0.7, -0.6), Vector2(-0.5, 0.5), Vector2(0.25, -0.2)]
+	for kick in kicks:
+		_round_shake.tween_property(_round_stage, "position", (kick as Vector2) * amp, 0.035)
+	_round_shake.tween_property(_round_stage, "position", Vector2.ZERO, 0.05)
 
 
 func _reveal_round_stats() -> void:
@@ -645,49 +691,99 @@ func _reveal_round_stats() -> void:
 	var labs := [_round_bets_label, _round_balance_label]
 	var targets := [_round_bets_value, _round_balance_value]
 	var setters := [_set_round_bets, _set_round_balance]
+	var count_secs := [0.6, 0.9]
 	for i in labs.size():
 		var lab := labs[i] as RichTextLabel
 		if lab == null:
 			continue
+		var rest := _round_stats_rest[i]
 		lab.visible = true
-		_round_stats_tween.tween_property(lab, "modulate:a", 1.0, 0.15)
-		_round_stats_tween.tween_method(setters[i], 0.0, float(targets[i]), 0.5).set_ease(Tween.EASE_OUT)
+		lab.modulate.a = 0.0
+		lab.position.y = rest + 40.0
+		_round_stats_tween.tween_property(lab, "position:y", rest, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_round_stats_tween.parallel().tween_property(lab, "modulate:a", 1.0, 0.15)
+		_round_stats_tween.tween_method(setters[i], 0.0, float(targets[i]), count_secs[i]).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	_round_stats_tween.tween_callback(_punch_round_balance)
+	_round_stats_tween.tween_interval(0.35)
 
 
-func _start_round_hop() -> void:
-	_stop_round_hop()
-	if _round_label == null:
+func _punch_round_balance() -> void:
+	var lab := _round_balance_label
+	if lab == null:
 		return
-	var rest_y := _round_label.position.y
-	_round_hop = CombatPace.bind(create_tween())
-	_round_hop.set_loops()
-	_round_hop.tween_property(_round_label, "position:y", rest_y - 24.0, 0.225)
-	_round_hop.tween_property(_round_label, "position:y", rest_y, 0.225)
+	lab.pivot_offset = lab.size * 0.5
+	lab.scale = Vector2(1.3, 1.3)
+	lab.modulate = Color(1.6, 0.5, 0.5, 1.0) if not _reduce_flashing() else Color.WHITE
+	_round_stats_punch = CombatPace.bind(create_tween())
+	_round_stats_punch.tween_property(lab, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_round_stats_punch.parallel().tween_property(lab, "modulate", Color.WHITE, 0.25)
+	_play_round_sfx(&"round_winnings")
+	if _jackpot != null and is_instance_valid(_jackpot):
+		var sparks := 16 if _reduce_flashing() else 36
+		_jackpot.call("burst_at", _round_balance_number_point(), sparks, 120.0, 360.0)
 
 
-func _stop_round_hop() -> void:
-	if _round_hop != null and is_instance_valid(_round_hop):
-		_round_hop.kill()
-	_round_hop = null
+func _round_balance_number_point() -> Vector2:
+	var lab := _round_balance_label
+	var font := lab.get_theme_font("normal_font")
+	var font_size := lab.get_theme_font_size("normal_font_size")
+	var x := lab.size.x * 0.5
+	if font != null:
+		var full_w := font.get_string_size(lab.get_parsed_text(), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var num_w := font.get_string_size(str(_round_balance_value), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		x += full_w * 0.5 - num_w * 0.5
+	return lab.position + Vector2(x, lab.size.y * 0.5)
+
+
+func _play_round_sfx(cue: StringName) -> void:
+	var sfx := get_node_or_null("/root/AxelSfx")
+	if sfx != null and sfx.has_method("play"):
+		sfx.call("play", cue)
 
 
 func _start_round_flames() -> void:
-	if _round_root == null or _round_flames == null:
+	if _round_stage == null or _round_flames == null:
 		return
 	_clear_round_flames()
 	var burst = FLAME_BURST_SCRIPT.new()
 	burst.name = "RoundFlameBurst"
-	_round_root.add_child(burst)
+	_round_stage.add_child(burst)
 	burst.bind(_round_flames)
-	burst.play_waves_linger(_round_root.size * 0.5, [8, 16])
+	burst.play_waves_linger(_round_center(), [16, 32, 16])
 
 
 func _clear_round_flames() -> void:
-	if _round_root == null:
+	if _round_stage == null:
 		return
-	var old := _round_root.get_node_or_null("RoundFlameBurst")
+	var old := _round_stage.get_node_or_null("RoundFlameBurst")
 	if old != null:
 		old.queue_free()
+
+
+func _spawn_jackpot() -> void:
+	_clear_jackpot()
+	if _round_stage == null:
+		return
+	_jackpot = JACKPOT_FX_SCRIPT.new()
+	_jackpot.name = "RoundJackpotFx"
+	_round_stage.add_child(_jackpot)
+	_round_stage.move_child(_jackpot, _round_flames.get_index() + 1)
+	_jackpot_front = Control.new()
+	_jackpot_front.name = "RoundJackpotFront"
+	_round_stage.add_child(_jackpot_front)
+	_layout_round_complete()
+	_jackpot.call("setup", _jackpot_front, _reduce_flashing())
+
+
+func _clear_jackpot() -> void:
+	for node in [_jackpot, _jackpot_front]:
+		if node != null and is_instance_valid(node):
+			var parent: Node = node.get_parent()
+			if parent != null:
+				parent.remove_child(node)
+			node.queue_free()
+	_jackpot = null
+	_jackpot_front = null
 
 
 func _ensure_round_complete_overlay() -> void:

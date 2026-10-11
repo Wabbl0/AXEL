@@ -133,7 +133,7 @@ No comments in scripts. Input stays on named actions. `CombatPace` only.
 
 ## Separate-chat prompts (not part of this plan)
 - **Combat transition:** "Plan only: make the combat transition symmetrical, all bars moving at the same time, black and red bars crossing over the same way, plus three more transitions in the same simple style. Think thoroughly."
-- **Round Complete:** "Plan only: Round Complete! text bounces too much. Make it explode out, more fireworks from the center behind the text, a more dynamic and rewarding animation. Think thoroughly."
+- **Round Complete:** (done 2026-10-11, see `2026-10-11_round_complete_jackpot.md`) "Plan only: Round Complete! text bounces too much. Make it explode out, more fireworks from the center behind the text, a more dynamic and rewarding animation. Think thoroughly."
 - **Death screen:** "Plan only: make the death screen more dynamic. Pieces break and fall in a satisfying, clear order. Center the text. Think thoroughly."
 
 ---

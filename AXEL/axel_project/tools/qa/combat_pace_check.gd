@@ -25,7 +25,14 @@ func _main() -> void:
 	if not is_equal_approx(CombatPace.multiplier(), 1.0):
 		failures.append("unknown combat speed should play at normal, got %s" % CombatPace.multiplier())
 
+	settings.set_value("gameplay", "combat_speed", "normal")
+	_expect_steps([3.0, 8.0, 8.0], failures)
 	settings.set_value("gameplay", "combat_speed", "fast")
+	_expect_steps([6.0, 16.0, 16.0], failures)
+	CombatPace.clear_rush()
+	if not is_equal_approx(CombatPace.multiplier(), 2.0) or CombatPace.is_rushing():
+		failures.append("clear_rush after steps should return to 2x on fast, got %s" % CombatPace.multiplier())
+
 	CombatPace.set_rush(true)
 	if not is_equal_approx(CombatPace.multiplier(), 16.0):
 		failures.append("fast rush should be 16x, got %s" % CombatPace.multiplier())
@@ -66,6 +73,15 @@ func _main() -> void:
 	for failure in failures:
 		push_error("combat_pace_check: %s" % failure)
 	quit(1)
+
+
+func _expect_steps(expected: Array, failures: Array[String]) -> void:
+	CombatPace.clear_rush()
+	for i in expected.size():
+		CombatPace.step_rush()
+		var got := CombatPace.multiplier()
+		if not is_equal_approx(got, float(expected[i])):
+			failures.append("rush press %d should be %sx, got %s" % [i + 1, expected[i], got])
 
 
 func _expect_scale(settings: Node, key: String, expected: float, failures: Array[String]) -> void:

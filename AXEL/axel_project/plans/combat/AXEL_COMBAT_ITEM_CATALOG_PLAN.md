@@ -395,6 +395,13 @@ Not player-final. Right-hand ITEMS list:
 - **GOAL:** Base Target + Progress live in **AxelCombatDevTools** (debug wrench menu), not the ITEMS panel. Effective = `round(base * (1 + sum of equipped H percents + lore bonus))`. `%GoalLabel` stays as display. **Live world fights do not use the 10000 default** — `AxelRun` pushes the ladder rung (`100 / 150 / 225`, then ×1.5 per further fight rounded to 25) through `set_goal_base_target_cents()`, and H percents multiply on top of that. Act fights keep 10000.
 - **Hover description:** runtime `ItemDescOverlay` (not saved in the `.tscn`). Own **CanvasLayer 107** (above WidgetLayer 106, below CRT 108) so it **can draw over** item rows. Solid black fill, whole card **90%** opacity, word wrap, 0.08s fade-in (text swap while open stays instant). Tries to sit under the cursor / below the row and clip to the ITEMS rectangle.
 
+## Player-facing descriptions
+
+- In-game text lives in `combat/data/items/*.tres` `description` (mirrored in `tools/combat/generate_item_resources.py`). The tables above are design rules, not player text.
+- Plain words, one or two short sentences, real numbers from the params. Say what the player sees and gets.
+- Never use item codes (`C-G`), or inside words: glyph, scalar, potency, premium meter, resolver, legal cell, seal, playtest Base target. Use: SKULL meter / SKULL step, strength, shapes, power symbols, MULTIPLIER, BET, GOAL, normal spins.
+- Sealed-grid items (`*-G`): refill is never run in the live game, so they read as "Normal spins: wins pay X% more".
+
 ## Icons (live)
 
 - Game path: `res://combat/art/item_icons/{id}.png` on `ItemDef.icon`.

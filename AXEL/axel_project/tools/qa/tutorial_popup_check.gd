@@ -348,23 +348,36 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 	await process_frame
 	if open_before and not bool(tutorial.call("is_open")):
 		failures.append("interact closed a tutorial card")
+	if not bool(tutorial.call("blocks_spin")):
+		failures.append("stakes card does not block spinning")
+
+	var body_click := InputEventMouseButton.new()
+	body_click.button_index = MOUSE_BUTTON_LEFT
+	body_click.pressed = true
+	tutorial.call("_on_card_gui_input", body_click, 0)
+	await create_timer(0.6).timeout
+	if _open_lesson(tutorial) != "fight_stakes":
+		failures.append("a click on the stakes card body closed it")
 
 	tutorial.call("request", "slot_power")
-	if not await _wait_lesson(tutorial, "slot_power"):
-		failures.append("freeze card did not cut in front of the stakes card")
-	if bool(tutorial.call("_is_seen", "fight_stakes")):
-		failures.append("cut-in marked the stakes card as seen")
+	await create_timer(0.6).timeout
+	if _open_lesson(tutorial) != "fight_stakes":
+		failures.append("a freeze card bumped the stakes card")
 	if host2.visible:
-		failures.append("cut-in opened a second card host")
-	tutorial.call("close_freeze_card")
-	if not await _wait_lesson(tutorial, "fight_stakes"):
-		failures.append("stakes card did not come back after the cut-in")
+		failures.append("a freeze card opened a second host over the stakes card")
 	tutorial.call("complete", "fight_stakes")
-	if not await _wait_lesson(tutorial, "fight_items"):
-		failures.append("items card did not follow the stakes card")
+	if not await _wait_lesson(tutorial, "slot_power"):
+		failures.append("freeze card did not follow the stakes card")
 	if not bool(tutorial.call("_is_seen", "fight_stakes")):
 		failures.append("stakes card not marked seen after the bet change")
+	tutorial.call("close_freeze_card")
+	if not await _wait_lesson(tutorial, "fight_items"):
+		failures.append("items card did not follow the freeze card")
 	await _close_both_cards(tutorial)
+	tutorial.call("request", "fight_stakes")
+	await create_timer(0.6).timeout
+	if bool(tutorial.call("is_showing", "fight_stakes")):
+		failures.append("stakes card came back after it was seen")
 
 
 func _check_click_and_close_keys(tutorial: Node, failures: Array[String]) -> void:
@@ -560,20 +573,17 @@ func _check_highlight_above_noir(failures: Array[String]) -> void:
 		if absf(glow.modulate.a - 0.8) > 0.01:
 			failures.append("highlight glow pulse alpha is %.2f" % glow.modulate.a)
 		var bloom := glow.get_node_or_null("Bloom") as TextureRect
-		var echo := glow.get_node_or_null("Echo") as TextureRect
-		if bloom == null or echo == null:
-			failures.append("highlight glow is missing its bloom or echo")
+		if bloom == null:
+			failures.append("highlight glow is missing its bloom")
 		else:
 			if bloom.size.x <= glow.size.x or bloom.size.y <= glow.size.y:
 				failures.append("highlight bloom does not reach past the art")
-			PieceHighlightGlow.pulse_highlights(piece, 0.8, 0.3, false)
-			await process_frame
-			if not echo.visible or echo.scale.x <= 1.0:
-				failures.append("highlight echo does not grow while pulsing")
-			PieceHighlightGlow.pulse_highlights(piece, 0.8, 0.3, true)
-			await process_frame
-			if echo.visible:
-				failures.append("highlight echo still moves with reduce flashing")
+		if glow.get_node_or_null("Echo") != null:
+			failures.append("highlight glow still draws a ghost copy of the art")
+		PieceHighlightGlow.pulse_highlights(piece, 0.8, 0.3, false)
+		await process_frame
+		if not glow.get_global_rect().is_equal_approx(art.get_global_rect()):
+			failures.append("highlight glow drifts off the art while pulsing")
 	if not art.is_visible_in_tree():
 		failures.append("highlighted art went hidden")
 	PieceHighlightGlow.set_highlight(piece, false)

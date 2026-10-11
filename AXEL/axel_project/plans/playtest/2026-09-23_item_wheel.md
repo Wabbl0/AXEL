@@ -2,6 +2,8 @@
 
 Shipped. Do not build this again. The behavior below is what the game does now. The other playtest notes in this folder are still plans.
 
+The look (colours, sockets, arrows, open animation) was refreshed later. See [Item wheel look](2026-10-09_item_wheel_look.md). The layout and behavior here still hold.
+
 ## What you asked
 
 Remove item rows from the pause menu. Open a half-circle wheel on Mike with a click, or with Tab, Q, R, or I. Four bands, inner to outer: Common, Uncommon, Rare, Epic. Legendary is not on the wheel. Each band shows 3 items and scrolls. Equipped items are full color. The others are grey. Hover shows the overworld card without `[E]`.

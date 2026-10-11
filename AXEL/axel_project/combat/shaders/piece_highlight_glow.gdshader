@@ -46,17 +46,6 @@ void fragment() {
 		bloom = clamp(bloom / 16.0, 0.0, 1.0);
 		bloom = smoothstep(0.0, 0.8, bloom) * bloom_strength * (0.75 + 0.35 * pulse);
 		COLOR = vec4(bloom_color, bloom * (1.0 - core));
-	} else if (mode == 2) {
-		float halo = 0.0;
-		for (int i = 0; i < 12; i++) {
-			float ang = float(i) * 0.5235988;
-			vec2 dir = vec2(cos(ang), sin(ang)) * TEXTURE_PIXEL_SIZE * halo_px * 0.5;
-			halo += ink_at(uv + dir);
-		}
-		halo = clamp(halo / 12.0, 0.0, 1.0);
-		float a = max(core, halo * 0.6);
-		vec3 col = mix(bloom_color, glow_color, core / max(a, 0.0001));
-		COLOR = vec4(col, a);
 	} else {
 		float swell = 1.0 + 0.4 * pulse;
 		float halo = 0.0;

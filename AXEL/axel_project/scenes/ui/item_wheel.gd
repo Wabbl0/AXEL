@@ -17,12 +17,33 @@ const ICON_HOVER_PX := 46.0
 const HIT_PX := 28.0
 const ARC_STEPS := 18
 const FILL := Color(0.02, 0.02, 0.02, 0.98)
+const FILL_INNER := Color(0.01, 0.01, 0.01, 0.98)
+const FILL_OUTER := Color(0.08, 0.05, 0.05, 0.98)
 const OUTLINE := Color(0.9, 0.0, 0.0, 1.0)
+const RANK_REDS: Array[Color] = [
+	Color(0.42, 0.06, 0.06, 1.0),
+	Color(0.6, 0.05, 0.05, 1.0),
+	Color(0.78, 0.04, 0.04, 1.0),
+	Color(0.96, 0.1, 0.1, 1.0),
+]
+const WARM_GREY := Color(0.36, 0.32, 0.31, 1.0)
+const WARM_GREY_LIGHT := Color(0.66, 0.6, 0.58, 1.0)
+const SOCKET_FILL := Color(0.22, 0.02, 0.02, 0.92)
+const SOCKET_EMPTY := Color(0.05, 0.04, 0.04, 0.92)
+const SOCKET_R := 24.0
 const SHADOW := Color(0.04, 0.04, 0.04, 0.95)
 const SHADOW_OFFSET := Vector2(5, 6)
 const GREYED := Color(0.38, 0.38, 0.38, 1.0)
 const ARC_START := PI
 const ARC_END := TAU
+const SWEEP_SEC := 0.18
+const BAND_STAGGER_SEC := 0.04
+const CLOSE_SEC := 0.1
+const JITTER_SEC := 0.05
+const FLASH_SEC := 0.15
+const GLYPH_PX := 20
+const PIP_PX := 6.0
+const PIP_GAP := 4.0
 
 var _root: Control
 var _cap: Label
@@ -34,6 +55,18 @@ var _center := Vector2.ZERO
 var _inner := 64.0
 var _hover_id := ""
 var _cache_warmed := false
+var _anim_t := 0.0
+var _close_t := -1.0
+var _time := 0.0
+var _jitter := 0.0
+var _flash: Dictionary = {}
+var _hover_arrow := Vector2i(-1, 0)
+var _pips_filled := 0
+var _pips_total := 0
+var _rng := RandomNumberGenerator.new()
+var _band_items: Array = []
+var _band_key := PackedStringArray()
+var _band_key_set := false
 
 
 func _ready() -> void:
@@ -90,12 +123,27 @@ func cap_text() -> String:
 	return _cap.text
 
 
+func open_progress() -> float:
+	if not _open:
+		return 0.0
+	return _band_progress(maxi(shown_band_count() - 1, 0))
+
+
+func band_can_scroll(band: int) -> bool:
+	if band < 0 or band >= BAND_COUNT:
+		return false
+	return _items_for_band(band).size() > VISIBLE_COUNT
+
+
 func open_wheel() -> bool:
 	if _open:
 		return true
 	if not _can_open():
 		return false
 	_open = true
+	_anim_t = 0.0
+	_close_t = -1.0
+	_jitter = _rng.randf_range(-2.0, 2.0)
 	_root.visible = true
 	_hide_floor_card()
 	_layout()
@@ -106,14 +154,34 @@ func open_wheel() -> bool:
 	return true
 
 
-func close_wheel() -> void:
-	if not _open and (_root == null or not _root.visible):
+func close_wheel(instant: bool = false) -> void:
+	if not _open:
+		if instant and _root != null and _root.visible:
+			_close_t = -1.0
+			_root.visible = false
 		return
 	_open = false
 	_hover_id = ""
+	_hover_arrow = Vector2i(-1, 0)
+	_flash.clear()
 	if _root != null:
-		_root.visible = false
+		_hide_controls()
+		if instant:
+			_close_t = -1.0
+			_root.visible = false
+		else:
+			_close_t = CLOSE_SEC
+			_root.queue_redraw()
 	_hide_hover()
+
+
+func _hide_controls() -> void:
+	for icon in _icons:
+		icon.visible = false
+	for arrow in _arrows:
+		arrow.visible = false
+	if _cap != null:
+		_cap.visible = false
 
 
 func _build() -> void:
@@ -166,19 +234,36 @@ func _build() -> void:
 		for state_name in ["normal", "hover", "pressed", "focus", "disabled"]:
 			arrow.add_theme_stylebox_override(state_name, empty)
 		arrow.pressed.connect(_on_arrow_pressed.bind(arrow))
+		arrow.mouse_entered.connect(_on_arrow_hover.bind(arrow))
+		arrow.mouse_exited.connect(_on_arrow_exit.bind(arrow))
 		_arrows.append(arrow)
 		_root.add_child(arrow)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not _cache_warmed:
 		_cache_warmed = true
 		call_deferred("_warm_wheel_textures")
+	if _close_t >= 0.0:
+		_close_t -= delta
+		if _close_t < 0.0:
+			_close_t = -1.0
+			_root.visible = false
+		else:
+			_root.queue_redraw()
 	if not _open:
 		return
 	if not _can_open():
-		close_wheel()
+		close_wheel(true)
 		return
+	_anim_t += delta
+	_time += delta
+	for item_id in _flash.keys():
+		var left := float(_flash[item_id]) - delta
+		if left <= 0.0:
+			_flash.erase(item_id)
+		else:
+			_flash[item_id] = left
 	_layout()
 
 
@@ -232,19 +317,19 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_scene_changed() -> void:
-	close_wheel()
+	close_wheel(true)
 	_cache_warmed = false
 
 
 func _on_pause_changed(paused: bool) -> void:
 	if paused:
-		close_wheel()
+		close_wheel(true)
 
 
 func _layout() -> void:
 	var metrics := _metrics()
 	if metrics.is_empty():
-		close_wheel()
+		close_wheel(true)
 		return
 	_center = metrics["center"]
 	_inner = float(metrics["inner"])
@@ -256,28 +341,138 @@ func _layout() -> void:
 
 
 func paint_on(canvas: Control) -> void:
-	if not _open:
+	if not _open and _close_t < 0.0:
 		return
+	var center := _center
+	if _open and _anim_t < JITTER_SEC:
+		center.x += _jitter
+	var fade := 1.0 if _open else clampf(_close_t / CLOSE_SEC, 0.0, 1.0)
 	var shown := _shown_bands()
 	for visual in shown.size():
+		var p := _band_progress(visual)
+		if p <= 0.0:
+			continue
+		var a_end := lerpf(ARC_START, ARC_END, p)
 		var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
 		var outer_edge := inner_edge + BAND_THICK
+		var shadow_col := _alpha(SHADOW, fade)
 		for step in ARC_STEPS:
-			var a0 := lerpf(ARC_START, ARC_END, float(step) / float(ARC_STEPS))
-			var a1 := lerpf(ARC_START, ARC_END, float(step + 1) / float(ARC_STEPS))
-			var pts := _quad(_center, inner_edge, outer_edge, a0, a1)
+			var a0 := lerpf(ARC_START, a_end, float(step) / float(ARC_STEPS))
+			var a1 := lerpf(ARC_START, a_end, float(step + 1) / float(ARC_STEPS))
 			var shadow_pts := PackedVector2Array()
-			for p in pts:
-				shadow_pts.append(p + SHADOW_OFFSET)
-			canvas.draw_colored_polygon(shadow_pts, SHADOW)
-			canvas.draw_colored_polygon(pts, FILL)
-		canvas.draw_polyline(_arc_points(_center, outer_edge, ARC_START, ARC_END), OUTLINE, 2.0, false)
-		canvas.draw_polyline(_arc_points(_center, inner_edge, ARC_START, ARC_END), OUTLINE, 2.0, false)
-		canvas.draw_line(_point(_center, inner_edge, ARC_START), _point(_center, outer_edge, ARC_START), OUTLINE, 2.0, false)
-		canvas.draw_line(_point(_center, inner_edge, ARC_END), _point(_center, outer_edge, ARC_END), OUTLINE, 2.0, false)
+			for pt in _quad(center, inner_edge, outer_edge, a0, a1):
+				shadow_pts.append(pt + SHADOW_OFFSET)
+			canvas.draw_colored_polygon(shadow_pts, shadow_col)
+	for visual in shown.size():
+		var band := int(shown[visual])
+		var p := _band_progress(visual)
+		if p <= 0.0:
+			continue
+		var a_end := lerpf(ARC_START, ARC_END, p)
+		var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
+		var outer_edge := inner_edge + BAND_THICK
+		var red := _alpha(RANK_REDS[band], fade)
+		var fill_colors := PackedColorArray([
+			_alpha(FILL_INNER, fade),
+			_alpha(FILL_OUTER, fade),
+			_alpha(FILL_OUTER, fade),
+			_alpha(FILL_INNER, fade),
+		])
+		for step in ARC_STEPS:
+			var a0 := lerpf(ARC_START, a_end, float(step) / float(ARC_STEPS))
+			var a1 := lerpf(ARC_START, a_end, float(step + 1) / float(ARC_STEPS))
+			canvas.draw_polygon(_quad(center, inner_edge, outer_edge, a0, a1), fill_colors)
+		var scan := _alpha(WARM_GREY_LIGHT, 0.06 * fade)
+		for k in [1, 2]:
+			var r := inner_edge + BAND_THICK * float(k) / 3.0
+			canvas.draw_polyline(_arc_points(center, r, ARC_START, a_end), scan, 1.0, false)
+		var groove := _alpha(RANK_REDS[band], 0.35 * fade)
+		canvas.draw_polyline(_arc_points(center, inner_edge + 4.0, ARC_START, a_end), groove, 1.0, false)
+		canvas.draw_polyline(_arc_points(center, outer_edge - 4.0, ARC_START, a_end), groove, 1.0, false)
+		canvas.draw_polyline(_arc_points(center, outer_edge, ARC_START, a_end), red, 2.0, false)
+		canvas.draw_polyline(_arc_points(center, inner_edge, ARC_START, a_end), red, 2.0, false)
+		canvas.draw_line(_point(center, inner_edge, ARC_START), _point(center, outer_edge, ARC_START), red, 2.0, false)
+		canvas.draw_line(_point(center, inner_edge, a_end), _point(center, outer_edge, a_end), red, 2.0, false)
 		var mid_r := (inner_edge + outer_edge) * 0.5
-		_paint_chevron(canvas, _point(_center, mid_r, ARC_START))
-		_paint_chevron(canvas, _point(_center, mid_r, ARC_END))
+		var left_at := _point(center, mid_r, ARC_START)
+		_paint_chevron(canvas, left_at, _chevron_color(band, -1, fade))
+		if p >= 1.0:
+			_paint_chevron(canvas, _point(center, mid_r, ARC_END), _chevron_color(band, 1, fade))
+		_paint_glyph(canvas, left_at, band, red)
+	if _open:
+		_paint_sockets(canvas)
+		_paint_pips(canvas)
+
+
+func _band_progress(visual: int) -> float:
+	if not _open:
+		return clampf(_close_t / CLOSE_SEC, 0.0, 1.0)
+	var t := clampf((_anim_t - float(visual) * BAND_STAGGER_SEC) / SWEEP_SEC, 0.0, 1.0)
+	return 1.0 - pow(1.0 - t, 3.0)
+
+
+func _alpha(color: Color, amount: float) -> Color:
+	return Color(color.r, color.g, color.b, color.a * amount)
+
+
+func _chevron_color(band: int, direction: int, fade: float) -> Color:
+	if not band_can_scroll(band):
+		return _alpha(WARM_GREY, 0.7 * fade)
+	if _hover_arrow == Vector2i(band, direction):
+		return _alpha(RANK_REDS[band].lerp(WARM_GREY_LIGHT, 0.55), fade)
+	return _alpha(RANK_REDS[maxi(band, 1)], fade)
+
+
+func _paint_glyph(canvas: Control, end_at: Vector2, band: int, color: Color) -> void:
+	var glyph := ItemDef.rarity_glyph_index(band)
+	if glyph.is_empty():
+		return
+	var at := end_at + Vector2(-20.0, 16.0 + float(GLYPH_PX) * 0.8)
+	canvas.draw_string(MenuLook.FONT, at, glyph, HORIZONTAL_ALIGNMENT_CENTER, 40.0, GLYPH_PX, color)
+
+
+func _paint_sockets(canvas: Control) -> void:
+	var pulse := 0.5 + 0.5 * sin(_time * 2.4)
+	for icon in _icons:
+		if not icon.visible:
+			continue
+		var item_id := str(icon.get_meta("item_id", ""))
+		if item_id.is_empty():
+			continue
+		var a := float(icon.get_meta("reveal", 1.0))
+		if a <= 0.0:
+			continue
+		var hovered := item_id == _hover_id
+		var c := icon.position + icon.size * 0.5
+		var r := SOCKET_R + (2.0 if hovered else 0.0)
+		var ring := WARM_GREY_LIGHT if hovered else WARM_GREY
+		if _is_equipped(item_id):
+			canvas.draw_circle(c, r + 3.0 + pulse * 2.0, _alpha(OUTLINE, a * (0.1 + 0.1 * pulse)))
+			canvas.draw_circle(c, r, _alpha(SOCKET_FILL, a))
+			ring = OUTLINE.lerp(WARM_GREY_LIGHT, 0.4) if hovered else OUTLINE
+		else:
+			canvas.draw_circle(c, r, _alpha(SOCKET_EMPTY, a))
+		var flash := clampf(float(_flash.get(item_id, 0.0)) / FLASH_SEC, 0.0, 1.0)
+		if flash > 0.0:
+			ring = ring.lerp(Color.WHITE, flash)
+			canvas.draw_circle(c, r, _alpha(Color.WHITE, 0.35 * flash * a))
+		canvas.draw_arc(c, r, 0.0, TAU, 40, _alpha(ring, a), 2.5 if hovered else 2.0, true)
+
+
+func _paint_pips(canvas: Control) -> void:
+	if _cap == null or not _cap.visible or _pips_total <= 0:
+		return
+	var rings := _shown_bands().size()
+	var outer := _inner + float(rings) * (BAND_THICK + BAND_GAP) - BAND_GAP
+	var row_w := float(_pips_total) * PIP_PX + float(_pips_total - 1) * PIP_GAP
+	var x := _center.x - row_w * 0.5
+	var y := _center.y - outer - 8.0 - PIP_PX
+	for i in _pips_total:
+		var rect := Rect2(Vector2(x + float(i) * (PIP_PX + PIP_GAP), y), Vector2(PIP_PX, PIP_PX))
+		if i < _pips_filled:
+			canvas.draw_rect(rect, OUTLINE, true)
+		else:
+			canvas.draw_rect(rect, WARM_GREY, false, 1.0)
 
 
 func _quad(center: Vector2, inner_edge: float, outer_edge: float, a0: float, a1: float) -> PackedVector2Array:
@@ -297,11 +492,14 @@ func _arc_points(center: Vector2, radius: float, a0: float, a1: float) -> Packed
 	return pts
 
 
-func _paint_chevron(canvas: Control, at: Vector2) -> void:
-	var tip := at + Vector2(0.0, 9.0)
-	var left := at + Vector2(-8.0, -7.0)
-	var right := at + Vector2(8.0, -7.0)
-	canvas.draw_colored_polygon(PackedVector2Array([tip, left, right]), OUTLINE)
+func _paint_chevron(canvas: Control, at: Vector2, color: Color) -> void:
+	var back := PackedVector2Array([
+		at + Vector2(-9.0, -7.0),
+		at + Vector2(0.0, 9.0),
+		at + Vector2(9.0, -7.0),
+	])
+	canvas.draw_colored_polygon(back, _alpha(FILL_INNER, color.a))
+	canvas.draw_polyline(back, color, 3.0, true)
 
 
 func _can_open() -> bool:
@@ -406,17 +604,34 @@ func _visual_index(band: int) -> int:
 
 
 func _items_for_band(band: int) -> Array:
-	var out: Array = []
+	_refresh_band_items()
+	if band < 0 or band >= _band_items.size():
+		return []
+	return _band_items[band]
+
+
+func _refresh_band_items() -> void:
 	var run := _run()
+	var key := PackedStringArray()
+	if run != null:
+		key = run.state.owned_item_ids
+	if _band_key_set and key == _band_key:
+		return
+	_band_key = key.duplicate()
+	_band_key_set = true
+	_band_items.clear()
+	for band in BAND_COUNT:
+		_band_items.append([])
 	if run == null or not run.has_method("owned_items"):
-		return out
+		return
 	for item in run.call("owned_items"):
 		if item == null:
 			continue
-		if int(item.get("rarity")) != band:
+		var band := int(item.get("rarity"))
+		if band < 0 or band >= BAND_COUNT:
 			continue
-		out.append(item)
-	return out
+		ItemDef.cached_wheel_texture(item)
+		_band_items[band].append(item)
 
 
 func _visible_slice(items: Array, scroll: int) -> Array:
@@ -445,6 +660,7 @@ func _place_icons() -> void:
 		var shown := _visible_slice(_items_for_band(band), _scroll[band])
 		var angles: Array = _slot_angles(shown.size())
 		var mid_r := _mid_radius(band)
+		var sweep := _band_progress(maxi(_visual_index(band), 0))
 		for i in shown.size():
 			var icon := _icons[slot]
 			slot += 1
@@ -458,7 +674,10 @@ func _place_icons() -> void:
 			var prev_id := str(icon.get_meta("item_id", ""))
 			if prev_id != item_id or icon.texture_normal != cached:
 				icon.texture_normal = cached
-			icon.modulate = Color.WHITE if _is_equipped(item_id) else GREYED
+			var frac := (float(angles[i]) - ARC_START) / (ARC_END - ARC_START)
+			var reveal := clampf((sweep - frac + 0.1) * 5.0, 0.0, 1.0)
+			icon.modulate = _alpha(Color.WHITE if _is_equipped(item_id) else GREYED, reveal)
+			icon.set_meta("reveal", reveal)
 			icon.set_meta("item_id", item_id)
 			var at := _point(_center, mid_r, float(angles[i]))
 			icon.position = at - icon.size * 0.5
@@ -511,13 +730,16 @@ func _place_cap() -> void:
 		if run.has_method("max_equip_slots"):
 			cap = int(run.call("max_equip_slots"))
 	_cap.text = "%d/%d" % [equipped, cap]
+	_pips_filled = equipped
+	_pips_total = cap
+	_cap.add_theme_color_override("font_color", OUTLINE if equipped >= cap else MenuLook.TEXT)
 	_cap.reset_size()
 	var label_size := _cap.get_combined_minimum_size()
 	var rings := _shown_bands().size()
 	var outer := _inner + float(rings) * (BAND_THICK + BAND_GAP) - BAND_GAP
 	_cap.position = Vector2(
 		_center.x - label_size.x * 0.5,
-		_center.y - outer - label_size.y - 8.0
+		_center.y - outer - label_size.y - 12.0 - PIP_PX
 	)
 
 
@@ -600,6 +822,7 @@ func _on_icon_pressed(icon: TextureButton) -> void:
 	if item_id.is_empty():
 		return
 	_play_sfx(&"item_wheel_click")
+	_flash[item_id] = FLASH_SEC
 	var run := _run()
 	if run != null and run.has_method("toggle_equip"):
 		run.call("toggle_equip", item_id)
@@ -668,6 +891,15 @@ func _hide_hover_if_clear() -> void:
 
 func _on_arrow_pressed(arrow: Button) -> void:
 	_scroll_band(int(arrow.get_meta("band", -1)), int(arrow.get_meta("dir", 0)))
+
+
+func _on_arrow_hover(arrow: Button) -> void:
+	_hover_arrow = Vector2i(int(arrow.get_meta("band", -1)), int(arrow.get_meta("dir", 0)))
+
+
+func _on_arrow_exit(arrow: Button) -> void:
+	if _hover_arrow == Vector2i(int(arrow.get_meta("band", -1)), int(arrow.get_meta("dir", 0))):
+		_hover_arrow = Vector2i(-1, 0)
 
 
 func _item_by_id(item_id: String) -> Resource:

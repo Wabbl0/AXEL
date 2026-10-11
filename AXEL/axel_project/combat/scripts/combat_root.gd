@@ -105,6 +105,7 @@ var multiplier := CombatMultiplier.new()
 var powers := PowerControllerScript.new()
 var meter := MeterScript.new()
 var free_spins := FreeSpinsScript.new()
+var wild_line_lengths: Array[int] = [3]
 var goal_tracker := GoalTrackerScript.new()
 var wild_symbol: SymbolDef
 var low_symbol_pool: Array[SymbolDef] = []
@@ -1080,11 +1081,11 @@ func _resolve_lines_impl(lines: Array) -> void:
 		for p in cells:
 			to_clear[p] = true
 		var axis := str(line.get("axis", ""))
-		var can_wild := int(line["length"]) == 3 and not free_spins.active
+		var can_wild := wild_line_lengths.has(int(line["length"])) and not free_spins.active
 		if axis == "d" and not allow_diag_wilds:
 			can_wild = false
 		if can_wild:
-			var mid: Vector2i = cells[1]
+			var mid: Vector2i = cells[int(cells.size() / 2.0)]
 			wild_spawns[mid] = true
 	var all_cleared: Array = to_clear.keys()
 	grid.clear_cells_and_emit(all_cleared)
@@ -1441,8 +1442,31 @@ func _play_goal_win_burst() -> void:
 	if tree == null:
 		return
 	await _pause_visual(0.4)
+	if not _power_reduce_flashing():
+		_play_goal_win_chase(false)
+		if _feel != null:
+			_feel.play_win_flames(grid_ui, [12, 24])
+			_feel.shake(4, get_node_or_null("/root/AxelSettings"))
+		await _pause_visual(0.34)
+		_play_goal_win_chase(true)
+		await _pause_visual(0.34)
 	if tree != null:
 		await _pause_visual(0.25)
+
+
+func _play_goal_win_chase(inward: bool) -> void:
+	var center := grid_ui.get_global_rect().get_center()
+	for child in grid_ui.get_children():
+		var slot := child as Control
+		if slot == null or not slot.has_method("play_count_flash"):
+			continue
+		var unit := slot.get_global_rect().size
+		if unit.x <= 0.0 or unit.y <= 0.0:
+			continue
+		var d := (slot.get_global_rect().get_center() - center) / unit
+		var ring := mini(maxi(absi(roundi(d.x)), absi(roundi(d.y))), 2)
+		var order := 2 - ring if inward else ring
+		slot.call("play_count_flash", 0.2, 0.9, float(order) * 0.07)
 
 
 func await_victory_confirm() -> void:

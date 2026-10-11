@@ -74,6 +74,27 @@ func _main() -> void:
 		failures.append("missing label text 'Bets used: 12'")
 	if not balance_ok:
 		failures.append("missing label text 'Current balance: 340'")
+	if label != null:
+		var title_size := label.get_theme_font_size("normal_font_size")
+		if title_size < 96:
+			failures.append("title font size %d should be at least 96" % title_size)
+	var jackpot: Node = null
+	if root_ctrl != null:
+		jackpot = root_ctrl.get_node_or_null("RoundJackpotFx")
+	if jackpot == null:
+		failures.append("RoundJackpotFx missing after show_round_complete_card")
+	if not fx.has_method("is_round_intro_playing") or not fx.has_method("skip_round_intro"):
+		failures.append("AxelEventFx needs is_round_intro_playing and skip_round_intro")
+	else:
+		fx.call("skip_round_intro")
+		if bool(fx.call("is_round_intro_playing")):
+			failures.append("intro still playing after skip_round_intro")
+		if label != null and (absf(label.scale.x - 1.0) > 0.01 or absf(label.modulate.a - 1.0) > 0.02):
+			failures.append("title not at rest after skip (scale %s, alpha %.2f)" % [label.scale, label.modulate.a])
+	await fx.call("finish_round_complete_fade")
+	await process_frame
+	if jackpot != null and is_instance_valid(jackpot) and jackpot.is_inside_tree():
+		failures.append("RoundJackpotFx still alive after finish_round_complete_fade")
 	if failures.is_empty():
 		print("Round complete overlay check OK.")
 		quit(0)

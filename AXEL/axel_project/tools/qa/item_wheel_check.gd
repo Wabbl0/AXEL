@@ -102,6 +102,10 @@ func _check_wheel(wheel: Node, run: Node) -> void:
 	run.state.owned_item_ids = PackedStringArray(["C1", "C2", "C3", "C4"])
 	run.state.equipped_item_ids = PackedStringArray(["C1"])
 	await process_frame
+	if not bool(wheel.call("band_can_scroll", 0)):
+		_fail("common band with 4 items should be scrollable")
+	if bool(wheel.call("band_can_scroll", 1)):
+		_fail("empty uncommon band should not be scrollable")
 	var before: PackedStringArray = wheel.call("visible_ids", 0)
 	if before.size() != 3:
 		_fail("common band should show 3 of 4, got %s" % str(before))
@@ -122,6 +126,16 @@ func _check_wheel(wheel: Node, run: Node) -> void:
 	wheel.call("close_wheel")
 	if bool(wheel.call("is_wheel_open")):
 		_fail("wheel stayed open after close")
+	await create_timer(0.3).timeout
+	if not bool(wheel.call("open_wheel")):
+		_fail("wheel did not reopen for the sweep check")
+		return
+	await create_timer(0.5).timeout
+	if not bool(wheel.call("is_wheel_open")):
+		_fail("wheel closed during the sweep check")
+	elif float(wheel.call("open_progress")) < 1.0:
+		_fail("open sweep should finish, progress %s" % str(wheel.call("open_progress")))
+	wheel.call("close_wheel")
 
 
 func _expect_icon_texture_width(wheel: Node, px: int) -> void:

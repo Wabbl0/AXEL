@@ -7,7 +7,7 @@ const NAME_MIN_W := 40.0
 const PLAYER_ICON_PX := 144.0
 const PLAYER_ICON_RES_PX := 120
 const PLAYER_NAME_FONT := 84
-const PLAYER_DESC_FONT := 48
+const PLAYER_DESC_FONT := 58
 const MID_Y_SLACK := 8.0
 
 var _failures: Array[String] = []

@@ -584,6 +584,22 @@ func _show_round_complete_card() -> void:
 		if root != null and root.has_method("get_bankroll"):
 			balance = int(root.call("get_bankroll"))
 		fx.call("show_round_complete_card", bets, balance)
+		await _await_round_intro(fx)
+
+
+func _await_round_intro(fx: Node) -> void:
+	if fx == null or not fx.has_method("is_round_intro_playing"):
+		return
+	var tree := get_tree()
+	var was_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	while tree != null and bool(fx.call("is_round_intro_playing")):
+		var down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+		var pressed := (down and not was_down) or Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("dialogue_advance")
+		was_down = down
+		if pressed and not tree.paused:
+			fx.call("skip_round_intro")
+			break
+		await tree.process_frame
 
 
 func _show_guide_lesson() -> void:

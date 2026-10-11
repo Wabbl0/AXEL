@@ -2,12 +2,15 @@ extends Control
 
 const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const MEMORY_KEY := "scene_3"
+const ESC_HINT_FONT := 48
+const ESC_HINT_MARGIN := 24.0
 const _MapOverlayScript := preload("res://scenes/ui/locker_map_overlay.gd")
 
 @onready var _map_hotspot = $MapHotspot
 @onready var _top_dialogue: Node = $TopDialogueOverlay
 @onready var _exit_button: Button = $ExitLayer/ExitButton
 @onready var _shelves: Node = get_node_or_null("LockerShelves")
+@onready var _esc_hint: Label = get_node_or_null("ExitLayer/EscHint")
 
 var _map_overlay: CanvasLayer
 
@@ -29,6 +32,16 @@ func _ready() -> void:
 	set_process_input(true)
 	_grant_stash_flag()
 	call_deferred("_play_first_visit_dialogue")
+
+
+func _process(_delta: float) -> void:
+	if _esc_hint == null:
+		return
+	_esc_hint.visible = not _first_visit_dialogue_running and not _is_transitioning and not _map_is_open()
+
+
+func _map_is_open() -> bool:
+	return _map_overlay != null and _map_overlay.has_method("is_open") and bool(_map_overlay.call("is_open"))
 
 
 func _grant_stash_flag() -> void:
@@ -101,6 +114,10 @@ func _is_exit_key(event: InputEvent) -> bool:
 func _apply_chrome_scale() -> void:
 	var f := UiViewportScale.factor(self)
 	UiViewportScale.apply_exit_button(_exit_button, f)
+	if _esc_hint != null:
+		_esc_hint.add_theme_font_size_override("font_size", roundi(ESC_HINT_FONT * f))
+		_esc_hint.position = Vector2(ESC_HINT_MARGIN, ESC_HINT_MARGIN) * f
+		_esc_hint.reset_size()
 	if _shelves != null and _shelves.has_method("_remap_rows"):
 		_shelves.call("_remap_rows")
 

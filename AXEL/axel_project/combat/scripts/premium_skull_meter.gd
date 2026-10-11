@@ -34,7 +34,7 @@ const HEART_GLOW := 0.6
 const BUSY_ALPHA := 0.5
 const READY_FADE_SPEED := 7.0
 const RIM_SCALE := 1.07
-const RIM_COLOR := Color(0.0, 0.0, 0.0)
+const RIM_COLOR := Color(1.0, 1.0, 1.0)
 const RIM_HOVER_ALPHA := 0.85
 const FLASH_TINT := Color(0.12, 0.12, 0.12)
 const TILT_MAX := 0.105
@@ -95,6 +95,7 @@ var _flash_tween: Tween
 var _boost_tween: Tween
 var _chip_tween: Tween
 var _burst: CPUParticles2D
+var _press_point := Vector2.INF
 var _stream: CPUParticles2D
 var _chip: Label
 var _rng := RandomNumberGenerator.new()
@@ -204,7 +205,9 @@ func play_fire() -> void:
 		return
 	_tween_flash(1.0, 0.18)
 	_play_jitter(5.0, 4, 0.025)
-	_emit_burst(FIRE_EMBERS)
+	var at := _press_point if _press_point.is_finite() else size * 0.5
+	_press_point = Vector2.INF
+	_emit_burst(FIRE_EMBERS, at)
 
 
 func play_gulp(sections: int) -> void:
@@ -422,10 +425,11 @@ func _make_embers(node_name: String) -> CPUParticles2D:
 	return p
 
 
-func _emit_burst(count: int) -> void:
+func _emit_burst(count: int, at: Vector2 = MOUTH_POS) -> void:
 	_ensure_embers()
 	if _burst == null:
 		return
+	_burst.position = at
 	_burst.amount = maxi(count, 1)
 	_burst.restart()
 	_burst.emitting = true
@@ -859,6 +863,7 @@ func _gui_input(event: InputEvent) -> void:
 		if mb.button_index != MOUSE_BUTTON_LEFT:
 			return
 		if mb.pressed:
+			_press_point = mb.position
 			set_pressed(true)
 			_play_press_jitter()
 			accept_event()
@@ -887,5 +892,6 @@ func _on_mouse_entered() -> void:
 
 
 func _on_mouse_exited() -> void:
+	_press_point = Vector2.INF
 	set_pressed(false)
 	set_hovered(false)

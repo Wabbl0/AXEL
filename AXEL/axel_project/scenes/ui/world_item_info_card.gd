@@ -6,7 +6,7 @@ const CARD_LAYER := 109
 const HOVER_LAYER := 110
 const ICON_PX := 96.0
 const NAME_FONT := 34
-const DESC_FONT := 28
+const DESC_FONT := 34
 const DESC_MIN_W := 380.0
 const KEY_TEXT := "[E]"
 const ITEMS_INDICATOR_GAP_PX := 10.0
@@ -55,7 +55,7 @@ func _build() -> void:
 	_panel.name = "CardPanel"
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.72)
+	style.bg_color = Color(0, 0, 0, 0.92)
 	style.border_width_left = 1
 	style.border_width_top = 1
 	style.border_width_right = 1

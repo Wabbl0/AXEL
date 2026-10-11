@@ -315,6 +315,10 @@ func register_walk_step() -> void:
 	start_fight_here(REASON_WALK)
 
 
+func is_fight_starting() -> bool:
+	return _starting_fight
+
+
 func start_fight_here(reason: String) -> bool:
 	if not is_enabled() or _starting_fight or encounters_suppressed():
 		return false

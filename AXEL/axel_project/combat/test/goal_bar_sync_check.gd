@@ -31,6 +31,7 @@ func _main() -> void:
 		_finish()
 		return
 	await _check_popup_moves_goal(ui, combat)
+	await _check_late_popup_never_overshoots(ui, combat)
 	_check_spins_match_truth(ui, combat)
 	_finish()
 
@@ -40,6 +41,10 @@ func _check_popup_moves_goal(ui: Node, combat: Node) -> void:
 	var goal_start := int(combat.call("get_chip_bar_goal_progress_cents"))
 	if _shown_goal(ui) != goal_start:
 		_fail("goal readout %d does not start at %d" % [_shown_goal(ui), goal_start])
+	combat.call("_add_round_winnings", POPUP_CENTS)
+	ui.call("_refresh_readouts")
+	if _shown_goal(ui) != goal_start:
+		_fail("goal readout %d ran ahead of the bar before the popup (start %d)" % [_shown_goal(ui), goal_start])
 	ui.call("_on_winnings_popup_border_touched", {"payout_cents": POPUP_CENTS})
 	var saw_mid := false
 	for _i in 600:
@@ -59,6 +64,30 @@ func _check_popup_moves_goal(ui: Node, combat: Node) -> void:
 	ui.call("_sync_winnings_counter_to_combat_truth")
 	if _shown_goal(ui) != int(combat.call("get_chip_bar_goal_progress_cents")):
 		_fail("goal readout did not snap back to the real goal")
+
+
+func _check_late_popup_never_overshoots(ui: Node, combat: Node) -> void:
+	ui.call("_reset_winnings_counter_display")
+	combat.call("_add_round_winnings", POPUP_CENTS)
+	ui.call("_sync_winnings_counter_to_combat_truth")
+	var truth := int(combat.call("get_chip_bar_goal_progress_cents"))
+	var shown_before := _shown_goal(ui)
+	if shown_before != truth:
+		_fail("goal readout %d after sync, real goal %d" % [shown_before, truth])
+	ui.call("_on_winnings_popup_border_touched", {"payout_cents": POPUP_CENTS})
+	for _i in 120:
+		await process_frame
+		ui.call("_refresh_readouts")
+		if _shown_goal(ui) > truth:
+			_fail("late popup pushed goal readout to %d above real goal %d" % [_shown_goal(ui), truth])
+			return
+		if _shown_bar(ui) > int(combat.call("get_round_winnings")):
+			_fail("late popup pushed bar to %d above real bar %d" % [_shown_bar(ui), int(combat.call("get_round_winnings"))])
+			return
+	ui.call("_on_spin_started", 1)
+	ui.call("_refresh_readouts")
+	if _shown_goal(ui) < shown_before:
+		_fail("goal readout dropped from %d to %d at next spin" % [shown_before, _shown_goal(ui)])
 
 
 func _check_spins_match_truth(ui: Node, combat: Node) -> void:

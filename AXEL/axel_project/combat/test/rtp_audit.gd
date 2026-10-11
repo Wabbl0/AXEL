@@ -6,17 +6,37 @@ const BASELINE_SEEDS := 20
 const PAID_SPINS_PER_SEED := 50
 const ENCOUNTER_SEEDS := 120
 
+var _baseline_seeds := BASELINE_SEEDS
+var _encounter_seeds := ENCOUNTER_SEEDS
+var _wild_lengths: Array[int] = [3]
+
 
 func _init() -> void:
 	call_deferred("_main")
 
 
 func _main() -> void:
+	_read_env()
 	var baseline := await _run_baseline_no_item()
 	var encounters := await _run_encounter_success()
 	var result := _build_report(baseline, encounters)
 	print("RTP_AUDIT_JSON %s" % JSON.stringify(result))
 	quit(0)
+
+
+func _read_env() -> void:
+	var seeds := OS.get_environment("AXEL_RTP_SEEDS")
+	if seeds.is_valid_int() and int(seeds) > 0:
+		_baseline_seeds = int(seeds)
+	var enc := OS.get_environment("AXEL_RTP_ENCOUNTERS")
+	if enc.is_valid_int() and int(enc) > 0:
+		_encounter_seeds = int(enc)
+	var lengths := OS.get_environment("AXEL_RTP_WILD_LENGTHS")
+	if not lengths.is_empty():
+		_wild_lengths.clear()
+		for part in lengths.split(",", false):
+			if part.strip_edges().is_valid_int():
+				_wild_lengths.append(int(part.strip_edges()))
 
 
 func _run_baseline_no_item() -> Dictionary:
@@ -32,14 +52,15 @@ func _run_baseline_no_item() -> Dictionary:
 	var trinity_entry_count := 0
 	var forced_choice_count := 0
 
-	for seed_idx in BASELINE_SEEDS:
+	for seed_idx in _baseline_seeds:
 		if seed_idx % 5 == 0:
-			print("RTP_AUDIT_PROGRESS baseline_seed=%d/%d" % [seed_idx, BASELINE_SEEDS])
+			print("RTP_AUDIT_PROGRESS baseline_seed=%d/%d" % [seed_idx, _baseline_seeds])
 		var cr: CombatRoot = CombatRootScene.instantiate()
 		root.add_child(cr)
 		if not cr.is_node_ready():
 			await cr.ready
 		cr.encounter_def = null
+		cr.wild_line_lengths = _wild_lengths
 		cr.setup_new_grid(10000 + seed_idx)
 		var seed_wager_cents := 0
 		var seed_payout_cents := 0
@@ -102,13 +123,14 @@ func _run_baseline_no_item() -> Dictionary:
 
 func _run_encounter_success() -> Dictionary:
 	var wins := 0
-	for seed_idx in ENCOUNTER_SEEDS:
+	for seed_idx in _encounter_seeds:
 		if seed_idx % 20 == 0:
-			print("RTP_AUDIT_PROGRESS encounter_seed=%d/%d" % [seed_idx, ENCOUNTER_SEEDS])
+			print("RTP_AUDIT_PROGRESS encounter_seed=%d/%d" % [seed_idx, _encounter_seeds])
 		var cr: CombatRoot = CombatRootScene.instantiate()
 		root.add_child(cr)
 		if not cr.is_node_ready():
 			await cr.ready
+		cr.wild_line_lengths = _wild_lengths
 		cr.setup_new_grid(500000 + seed_idx)
 		var guard := 0
 		while not cr.is_encounter_complete() and guard < 200:
@@ -121,7 +143,7 @@ func _run_encounter_success() -> Dictionary:
 		cr.queue_free()
 		await process_frame
 	return {
-		"encounters": ENCOUNTER_SEEDS,
+		"encounters": _encounter_seeds,
 		"wins": wins,
 	}
 
@@ -156,9 +178,10 @@ func _build_report(baseline: Dictionary, encounters: Dictionary) -> Dictionary:
 
 	return {
 		"config": {
-			"baseline_seeds": BASELINE_SEEDS,
+			"baseline_seeds": _baseline_seeds,
+			"wild_lengths": _wild_lengths,
 			"paid_spins_per_seed": PAID_SPINS_PER_SEED,
-			"encounter_seeds": ENCOUNTER_SEEDS,
+			"encounter_seeds": _encounter_seeds,
 			"free_spin_pick": String(FS_PICK),
 		},
 		"baseline": {

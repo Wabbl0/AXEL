@@ -40,6 +40,7 @@ const LESSONS := {
 	},
 	"fight_stakes": {
 		"action_only": true,
+		"gate": true,
 		"title": "Fights",
 		"body": "BALANCE is your chips. The BET is spent each spin. Fill GOAL to win. If you cannot pay another spin, you lose. Press + or - to change the BET. Q and R work too.",
 	},
@@ -164,7 +165,9 @@ func request(id: String) -> void:
 		return
 	if _is_seen(id) or _queue.has(id) or _is_showing_id(id):
 		return
-	if _lesson_freezes(id):
+	if _lesson_gates(id):
+		_queue.insert(0, id)
+	elif _lesson_freezes(id):
 		_queue.insert(_first_calm_index(), id)
 		_bump_calm_cards()
 	else:
@@ -174,7 +177,7 @@ func request(id: String) -> void:
 
 func _first_calm_index() -> int:
 	for i in _queue.size():
-		if not _lesson_freezes(_queue[i]):
+		if not _lesson_freezes(_queue[i]) and not _lesson_gates(_queue[i]):
 			return i
 	return _queue.size()
 
@@ -183,7 +186,7 @@ func _bump_calm_cards() -> void:
 	for slot in _slots:
 		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 			continue
-		if _lesson_freezes(slot.open_id):
+		if _lesson_freezes(slot.open_id) or _lesson_gates(slot.open_id):
 			continue
 		var id: String = slot.open_id
 		_force_waiting(slot)
@@ -198,6 +201,19 @@ func _force_waiting(slot: CardSlot) -> void:
 		_show_typed(slot, slot.body_text.length())
 		slot.phase = Phase.WAITING
 		_refresh_type_loop()
+
+
+func _lesson_gates(id: String) -> bool:
+	return LESSONS.has(id) and bool(LESSONS[id].get("gate", false))
+
+
+func is_gate_open() -> bool:
+	for slot in _slots:
+		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		if _lesson_gates(slot.open_id):
+			return true
+	return false
 
 
 func _lesson_action_only(id: String) -> bool:
@@ -291,7 +307,7 @@ func is_waiting() -> bool:
 
 
 func blocks_spin() -> bool:
-	return _freeze_on
+	return _freeze_on or is_gate_open()
 
 
 func close_freeze_card() -> bool:
@@ -588,6 +604,10 @@ func _on_card_gui_input(event: InputEvent, idx: int) -> void:
 	if not mouse.pressed or mouse.button_index != MOUSE_BUTTON_LEFT:
 		return
 	_slots[idx].bar_panel.accept_event()
+	if _lesson_gates(_slots[idx].open_id):
+		if _slots[idx].phase == Phase.TYPING:
+			_force_waiting(_slots[idx])
+		return
 	_on_exit_pressed_slot(idx)
 
 
@@ -679,7 +699,7 @@ func _on_scene_changed() -> void:
 			continue
 		if _lesson_action_only(slot.open_id) or _lesson_freezes(slot.open_id):
 			_force_waiting(slot)
-			_start_close(slot, false)
+			_start_close(slot, _lesson_gates(slot.open_id))
 	_sync_freeze()
 	_hud_rects.clear()
 	_first_fight_card_id = ""
@@ -738,10 +758,26 @@ func _layout_cards() -> void:
 			y1 = _single_card_top(s1, base_y, x, width, h1, gap, margin, vp)
 		_apply_slot_rect(s1, x, y1, width, h1, scale)
 
+	if show0 and _lesson_gates(s0.open_id):
+		_place_over_skull(s0, width, h0, scale, margin, vp)
+	if show1 and _lesson_gates(s1.open_id):
+		_place_over_skull(s1, width, h1, scale, margin, vp)
+
 	if show0 and s0.exit != null:
 		UiViewportScale.apply_exit_button(s0.exit, scale * EXIT_SCALE, false)
 	if show1 and s1.exit != null:
 		UiViewportScale.apply_exit_button(s1.exit, scale * EXIT_SCALE, false)
+
+
+func _place_over_skull(slot: CardSlot, width: float, height: float, scale: float, margin: float, vp: Vector2) -> void:
+	if not _hud_rects.has("NEW_Execute"):
+		return
+	var skull: Rect2 = _hud_rects["NEW_Execute"]
+	var h := maxf(height, skull.size.y)
+	var center := skull.get_center()
+	var x := clampf(center.x - width * 0.5, margin, maxf(margin, vp.x - margin - width))
+	var y := clampf(center.y - h * 0.5, margin, maxf(margin, vp.y - margin - h))
+	_apply_slot_rect(slot, x, y, width, h, scale)
 
 
 func _single_card_top(

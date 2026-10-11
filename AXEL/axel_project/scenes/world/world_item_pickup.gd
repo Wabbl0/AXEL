@@ -19,6 +19,8 @@ var _taken := false
 var _marker: Node2D = null
 var _wheel_was_open := false
 
+static var _card_pickup_id := 0
+
 
 func setup(
 	new_item_id: String, new_room_path: String, index: int, info_card: Node = null
@@ -120,11 +122,53 @@ func description() -> String:
 	return String(item.get("description"))
 
 
+func is_player_inside() -> bool:
+	return _player_inside and not _taken
+
+
 func _process(_delta: float) -> void:
 	var open := _wheel_is_open()
-	if _player_inside and not _taken and _wheel_was_open and not open:
+	var nearest := is_player_inside() and _nearest_candidate() == self and not _fight_starting()
+	if nearest and not open and (_wheel_was_open or _card_pickup_id != get_instance_id()):
 		_show_info_card()
 	_wheel_was_open = open
+
+
+func _nearest_candidate() -> Node:
+	var parent := get_parent()
+	if parent == null:
+		return self
+	var player := _find_player()
+	if player == null:
+		return self
+	var from := player.get_global_transform_with_canvas().origin
+	var best: Node = null
+	var best_dist := INF
+	for child in parent.get_children():
+		if not child is Node2D or not child.has_method("is_player_inside"):
+			continue
+		if not bool(child.call("is_player_inside")):
+			continue
+		var dist := from.distance_squared_to((child as Node2D).get_global_transform_with_canvas().origin)
+		if dist < best_dist:
+			best_dist = dist
+			best = child
+	return best if best != null else self
+
+
+func _find_player() -> Node2D:
+	var scene := get_tree().current_scene if get_tree() != null else null
+	if scene == null:
+		return null
+	var direct := scene.get_node_or_null("PlayerLayer/Player") as Node2D
+	if direct != null:
+		return direct
+	return scene.find_child("Player", true, false) as Node2D
+
+
+func _fight_starting() -> bool:
+	var world := get_node_or_null("/root/AxelWorld")
+	return world != null and world.has_method("is_fight_starting") and bool(world.call("is_fight_starting"))
 
 
 func _wheel_is_open() -> bool:
@@ -139,7 +183,6 @@ func _on_body_entered(body: Node) -> void:
 		return
 	_player_inside = true
 	add_to_group(TAP_GROUP)
-	_show_info_card()
 
 
 func _on_body_exited(body: Node) -> void:
@@ -147,7 +190,9 @@ func _on_body_exited(body: Node) -> void:
 		return
 	_player_inside = false
 	remove_from_group(TAP_GROUP)
-	_hide_info_card()
+	if _card_pickup_id == get_instance_id():
+		_card_pickup_id = 0
+		_hide_info_card()
 
 
 static func _is_player(body: Node) -> bool:
@@ -158,6 +203,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _taken or not _player_inside:
 		return
 	if not event.is_action_pressed("interact"):
+		return
+	if _fight_starting() or _nearest_candidate() != self:
 		return
 	var scene := get_tree().current_scene if get_tree() != null else null
 	var dialogue := scene.get_node_or_null("TopDialogueOverlay") if scene != null else null
@@ -184,6 +231,8 @@ func _take() -> void:
 		return
 	_taken = true
 	remove_from_group(TAP_GROUP)
+	if _card_pickup_id == get_instance_id():
+		_card_pickup_id = 0
 	_hide_info_card_immediate()
 	visible = false
 	monitoring = false
@@ -205,6 +254,7 @@ func _show_info_card() -> void:
 	if _info_card == null or not is_instance_valid(_info_card):
 		return
 	if _info_card.has_method("show_item"):
+		_card_pickup_id = get_instance_id()
 		_info_card.call(
 			"show_item",
 			global_position,
