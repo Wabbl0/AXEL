@@ -32,6 +32,7 @@ AxelSfx="*res://scripts/autoload/axel_sfx.gd"
 AxelCombatDevTools="*res://scripts/debug/axel_combat_dev_tools.gd"
 AxelPause="*res://scripts/autoload/axel_pause.gd"
 AxelTutorial="*res://scripts/autoload/axel_tutorial.gd"
+AxelTouchStick="*res://scripts/autoload/axel_touch_stick.gd"
 
 [debug]
 

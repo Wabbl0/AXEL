@@ -25,6 +25,8 @@ var _tween: Tween
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if OS.has_feature("mobile"):
+		return
 	var image := _load_cursor()
 	if image == null:
 		return

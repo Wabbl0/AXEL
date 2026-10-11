@@ -6,6 +6,8 @@ const RADIUS := 220.0
 const MARKER_PX := 180.0
 const REASON_ITEM := "item_pickup"
 const MARKER_NODE := "ItemMarker"
+const TAP_GROUP := &"touch_tap_target"
+const TAP_HIT_RADIUS := 70.0
 
 var item_id: String = ""
 var room_path: String = ""
@@ -136,6 +138,7 @@ func _on_body_entered(body: Node) -> void:
 	if _taken or not _is_player(body):
 		return
 	_player_inside = true
+	add_to_group(TAP_GROUP)
 	_show_info_card()
 
 
@@ -143,6 +146,7 @@ func _on_body_exited(body: Node) -> void:
 	if not _is_player(body):
 		return
 	_player_inside = false
+	remove_from_group(TAP_GROUP)
 	_hide_info_card()
 
 
@@ -163,10 +167,23 @@ func _unhandled_input(event: InputEvent) -> void:
 	_take()
 
 
+func touch_tap_hit(screen_pos: Vector2) -> bool:
+	if _taken or not _player_inside or not is_inside_tree():
+		return false
+	var anchor: CanvasItem = _marker if is_instance_valid(_marker) else self
+	var center := anchor.get_global_transform_with_canvas().origin
+	var radius := TAP_HIT_RADIUS * UiViewportScale.factor(self)
+	if is_instance_valid(_marker):
+		var px := float(_marker.get("marker_px"))
+		radius = maxf(radius, px * 0.5 * get_global_transform_with_canvas().get_scale().x)
+	return screen_pos.distance_to(center) <= radius
+
+
 func _take() -> void:
 	if _taken:
 		return
 	_taken = true
+	remove_from_group(TAP_GROUP)
 	_hide_info_card_immediate()
 	visible = false
 	monitoring = false

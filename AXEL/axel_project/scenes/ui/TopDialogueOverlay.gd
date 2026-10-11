@@ -270,9 +270,15 @@ func _is_advance_event(event: InputEvent) -> bool:
 			return false
 		return not _tutorial_claims(mouse_event.position)
 	if event is InputEventScreenTouch:
+		if _touch_emulates_mouse():
+			return false
 		var touch_event := event as InputEventScreenTouch
 		return touch_event.pressed and not _tutorial_claims(touch_event.position)
 	return false
+
+
+func _touch_emulates_mouse() -> bool:
+	return bool(ProjectSettings.get_setting("input_devices/pointing/emulate_mouse_from_touch", true))
 
 
 func _tutorial_claims(pos: Vector2) -> bool:
@@ -1079,6 +1085,8 @@ func _is_entry_box_press(event: InputEvent) -> bool:
 			return false
 		return is_instance_valid(_panel) and _panel.get_global_rect().has_point(mouse.position)
 	if event is InputEventScreenTouch:
+		if _touch_emulates_mouse():
+			return false
 		var touch := event as InputEventScreenTouch
 		return (
 			touch.pressed

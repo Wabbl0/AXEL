@@ -7,6 +7,14 @@ const CrtPowerFx = preload("res://scenes/ui/crt_power_fx.gd")
 
 const _CHIP_FONT_BASE := 26
 const _CHIP_OUTLINE_BASE := 2
+const _TAP_PULSE_SEC := 1.2
+const _TAP_RING_RADIUS := 34.0
+const _TAP_RING_WIDTH := 3.0
+const _TAP_HIT_RADIUS := 70.0
+const _TAP_COLOR := Color(0.9, 0.0, 0.0, 1.0)
+const _TAP_ALPHA_MIN := 0.25
+const _TAP_ALPHA_MAX := 0.6
+const _TAP_SCALE_MAX := 1.15
 
 @onready var _root: Control = $ViewportRoot/ChipRoot
 @onready var _panel: PanelContainer = $ViewportRoot/ChipRoot/BarPanel
@@ -21,11 +29,14 @@ var _is_active := false
 var _crt_settled := false
 var _anim_token := 0
 var _crt_opts = CrtPowerFx.compact_chip_options()
+var _tap_pulse: Control = null
 
 
 func _ready() -> void:
 	layer = 110
 	_label.text = key_label
+	if _touch_mode():
+		_build_tap_pulse()
 	_apply_chip_scale()
 	get_viewport().size_changed.connect(_apply_chip_scale)
 	_root.visible = false
@@ -41,6 +52,8 @@ func _apply_chip_scale() -> void:
 	var f := UiViewportScale.factor(self)
 	_label.add_theme_font_size_override("font_size", roundi(_CHIP_FONT_BASE * f))
 	_label.add_theme_constant_override("outline_size", roundi(_CHIP_OUTLINE_BASE * f))
+	if _tap_pulse != null:
+		_tap_pulse.queue_redraw()
 	if _is_active:
 		_update_screen_position()
 
@@ -222,6 +235,53 @@ func _update_screen_position() -> void:
 
 func _chip_root_position(pos: Vector2) -> void:
 	_root.position = pos
+	if _tap_pulse != null:
+		_tap_pulse.position = _panel_size() * 0.5
+
+
+func _touch_mode() -> bool:
+	var stick := get_node_or_null("/root/AxelTouchStick")
+	return stick != null and bool(stick.call("is_touch_mode"))
+
+
+func _build_tap_pulse() -> void:
+	_panel.visible = false
+	_tap_pulse = Control.new()
+	_tap_pulse.name = "TapPulse"
+	_tap_pulse.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tap_pulse.position = _panel_size() * 0.5
+	_tap_pulse.draw.connect(_draw_tap_pulse)
+	_root.add_child(_tap_pulse)
+	if UiViewportScale._reduce_flashing(self):
+		_tap_pulse.modulate.a = (_TAP_ALPHA_MIN + _TAP_ALPHA_MAX) * 0.5
+		return
+	_tap_pulse.modulate.a = _TAP_ALPHA_MIN
+	var half := _TAP_PULSE_SEC * 0.5
+	var tween := _tap_pulse.create_tween().set_loops()
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(_tap_pulse, "modulate:a", _TAP_ALPHA_MAX, half)
+	tween.parallel().tween_property(_tap_pulse, "scale", Vector2.ONE * _TAP_SCALE_MAX, half)
+	tween.tween_property(_tap_pulse, "modulate:a", _TAP_ALPHA_MIN, half)
+	tween.parallel().tween_property(_tap_pulse, "scale", Vector2.ONE, half)
+
+
+func _draw_tap_pulse() -> void:
+	var f := UiViewportScale.factor(self)
+	var radius := _TAP_RING_RADIUS * f
+	_tap_pulse.draw_circle(Vector2.ZERO, radius * 1.4, Color(_TAP_COLOR, 0.12), true, -1.0, true)
+	_tap_pulse.draw_circle(Vector2.ZERO, radius, Color(_TAP_COLOR, 0.35), true, -1.0, true)
+	_tap_pulse.draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, _TAP_COLOR, _TAP_RING_WIDTH * f, true)
+
+
+func tap_center() -> Vector2:
+	_update_screen_position()
+	return _root.position + _panel_size() * 0.5
+
+
+func tap_hit(screen_pos: Vector2) -> bool:
+	if not is_prompt_visible():
+		return false
+	return screen_pos.distance_to(tap_center()) <= _TAP_HIT_RADIUS * UiViewportScale.factor(self)
 
 
 func _using_items_indicator_gap() -> bool:

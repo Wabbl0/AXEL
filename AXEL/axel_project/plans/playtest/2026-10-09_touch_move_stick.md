@@ -1,4 +1,4 @@
-# 2026-10-09 Touch move stick and tap to interact (plan, not built yet)
+# 2026-10-09 Touch move stick and tap to interact (built 2026-10-11)
 
 ## Goal
 On a phone, the player presses anywhere on the screen and slides a finger toward where Mike should walk. A faint stick (a small circle inside a bigger circle) shows where the finger went down and which way Mike is heading.
@@ -57,3 +57,15 @@ The player interacts by tapping the object itself. On mobile there is no `[E]` c
   - they get released on finger up;
   - they get released on pause;
   - nothing happens while input is disabled.
+
+## Built (2026-10-11)
+- New autoload `AxelTouchStick` (`scripts/autoload/axel_touch_stick.gd`), last in `[autoload]`. CanvasLayer 109.
+  - Dead zone is 20% of the ring radius (about 18 px at 1920×1280), not 12 px.
+  - Dev switch `AXEL_TOUCH_STICK=1`: a left-mouse drag acts as one finger. Emulated mouse events (`DEVICE_ID_EMULATION`) are always ignored.
+  - It only releases move actions it pressed itself, so held keyboard keys are not cancelled.
+- Tap targets are the pulse (`InteractPromptOverlay.tap_hit`, about 70 px × UI scale) and floor items in group `touch_tap_target` (`world_item_pickup.gd` `touch_tap_hit`, marker size or 70 px). The whole `InteractArea` is **not** a tap target.
+- In touch mode `InteractPromptOverlay` hides `BarPanel` and shows a code-built `TapPulse` (1.2 s loop). With "reduce flashing" on, it stays steady.
+- `TopDialogueOverlay` ignores raw `InputEventScreenTouch` while `emulate_mouse_from_touch` is on, so one tap advances once.
+- `AxelCursor` does not build its sprite on `mobile`.
+- Check: `tools/qa/touch_stick_check.gd`.
+- Build steps: `2026-10-11_touch_controls_build.md`.
