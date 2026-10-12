@@ -6,7 +6,7 @@ const KIND_PAYTABLE := "paytable"
 const KIND_FREE_SPINS := "free_spins"
 const KIND_COMPENDIUM := "compendium"
 
-const RTP_PERCENT := 73
+const RTP_PERCENT := 51
 const HIT_RATE_IN_TEN := 4
 
 const FIG_FIGHT_HUD := "fight_hud"
