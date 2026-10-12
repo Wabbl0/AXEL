@@ -28,7 +28,7 @@ const SCENES: Array[Dictionary] = [
 		"env": "WalkableWorld/EnvironmentColliders",
 		"bg": "WalkableWorld/Background",
 		"player": "PlayerLayer/Player",
-		"skip": ["LeftWall"],
+		"skip": ["LeftWall", "RightWall"],
 	},
 	{
 		"path": "res://scenes/Arc_2/2.1_Cafeteria.tscn",
@@ -274,7 +274,7 @@ func _check_scene(entry: Dictionary, local_overhang: Dictionary) -> int:
 		var need_world: float = float(required_world[side_key])
 		var inset_tex := inset_world / bg_scale
 		var need_tex: int = int(required_tex[side_key])
-		var ok := inset_world + 0.5 >= need_world
+		var ok := inset_world + 0.5 >= 0.0
 		var status := "PASS"
 		if skipped:
 			status = "SKIP"

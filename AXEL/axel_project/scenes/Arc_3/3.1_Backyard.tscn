@@ -77,7 +77,7 @@ shape = SubResource("RectangleShape2D_wall_vertical_left")
 position = Vector2(3442, 1240)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/RightWall" unique_id=1912438790]
-position = Vector2(134, 0)
+position = Vector2(112, 0)
 shape = SubResource("RectangleShape2D_wall_vertical_right")
 
 [node name="DoorSideRight" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=2101001]

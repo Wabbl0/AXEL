@@ -327,14 +327,12 @@ Door blockers belong under their own `StaticBody2D` (e.g. `LoungeDoorBlock` → 
 
 Regression: `tools/qa/collision_shape_unique_check.gd` (`COLLISION_SHAPE_UNIQUE OK`).
 
-### Rule: room-edge walls must hide Mike’s drawing (not only the feet circle)
+### Rule: room-edge walls keep Mike's feet circle on the picture
 
-The Front circle is what `move_and_slide` stops. The walk cell (`439×971`) plus `ShadowOutline` stick past that circle, so a 40px `LeftWall` on the PNG edge lets the picture of Mike walk off the drawing.
+The Front circle is what `move_and_slide` stops. Each edge wall's inner face must sit on or inside the PNG edge, so the circle never leaves the picture. The walk cell (`439×971`) plus `ShadowOutline` may stick past the edge: `AxelRoomEdge` paints black over everything outside the frame, so that overhang is hidden (changed in playtest batch E, 2026-10-12; growing walls by the whole drawing would cover doors and exits in most rooms). The checker still prints the full-drawing inset for reference.
 
-**Required inset** (from the picture edge to the wall’s inner face) = how far the drawing sticks past the circle in that facing, times live Player scale. The checker computes this; do not copy a one-size-fits-all texture width.
-
-- Grow `LeftWall` / `RightWall` / `TopWall` / `BottomWall` **from the PNG edge inward**. Give each wall its own `RectangleShape2D` (Make Unique) so one edit does not resize the opposite wall.
-- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall` and 1.4 `LeftWall` (walk-off). Skip 2.4 (already thickened in play). 2.4 `RightWall` is a `CollisionPolygon2D` on the slanted ink (top `(6902, 0)` to bottom `(6678, 4960)`, solid out to x `7016`) — do not turn it back into a vertical rectangle. `2.1`→`2.4` cafeteria arrival stands the Player node on the live box (skip clearance) so the model stays on the PNG. Do not thin walls that already pass.
+- Keep `LeftWall` / `RightWall` / `TopWall` / `BottomWall` **inside the PNG edge**. Give each wall its own `RectangleShape2D` (Make Unique) so one edit does not resize the opposite wall.
+- Skip walls that must stay open: 1.1 `LeftWall` (Ending 1), 1.2 `RightWall`, and 1.4 `LeftWall` / `RightWall` (walk-off). Skip 2.4 (already thickened in play). 2.4 `RightWall` is a `CollisionPolygon2D` on the slanted ink (top `(6902, 0)` to bottom `(6678, 4960)`, solid out to x `7016`) — do not turn it back into a vertical rectangle. `2.1`→`2.4` cafeteria arrival stands the Player node on the live box (skip clearance) so the model stays on the PNG. Do not thin walls that already pass.
 - Furniture / door blockers are not this rule.
 
 Live: 1.1 Top only; 1.2 / 1.4 / 2.1 / 2.3 / 3.1 / 4.1 / 5.1 edge walls that were too thin. Kitchen example: unique Left `200×2480` / Right `158×2480` / Top `3508×346` / Bottom `3508×193`. 3.1 after the 40% scale bump: Left `138×2480` / Right `132×2480` / Bottom `3508×162` (Top already thicker than required). 1.4 at Mike `0.198`: Top `3508×646` still passes. Right and Bottom inner faces were moved in so the smaller drawing stays on the PNG (Right inset about 148, Bottom about 182). `LeftWall` stays the walk-off. Those three 1.4 walls pass `tools/qa/wall_sprite_clearance_check.gd`.
