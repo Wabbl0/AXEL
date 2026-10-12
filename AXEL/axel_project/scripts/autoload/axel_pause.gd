@@ -3,6 +3,7 @@ extends Node
 signal pause_state_changed(paused: bool)
 
 const _MENU_SCENE_PREFIX := "res://scenes/Main_Menu/"
+const _MAP_SCENE := "res://scenes/Arc_1/1.3_SchoolMap.tscn"
 const _PauseMenuScript := preload("res://scenes/ui/pause_menu.gd")
 
 var _menu: CanvasLayer
@@ -127,7 +128,44 @@ func toggle_pause() -> bool:
 	return request_unpause() if get_tree().paused else request_pause()
 
 
+func can_open_map() -> bool:
+	if not AxelSaves.has_map():
+		return false
+	var run := get_node_or_null("/root/AxelRun")
+	if run != null and bool(run.call("is_in_encounter")):
+		return false
+	var scene := get_tree().current_scene
+	return scene == null or scene.scene_file_path != _MAP_SCENE
+
+
+func open_map() -> bool:
+	if not can_open_map():
+		return false
+	var scene := get_tree().current_scene
+	if scene != null:
+		var env: Node2D = null
+		if scene.has_method("env_colliders"):
+			env = scene.call("env_colliders") as Node2D
+		if env == null:
+			env = scene.get_node_or_null("WalkableWorld/EnvironmentColliders") as Node2D
+		var player := scene.find_child("Player", true, false) as Node2D
+		if env != null and player != null:
+			GameManager.set_pause_map_return(
+				scene.scene_file_path, env.to_local(player.global_position)
+			)
+		else:
+			GameManager.pause_map_return_path = scene.scene_file_path
+			GameManager.pause_map_return_tex = GameManager.INVALID_RETURN_POS
+	request_unpause()
+	get_tree().change_scene_to_file(_MAP_SCENE)
+	return true
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("open_map") and not event.is_echo():
+		if not get_tree().paused and _can_pause_here() and open_map():
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("back") and get_tree().paused:
 		if _menu != null and _menu.has_method("close_submenu") and bool(_menu.call("close_submenu")):
 			get_viewport().set_input_as_handled()

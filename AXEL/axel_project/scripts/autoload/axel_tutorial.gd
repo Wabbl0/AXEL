@@ -42,7 +42,11 @@ const LESSONS := {
 		"action_only": true,
 		"gate": true,
 		"title": "Fights",
-		"body": "BALANCE is your chips. The BET is spent each spin. Fill GOAL to win. If you cannot pay another spin, you lose. Press + or - to change the BET. Q and R work too.",
+		"body": "BALANCE is your chips. The BET is spent each spin. If BALANCE drops below 100, you lose. Press + or - to change the BET. Q and R work too.",
+	},
+	"fight_goal": {
+		"title": "Goal",
+		"body": "Every win fills the GOAL. Fill it to win the fight.",
 	},
 	"fight_items": {
 		"title": "Fights",
@@ -59,7 +63,12 @@ const LESSONS := {
 	"slot_match": {
 		"freeze": true,
 		"title": "Matches",
-		"body": "3 or more of the same picture in a row or a column is a win. Each win pays your BET times that picture's value, times the MULTIPLIER. Every win is listed in the HISTORY box.",
+		"body": "3 or more of the same picture in a row or a column is a win. Each win pays your BET times that picture's value, times the MULTIPLIER.",
+	},
+	"slot_history": {
+		"freeze": true,
+		"title": "History",
+		"body": "Every win is listed in the HISTORY box, with what it paid.",
 	},
 	"slot_power": {
 		"freeze": true,
@@ -84,13 +93,15 @@ const LESSONS := {
 }
 
 const GLOW_PIECES := {
-	"fight_spin": ["NEW_Execute", "NEW_Grid"],
-	"fight_stakes": ["NEW_Bets", "NEW_Goal"],
+	"fight_spin": ["NEW_Execute"],
+	"fight_stakes": ["NEW_Bets"],
+	"fight_goal": ["NEW_Goal"],
 	"fight_items": ["NEW_Items"],
-	"slot_match": ["NEW_History", "NEW_Grid"],
+	"slot_match": ["NEW_Grid"],
+	"slot_history": ["NEW_History"],
 	"slot_power": ["NEW_Execute"],
 	"slot_multiplier": ["NEW_Multiplier"],
-	"slot_vice": ["NEW_Execute", "NEW_Grid"],
+	"slot_vice": ["NEW_Execute"],
 	"guide_pause": ["NEW_Settings"],
 }
 
@@ -268,9 +279,10 @@ func _lesson_freezes(id: String) -> bool:
 
 
 func _wants_freeze() -> bool:
-	for id in _queue:
-		if _lesson_freezes(id):
-			return true
+	if not is_gate_open():
+		for id in _queue:
+			if _lesson_freezes(id):
+				return true
 	for slot in _slots:
 		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 			continue
@@ -777,7 +789,7 @@ func _place_over_skull(slot: CardSlot, width: float, height: float, scale: float
 	if not _hud_rects.has("NEW_Execute"):
 		return
 	var skull: Rect2 = _hud_rects["NEW_Execute"]
-	var h := maxf(height, skull.size.y)
+	var h := height
 	var center := skull.get_center()
 	var x := clampf(center.x - width * 0.5, margin, maxf(margin, vp.x - margin - width))
 	var y := clampf(center.y - h * 0.5, margin, maxf(margin, vp.y - margin - h))
@@ -888,6 +900,8 @@ func _open_fight_glow_names() -> Dictionary:
 		):
 			continue
 		for piece_name in glow_piece_names(slot.open_id):
+			if piece_name == "NEW_Grid" and _lesson_freezes(slot.open_id):
+				continue
 			wanted[String(piece_name)] = true
 	return wanted
 

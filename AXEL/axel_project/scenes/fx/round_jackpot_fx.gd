@@ -31,15 +31,23 @@ const VOLLEY_GAP := 0.26
 const IDLE_VOLLEY_SEC := 0.9
 const SKULL_COUNT := 26
 const SKULL_COUNT_CALM := 10
-const SKULL_SPAWN_SEC := 1.3
+const SKULL_SPAWN_SEC := 0.3
 const SKULL_DRAW := 96.0
-const SKULL_GRAVITY := 1500.0
-const SKULL_BOUNCE := 0.42
-const SKULL_MAX_BOUNCES := 2
-const SKULL_FADE_SEC := 0.5
-const SKULL_MAX_AGE := 5.0
+const SKULL_SPEED_MIN := 600.0
+const SKULL_SPEED_MAX := 1500.0
+const SKULL_GRAVITY := 260.0
+const SKULL_DRAG := 1.1
+const SKULL_FALL_SPEED := 520.0
+const SKULL_BOUNCE := 0.62
+const SKULL_WALL_BOUNCE := 0.5
+const SKULL_BOUNCES_MIN := 2
+const SKULL_BOUNCES_MAX := 3
+const SKULL_MAX_AGE := 14.0
 const RING_LIFE := 0.55
 const RING_RADIUS := 900.0
+const GATHER_LIFT_SHARE := 0.28
+const GATHER_RING_LAG := 0.05
+const GATHER_END_SCALE := 0.45
 
 static var _skull_tex: Texture2D
 
@@ -61,6 +69,8 @@ var _skull_clock := 0.0
 var _sparks: Array[Dictionary] = []
 var _rings: Array[Dictionary] = []
 var _skulls: Array[Dictionary] = []
+var _gathers: Array[Dictionary] = []
+var _skull_count_override := 0
 
 
 func _ready() -> void:
@@ -94,6 +104,9 @@ func play_intro(center: Vector2) -> void:
 	_volleys_left = INTRO_VOLLEYS_CALM if _calm else INTRO_VOLLEYS
 	_volley_clock = 0.12
 	_skulls_total = SKULL_COUNT_CALM if _calm else SKULL_COUNT
+	if _skull_count_override > 0:
+		_skulls_total = mini(_skull_count_override, _skulls_total) if _calm else _skull_count_override
+	_gathers.clear()
 	_skulls_left = _skulls_total
 	_skull_clock = 0.0
 	shockwave(center)
@@ -111,7 +124,42 @@ func snap_final(center: Vector2) -> void:
 	_volley_clock = IDLE_VOLLEY_SEC
 	_skulls_left = 0
 	_rings.clear()
+	_gathers.clear()
 	queue_redraw()
+
+
+func set_skull_count(count: int) -> void:
+	_skull_count_override = maxi(count, 0)
+
+
+func play_gather(points: Array, center: Vector2, duration: float) -> void:
+	_gathers.clear()
+	var max_ring := 0
+	for p in points:
+		max_ring = maxi(max_ring, int((p as Dictionary).get("ring", 0)))
+	duration = maxf(duration, 0.05)
+	for p in points:
+		var d := p as Dictionary
+		var ring := int(d.get("ring", 0))
+		var lag := float(max_ring - ring) * GATHER_RING_LAG
+		var from: Vector2 = d.get("pos", center)
+		var box: Vector2 = d.get("size", Vector2(SKULL_DRAW, SKULL_DRAW))
+		_gathers.append({
+			"from": from,
+			"to": center,
+			"size": minf(box.x, box.y),
+			"delay": lag,
+			"life": maxf(duration - lag, 0.05),
+			"age": 0.0,
+			"spin": 0.0 if _calm else _rng.randf_range(-9.0, 9.0),
+		})
+	queue_redraw()
+	if _front != null:
+		_front.queue_redraw()
+
+
+func is_gathering() -> bool:
+	return not _gathers.is_empty()
 
 
 func stop_spawning() -> void:
@@ -156,7 +204,7 @@ func _process(delta: float) -> void:
 	var tree := get_tree()
 	if tree != null and tree.paused:
 		return
-	if not _playing and _sparks.is_empty() and _rings.is_empty() and _skulls.is_empty():
+	if not _playing and _sparks.is_empty() and _rings.is_empty() and _skulls.is_empty() and _gathers.is_empty():
 		return
 	var d := delta * CombatPace.multiplier()
 	_t += d
@@ -170,6 +218,7 @@ func _process(delta: float) -> void:
 	_tick_sparks(d)
 	_tick_rings(d)
 	_tick_skulls(d)
+	_tick_gathers(d)
 	queue_redraw()
 	if _front != null:
 		_front.queue_redraw()
@@ -200,15 +249,18 @@ func _tick_skull_spawn(d: float) -> void:
 
 
 func _spawn_skull() -> void:
-	var w := size.x if size.x > 0.0 else 1920.0
+	var angle := _rng.randf_range(0.0, TAU)
+	var speed := _rng.randf_range(SKULL_SPEED_MIN, SKULL_SPEED_MAX)
+	var stretch := Vector2(_rng.randf_range(0.8, 1.35), _rng.randf_range(0.7, 1.2))
 	_skulls.append({
-		"pos": Vector2(_rng.randf_range(80.0, w - 80.0), -SKULL_DRAW),
-		"vel": Vector2(_rng.randf_range(-120.0, 120.0), _rng.randf_range(150.0, 450.0)),
+		"pos": _center + Vector2(_rng.randf_range(-30.0, 30.0), _rng.randf_range(-30.0, 30.0)),
+		"vel": Vector2.from_angle(angle) * speed * stretch,
 		"rot": _rng.randf_range(0.0, TAU),
-		"spin": _rng.randf_range(-6.0, 6.0),
+		"spin": _rng.randf_range(-7.0, 7.0),
 		"age": 0.0,
 		"bounces": 0,
-		"fade_t": -1.0,
+		"max_bounces": _rng.randi_range(SKULL_BOUNCES_MIN, SKULL_BOUNCES_MAX),
+		"falling": false,
 	})
 
 
@@ -237,39 +289,76 @@ func _tick_rings(d: float) -> void:
 		i -= 1
 
 
+func _tick_gathers(d: float) -> void:
+	var i := _gathers.size() - 1
+	while i >= 0:
+		var g: Dictionary = _gathers[i]
+		g["age"] = float(g["age"]) + d
+		if float(g["age"]) >= float(g["delay"]) + float(g["life"]):
+			_gathers.remove_at(i)
+		i -= 1
+
+
+func _gather_pose(g: Dictionary) -> Dictionary:
+	var from: Vector2 = g["from"]
+	var to: Vector2 = g["to"]
+	var start := float(g["size"])
+	var t := clampf((float(g["age"]) - float(g["delay"])) / float(g["life"]), 0.0, 1.0)
+	if t <= GATHER_LIFT_SHARE:
+		var k := sin(t / GATHER_LIFT_SHARE * PI * 0.5)
+		var away := (from - to).normalized() * 14.0 * k if from != to else Vector2.ZERO
+		return {"pos": from + away + Vector2(0.0, -10.0 * k), "draw": start * (1.0 + 0.15 * k), "rot": 0.0}
+	var u := (t - GATHER_LIFT_SHARE) / (1.0 - GATHER_LIFT_SHARE)
+	var e := u * u * u
+	var lifted := from + ((from - to).normalized() * 14.0 if from != to else Vector2.ZERO) + Vector2(0.0, -10.0)
+	var end_draw := SKULL_DRAW * GATHER_END_SCALE
+	return {
+		"pos": lifted.lerp(to, e),
+		"draw": lerpf(start * 1.15, end_draw, e),
+		"rot": float(g["spin"]) * e * 0.5,
+	}
+
+
 func _tick_skulls(d: float) -> void:
 	var h := size.y if size.y > 0.0 else 1280.0
 	var w := size.x if size.x > 0.0 else 1920.0
-	var floor_y := h - 8.0 - SKULL_DRAW * 0.5
+	var half := SKULL_DRAW * 0.5
+	var floor_y := h - 8.0 - half
 	var i := _skulls.size() - 1
 	while i >= 0:
 		var k: Dictionary = _skulls[i]
 		var age := float(k["age"]) + d
 		k["age"] = age
-		var fade_t := float(k["fade_t"])
-		if fade_t >= 0.0:
-			fade_t += d
-			k["fade_t"] = fade_t
-			if fade_t >= SKULL_FADE_SEC:
-				_skulls.remove_at(i)
-			i -= 1
-			continue
+		var falling := bool(k["falling"])
 		var vel: Vector2 = k["vel"]
+		vel *= maxf(1.0 - SKULL_DRAG * d, 0.0)
 		vel.y += SKULL_GRAVITY * d
+		if falling:
+			vel.y = maxf(vel.y, SKULL_FALL_SPEED)
 		var pos: Vector2 = (k["pos"] as Vector2) + vel * d
 		k["rot"] = float(k["rot"]) + float(k["spin"]) * d
-		if pos.y >= floor_y and vel.y > 0.0:
-			pos.y = floor_y
-			vel.y = -vel.y * SKULL_BOUNCE
-			vel.x *= 0.7
-			k["spin"] = float(k["spin"]) * 0.6
+		if pos.x < half and vel.x < 0.0:
+			pos.x = half
+			vel.x = -vel.x * SKULL_WALL_BOUNCE
+		elif pos.x > w - half and vel.x > 0.0:
+			pos.x = w - half
+			vel.x = -vel.x * SKULL_WALL_BOUNCE
+		if pos.y < half and vel.y < 0.0:
+			pos.y = half
+			vel.y = -vel.y * SKULL_WALL_BOUNCE
+		if not falling and pos.y >= floor_y and vel.y > 0.0:
 			var bounces := int(k["bounces"]) + 1
 			k["bounces"] = bounces
-			if bounces >= SKULL_MAX_BOUNCES:
-				k["fade_t"] = 0.0
+			if bounces > int(k["max_bounces"]):
+				k["falling"] = true
+			else:
+				pos.y = floor_y
+				vel.y = -maxf(vel.y * SKULL_BOUNCE, 140.0)
+				vel.x *= 0.8
+				k["spin"] = float(k["spin"]) * 0.7
 		k["vel"] = vel
 		k["pos"] = pos
-		if age >= SKULL_MAX_AGE or pos.x < -SKULL_DRAW or pos.x > w + SKULL_DRAW:
+		if age >= SKULL_MAX_AGE or pos.y > h + SKULL_DRAW:
 			_skulls.remove_at(i)
 		i -= 1
 
@@ -349,13 +438,17 @@ func _draw_front() -> void:
 		c.a = a
 		var sz := float(s["size"])
 		_front.draw_rect(Rect2((s["pos"] as Vector2) - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), c)
-	if _skulls.is_empty():
+	if _skulls.is_empty() and _gathers.is_empty():
 		return
 	var tex := _skull_texture()
+	for g in _gathers:
+		var pose := _gather_pose(g)
+		var dsz := float(pose["draw"])
+		_front.draw_set_transform(pose["pos"], float(pose["rot"]), Vector2.ONE)
+		_front.draw_texture_rect(tex, Rect2(-Vector2(dsz, dsz) * 0.5, Vector2(dsz, dsz)), false)
 	var box := Rect2(-Vector2(SKULL_DRAW, SKULL_DRAW) * 0.5, Vector2(SKULL_DRAW, SKULL_DRAW))
 	for k in _skulls:
-		var fade_t := float(k["fade_t"])
-		var a := 1.0 if fade_t < 0.0 else clampf(1.0 - fade_t / SKULL_FADE_SEC, 0.0, 1.0)
+		var a := 1.0
 		_front.draw_set_transform(k["pos"], float(k["rot"]), Vector2.ONE)
 		_front.draw_texture_rect(tex, box, false, Color(1.0, 1.0, 1.0, a))
 	_front.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

@@ -26,7 +26,7 @@ const PULSE_SEC := 0.45
 const PULSE_ICON_COLOR := Color(1.8, 1.25, 1.25, 1.0)
 const PULSE_NAME_COLOR := Color(1.0, 0.25, 0.25, 1.0)
 const PULSE_BACK_COLOR := Color(0.85, 0.0, 0.0, 0.55)
-const COUNT_FONT := 40
+const COUNT_FONT := 60
 const COUNT_COLOR := Color(1.0, 1.0, 1.0, 0.6)
 const COUNT_MIN_ITEMS := 3
 

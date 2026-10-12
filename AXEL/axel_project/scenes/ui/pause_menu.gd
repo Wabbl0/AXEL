@@ -181,25 +181,7 @@ func _refresh_guide() -> void:
 
 
 func _open_map() -> void:
-	if not AxelSaves.has_map() or _is_mid_encounter():
-		return
-	var scene := get_tree().current_scene
-	if scene != null:
-		var env: Node2D = null
-		if scene.has_method("env_colliders"):
-			env = scene.call("env_colliders") as Node2D
-		if env == null:
-			env = scene.get_node_or_null("WalkableWorld/EnvironmentColliders") as Node2D
-		var player := scene.find_child("Player", true, false) as Node2D
-		if env != null and player != null:
-			GameManager.set_pause_map_return(
-				scene.scene_file_path, env.to_local(player.global_position)
-			)
-		else:
-			GameManager.pause_map_return_path = scene.scene_file_path
-			GameManager.pause_map_return_tex = GameManager.INVALID_RETURN_POS
-	AxelPause.request_unpause()
-	get_tree().change_scene_to_file(MAP_SCENE)
+	AxelPause.open_map()
 
 
 func _quit_title() -> void:

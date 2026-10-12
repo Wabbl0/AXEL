@@ -43,12 +43,26 @@ const NUDGE_CHIP_SEC := 1.6
 const SHAKE_BOOST := 2.0
 const CALM_PUNCH := 0.4
 const MOUTH_POS := Vector2(346.0, 560.0)
+const FACE_POS := Vector2(346.0, 320.0)
+const PieceHighlightGlowScript := preload("res://combat/scripts/piece_highlight_glow.gd")
+const OUTLINE_FADE_SPEED := 9.0
 const CROWN_POS := Vector2(346.0, 130.0)
 const CHIP_POS := Vector2(96.0, 640.0)
 const CHIP_SIZE := Vector2(500.0, 100.0)
 const CHIP_FONT_SIZE := 88
 const EMBER_COUNTS := [24, 40, 70]
 const FIRE_EMBERS := 30
+const FLUID_SHADER := preload("res://combat/shaders/skull_fluid.gdshader")
+const FLUID_LAYER := 95
+const FLUID_RISE_SEC := 0.5
+const FLUID_SLOSH_SEC := 1.4
+const FLUID_INK_FALLBACK := Vector2(0.04, 0.95)
+const SPIT_POS := Vector2(346.0, 660.0)
+const SPIT_DROPS := 90
+const SPIT_SMALL_K := 0.4
+const SPIT_GULP_SEC := 0.12
+const SPIT_DRAIN_SEC := 0.55
+const SPIT_VELOCITY := Vector2(760.0, 1600.0)
 
 @onready var _glow: TextureRect = $Glow
 @onready var _stage1: TextureRect = $SkullStage1
@@ -96,10 +110,23 @@ var _boost_tween: Tween
 var _chip_tween: Tween
 var _burst: CPUParticles2D
 var _press_point := Vector2.INF
+var _outline_alpha := 0.0
 var _stream: CPUParticles2D
 var _chip: Label
 var _rng := RandomNumberGenerator.new()
 var _flame_dim_target: Control
+var _fluid_layer: CanvasLayer
+var _fluid_anchor: Node2D
+var _fluid: ColorRect
+var _spit: CPUParticles2D
+var _fluid_level := 0.0
+var _fluid_slosh := 0.0
+var _fluid_clock := 0.0
+var _fluid_tween: Tween
+var _slosh_tween: Tween
+var _spitting := false
+var _fluid_mask: Texture2D
+var _ink_cache := {}
 
 
 func _ready() -> void:
@@ -124,6 +151,7 @@ func _ready() -> void:
 	_ensure_flame_crown()
 	_apply_flame_crown_visible()
 	_ensure_embers()
+	_ensure_fluid()
 	_ensure_chip()
 	_rng.seed = 7331
 	_feel_started = true
@@ -132,9 +160,11 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_advance_flame_crown(delta)
+	_tick_hover_outline(delta)
 	_tick_feel(delta)
 	_apply_feel_layer()
 	_push_shadow_live()
+	_tick_fluid(delta)
 	if _pressing:
 		return
 	var t := float(Time.get_ticks_msec()) * 0.001
@@ -177,10 +207,29 @@ func set_hovered(on: bool) -> void:
 		_show_chip(false)
 
 
+func _tick_hover_outline(delta: float) -> void:
+	var target := 1.0 if (_hovering and is_ready_to_spin()) else 0.0
+	if is_equal_approx(_outline_alpha, target):
+		return
+	if _reduce_flashing():
+		_outline_alpha = target
+	else:
+		_outline_alpha = move_toward(_outline_alpha, target, delta * OUTLINE_FADE_SPEED)
+	PieceHighlightGlowScript.set_outline(self, _outline_alpha)
+
+
+func _exit_tree() -> void:
+	if _outline_alpha > 0.0:
+		_outline_alpha = 0.0
+		PieceHighlightGlowScript.set_outline(self, 0.0)
+
+
 func set_pressed(on: bool) -> void:
 	_idle_time = 0.0
 	if on:
 		_pressing = true
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			_press_point = get_local_mouse_position()
 		_fired = false
 		if is_ready_to_spin():
 			var k := _punch_k()
@@ -205,7 +254,7 @@ func play_fire() -> void:
 		return
 	_tween_flash(1.0, 0.18)
 	_play_jitter(5.0, 4, 0.025)
-	var at := _press_point if _press_point.is_finite() else size * 0.5
+	var at := _press_point if _press_point.is_finite() else FACE_POS
 	_press_point = Vector2.INF
 	_emit_burst(FIRE_EMBERS, at)
 
@@ -290,7 +339,7 @@ func _apply_feel_layer() -> void:
 	var ga := maxf(_fill_glow_alpha, heart * HEART_GLOW)
 	if _hovering and is_ready_to_spin():
 		ga = maxf(ga, RIM_HOVER_ALPHA)
-	ga = maxf(ga, _glow_boost) * alpha
+	ga = maxf(ga, _glow_boost) * alpha * (1.0 - _outline_alpha)
 	_glow.visible = ga > 0.01
 	if not _glow.visible:
 		return
@@ -724,6 +773,187 @@ func set_fill(f: float) -> void:
 	var after := _shown_sections()
 	if _feel_started and after > before:
 		play_gulp(after)
+	_retarget_fluid()
+
+
+func play_spit(big: bool = true) -> void:
+	_ensure_fluid()
+	var k := _punch_k() * (1.0 if big else 0.6)
+	_spitting = true
+	_idle_time = 0.0
+	if _fluid_tween != null and _fluid_tween.is_valid():
+		_fluid_tween.kill()
+	_tween_punch([[Vector2(1.0 - 0.08 * k, 1.0 + 0.14 * k), SPIT_GULP_SEC, Tween.TRANS_SINE], [Vector2.ONE * (1.0 + 0.2 * k), 0.08, Tween.TRANS_SINE], [Vector2.ONE, 0.5, Tween.TRANS_ELASTIC]])
+	if not _reduce_flashing():
+		_play_jitter(8.0 * k, 5, 0.03)
+	_kick_slosh(1.0)
+	_fluid_tween = CombatPace.bind(create_tween())
+	_fluid_tween.tween_property(self, "_fluid_level", 1.0, SPIT_GULP_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_fluid_tween.tween_callback(_emit_spit.bind(big))
+	_fluid_tween.tween_property(self, "_fluid_level", 0.0, SPIT_DRAIN_SEC * (1.0 if big else 0.75)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_fluid_tween.tween_callback(_end_spit)
+
+
+func is_spitting() -> bool:
+	return _spitting
+
+
+func fluid_level() -> float:
+	return _fluid_level
+
+
+func fluid_layer() -> CanvasLayer:
+	return _fluid_layer
+
+
+func spit_amount() -> int:
+	return _spit.amount if _spit != null else 0
+
+
+func _end_spit() -> void:
+	_spitting = false
+	_retarget_fluid()
+
+
+func _emit_spit(big: bool) -> void:
+	if _spit == null or not is_instance_valid(_spit):
+		return
+	var s := 1.0 if big else 0.7
+	_spit.amount = maxi(int(SPIT_DROPS * (1.0 if big else SPIT_SMALL_K)), 1)
+	_spit.initial_velocity_min = SPIT_VELOCITY.x * s
+	_spit.initial_velocity_max = SPIT_VELOCITY.y * s
+	_spit.restart()
+	_spit.emitting = true
+
+
+func _retarget_fluid() -> void:
+	if _spitting:
+		return
+	if not _feel_started:
+		_fluid_level = _fill
+		return
+	if is_equal_approx(_fluid_level, _fill):
+		return
+	if _fluid_tween != null and _fluid_tween.is_valid():
+		_fluid_tween.kill()
+	_kick_slosh(0.8 if _fill > _fluid_level else 0.5)
+	_fluid_tween = CombatPace.bind(create_tween())
+	_fluid_tween.tween_property(self, "_fluid_level", _fill, FLUID_RISE_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+func _kick_slosh(peak: float) -> void:
+	if _slosh_tween != null and _slosh_tween.is_valid():
+		_slosh_tween.kill()
+	_fluid_slosh = maxf(_fluid_slosh, peak)
+	_slosh_tween = CombatPace.bind(create_tween())
+	_slosh_tween.tween_property(self, "_fluid_slosh", 0.0, FLUID_SLOSH_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+func _ensure_fluid() -> void:
+	if _fluid_layer != null and is_instance_valid(_fluid_layer):
+		return
+	_fluid_layer = CanvasLayer.new()
+	_fluid_layer.name = "SkullFluidLayer"
+	_fluid_layer.layer = FLUID_LAYER
+	add_child(_fluid_layer)
+	_fluid_anchor = Node2D.new()
+	_fluid_anchor.name = "SkullFluidAnchor"
+	_fluid_layer.add_child(_fluid_anchor)
+	_fluid = ColorRect.new()
+	_fluid.name = "SkullFluid"
+	_fluid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fluid.color = Color.WHITE
+	_fluid.visible = false
+	var mat := ShaderMaterial.new()
+	mat.shader = FLUID_SHADER
+	_fluid.material = mat
+	_fluid_anchor.add_child(_fluid)
+	_spit = CPUParticles2D.new()
+	_spit.name = "SkullSpit"
+	_spit.emitting = false
+	_spit.one_shot = true
+	_spit.local_coords = false
+	_spit.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_spit.explosiveness = 0.55
+	_spit.lifetime = 1.0
+	_spit.amount = SPIT_DROPS
+	_spit.position = SPIT_POS
+	_spit.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_spit.emission_rect_extents = Vector2(90.0, 20.0)
+	_spit.direction = Vector2(0.0, -1.0)
+	_spit.spread = 55.0
+	_spit.initial_velocity_min = SPIT_VELOCITY.x
+	_spit.initial_velocity_max = SPIT_VELOCITY.y
+	_spit.gravity = Vector2(0.0, 2200.0)
+	_spit.scale_amount_min = 10.0
+	_spit.scale_amount_max = 26.0
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0.0, 1.0))
+	shrink.add_point(Vector2(1.0, 0.3))
+	_spit.scale_amount_curve = shrink
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	ramp.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	_spit.color_ramp = ramp
+	_fluid_anchor.add_child(_spit)
+
+
+func _tick_fluid(delta: float) -> void:
+	if _fluid == null or not is_instance_valid(_fluid):
+		return
+	_fluid_clock += delta
+	var stage := _visible_stage()
+	if stage == null:
+		_fluid.visible = false
+		return
+	_fluid_anchor.transform = stage.get_global_transform_with_canvas()
+	var wet := stage.is_visible_in_tree() and _fluid_level > 0.001
+	_fluid.visible = wet
+	if not wet:
+		return
+	_fluid.size = stage.size
+	var mat := _fluid.material as ShaderMaterial
+	if mat == null:
+		return
+	if stage.texture != _fluid_mask:
+		_fluid_mask = stage.texture
+		var ink := _ink_span(_fluid_mask)
+		mat.set_shader_parameter("mask_tex", _fluid_mask)
+		mat.set_shader_parameter("top_uv", ink.x)
+		mat.set_shader_parameter("bottom_uv", ink.y)
+	mat.set_shader_parameter("level", _fluid_level)
+	mat.set_shader_parameter("slosh", _fluid_slosh)
+	mat.set_shader_parameter("clock", _fluid_clock)
+	mat.set_shader_parameter("rect_h", maxf(stage.size.y, 1.0))
+	mat.set_shader_parameter("alpha", _alpha_in_tree(stage))
+
+
+func _alpha_in_tree(item: CanvasItem) -> float:
+	var a := item.self_modulate.a
+	var node: Node = item
+	while node is CanvasItem:
+		a *= (node as CanvasItem).modulate.a
+		node = node.get_parent()
+	return a
+
+
+func _ink_span(tex: Texture2D) -> Vector2:
+	if tex == null:
+		return FLUID_INK_FALLBACK
+	if _ink_cache.has(tex):
+		var cached: Vector2 = _ink_cache[tex]
+		return cached
+	var span := FLUID_INK_FALLBACK
+	var image := tex.get_image()
+	if image != null and image.get_height() > 0:
+		if image.is_compressed():
+			image.decompress()
+		var used := image.get_used_rect()
+		if used.size.y > 0:
+			var h := float(image.get_height())
+			span = Vector2(float(used.position.y) / h, float(used.end.y) / h)
+	_ink_cache[tex] = span
+	return span
 
 
 func _apply_stage_visibility() -> void:

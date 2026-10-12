@@ -26,16 +26,20 @@ func _main() -> void:
 		failures.append("unknown combat speed should play at normal, got %s" % CombatPace.multiplier())
 
 	settings.set_value("gameplay", "combat_speed", "normal")
-	_expect_steps([3.0, 8.0, 8.0], failures)
+	await _expect_beat(failures)
 	settings.set_value("gameplay", "combat_speed", "fast")
-	_expect_steps([6.0, 16.0, 16.0], failures)
+	CombatPace.clear_rush()
+	CombatPace.rush_beat()
+	CombatPace.rush_beat()
+	if not is_equal_approx(CombatPace.multiplier(), 8.0):
+		failures.append("fast beat rush should stay 8x on a second press, got %s" % CombatPace.multiplier())
 	CombatPace.clear_rush()
 	if not is_equal_approx(CombatPace.multiplier(), 2.0) or CombatPace.is_rushing():
-		failures.append("clear_rush after steps should return to 2x on fast, got %s" % CombatPace.multiplier())
+		failures.append("clear_rush should return to 2x on fast, got %s" % CombatPace.multiplier())
 
 	CombatPace.set_rush(true)
-	if not is_equal_approx(CombatPace.multiplier(), 16.0):
-		failures.append("fast rush should be 16x, got %s" % CombatPace.multiplier())
+	if not is_equal_approx(CombatPace.multiplier(), 8.0):
+		failures.append("fast rush should be 8x, got %s" % CombatPace.multiplier())
 
 	var host := Node2D.new()
 	root.add_child(host)
@@ -45,8 +49,8 @@ func _main() -> void:
 	CombatPace.bind(tween)
 	tween.custom_step(0.05)
 	var rushed := tween.get_total_elapsed_time()
-	if absf(rushed - 0.8) > 0.08:
-		failures.append("rush should scale tween time to 0.8s, got %s" % rushed)
+	if absf(rushed - 0.4) > 0.05:
+		failures.append("rush should scale tween time to 0.4s, got %s" % rushed)
 	CombatPace.clear_rush()
 	var before := tween.get_total_elapsed_time()
 	tween.custom_step(0.1)
@@ -75,13 +79,45 @@ func _main() -> void:
 	quit(1)
 
 
-func _expect_steps(expected: Array, failures: Array[String]) -> void:
+func _expect_beat(failures: Array[String]) -> void:
 	CombatPace.clear_rush()
-	for i in expected.size():
-		CombatPace.step_rush()
-		var got := CombatPace.multiplier()
-		if not is_equal_approx(got, float(expected[i])):
-			failures.append("rush press %d should be %sx, got %s" % [i + 1, expected[i], got])
+	var host := Node2D.new()
+	root.add_child(host)
+	var running := host.create_tween()
+	running.tween_property(host, "position:x", 100.0, 5.0)
+	CombatPace.bind(running)
+	var looping := host.create_tween().set_loops()
+	looping.tween_property(host, "position:y", 10.0, 0.5)
+	CombatPace.bind(looping)
+	CombatPace.rush_beat()
+	if not is_equal_approx(CombatPace.multiplier(), 4.0):
+		failures.append("one press should rush the running animation at 4x, got %s" % CombatPace.multiplier())
+	await process_frame
+	await process_frame
+	if not CombatPace.is_beat_rushing():
+		failures.append("beat rush should hold while its animation runs")
+	running.kill()
+	await process_frame
+	await process_frame
+	if CombatPace.is_rushing() or not is_equal_approx(CombatPace.multiplier(), 1.0):
+		failures.append("beat rush should end with its animation (loops ignored), got %s" % CombatPace.multiplier())
+	CombatPace.rush_beat()
+	await process_frame
+	if not CombatPace.is_beat_rushing():
+		failures.append("a press between animations should wait for the next one")
+	var next := host.create_tween()
+	next.tween_property(host, "position:x", 0.0, 5.0)
+	CombatPace.bind(next)
+	await process_frame
+	await process_frame
+	next.kill()
+	await process_frame
+	await process_frame
+	if CombatPace.is_rushing():
+		failures.append("a pending beat should end with the next animation")
+	looping.kill()
+	host.queue_free()
+	CombatPace.clear_rush()
 
 
 func _expect_scale(settings: Node, key: String, expected: float, failures: Array[String]) -> void:

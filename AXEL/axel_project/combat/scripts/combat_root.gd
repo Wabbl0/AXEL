@@ -16,6 +16,7 @@ signal encounter_finished(success: bool)
 signal sfx_requested(cue: StringName)
 signal goal_victory_requested()
 signal vice_banner_finished()
+signal vice_round_cleared()
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -67,6 +68,10 @@ signal vice_banner_finished()
 
 const SYMBOL_SLOT_SCENE := preload("res://combat/scenes/symbol.tscn")
 const WIN_SKULL := preload("res://combat/art/grid_symbols/satanic_wild.png")
+const SymbolSlotScript := preload("res://combat/scripts/symbol_slot.gd")
+const GOAL_RING_GAP_SEC := 0.07
+const GOAL_CHASE_STEPS := 5
+const GOAL_CHASE_STEP_SEC := 0.09
 const PowerControllerScript := preload("res://combat/scripts/power_controller.gd")
 const LineDetectorScript := preload("res://combat/scripts/line_detector.gd")
 const MeterScript := preload("res://combat/scripts/meter.gd")
@@ -1190,6 +1195,18 @@ func _ensure_symbol_slots() -> void:
 func _coord_to_index(coord: Vector2i) -> int:
 	return coord.y * GridManager.COLS + coord.x
 
+func _refresh_glyph_marks() -> void:
+	for y in GridManager.ROWS:
+		for x in GridManager.COLS:
+			var slot := _get_slot(Vector2i(x, y))
+			if slot == null or not slot.has_method("set_glyph_mark"):
+				continue
+			var key := "%d:%d" % [x, y]
+			var glyph := ""
+			if _item_fx.glyphs.has(key):
+				glyph = ItemDef.rarity_glyph_index(int(_item_fx.glyphs[key].get("rarity", 0)))
+			slot.call("set_glyph_mark", glyph)
+
 func _get_slot(coord: Vector2i) -> Node:
 	var idx := _coord_to_index(coord)
 	if idx < 0 or idx >= grid_ui.get_child_count():
@@ -1436,58 +1453,134 @@ func play_goal_win_burst() -> void:
 func _play_goal_win_burst() -> void:
 	if _dev_skip_visuals or grid_ui == null:
 		return
-	if not _power_reduce_flashing():
-		var any_eaten := false
-		for child in grid_ui.get_children():
-			if not child.has_method("play_power_act") or not child.has_method("icon_texture"):
-				continue
-			var tex: Texture2D = child.call("icon_texture") as Texture2D
-			if tex == null:
-				continue
-			var is_win_skull := tex == WIN_SKULL or (
-				not String(tex.resource_path).is_empty()
-				and tex.resource_path == WIN_SKULL.resource_path
-			)
-			if is_win_skull:
-				continue
-			child.call("play_power_act", &"eat", tex, WIN_SKULL, 0.48, false)
-			any_eaten = true
-		if any_eaten:
-			await _pause_visual(0.48)
-	for child in grid_ui.get_children():
-		if child.has_method("show_win_skull"):
-			child.call("show_win_skull", WIN_SKULL)
-		if child.has_method("play_count_flash"):
-			child.call("play_count_flash", 0.4, 0.85)
-	var tree := get_tree()
-	if tree == null:
+	var calm := _power_reduce_flashing()
+	var last_ring := 0
+	for coord in _goal_coords():
+		var slot := _get_slot(coord)
+		if slot == null or not slot.has_method("play_goal_flip"):
+			continue
+		var ring := _goal_ring(coord)
+		last_ring = maxi(last_ring, ring)
+		slot.call("play_goal_flip", WIN_SKULL, float(ring) * GOAL_RING_GAP_SEC, calm)
+	var land := SymbolSlotScript.goal_land_sec(calm)
+	var cues := CombatPace.bind(create_tween())
+	cues.tween_interval(maxf(land, 0.01))
+	for ring in last_ring + 1:
+		if ring > 0:
+			cues.tween_interval(GOAL_RING_GAP_SEC)
+		cues.tween_callback(_play_goal_sfx.bind(&"skull"))
+	await _pause_visual(land + float(last_ring) * GOAL_RING_GAP_SEC + SymbolSlotScript.GOAL_POP_SEC * 0.6)
+	if calm:
+		await _pause_visual(0.2)
 		return
-	await _pause_visual(0.4)
-	if not _power_reduce_flashing():
-		_play_goal_win_chase(false)
-		if _feel != null:
-			_feel.play_win_flames(grid_ui, [12, 24])
-			_feel.shake(4, get_node_or_null("/root/AxelSettings"))
-		await _pause_visual(0.34)
-		_play_goal_win_chase(true)
-		await _pause_visual(0.34)
-	if tree != null:
-		await _pause_visual(0.25)
+	_play_goal_charge()
+	await _pause_visual(GOAL_CHASE_STEPS * GOAL_CHASE_STEP_SEC)
 
 
-func _play_goal_win_chase(inward: bool) -> void:
-	var center := grid_ui.get_global_rect().get_center()
-	for child in grid_ui.get_children():
-		var slot := child as Control
-		if slot == null or not slot.has_method("play_count_flash"):
+func _goal_coords() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for r in GridManager.ROWS:
+		for c in GridManager.COLS:
+			out.append(Vector2i(c, r))
+	return out
+
+
+func _goal_ring(coord: Vector2i) -> int:
+	var cx := float(GridManager.COLS - 1) * 0.5
+	var cy := float(GridManager.ROWS - 1) * 0.5
+	return int(maxf(absf(float(coord.x) - cx), absf(float(coord.y) - cy)))
+
+
+func _goal_perimeter() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var last_c := GridManager.COLS - 1
+	var last_r := GridManager.ROWS - 1
+	for c in GridManager.COLS:
+		out.append(Vector2i(c, 0))
+	for r in range(1, GridManager.ROWS):
+		out.append(Vector2i(last_c, r))
+	for c in range(last_c - 1, -1, -1):
+		out.append(Vector2i(c, last_r))
+	for r in range(last_r - 1, 0, -1):
+		out.append(Vector2i(0, r))
+	return out
+
+
+func _play_goal_charge() -> void:
+	for coord in _goal_coords():
+		var slot := _get_slot(coord)
+		if slot != null and slot.has_method("play_pulse"):
+			slot.call("play_pulse", 1.08, 0.24)
+	var tw := CombatPace.bind(create_tween())
+	for step in GOAL_CHASE_STEPS:
+		tw.tween_callback(_goal_chase_step.bind(step))
+		if step == 2:
+			tw.tween_callback(_goal_pulse_all.bind(1.1, 0.16))
+		tw.tween_interval(GOAL_CHASE_STEP_SEC)
+	tw.tween_callback(_goal_border_rest)
+
+
+func _goal_chase_step(step: int) -> void:
+	var ring := _goal_perimeter()
+	for i in ring.size():
+		if posmod(i - step, 3) != 0:
 			continue
-		var unit := slot.get_global_rect().size
-		if unit.x <= 0.0 or unit.y <= 0.0:
+		var slot := _get_slot(ring[i])
+		if slot != null and slot.has_method("play_count_flash"):
+			slot.call("play_count_flash", GOAL_CHASE_STEP_SEC * 1.4, 0.9)
+	if grid_frame != null:
+		_kill_tween(_grid_border_tween)
+		grid_frame.border_color = Color.WHITE if step % 2 == 0 else _default_grid_border_color
+	if _feel != null and (step == 1 or step == GOAL_CHASE_STEPS - 1):
+		_feel.shake(2 if step == 1 else 5, get_node_or_null("/root/AxelSettings"))
+
+
+func _goal_pulse_all(peak: float, sec: float) -> void:
+	for coord in _goal_coords():
+		var slot := _get_slot(coord)
+		if slot != null and slot.has_method("play_pulse"):
+			slot.call("play_pulse", peak, sec)
+
+
+func _goal_border_rest() -> void:
+	if grid_frame != null:
+		grid_frame.border_color = Color.WHITE if free_spins.active else _default_grid_border_color
+
+
+func _play_goal_sfx(cue: StringName) -> void:
+	var sfx := get_node_or_null("/root/AxelSfx")
+	if sfx != null and sfx.has_method("play"):
+		sfx.call("play", cue)
+
+
+func goal_skull_points() -> Array:
+	var points: Array = []
+	if _dev_skip_visuals or grid_ui == null:
+		return points
+	for coord in _goal_coords():
+		var slot := _get_slot(coord) as Control
+		if slot == null or not slot.is_visible_in_tree():
 			continue
-		var d := (slot.get_global_rect().get_center() - center) / unit
-		var ring := mini(maxi(absi(roundi(d.x)), absi(roundi(d.y))), 2)
-		var order := 2 - ring if inward else ring
-		slot.call("play_count_flash", 0.2, 0.9, float(order) * 0.07)
+		var xf := slot.get_global_transform_with_canvas()
+		points.append({
+			"pos": xf * (slot.size * 0.5),
+			"size": slot.size * xf.get_scale(),
+			"ring": _goal_ring(coord),
+		})
+	return points
+
+
+func hide_goal_skulls() -> void:
+	if grid_ui == null:
+		return
+	for coord in _goal_coords():
+		var slot := _get_slot(coord)
+		if slot == null:
+			continue
+		if slot.has_method("cancel_active_fx"):
+			slot.call("cancel_active_fx")
+		if slot.has_method("set_symbol"):
+			slot.call("set_symbol", null)
 
 
 func await_victory_confirm() -> void:
@@ -1678,6 +1771,7 @@ func _start_spin_with_new_grid() -> void:
 
 	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
 	_item_fx.roll_glyphs(inventory.items, rng)
+	_refresh_glyph_marks()
 	_flush_item_procs()
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
@@ -1699,6 +1793,7 @@ func _begin_spin_round() -> void:
 		_free_spin_open_had_lines = not _find_lines().is_empty()
 		_item_fx.reset_spin()
 		_item_fx.roll_glyphs(inventory.items, rng)
+		_refresh_glyph_marks()
 		_flush_item_procs()
 		emit_signal("spin_started", _current_seed)
 		sfx_requested.emit(&"spin")
@@ -1738,7 +1833,18 @@ func _repopulate_grid_handoff_async(_handoff: String) -> void:
 	await _play_board_swap_fx()
 
 func _can_afford_spin() -> bool:
+	_auto_lower_bet()
 	return _bankroll_cents >= _to_cents(total_bet)
+
+
+func _auto_lower_bet() -> void:
+	if BET_LADDER.is_empty() or _bankroll_cents >= _to_cents(total_bet):
+		return
+	var index := _current_bet_index
+	while index > 0 and _bankroll_cents < _to_cents(BET_LADDER[index]):
+		index -= 1
+	if index != _current_bet_index:
+		set_bet_index(index)
 
 
 func _maybe_reseed_tutorial_script() -> bool:
@@ -2592,12 +2698,18 @@ func _pulse_item_ids(ids: Array[StringName]) -> void:
 func _note_line_glyph_procs(lines: Array) -> void:
 	if _item_fx.glyphs.is_empty():
 		return
+	var seen: Dictionary = {}
 	for line in lines:
 		for p in line.get("cells", []):
 			var v := p as Vector2i
-			if _item_fx.glyphs.has("%d:%d" % [v.x, v.y]):
-				_item_fx.note_effect(inventory.items, &"corner_glyphs")
-				return
+			var key := "%d:%d" % [v.x, v.y]
+			if not _item_fx.glyphs.has(key):
+				continue
+			var owner := str(_item_fx.glyphs[key].get("item_id", ""))
+			if seen.has(owner):
+				continue
+			seen[owner] = true
+			_item_fx.note_glyph_owner(inventory.items, key)
 
 
 func _player_item_panel() -> Node:
@@ -2815,6 +2927,8 @@ func _finish_trinity_round() -> void:
 	powers.set_current_id(meter.saved_active_power)
 	meter.reset()
 	_music_notify_trinity_ended(_pending_free_spins)
+	if _pending_free_spins:
+		vice_round_cleared.emit()
 
 
 func _apply_trinity_spin_followup(step: Dictionary) -> void:

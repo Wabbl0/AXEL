@@ -84,7 +84,7 @@ const WINNINGS_COUNTER_MAX_DURATION := 0.25
 const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
 const FIRST_TUTORIAL_DELAY_SEC := 2.5
-const FREEZE_LESSONS: Array[String] = ["slot_match", "slot_multiplier", "slot_power", "slot_vice"]
+const FREEZE_LESSONS: Array[String] = ["slot_match", "slot_history", "slot_multiplier", "slot_power", "slot_vice"]
 const HELD_FREEZE_BEAT_SEC := 0.2
 const HELD_FREEZE_TIMEOUT_SEC := 2.0
 const HISTORY_MINI_ICON_SIZE := int(round(18.0 * COMBAT_TEXT_SCALE))
@@ -263,6 +263,8 @@ const FALLBACK_GRID_ROWS := 5
 const FALLBACK_CELL_SIZE_MIN := 48.0
 
 var _fallback_grid_width: float = 0.0
+const RUSH_HOLD_DELAY := 0.3
+var _rush_hold_time := 0.0
 var _spin_busy: bool = false
 var _tutorial_skull_hold := false
 var _freeze_layer: CanvasLayer
@@ -778,6 +780,8 @@ func _connect_runtime_signals() -> void:
 		combat.meter_full_transition_started.connect(_on_meter_full_transition_started)
 	if not combat.vice_banner_finished.is_connected(_on_vice_banner_finished):
 		combat.vice_banner_finished.connect(_on_vice_banner_finished)
+	if not combat.vice_round_cleared.is_connected(_on_vice_round_cleared):
+		combat.vice_round_cleared.connect(_on_vice_round_cleared)
 	if not combat.winnings_popup_border_touched.is_connected(_on_winnings_popup_border_touched):
 		combat.winnings_popup_border_touched.connect(_on_winnings_popup_border_touched)
 	if not combat.round_winnings_hold_started.is_connected(_on_round_winnings_hold_started):
@@ -1674,7 +1678,7 @@ func _input(event: InputEvent) -> void:
 		if _loss_presentation_open():
 			CombatPace.set_rush(true)
 		else:
-			CombatPace.step_rush()
+			CombatPace.rush_beat()
 		_note_loss_rush_press()
 		return
 	if not _wants_spin_hotkey(event):
@@ -1755,6 +1759,18 @@ func _rush_allowed() -> bool:
 	if focus != null and focus.is_visible_in_tree() and _focus_uses_interact(focus):
 		return false
 	return true
+
+
+func _sync_rush_hold(delta: float) -> void:
+	if not Input.is_action_pressed("interact"):
+		_rush_hold_time = 0.0
+		return
+	_rush_hold_time += delta
+	if _rush_hold_time < RUSH_HOLD_DELAY:
+		return
+	if _loss_presentation_open() or _tutorial_freezing() or not _rush_allowed():
+		return
+	CombatPace.rush_beat()
 
 
 func _rush_presentation_open() -> bool:
@@ -2136,6 +2152,7 @@ func _on_line_win_resolved(event: Dictionary) -> void:
 	if payout_cents <= 0:
 		return
 	_tutorial_request("slot_match")
+	_tutorial_request("slot_history")
 	if int(event.get("cascade_multiplier", 1)) >= 2:
 		_tutorial_request("slot_multiplier")
 	_append_history_spin_row(event)
@@ -2867,7 +2884,7 @@ func _ensure_freeze_overlay() -> void:
 		return
 	_freeze_layer = CanvasLayer.new()
 	_freeze_layer.name = "TutorialFreezeLayer"
-	_freeze_layer.layer = 40
+	_freeze_layer.layer = 107
 	add_child(_freeze_layer)
 	_freeze_rect = ColorRect.new()
 	_freeze_rect.name = "TutorialFreezeRect"
@@ -2915,7 +2932,7 @@ func _show_freeze_overlay() -> void:
 	_freeze_tween = create_tween()
 	_freeze_tween.tween_property(mat, "shader_parameter/amount", 1.0, 0.18)
 	if not calm:
-		_freeze_tween.tween_property(mat, "shader_parameter/burst", 0.0, 0.5)
+		_freeze_tween.tween_property(mat, "shader_parameter/burst", 0.35, 0.5)
 
 
 func _hide_freeze_overlay() -> void:
@@ -2966,6 +2983,8 @@ func _maybe_queue_fight_tutorials(delta: float) -> void:
 	tutorial.call("request", "fight_spin")
 	if not _after_match_lessons.has("fight_stakes"):
 		_after_match_lessons.append("fight_stakes")
+	if not _after_match_lessons.has("fight_goal"):
+		_after_match_lessons.append("fight_goal")
 	if _tutorial_equipped_count() > 0 and not _after_match_lessons.has("fight_items"):
 		_after_match_lessons.append("fight_items")
 
@@ -3130,6 +3149,16 @@ func _set_spin_bars_visible(on: bool) -> void:
 
 func _on_free_spins_bonus_granted(_added: int) -> void:
 	_refresh_spin_bars()
+	_skull_spit(false)
+
+
+func _on_vice_round_cleared() -> void:
+	_skull_spit(true)
+
+
+func _skull_spit(big: bool) -> void:
+	if _premium_skull != null and _premium_skull.has_method("play_spit"):
+		_premium_skull.call("play_spit", big)
 
 
 func _refresh_spin_bars() -> void:
@@ -4611,6 +4640,7 @@ func _process(delta: float) -> void:
 		_sync_tutorial_skull_hint()
 		_sync_skull_ready()
 		_sync_freeze_overlay()
+		_sync_rush_hold(delta)
 	if Engine.is_editor_hint() and not editor_preview_enabled:
 		return
 	if _item_desc_panel == null or not _item_desc_panel.visible:

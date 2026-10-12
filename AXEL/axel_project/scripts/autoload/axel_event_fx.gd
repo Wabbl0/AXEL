@@ -56,6 +56,7 @@ var _round_land: Tween
 var _round_shake: Tween
 var _round_stats_tween: Tween
 var _round_stats_punch: Tween
+var _round_gather: Tween
 var _round_bets_value := 0
 var _round_balance_value := 0
 var _round_stats_rest: Array[float] = [0.0, 0.0]
@@ -66,6 +67,8 @@ const ROUND_STAT_HEIGHT := 44.0
 const ROUND_STATS_OFFSET := 80.0
 const ROUND_SLAM_SCALE := 3.2
 const ROUND_SHAKE_PX := 14.0
+const ROUND_GATHER_SEC := 0.38
+const ROUND_SLAM_IN_SEC := 0.14
 
 const LOAD_COVER_LAYER := 120
 const LOAD_FADE_SEC := 0.35
@@ -231,12 +234,13 @@ func register_walk_step() -> void:
 	return
 
 
-func show_round_complete_card(bets_used: int = 0, balance: int = 0) -> void:
+func show_round_complete_card(bets_used: int = 0, balance: int = 0, gather: Array = []) -> bool:
 	skip_next_enter_glitch()
 	_ensure_round_complete_overlay()
 	_layout_round_complete()
 	if _round_fade == null or _round_scrim == null or _round_label == null:
-		return
+		return false
+	_stop_round_gather()
 	_stop_round_intro()
 	_clear_round_flames()
 	_clear_jackpot()
@@ -258,8 +262,33 @@ func show_round_complete_card(bets_used: int = 0, balance: int = 0) -> void:
 	_spawn_jackpot()
 	if _load_fade_instant():
 		_snap_round_intro(false)
-		return
-	_play_round_intro()
+		return false
+	if gather.is_empty() or _jackpot == null:
+		_play_round_intro()
+		return false
+	_play_round_gather(gather)
+	return true
+
+
+func _play_round_gather(gather: Array) -> void:
+	for lab in [_round_bets_label, _round_balance_label]:
+		if lab != null:
+			lab.visible = false
+	_round_label.modulate = Color(1, 1, 1, 0)
+	_round_scrim.color = Color(0, 0, 0, 0)
+	var calm := _reduce_flashing()
+	var target := Color(0, 0, 0, ROUND_COMPLETE_SCRIM_A) if calm else Color(0.45, 0.0, 0.0, 0.85)
+	_jackpot.call("set_skull_count", gather.size())
+	_jackpot.call("play_gather", gather, _round_center(), ROUND_GATHER_SEC)
+	_round_gather = CombatPace.bind(create_tween())
+	_round_gather.tween_property(_round_scrim, "color", target, ROUND_GATHER_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_round_gather.parallel().tween_callback(_play_round_intro).set_delay(ROUND_GATHER_SEC - ROUND_SLAM_IN_SEC)
+
+
+func _stop_round_gather() -> void:
+	if _round_gather != null and is_instance_valid(_round_gather):
+		_round_gather.kill()
+	_round_gather = null
 
 
 func is_round_intro_playing() -> bool:
@@ -439,6 +468,7 @@ func _hide_round_complete() -> void:
 		_round_root.visible = false
 	if _round_scrim != null:
 		_round_scrim.color = Color(0, 0, 0, 0)
+	_stop_round_gather()
 	_stop_round_intro()
 	_clear_round_flames()
 	_clear_jackpot()
@@ -586,7 +616,7 @@ func _set_round_balance(value: float) -> void:
 
 
 func _round_intro_running() -> bool:
-	for tw in [_round_intro, _round_stats_tween]:
+	for tw in [_round_gather, _round_intro, _round_stats_tween]:
 		if tw != null and is_instance_valid(tw) and tw.is_running():
 			return true
 	return false
@@ -604,6 +634,7 @@ func _stop_round_intro() -> void:
 
 
 func _snap_round_intro(keep_spawning: bool) -> void:
+	_stop_round_gather()
 	_stop_round_intro()
 	_layout_round_complete()
 	if _round_scrim != null:
@@ -649,7 +680,7 @@ func _play_round_intro() -> void:
 		_round_scrim.color = Color(0.45, 0.0, 0.0, 0.85)
 	var tw := CombatPace.bind(create_tween())
 	_round_intro = tw
-	tw.tween_property(_round_label, "scale", Vector2(0.92, 0.92), 0.14).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	tw.tween_property(_round_label, "scale", Vector2(0.92, 0.92), ROUND_SLAM_IN_SEC).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(_round_label, "modulate:a", 1.0, 0.1)
 	tw.tween_callback(_round_title_landed)
 	tw.tween_property(_round_label, "scale", Vector2(1.12, 0.9), 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -771,6 +802,8 @@ func _spawn_jackpot() -> void:
 	_jackpot_front = Control.new()
 	_jackpot_front.name = "RoundJackpotFront"
 	_round_stage.add_child(_jackpot_front)
+	if _round_label != null and is_instance_valid(_round_label) and _round_label.get_parent() == _round_stage:
+		_round_stage.move_child(_jackpot_front, _round_label.get_index())
 	_layout_round_complete()
 	_jackpot.call("setup", _jackpot_front, _reduce_flashing())
 

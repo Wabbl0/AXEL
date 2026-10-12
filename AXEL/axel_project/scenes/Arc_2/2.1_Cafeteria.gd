@@ -398,6 +398,7 @@ func _sync_direction_hint() -> void:
 	var top := _classrooms_top_center()
 	var lift := HINT_TIP_PX * HINT_SCREEN_SCALE + HINT_GAP_PX
 	_direction_hint.global_position = Vector2(top.x, top.y - lift)
+	AxelRoomEdge.keep_inside(_direction_hint, Vector2(lift, lift))
 
 
 func _classrooms_top_center() -> Vector2:

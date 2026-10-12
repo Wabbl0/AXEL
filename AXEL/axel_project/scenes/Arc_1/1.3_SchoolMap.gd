@@ -26,7 +26,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _is_exit_key(event: InputEvent) -> bool:
-	return event.is_action_pressed("back")
+	return event.is_action_pressed("back") or event.is_action_pressed("open_map")
 
 
 func _on_travel(scene_path: String) -> void:

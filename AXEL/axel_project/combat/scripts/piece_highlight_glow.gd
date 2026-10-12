@@ -3,6 +3,8 @@ extends TextureRect
 const SHADER := preload("res://combat/shaders/piece_highlight_glow.gdshader")
 const SELF_PATH := "res://combat/scripts/piece_highlight_glow.gd"
 const GLOW_PREFIX := "HighlightGlow_"
+const OUTLINE_PX := 6.0
+const OUTLINE_PREFIX := "HighlightOutline_"
 const LAYER_NAME := "HudHighlightLayer"
 const HOST_NAME := "HighlightRoot"
 const HIGHLIGHT_LAYER := 93
@@ -13,6 +15,7 @@ var _alpha := 1.0
 var _phase := -1.0
 var _steady := false
 var _bloom: TextureRect
+var _outline := false
 
 
 static func set_highlight(piece: Control, on: bool) -> void:
@@ -44,6 +47,31 @@ static func glow_for(art: TextureRect) -> TextureRect:
 	return _find_glow(art)
 
 
+static func set_outline(piece: Control, alpha: float) -> void:
+	if piece == null or not is_instance_valid(piece):
+		return
+	var arts: Array[TextureRect] = []
+	_collect_arts(piece, arts)
+	for art in arts:
+		var host := _host(art, alpha > 0.0)
+		if host == null:
+			continue
+		var outline_name := OUTLINE_PREFIX + str(art.get_instance_id())
+		var outline := host.get_node_or_null(outline_name) as TextureRect
+		if alpha <= 0.0:
+			if outline != null:
+				outline.queue_free()
+			continue
+		if outline == null:
+			if not art.is_inside_tree():
+				continue
+			outline = (load(SELF_PATH) as GDScript).new() as TextureRect
+			outline.name = outline_name
+			host.add_child(outline)
+			outline.call("setup", art, true)
+		outline.call("set_alpha", alpha)
+
+
 static func _collect_arts(piece: Control, out: Array[TextureRect]) -> void:
 	if piece is TextureRect:
 		out.append(piece as TextureRect)
@@ -54,7 +82,7 @@ static func _collect_arts(piece: Control, out: Array[TextureRect]) -> void:
 static func _collect_child_arts(node: Node, out: Array[TextureRect]) -> void:
 	if node is TextureRect:
 		var n := str(node.name)
-		if n != "Glow" and not n.begins_with("DropShadow") and not n.begins_with("HighlightGlow"):
+		if n != "Glow" and not n.begins_with("DropShadow") and not n.begins_with("Highlight"):
 			out.append(node as TextureRect)
 	for child in node.get_children():
 		_collect_child_arts(child, out)
@@ -128,13 +156,15 @@ static func _scene_root(node: Node) -> Node:
 	return current
 
 
-func setup(art: TextureRect) -> void:
+func setup(art: TextureRect, outline := false) -> void:
 	_art = art
+	_outline = outline
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stretch_mode = TextureRect.STRETCH_SCALE
-	material = _make_material(0)
-	_bloom = _make_child("Bloom", 1)
+	material = _make_material(2 if outline else 0)
+	if not outline:
+		_bloom = _make_child("Bloom", 1)
 	set_process(true)
 	_sync()
 
@@ -244,8 +274,14 @@ func _sync() -> void:
 	anchor_top = 0.0
 	anchor_right = 0.0
 	anchor_bottom = 0.0
-	position = origin + drawn_offset.rotated(turn)
-	size = local_size
+	var pad := Vector2.ZERO
+	if _outline:
+		var tex_size := _art.texture.get_size()
+		var px := OUTLINE_PX + 2.0
+		pad = Vector2(px * local_size.x / maxf(tex_size.x, 1.0), px * local_size.y / maxf(tex_size.y, 1.0))
+		(material as ShaderMaterial).set_shader_parameter("pad_uv", pad / (local_size + pad * 2.0))
+	position = origin + (drawn_offset - pad).rotated(turn)
+	size = local_size + pad * 2.0
 	pivot_offset = Vector2.ZERO
 	rotation = turn
 	texture = _art.texture

@@ -18,8 +18,14 @@ const WIN_POPUP_PHASE_GLOW_SHARE := 0.18
 const WIN_POPUP_PHASE_LOB_SHARE := 0.36
 const WIN_POPUP_PHASE_FADE_SHARE := 0.12
 const WIN_POPUP_GLOW_PEAK_ALPHA := 1.0
+const GLYPH_MARK_SCRIPT := preload("res://combat/scripts/glyph_mark.gd")
+const GOAL_SQUASH_SEC := 0.05
+const GOAL_EAT_SEC := 0.3
+const GOAL_POP_SEC := 0.22
 
 var _drop_tween: Tween
+var _goal_tween: Tween
+var _goal_pop_tween: Tween
 var _flash_tween: Tween
 var _win_tween: Tween
 var _flash_overlay: ColorRect
@@ -41,6 +47,7 @@ var _power_ash: Control
 var _extra_tweens: Array[Tween] = []
 var _power_fx_active: bool = false
 var _clip_before_power: bool = false
+var _glyph_mark: Control
 
 static var _blank_tex: Texture2D
 static var _burn_noise: Texture2D
@@ -65,6 +72,71 @@ func show_win_skull(tex: Texture2D) -> void:
 	_ensure_icon()
 	_icon.texture = tex
 	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
+static func goal_land_sec(reduce_flash: bool) -> float:
+	return 0.0 if reduce_flash else GOAL_SQUASH_SEC + GOAL_EAT_SEC
+
+
+func play_goal_flip(skull_tex: Texture2D, delay: float, reduce_flash: bool) -> void:
+	_ensure_icon()
+	_cancel_tween(_goal_tween)
+	_cancel_tween(_goal_pop_tween)
+	scale = Vector2.ONE
+	pivot_offset = size * 0.5
+	var from_tex := _icon.texture
+	var plain := reduce_flash or from_tex == null or from_tex == skull_tex
+	_goal_tween = CombatPace.bind(create_tween())
+	if delay > 0.0:
+		_goal_tween.tween_interval(delay)
+	if not plain:
+		_goal_tween.tween_property(self, "scale", Vector2(0.86, 0.86), GOAL_SQUASH_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_goal_tween.tween_callback(play_power_act.bind(&"eat", from_tex, skull_tex, GOAL_EAT_SEC, false))
+		_goal_tween.parallel().tween_property(self, "scale", Vector2.ONE, GOAL_EAT_SEC).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_goal_tween.tween_callback(_land_goal_flip.bind(skull_tex, reduce_flash))
+
+
+func _land_goal_flip(skull_tex: Texture2D, reduce_flash: bool) -> void:
+	show_win_skull(skull_tex)
+	pivot_offset = size * 0.5
+	scale = Vector2(1.08, 1.08) if reduce_flash else Vector2(1.22, 1.22)
+	_cancel_tween(_goal_pop_tween)
+	_goal_pop_tween = CombatPace.bind(create_tween())
+	_goal_pop_tween.tween_property(self, "scale", Vector2.ONE, GOAL_POP_SEC).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if not reduce_flash:
+		play_count_flash(0.26, 0.85)
+
+
+func play_pulse(peak: float, duration: float, delay: float = 0.0) -> void:
+	_cancel_tween(_goal_pop_tween)
+	pivot_offset = size * 0.5
+	scale = Vector2.ONE
+	_goal_pop_tween = CombatPace.bind(create_tween())
+	if delay > 0.0:
+		_goal_pop_tween.tween_interval(delay)
+	var half := maxf(duration * 0.5, 0.01)
+	_goal_pop_tween.tween_property(self, "scale", Vector2(peak, peak), half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_goal_pop_tween.tween_property(self, "scale", Vector2.ONE, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+
+func set_glyph_mark(glyph: String) -> void:
+	if glyph.is_empty():
+		if _glyph_mark != null and is_instance_valid(_glyph_mark):
+			_glyph_mark.visible = false
+		return
+	if _glyph_mark == null or not is_instance_valid(_glyph_mark):
+		_glyph_mark = GLYPH_MARK_SCRIPT.new()
+		_glyph_mark.name = "GlyphMark"
+		add_child(_glyph_mark)
+	_glyph_mark.set("text", glyph)
+	_glyph_mark.visible = true
+	move_child(_glyph_mark, get_child_count() - 1)
+
+
+func glyph_mark_text() -> String:
+	if _glyph_mark == null or not is_instance_valid(_glyph_mark) or not _glyph_mark.visible:
+		return ""
+	return str(_glyph_mark.get("text"))
 
 
 func play_drop(from_local: Vector2, to_local: Vector2, duration: float, delay: float = 0.0) -> void:
@@ -148,6 +220,9 @@ func cancel_active_fx() -> void:
 	_cancel_tween(_drop_tween)
 	_cancel_tween(_flash_tween)
 	_cancel_tween(_win_tween)
+	_cancel_tween(_goal_tween)
+	_cancel_tween(_goal_pop_tween)
+	scale = Vector2.ONE
 	if _flash_overlay != null:
 		_flash_overlay.color.a = 0.0
 		_flash_overlay.visible = false

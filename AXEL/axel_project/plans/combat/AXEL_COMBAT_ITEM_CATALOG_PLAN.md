@@ -256,6 +256,8 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | **G** Sealed Grid   | Locker Tape       | Rusted Hasp       | Basement Bar        | Mason Lock         | Iron Lung                                    |
 | **H** True-path     | Loose Thread      | Torn Label        | Witness Slip        | Confession Card    | True Name Tag                                |
 
+**Corner-glyph board marks (2026-10-11):** each marked cell shows the owning item's rarity glyph in its bottom-left corner, re-rolled every spin. The item box pulses an M item only when a winning line crosses one of its own cells. Numbers are unchanged.
+
 
 ---
 

@@ -595,7 +595,12 @@ func _show_round_complete_card() -> void:
 			bets = int(root.call("get_bets_used"))
 		if root != null and root.has_method("get_bankroll"):
 			balance = int(root.call("get_bankroll"))
-		fx.call("show_round_complete_card", bets, balance)
+		var points: Array = []
+		if root != null and root.has_method("goal_skull_points"):
+			points = root.call("goal_skull_points")
+		var gathered := bool(fx.call("show_round_complete_card", bets, balance, points))
+		if gathered and root != null and root.has_method("hide_goal_skulls"):
+			root.call("hide_goal_skulls")
 		await _await_round_intro(fx)
 
 

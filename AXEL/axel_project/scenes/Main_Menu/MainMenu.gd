@@ -145,5 +145,3 @@ func _style_buttons() -> void:
 		MenuLook.apply_label(title, MenuLook.scaled_font(self, 96), MenuLook.ACCENT)
 	for button in [_continue_button, _new_button, _load_button, _options_button, _credits_button, _quit_button]:
 		MenuLook.apply_button(button, MenuLook.scaled_font(self, 36))
-	MenuLook.apply_button(_quit_button, MenuLook.scaled_font(self, 28))
-	_quit_button.add_theme_color_override("font_color", MenuLook.DIM)

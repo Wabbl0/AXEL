@@ -34,6 +34,8 @@ func _main() -> void:
 	await _assert_free_spins_non_wild_clear_counts_as_grid_clear()
 	await _assert_free_spins_forces_all_three_powers_once()
 	await _assert_bankroll_empty_encounter_fail()
+	await _assert_low_balance_lowers_bet()
+	_assert_glyphs_pulse_only_owner()
 	await _assert_bankroll_is_not_capped()
 	await _assert_live_spin_budget_does_not_end_fight()
 	await _assert_trinity_with_chips_does_not_end()
@@ -608,6 +610,55 @@ func _assert_bankroll_empty_encounter_fail() -> void:
 		return
 	cr.queue_free()
 	await process_frame
+
+
+func _assert_low_balance_lowers_bet() -> void:
+	var cr := _spawn_root()
+	await _await_combat_ready(cr)
+	cr.setup_new_grid(2002)
+	cr.set_bet_index(1)
+	cr._bankroll_cents = cr._to_cents(136.0)
+	if not cr._can_afford_spin() or not is_equal_approx(cr.total_bet, 100.0):
+		push_error("Balance 136 with bet 200 should lower the bet to 100 and keep spinning, bet=%s" % cr.total_bet)
+		quit(1)
+		return
+	cr._bankroll_cents = cr._to_cents(99.0)
+	if cr._can_afford_spin():
+		push_error("Balance below 100 should not afford a spin.")
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_glyphs_pulse_only_owner() -> void:
+	var fx := ItemEffectDispatcher.new()
+	var ticket: Resource = load("res://combat/data/items/R-M_scratch_ticket.tres")
+	var etching: Resource = load("res://combat/data/items/E-M_crt_etching.tres")
+	var items := [ticket, etching]
+	var rng := CombatRNG.new()
+	rng.seed(4242)
+	fx.roll_glyphs(items, rng)
+	if not fx.drain_procs().is_empty():
+		push_error("Glyph roll should not pulse items before a match.")
+		quit(1)
+		return
+	var owners := {}
+	for key in fx.glyphs.keys():
+		owners[str(fx.glyphs[key]["item_id"])] = int(owners.get(str(fx.glyphs[key]["item_id"]), 0)) + 1
+	if int(owners.get(str(ticket.get("id")), 0)) != 3 or int(owners.get(str(etching.get("id")), 0)) != 4:
+		push_error("Glyph owners should be 3 ticket + 4 etching cells, got %s" % owners)
+		quit(1)
+		return
+	for key in fx.glyphs.keys():
+		if str(fx.glyphs[key]["item_id"]) == str(ticket.get("id")):
+			fx.note_glyph_owner(items, key)
+			break
+	var procs := fx.drain_procs()
+	if procs.size() != 1 or procs[0] != StringName(str(ticket.get("id"))):
+		push_error("A ticket cell match should pulse only the ticket, got %s" % [procs])
+		quit(1)
+		return
 
 
 func _assert_bankroll_is_not_capped() -> void:

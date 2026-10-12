@@ -440,9 +440,14 @@ func roll_glyphs(items: Array, rng: CombatRNG) -> void:
 	var n: int = mini(int(gp["cells"]), 25)
 	if n <= 0 or rng == null:
 		return
-	note_effect(items, &"corner_glyphs")
+	var owners: Array = []
+	for item in items:
+		if _eff(item) != &"corner_glyphs":
+			continue
+		for _c in int(_params(item).get("cells", 0)):
+			owners.append(item)
 	var used: Dictionary = {}
-	for _i in n:
+	for i in n:
 		var tries := 0
 		var key := ""
 		while tries < 40:
@@ -460,11 +465,25 @@ func roll_glyphs(items: Array, rng: CombatRNG) -> void:
 		var mult := lo
 		if hi > lo:
 			mult = lo + rng.randf() * (hi - lo)
+		var owner: Resource = owners[i] if i < owners.size() else null
 		glyphs[key] = {
 			"mult": mult,
 			"dest": str(gp["dest"]),
 			"win_frac": float(gp["win_frac"]),
+			"item_id": StringName(str(owner.get("id"))) if owner != null else &"",
+			"rarity": int(owner.get("rarity")) if owner != null else 0,
 		}
+
+
+func note_glyph_owner(items: Array, key: String) -> void:
+	var g: Dictionary = glyphs.get(key, {})
+	var owner_id := StringName(str(g.get("item_id", "")))
+	for item in items:
+		if _eff(item) != &"corner_glyphs":
+			continue
+		if owner_id == &"" or StringName(str(item.get("id"))) == owner_id:
+			note_proc(item)
+			return
 
 
 func charm_mods(items: Array, power_id: StringName) -> Dictionary:

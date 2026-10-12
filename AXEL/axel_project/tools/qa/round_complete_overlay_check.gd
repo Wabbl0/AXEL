@@ -95,6 +95,40 @@ func _main() -> void:
 	await process_frame
 	if jackpot != null and is_instance_valid(jackpot) and jackpot.is_inside_tree():
 		failures.append("RoundJackpotFx still alive after finish_round_complete_fade")
+	var fake_points := [
+		{"pos": Vector2(800, 500), "size": Vector2(120, 120), "ring": 0},
+		{"pos": Vector2(680, 500), "size": Vector2(120, 120), "ring": 1},
+		{"pos": Vector2(560, 380), "size": Vector2(120, 120), "ring": 2},
+	]
+	var gathered = fx.call("show_round_complete_card", 12, 340, fake_points)
+	if gathered == true:
+		failures.append("headless show_round_complete_card should snap, not gather")
+	fx.call("skip_round_intro")
+	if label != null and (not label.visible or absf(label.modulate.a - 1.0) > 0.02):
+		failures.append("title not shown after headless card with gather points")
+	await fx.call("finish_round_complete_fade")
+	await process_frame
+	var host := Control.new()
+	root.add_child(host)
+	host.size = Vector2(1920, 1280)
+	var jp: Control = load("res://scenes/fx/round_jackpot_fx.gd").new()
+	var front := Control.new()
+	host.add_child(jp)
+	host.add_child(front)
+	jp.size = host.size
+	front.size = host.size
+	jp.call("setup", front, false)
+	jp.call("set_skull_count", fake_points.size())
+	jp.call("play_gather", fake_points, Vector2(960, 640), 0.38)
+	if not bool(jp.call("is_gathering")):
+		failures.append("play_gather did not start a gather")
+	await create_timer(0.6).timeout
+	if bool(jp.call("is_gathering")):
+		failures.append("gather still running after its duration")
+	jp.call("play_intro", Vector2(960, 640))
+	if int(jp.get("_skulls_total")) != fake_points.size():
+		failures.append("burst skulls %d should match gathered %d" % [int(jp.get("_skulls_total")), fake_points.size()])
+	host.queue_free()
 	if failures.is_empty():
 		print("Round complete overlay check OK.")
 		quit(0)

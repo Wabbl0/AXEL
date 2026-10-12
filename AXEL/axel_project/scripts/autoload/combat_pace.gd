@@ -4,12 +4,17 @@ extends Node
 const SPEED_SLOW := 0.5
 const SPEED_NORMAL := 1.0
 const SPEED_FAST := 2.0
-const RUSH_MULT := 8.0
-const RUSH_STEPS: Array[float] = [1.0, 3.0, RUSH_MULT]
+const RUSH_MULT := 4.0
 
 static var _live: CombatPace
 
-var _rush_level := 0
+var _rush_latched := false
+var _rush_beat := false
+var _beat_pending := false
+var _beat_tweens: Array[Tween] = []
+var _beat_waits: Dictionary = {}
+var _waits: Dictionary = {}
+var _next_wait_id := 0
 var _freeze := false
 var _tweens: Array[Tween] = []
 var _applied := -1.0
@@ -31,16 +36,16 @@ static func set_rush(on: bool) -> void:
 	_live._set_rush(on)
 
 
-static func step_rush() -> void:
+static func rush_beat() -> void:
 	if _live == null:
 		return
-	_live._set_rush_level(_live._rush_level + 1)
+	_live._start_beat()
 
 
-static func rush_level() -> int:
+static func is_beat_rushing() -> bool:
 	if _live == null:
-		return 0
-	return _live._rush_level
+		return false
+	return _live._rush_beat
 
 
 static func clear_rush() -> void:
@@ -62,7 +67,7 @@ static func is_frozen() -> bool:
 static func is_rushing() -> bool:
 	if _live == null:
 		return false
-	return _live._rush_level > 0
+	return _live._rush_latched or _live._rush_beat
 
 
 static func bind(tween: Tween) -> Tween:
@@ -81,18 +86,58 @@ func _multiplier() -> float:
 	if _freeze:
 		return 0.0
 	var scale := _base_scale()
-	if _rush_level > 0 and not _is_paused():
-		scale *= RUSH_STEPS[_rush_level]
+	if (_rush_latched or _rush_beat) and not _is_paused():
+		scale *= RUSH_MULT
 	return scale
 
 
 func _set_rush(on: bool) -> void:
-	_set_rush_level(RUSH_STEPS.size() - 1 if on else 0)
-
-
-func _set_rush_level(level: int) -> void:
-	_rush_level = clampi(level, 0, RUSH_STEPS.size() - 1)
+	_rush_latched = on
+	if not on:
+		_end_beat()
 	_apply_tween_scales()
+
+
+func _start_beat() -> void:
+	_rush_beat = true
+	for tween in _tweens:
+		if _beat_counts(tween) and not _beat_tweens.has(tween):
+			_beat_tweens.append(tween)
+	for id in _waits.keys():
+		_beat_waits[id] = true
+	_beat_pending = _beat_tweens.is_empty() and _beat_waits.is_empty()
+	_apply_tween_scales()
+
+
+func _end_beat() -> void:
+	_rush_beat = false
+	_beat_pending = false
+	_beat_tweens.clear()
+	_beat_waits.clear()
+
+
+func _beat_counts(tween: Tween) -> bool:
+	if tween == null or not is_instance_valid(tween) or not tween.is_valid():
+		return false
+	return tween.get_loops_left() >= 0
+
+
+func _tick_beat() -> void:
+	if not _rush_beat:
+		return
+	var live: Array[Tween] = []
+	for tween in _beat_tweens:
+		if _beat_counts(tween):
+			live.append(tween)
+	_beat_tweens = live
+	var empty := _beat_tweens.is_empty() and _beat_waits.is_empty()
+	if _beat_pending:
+		if not empty:
+			_beat_pending = false
+		return
+	if empty:
+		_end_beat()
+		_apply_tween_scales()
 
 
 func _set_freeze(on: bool) -> void:
@@ -107,10 +152,23 @@ func _bind(tween: Tween) -> Tween:
 		return tween
 	tween.set_speed_scale(_multiplier())
 	_tweens.append(tween)
+	if _rush_beat and _beat_pending and _beat_counts(tween):
+		_beat_tweens.append(tween)
 	return tween
 
 
 func _await_seconds(seconds: float, should_stop: Callable = Callable()) -> void:
+	var id := _next_wait_id
+	_next_wait_id += 1
+	_waits[id] = true
+	if _rush_beat and _beat_pending:
+		_beat_waits[id] = true
+	await _await_inner(seconds, should_stop)
+	_waits.erase(id)
+	_beat_waits.erase(id)
+
+
+func _await_inner(seconds: float, should_stop: Callable) -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
@@ -150,6 +208,7 @@ func _is_paused() -> bool:
 
 
 func _process(_delta: float) -> void:
+	_tick_beat()
 	var now := _multiplier()
 	if not is_equal_approx(now, _applied):
 		_apply_tween_scales()

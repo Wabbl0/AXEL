@@ -126,12 +126,14 @@ func _check_roundtrip(failures: Array[String]) -> void:
 
 
 func _check_glow_map(tutorial: Node, failures: Array[String]) -> void:
-	_expect_pieces(tutorial, failures, "fight_spin", ["NEW_Execute", "NEW_Grid"])
-	_expect_pieces(tutorial, failures, "fight_stakes", ["NEW_Bets", "NEW_Goal"])
+	_expect_pieces(tutorial, failures, "fight_spin", ["NEW_Execute"])
+	_expect_pieces(tutorial, failures, "fight_stakes", ["NEW_Bets"])
+	_expect_pieces(tutorial, failures, "fight_goal", ["NEW_Goal"])
 	_expect_pieces(tutorial, failures, "fight_items", ["NEW_Items"])
-	_expect_pieces(tutorial, failures, "slot_match", ["NEW_History", "NEW_Grid"])
+	_expect_pieces(tutorial, failures, "slot_match", ["NEW_Grid"])
+	_expect_pieces(tutorial, failures, "slot_history", ["NEW_History"])
 	_expect_pieces(tutorial, failures, "slot_power", ["NEW_Execute"])
-	_expect_pieces(tutorial, failures, "slot_vice", ["NEW_Execute", "NEW_Grid"])
+	_expect_pieces(tutorial, failures, "slot_vice", ["NEW_Execute"])
 	_expect_pieces(tutorial, failures, "slot_multiplier", ["NEW_Multiplier"])
 	var none: PackedStringArray = tutorial.call("glow_piece_names", "move_walk")
 	if not none.is_empty():

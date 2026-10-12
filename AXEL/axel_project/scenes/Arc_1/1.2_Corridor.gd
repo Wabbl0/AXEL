@@ -469,6 +469,7 @@ func _sync_direction_hint() -> void:
 	var screen := Vector2(rect.size.x - half_w - 8.0, rect.size.y * HINT_Y_FRAC)
 	var canvas := _direction_hint.get_canvas_transform()
 	_direction_hint.global_position = canvas.affine_inverse() * screen
+	AxelRoomEdge.keep_inside(_direction_hint, Vector2(half_w, half_w))
 
 
 func _update_direction_hint(delta: float) -> void:
