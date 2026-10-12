@@ -72,7 +72,9 @@ func _check_room_card() -> void:
 		var got: Variant = marker.call("ink_screen_rect")
 		if got is Rect2:
 			items_indicator = got
-	_assert_card(card, items_indicator, "1.4 room")
+	var room_panel := card.find_child("CardPanel", true, false) as Control
+	var room_above := room_panel != null and items_indicator.end.y + ITEMS_INDICATOR_GAP + room_panel.size.y > float(WINDOW.y) - EDGE
+	_assert_card(card, items_indicator, "1.4 room", room_above)
 
 
 func _check_flips_above() -> void:
