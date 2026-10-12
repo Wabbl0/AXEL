@@ -274,6 +274,17 @@ func line_payout_bonus(
 	return bonus
 
 
+func pay_preview(items: Array, symbol: Resource, length: int) -> float:
+	if symbol == null or not symbol.has_method("payout_multiplier_for_length"):
+		return 0.0
+	var base := float(symbol.call("payout_multiplier_for_length", length))
+	if base <= 0.0:
+		return 0.0
+	var scalar := 1.0 + sealed_payout(items, true)
+	scalar += line_payout_bonus(items, int(symbol.get("tier")), StringName(str(symbol.get("power_id"))), false)
+	return base * scalar
+
+
 func power_potency_bonus(items: Array) -> float:
 	var total := 0.0
 	for item in items:

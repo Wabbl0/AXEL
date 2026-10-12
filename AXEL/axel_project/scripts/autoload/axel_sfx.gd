@@ -61,11 +61,11 @@ func play(cue: StringName) -> void:
 		&"pause":
 			stream = _stream_pause
 			bus = UI_BUS
-		&"spin", &"skull":
+		&"spin", &"skull", &"trinity", &"free_spins":
 			stream = _stream_skull
 		&"line_win":
 			stream = _stream_match
-		&"round_winnings":
+		&"round_winnings", &"bonus_slam":
 			stream = _stream_round
 		&"item_wheel_open":
 			stream = _stream_wheel_open

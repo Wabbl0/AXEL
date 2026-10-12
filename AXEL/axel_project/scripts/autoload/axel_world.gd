@@ -280,6 +280,33 @@ func area_rank_name(area_id: String) -> String:
 	return String(RANK_NAMES[clampi(area_rank(area_id), 0, MAX_RANK)])
 
 
+func area_item_counts(area_id: String) -> Vector2i:
+	if not AREAS.has(area_id):
+		return Vector2i.ZERO
+	var taken := 0
+	var placed := 0
+	for path in (AREAS[area_id]["rooms"] as Dictionary).keys():
+		for entry in (_room_items.get(path, []) as Array):
+			placed += 1
+			if bool((entry as Dictionary).get("taken", false)):
+				taken += 1
+	return Vector2i(taken, placed)
+
+
+func area_item_rows() -> Array:
+	var rows: Array = []
+	for area_id in AREAS.keys():
+		var counts := area_item_counts(String(area_id))
+		rows.append({
+			"id": String(area_id),
+			"label": String(AREAS[area_id]["label"]),
+			"taken": counts.x,
+			"placed": counts.y,
+			"cleared": counts.y > 0 and counts.x >= counts.y,
+		})
+	return rows
+
+
 func cleared_area_count() -> int:
 	var n := 0
 	for area_id in AREAS.keys():

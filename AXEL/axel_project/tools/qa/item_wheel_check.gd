@@ -38,7 +38,10 @@ func _main() -> void:
 		if wheel == null:
 			_fail("ItemWheel missing")
 		else:
-			await _check_wheel(wheel, run)
+			await _check_box(wheel, run)
+			await _check_pay(wheel, run)
+			await _check_areas(wheel, world)
+			await _check_anim(wheel)
 	if _failures.is_empty():
 		print("Item wheel check OK.")
 		quit(0)
@@ -48,12 +51,13 @@ func _main() -> void:
 		quit(1)
 
 
-func _check_wheel(wheel: Node, run: Node) -> void:
-	if int(wheel.call("band_count")) != 4:
-		_fail("wheel should have 4 bands, got %s" % str(wheel.call("band_count")))
+func _check_box(wheel: Node, run: Node) -> void:
+	var tabs: PackedStringArray = wheel.call("tab_names")
+	if tabs != PackedStringArray(["ITEMS", "STATS", "PAY", "AREAS"]):
+		_fail("tabs should be ITEMS/STATS/PAY/AREAS, got %s" % str(tabs))
 	run.call("reset_run")
 	if not bool(wheel.call("open_wheel")):
-		_fail("wheel did not open with no items")
+		_fail("box did not open with no items")
 		return
 	await process_frame
 	if bool(wheel.call("cap_is_visible")):
@@ -61,105 +65,128 @@ func _check_wheel(wheel: Node, run: Node) -> void:
 	var listed: PackedStringArray = wheel.call("listed_ids")
 	if not listed.is_empty():
 		_fail("empty inventory listed %s" % str(listed))
-	_expect_arcs(wheel, 1, "empty inventory")
-	run.state.owned_item_ids = PackedStringArray(["C1"])
-	run.state.equipped_item_ids = PackedStringArray()
-	await process_frame
-	_expect_icon_texture_width(wheel, 64)
-	_expect_arcs(wheel, 1, "commons only")
-	run.state.owned_item_ids = PackedStringArray(["C1", "U1"])
-	await process_frame
-	_expect_arcs(wheel, 2, "uncommon owned")
-	run.state.owned_item_ids = PackedStringArray(["C1", "U1", "R1"])
-	await process_frame
-	_expect_arcs(wheel, 3, "rare owned")
-	run.state.owned_item_ids = PackedStringArray(["C1", "U1", "R1", "E1"])
-	await process_frame
-	_expect_arcs(wheel, 4, "epic owned")
-	run.state.owned_item_ids = PackedStringArray(["C1", "R1"])
-	run.state.equipped_item_ids = PackedStringArray()
-	await process_frame
-	_expect_arcs(wheel, 2, "rare without uncommon")
-	listed = wheel.call("listed_ids")
-	if not listed.has("R1"):
-		_fail("rare without uncommon was not listed in %s" % str(listed))
-	if listed.has("U1"):
-		_fail("skipped uncommon was listed in %s" % str(listed))
-	run.state.owned_item_ids = PackedStringArray(["C1", "C2", "U1", "E1", "L1"])
+	if str(wheel.call("balance_text")) != "BALANCE: %d" % int(run.state.bankroll_cents):
+		_fail("balance text %s does not match bankroll %d" % [str(wheel.call("balance_text")), int(run.state.bankroll_cents)])
+
+	run.state.owned_item_ids = PackedStringArray(["E1", "C2", "L1", "U1", "C1"])
 	run.state.equipped_item_ids = PackedStringArray(["C1", "L1"])
 	await process_frame
+	wheel.call("set_sort", 0)
 	listed = wheel.call("listed_ids")
-	for banned in ["L1"]:
-		if listed.has(banned):
-			_fail("legendary %s was listed" % banned)
-	for needed in ["C1", "C2", "U1", "E1"]:
-		if not listed.has(needed):
-			_fail("missing owned item %s in %s" % [needed, str(listed)])
+	_expect_ids(listed, ["C2", "C1", "U1", "E1", "L1"], "rarity sort")
+	wheel.call("set_sort", 1)
+	_expect_ids(wheel.call("listed_ids"), ["C1", "U1", "L1", "C2", "E1"], "newest sort")
+	wheel.call("set_sort", 2)
+	_expect_ids(wheel.call("listed_ids"), ["E1", "C1", "C2", "U1", "L1"], "name sort")
+	wheel.call("set_sort", 0)
+	wheel.call("set_rank_filter", 0)
+	_expect_ids(wheel.call("listed_ids"), ["C2", "C1"], "common filter")
+	wheel.call("set_rank_filter", 4)
+	_expect_ids(wheel.call("listed_ids"), ["L1"], "legendary filter")
+	wheel.call("set_rank_filter", -1)
+	var fam := ItemDef.family_name(run.call("load_item", "C1"))
+	wheel.call("set_family_filter", fam)
+	_expect_ids(wheel.call("listed_ids"), ["C1", "U1"], "family filter %s" % fam)
+	wheel.call("set_family_filter", "")
 	if not bool(wheel.call("cap_is_visible")):
 		_fail("cap should show after the first owned item")
 	if str(wheel.call("cap_text")) != "2/7":
 		_fail("cap text should be 2/7, got %s" % str(wheel.call("cap_text")))
-	run.state.owned_item_ids = PackedStringArray(["C1", "C2", "C3", "C4"])
-	run.state.equipped_item_ids = PackedStringArray(["C1"])
+	wheel.call("toggle_item", "C2")
 	await process_frame
-	if not bool(wheel.call("band_can_scroll", 0)):
-		_fail("common band with 4 items should be scrollable")
-	if bool(wheel.call("band_can_scroll", 1)):
-		_fail("empty uncommon band should not be scrollable")
-	var before: PackedStringArray = wheel.call("visible_ids", 0)
-	if before.size() != 3:
-		_fail("common band should show 3 of 4, got %s" % str(before))
-	wheel.call("scroll_band", 0, 1)
-	var after: PackedStringArray = wheel.call("visible_ids", 0)
-	if after == before:
-		_fail("scrolling the common band did not change the 3 icons")
-	if after.size() == 3 and not after.has(before[0]) and before.size() == 3:
-		pass
-	elif after.size() == 3 and after[0] == before[1]:
-		pass
-	else:
-		_fail("scroll should move the window, before %s after %s" % [str(before), str(after)])
-	wheel.call("scroll_band", 0, 3)
-	var wrapped: PackedStringArray = wheel.call("visible_ids", 0)
-	if wrapped != before:
-		_fail("scroll should wrap, before %s wrapped %s" % [str(before), str(wrapped)])
+	if not run.state.equipped_item_ids.has("C2"):
+		_fail("toggle_item did not equip C2")
+	if str(wheel.call("cap_text")) != "3/7":
+		_fail("cap text should be 3/7 after equipping, got %s" % str(wheel.call("cap_text")))
+	wheel.call("toggle_item", "C2")
+	await process_frame
+	if run.state.equipped_item_ids.has("C2"):
+		_fail("toggle_item did not unequip C2")
+	for tab in 4:
+		wheel.call("set_tab", tab)
+		await process_frame
+		if int(wheel.call("current_tab")) != tab:
+			_fail("set_tab %d did not stick" % tab)
+	wheel.call("set_tab", 0)
+
+
+func _check_pay(wheel: Node, run: Node) -> void:
+	run.state.owned_item_ids = PackedStringArray(["C2"])
+	run.state.equipped_item_ids = PackedStringArray()
+	await process_frame
+	_expect_pay(wheel, "sym_satanic", [15.0, 25.0, 280.0], "wild base")
+	_expect_pay(wheel, "sym_red_heart", [3.0, 5.0, 20.0], "heart base")
+	run.state.equipped_item_ids = PackedStringArray(["C2"])
+	await process_frame
+	_expect_pay(wheel, "sym_red_heart", [3.3, 5.5, 22.0], "heart with Chalk Dust")
+	_expect_pay(wheel, "sym_satanic", [15.0, 25.0, 280.0], "wild with Chalk Dust")
+	wheel.call("set_tab", 2)
+	await process_frame
+	wheel.call("set_tab", 0)
+
+
+func _check_areas(wheel: Node, world: Node) -> void:
+	var rows: Array = wheel.call("area_rows")
+	if rows.size() != 7:
+		_fail("areas tab should list 7 areas, got %d" % rows.size())
+	var has_placed := false
+	for row in rows:
+		if int(row["placed"]) > 0:
+			has_placed = true
+	if not has_placed:
+		world.call("plan_floor_items", 4242)
+		rows = wheel.call("area_rows")
+	var room_items: Dictionary = world.get("_room_items")
+	var target := ""
+	for row in rows:
+		if int(row["placed"]) > 0 and int(row["taken"]) == 0:
+			target = String(row["id"])
+			break
+	if target.is_empty():
+		_fail("no area with placed items to check")
+		return
+	var areas: Dictionary = world.get_script().get_script_constant_map()["AREAS"]
+	for path in (areas[target]["rooms"] as Dictionary).keys():
+		for entry in (room_items.get(path, []) as Array):
+			(entry as Dictionary)["taken"] = true
+	rows = wheel.call("area_rows")
+	for row in rows:
+		if String(row["id"]) != target:
+			continue
+		if int(row["taken"]) != int(row["placed"]) or not bool(row["cleared"]):
+			_fail("area %s should be cleared after taking all, got %s" % [target, str(row)])
+	wheel.call("set_tab", 3)
+	await process_frame
+	wheel.call("set_tab", 0)
+
+
+func _check_anim(wheel: Node) -> void:
 	wheel.call("close_wheel")
 	if bool(wheel.call("is_wheel_open")):
-		_fail("wheel stayed open after close")
+		_fail("box stayed open after close")
 	await create_timer(0.3).timeout
 	if not bool(wheel.call("open_wheel")):
-		_fail("wheel did not reopen for the sweep check")
+		_fail("box did not reopen for the open check")
 		return
-	await create_timer(0.5).timeout
+	await create_timer(0.4).timeout
 	if not bool(wheel.call("is_wheel_open")):
-		_fail("wheel closed during the sweep check")
+		_fail("box closed during the open check")
 	elif float(wheel.call("open_progress")) < 1.0:
-		_fail("open sweep should finish, progress %s" % str(wheel.call("open_progress")))
+		_fail("open animation should finish, progress %s" % str(wheel.call("open_progress")))
 	wheel.call("close_wheel")
 
 
-func _expect_icon_texture_width(wheel: Node, px: int) -> void:
-	var root := wheel.get_node_or_null("WheelRoot")
-	if root == null:
-		_fail("WheelRoot missing for icon texture check")
+func _expect_ids(got: PackedStringArray, want: Array, label: String) -> void:
+	if got != PackedStringArray(want):
+		_fail("%s should be %s, got %s" % [label, str(want), str(got)])
+
+
+func _expect_pay(wheel: Node, symbol_id: String, want: Array, label: String) -> void:
+	var got: Array = wheel.call("pay_values", symbol_id)
+	if got.size() != want.size():
+		_fail("%s pay should have %d values, got %s" % [label, want.size(), str(got)])
 		return
-	for child in root.get_children():
-		if not child is TextureButton:
-			continue
-		var icon := child as TextureButton
-		if not icon.visible:
-			continue
-		var tex := icon.texture_normal
-		if tex == null:
-			_fail("visible icon has no texture_normal")
+	for i in want.size():
+		if absf(float(got[i]) - float(want[i])) > 0.001:
+			_fail("%s pay should be %s, got %s" % [label, str(want), str(got)])
 			return
-		if tex.get_width() != px:
-			_fail("visible icon texture_normal width should be %d, got %d" % [px, tex.get_width()])
-		return
-	_fail("no visible icon button after owning one item")
-
-
-func _expect_arcs(wheel: Node, arcs: int, label: String) -> void:
-	var got := int(wheel.call("shown_band_count"))
-	if got != arcs:
-		_fail("%s should draw %d arcs, got %d" % [label, arcs, got])

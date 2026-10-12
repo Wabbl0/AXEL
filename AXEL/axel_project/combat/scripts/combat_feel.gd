@@ -1,8 +1,12 @@
 class_name CombatFeel
 extends Node
 
+signal sfx_cue(cue_id: StringName)
+
 const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const FLAME_BURST_SCRIPT := preload("res://combat/scripts/flame_burst.gd")
+const BONUS_INTRO_SCRIPT := preload("res://combat/scripts/bonus_intro_fx.gd")
+const BONUS_WIDE_LIFT := 90.0
 const BANNER_LAYER := 115
 const ENCOUNTER_BANNER_HOLD_SEC := 1.6
 const ENCOUNTER_BANNER_SCRIM := 0.85
@@ -45,6 +49,7 @@ var _loss_hud_canvas: Control
 var _loss_jolt_rest := Vector2.ZERO
 var _loss_jolt_tween: Tween
 var _loss_flames = null
+var _bonus_fx: Control
 
 
 func setup(root: Node2D, grid_ui: Control) -> void:
@@ -87,6 +92,12 @@ func _build() -> void:
 	_banner_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_banner_scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_layer.add_child(_banner_scrim)
+	_bonus_fx = BONUS_INTRO_SCRIPT.new()
+	_bonus_fx.name = "BonusIntroFx"
+	_bonus_fx.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_layer.add_child(_bonus_fx)
+	_bonus_fx.cue.connect(_on_bonus_cue)
+	_bonus_fx.impact.connect(_on_bonus_impact)
 	_banner = Label.new()
 	_banner.name = "FeelBanner"
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -155,6 +166,44 @@ func play_banner(text: String, hold_sec: float = 0.55, scrim_a: float = 0.62, pe
 	if not persist:
 		_banner_anchor = null
 		_place_banner()
+
+
+func play_bonus_intro(kind: StringName, text: String, anchor: Control = null, icons: Array[Texture2D] = []) -> void:
+	if _bonus_fx == null:
+		return
+	var calm := _reduce_flashing()
+	if not calm:
+		shake(2, get_node_or_null("/root/AxelSettings"))
+	await _bonus_fx.play(kind, _bonus_rect(anchor), text, icons, calm)
+
+
+func power_pop(center: Vector2, radius: float, title: String, tag: String, loud: bool) -> void:
+	if _bonus_fx == null:
+		return
+	var calm := _reduce_flashing()
+	_bonus_fx.power_pop(center, radius, title, tag, loud, calm)
+	if loud and not calm:
+		shake(1, get_node_or_null("/root/AxelSettings"))
+
+
+func is_bonus_intro_playing() -> bool:
+	return _bonus_fx != null and _bonus_fx.is_playing()
+
+
+func _bonus_rect(anchor: Control) -> Rect2:
+	if anchor != null and is_instance_valid(anchor):
+		var xf := anchor.get_global_transform_with_canvas()
+		return Rect2(xf.origin, anchor.size * xf.get_scale())
+	var view := _loss_view_size()
+	return Rect2(Vector2(0.0, -BONUS_WIDE_LIFT), view)
+
+
+func _on_bonus_cue(cue_id: StringName) -> void:
+	sfx_cue.emit(cue_id)
+
+
+func _on_bonus_impact(strength: int) -> void:
+	shake(strength, get_node_or_null("/root/AxelSettings"))
 
 
 func _on_banner_viewport_resized() -> void:

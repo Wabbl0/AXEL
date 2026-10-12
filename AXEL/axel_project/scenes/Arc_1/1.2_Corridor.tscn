@@ -32,7 +32,7 @@ size = Vector2(80, 690.4762)
 size = Vector2(2423.0767, 90)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_locker_pass"]
-size = Vector2(40, 1100)
+size = Vector2(40, 820.5128)
 
 [node name="1_2_Corridor" type="Node2D" unique_id=1412693129]
 position = Vector2(1, -1)
@@ -121,7 +121,7 @@ position = Vector2(1790, 763)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LockerPassTrigger" unique_id=1200780302]
-position = Vector2(0, 400)
+position = Vector2(334.542, 363.3736)
 shape = SubResource("RectangleShape2D_locker_pass")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]

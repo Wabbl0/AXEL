@@ -1,72 +1,64 @@
 extends CanvasLayer
 
-class WheelPaint extends Control:
-	var wheel: Node = null
-
-	func _draw() -> void:
-		if wheel != null and wheel.has_method("paint_on"):
-			wheel.call("paint_on", self)
-
-const BAND_COUNT := 4
-const VISIBLE_COUNT := 3
-const ICON_SLOTS := BAND_COUNT * VISIBLE_COUNT
-const BAND_THICK := 52.0
-const BAND_GAP := 8.0
-const ICON_PX := 40.0
-const ICON_HOVER_PX := 46.0
-const HIT_PX := 28.0
-const ARC_STEPS := 18
-const FILL := Color(0.02, 0.02, 0.02, 0.98)
-const FILL_INNER := Color(0.01, 0.01, 0.01, 0.98)
-const FILL_OUTER := Color(0.08, 0.05, 0.05, 0.98)
-const OUTLINE := Color(0.9, 0.0, 0.0, 1.0)
-const RANK_REDS: Array[Color] = [
-	Color(0.42, 0.06, 0.06, 1.0),
-	Color(0.6, 0.05, 0.05, 1.0),
-	Color(0.78, 0.04, 0.04, 1.0),
-	Color(0.96, 0.1, 0.1, 1.0),
+const TAB_ITEMS := 0
+const TAB_STATS := 1
+const TAB_PAY := 2
+const TAB_AREAS := 3
+const TAB_NAMES: PackedStringArray = ["ITEMS", "STATS", "PAY", "AREAS"]
+const SORT_RARITY := 0
+const SORT_NEWEST := 1
+const SORT_NAME := 2
+const SORT_FAMILY := 3
+const SORT_NAMES: PackedStringArray = ["RARITY", "NEWEST", "NAME", "TYPE"]
+const SYMBOL_PATHS: PackedStringArray = [
+	"res://combat/data/symbols/sym_green_circle.tres",
+	"res://combat/data/symbols/sym_yellow_triangle.tres",
+	"res://combat/data/symbols/sym_blue_star.tres",
+	"res://combat/data/symbols/sym_red_heart.tres",
+	"res://combat/data/symbols/sym_cigarette.tres",
+	"res://combat/data/symbols/sym_booze.tres",
+	"res://combat/data/symbols/sym_bloody_hand.tres",
+	"res://combat/data/symbols/sym_satanic.tres",
 ]
+const BOX_W := 680.0
+const BOX_H := 560.0
+const TAB_PX := 36
+const ROW_PX := 30
+const SMALL_PX := 24
+const ICON_PX := 40.0
+const OPEN_SEC := 0.12
+const CLOSE_SEC := 0.08
+const FILL := Color(0.02, 0.02, 0.02, 0.96)
+const OUTLINE := Color(0.9, 0.0, 0.0, 1.0)
+const ROW_ON := Color(0.22, 0.02, 0.02, 0.92)
+const ROW_HOVER := Color(0.12, 0.05, 0.05, 0.92)
 const WARM_GREY := Color(0.36, 0.32, 0.31, 1.0)
 const WARM_GREY_LIGHT := Color(0.66, 0.6, 0.58, 1.0)
-const SOCKET_FILL := Color(0.22, 0.02, 0.02, 0.92)
-const SOCKET_EMPTY := Color(0.05, 0.04, 0.04, 0.92)
-const SOCKET_R := 24.0
-const SHADOW := Color(0.04, 0.04, 0.04, 0.95)
-const SHADOW_OFFSET := Vector2(5, 6)
-const GREYED := Color(0.38, 0.38, 0.38, 1.0)
-const ARC_START := PI
-const ARC_END := TAU
-const SWEEP_SEC := 0.18
-const BAND_STAGGER_SEC := 0.04
-const CLOSE_SEC := 0.1
-const JITTER_SEC := 0.05
-const FLASH_SEC := 0.15
-const GLYPH_PX := 20
-const PIP_PX := 6.0
-const PIP_GAP := 4.0
+const GREYED := Color(0.45, 0.45, 0.45, 1.0)
 
 var _root: Control
+var _box: PanelContainer
+var _tab_buttons: Array[Button] = []
+var _tools: HBoxContainer
+var _sort_button: Button
+var _rank_button: Button
+var _family_button: Button
+var _scroll: ScrollContainer
+var _list: VBoxContainer
+var _balance: Label
 var _cap: Label
-var _icons: Array[TextureButton] = []
-var _arrows: Array[Button] = []
-var _scroll: Array[int] = [0, 0, 0, 0]
 var _open := false
-var _center := Vector2.ZERO
-var _inner := 64.0
-var _hover_id := ""
-var _cache_warmed := false
+var _tab := TAB_ITEMS
+var _sort := SORT_RARITY
+var _rank_filter := -1
+var _family_filter := ""
 var _anim_t := 0.0
 var _close_t := -1.0
-var _time := 0.0
-var _jitter := 0.0
-var _flash: Dictionary = {}
-var _hover_arrow := Vector2i(-1, 0)
-var _pips_filled := 0
-var _pips_total := 0
-var _rng := RandomNumberGenerator.new()
-var _band_items: Array = []
-var _band_key := PackedStringArray()
-var _band_key_set := false
+var _hover_id := ""
+var _cache_warmed := false
+var _state_key := ""
+var _symbols: Array = []
+var _fx := ItemEffectDispatcher.new()
 
 
 func _ready() -> void:
@@ -80,37 +72,54 @@ func _ready() -> void:
 		pause.pause_state_changed.connect(_on_pause_changed)
 
 
-func band_count() -> int:
-	return BAND_COUNT
-
-
-func shown_band_count() -> int:
-	return _shown_bands().size()
-
-
 func is_wheel_open() -> bool:
 	return _open
 
 
+func tab_names() -> PackedStringArray:
+	return TAB_NAMES
+
+
+func current_tab() -> int:
+	return _tab
+
+
+func set_tab(tab: int) -> void:
+	_tab = clampi(tab, 0, TAB_NAMES.size() - 1)
+	_hide_hover()
+	_rebuild()
+
+
+func set_sort(mode: int) -> void:
+	_sort = clampi(mode, 0, SORT_NAMES.size() - 1)
+	_rebuild()
+
+
+func set_rank_filter(rank: int) -> void:
+	_rank_filter = clampi(rank, -1, ItemDef.RARITY_GLYPHS.size() - 1)
+	_rebuild()
+
+
+func set_family_filter(family: String) -> void:
+	_family_filter = family
+	_rebuild()
+
+
+func family_options() -> PackedStringArray:
+	var out := PackedStringArray()
+	for item in _owned_items():
+		var fam := ItemDef.family_name(item)
+		if not out.has(fam):
+			out.append(fam)
+	out.sort()
+	return out
+
+
 func listed_ids() -> PackedStringArray:
 	var ids := PackedStringArray()
-	for band in BAND_COUNT:
-		for item in _items_for_band(band):
-			ids.append(str(item.get("id")))
-	return ids
-
-
-func visible_ids(band: int) -> PackedStringArray:
-	var ids := PackedStringArray()
-	if band < 0 or band >= BAND_COUNT:
-		return ids
-	for item in _visible_slice(_items_for_band(band), _scroll[band]):
+	for item in _listed_items():
 		ids.append(str(item.get("id")))
 	return ids
-
-
-func scroll_band(band: int, delta: int) -> void:
-	_scroll_band(band, delta)
 
 
 func cap_is_visible() -> bool:
@@ -123,16 +132,34 @@ func cap_text() -> String:
 	return _cap.text
 
 
+func balance_text() -> String:
+	if _balance == null:
+		return ""
+	return _balance.text
+
+
+func pay_values(symbol_id: String) -> Array[float]:
+	var out: Array[float] = []
+	var symbol := _symbol_by_id(symbol_id)
+	if symbol == null:
+		return out
+	var items := _equipped_items()
+	for length in [3, 4, 5]:
+		out.append(_fx.pay_preview(items, symbol, length))
+	return out
+
+
+func area_rows() -> Array:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("area_item_rows"):
+		return []
+	return world.call("area_item_rows")
+
+
 func open_progress() -> float:
 	if not _open:
 		return 0.0
-	return _band_progress(maxi(shown_band_count() - 1, 0))
-
-
-func band_can_scroll(band: int) -> bool:
-	if band < 0 or band >= BAND_COUNT:
-		return false
-	return _items_for_band(band).size() > VISIBLE_COUNT
+	return clampf(_anim_t / OPEN_SEC, 0.0, 1.0)
 
 
 func open_wheel() -> bool:
@@ -143,10 +170,11 @@ func open_wheel() -> bool:
 	_open = true
 	_anim_t = 0.0
 	_close_t = -1.0
-	_jitter = _rng.randf_range(-2.0, 2.0)
 	_root.visible = true
-	_hide_floor_card()
-	_layout()
+	_hide_hover()
+	_layout_box()
+	_rebuild()
+	_apply_anim(0.0)
 	_play_sfx(&"item_wheel_open")
 	var tutorial := get_node_or_null("/root/AxelTutorial")
 	if tutorial != null and tutorial.has_method("complete"):
@@ -162,82 +190,95 @@ func close_wheel(instant: bool = false) -> void:
 		return
 	_open = false
 	_hover_id = ""
-	_hover_arrow = Vector2i(-1, 0)
-	_flash.clear()
 	if _root != null:
-		_hide_controls()
 		if instant:
 			_close_t = -1.0
 			_root.visible = false
 		else:
 			_close_t = CLOSE_SEC
-			_root.queue_redraw()
 	_hide_hover()
 
 
-func _hide_controls() -> void:
-	for icon in _icons:
-		icon.visible = false
-	for arrow in _arrows:
-		arrow.visible = false
-	if _cap != null:
-		_cap.visible = false
-
-
 func _build() -> void:
-	var paint := WheelPaint.new()
-	paint.wheel = self
-	_root = paint
+	_root = Control.new()
 	_root.name = "WheelRoot"
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.visible = false
 	add_child(_root)
 
+	_box = PanelContainer.new()
+	_box.name = "ItemBox"
+	_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	_box.add_theme_stylebox_override("panel", _frame_style())
+	_root.add_child(_box)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	_box.add_child(column)
+
+	var tabs := HBoxContainer.new()
+	tabs.name = "Tabs"
+	tabs.add_theme_constant_override("separation", 4)
+	column.add_child(tabs)
+	for i in TAB_NAMES.size():
+		var tab := _make_button(TAB_NAMES[i], TAB_PX)
+		tab.pressed.connect(_on_tab_pressed.bind(i))
+		tabs.add_child(tab)
+		_tab_buttons.append(tab)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tabs.add_child(spacer)
+	var close := _make_button("X", TAB_PX)
+	close.name = "Close"
+	close.pressed.connect(_on_close_pressed)
+	tabs.add_child(close)
+
+	column.add_child(_rule())
+
+	_tools = HBoxContainer.new()
+	_tools.name = "Tools"
+	_tools.add_theme_constant_override("separation", 4)
+	column.add_child(_tools)
+	_sort_button = _make_button("", SMALL_PX)
+	_sort_button.pressed.connect(_on_sort_pressed)
+	_tools.add_child(_sort_button)
+	_rank_button = _make_button("", SMALL_PX)
+	_rank_button.pressed.connect(_on_rank_pressed)
+	_tools.add_child(_rank_button)
+	_family_button = _make_button("", SMALL_PX)
+	_family_button.pressed.connect(_on_family_pressed)
+	_tools.add_child(_family_button)
+
+	_scroll = ScrollContainer.new()
+	_scroll.name = "Scroll"
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	MenuLook.apply_scroll(_scroll)
+	_scroll.get_v_scroll_bar().value_changed.connect(_on_scrolled)
+	column.add_child(_scroll)
+	_list = VBoxContainer.new()
+	_list.name = "List"
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list.add_theme_constant_override("separation", 2)
+	_scroll.add_child(_list)
+
+	column.add_child(_rule())
+
+	var footer := HBoxContainer.new()
+	footer.name = "Footer"
+	column.add_child(footer)
+	_balance = Label.new()
+	_balance.name = "Balance"
+	_balance.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	MenuLook.apply_label(_balance, ROW_PX, MenuLook.TEXT)
+	footer.add_child(_balance)
 	_cap = Label.new()
 	_cap.name = "EquipCap"
-	_cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_cap.visible = false
-	MenuLook.apply_label(_cap, 28, MenuLook.TEXT)
-	_root.add_child(_cap)
-
-	for _i in ICON_SLOTS:
-		var icon := TextureButton.new()
-		icon.focus_mode = Control.FOCUS_NONE
-		icon.mouse_filter = Control.MOUSE_FILTER_STOP
-		icon.ignore_texture_size = true
-		icon.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.custom_minimum_size = Vector2(ICON_PX, ICON_PX)
-		icon.size = Vector2(ICON_PX, ICON_PX)
-		icon.visible = false
-		var empty := StyleBoxEmpty.new()
-		icon.add_theme_stylebox_override("normal", empty)
-		icon.add_theme_stylebox_override("hover", empty)
-		icon.add_theme_stylebox_override("pressed", empty)
-		icon.add_theme_stylebox_override("focus", empty)
-		icon.pressed.connect(_on_icon_pressed.bind(icon))
-		icon.mouse_entered.connect(_on_icon_hover.bind(icon))
-		icon.mouse_exited.connect(_on_icon_exit.bind(icon))
-		_icons.append(icon)
-		_root.add_child(icon)
-
-	for _i in BAND_COUNT * 2:
-		var arrow := Button.new()
-		arrow.focus_mode = Control.FOCUS_NONE
-		arrow.flat = true
-		arrow.mouse_filter = Control.MOUSE_FILTER_STOP
-		arrow.custom_minimum_size = Vector2(HIT_PX, HIT_PX)
-		arrow.size = Vector2(HIT_PX, HIT_PX)
-		arrow.visible = false
-		var empty := StyleBoxEmpty.new()
-		for state_name in ["normal", "hover", "pressed", "focus", "disabled"]:
-			arrow.add_theme_stylebox_override(state_name, empty)
-		arrow.pressed.connect(_on_arrow_pressed.bind(arrow))
-		arrow.mouse_entered.connect(_on_arrow_hover.bind(arrow))
-		arrow.mouse_exited.connect(_on_arrow_exit.bind(arrow))
-		_arrows.append(arrow)
-		_root.add_child(arrow)
+	MenuLook.apply_label(_cap, ROW_PX, MenuLook.TEXT)
+	footer.add_child(_cap)
 
 
 func _process(delta: float) -> void:
@@ -250,21 +291,18 @@ func _process(delta: float) -> void:
 			_close_t = -1.0
 			_root.visible = false
 		else:
-			_root.queue_redraw()
+			_apply_anim(clampf(_close_t / CLOSE_SEC, 0.0, 1.0))
 	if not _open:
 		return
 	if not _can_open():
 		close_wheel(true)
 		return
-	_anim_t += delta
-	_time += delta
-	for item_id in _flash.keys():
-		var left := float(_flash[item_id]) - delta
-		if left <= 0.0:
-			_flash.erase(item_id)
-		else:
-			_flash[item_id] = left
-	_layout()
+	if _anim_t < OPEN_SEC:
+		_anim_t += delta
+		_apply_anim(open_progress())
+	var key := _current_state_key()
+	if key != _state_key:
+		_rebuild()
 
 
 func _input(event: InputEvent) -> void:
@@ -274,19 +312,6 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("pause") or event.is_action_pressed("back"):
 		close_wheel()
-		get_viewport().set_input_as_handled()
-		return
-	if event is InputEventMouseButton:
-		var wheel := event as InputEventMouseButton
-		if not wheel.pressed:
-			return
-		if wheel.button_index != MOUSE_BUTTON_WHEEL_UP and wheel.button_index != MOUSE_BUTTON_WHEEL_DOWN:
-			return
-		var band := _band_at(wheel.position)
-		if band < 0:
-			return
-		var direction := 1 if wheel.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1
-		_scroll_band(band, direction)
 		get_viewport().set_input_as_handled()
 
 
@@ -326,180 +351,507 @@ func _on_pause_changed(paused: bool) -> void:
 		close_wheel(true)
 
 
-func _layout() -> void:
-	var metrics := _metrics()
-	if metrics.is_empty():
-		close_wheel(true)
+func _scale() -> float:
+	return UiViewportScale.factor(_root)
+
+
+func _px(authored: int) -> int:
+	return maxi(roundi(float(authored) * _scale()), 8)
+
+
+func _layout_box() -> void:
+	var s := _scale()
+	var view := _root.get_viewport_rect().size
+	var box_size := Vector2(minf(BOX_W * s, view.x - 32.0), minf(BOX_H * s, view.y - 32.0))
+	_box.custom_minimum_size = box_size
+	_box.size = box_size
+	_box.position = ((view - box_size) * 0.5).floor()
+	_box.pivot_offset = box_size * 0.5
+	for i in _tab_buttons.size():
+		_tab_buttons[i].add_theme_font_size_override("font_size", _px(TAB_PX))
+	var close := _box.find_child("Close", true, false) as Button
+	if close != null:
+		close.add_theme_font_size_override("font_size", _px(TAB_PX))
+	for button in [_sort_button, _rank_button, _family_button]:
+		button.add_theme_font_size_override("font_size", _px(SMALL_PX))
+	_balance.add_theme_font_size_override("font_size", _px(ROW_PX))
+	_cap.add_theme_font_size_override("font_size", _px(ROW_PX))
+
+
+func _apply_anim(t: float) -> void:
+	if _box == null:
 		return
-	_center = metrics["center"]
-	_inner = float(metrics["inner"])
-	_place_icons()
-	_place_arrows()
-	_place_cap()
-	_follow_hover()
-	_root.queue_redraw()
+	var eased := 1.0 - pow(1.0 - clampf(t, 0.0, 1.0), 3.0)
+	_box.scale = Vector2(1.0, maxf(eased, 0.02))
+	_box.modulate.a = clampf(t * 1.5, 0.0, 1.0)
 
 
-func paint_on(canvas: Control) -> void:
-	if not _open and _close_t < 0.0:
+func _rebuild() -> void:
+	_state_key = _current_state_key()
+	if _list == null:
 		return
-	var center := _center
-	if _open and _anim_t < JITTER_SEC:
-		center.x += _jitter
-	var fade := 1.0 if _open else clampf(_close_t / CLOSE_SEC, 0.0, 1.0)
-	var shown := _shown_bands()
-	for visual in shown.size():
-		var p := _band_progress(visual)
-		if p <= 0.0:
-			continue
-		var a_end := lerpf(ARC_START, ARC_END, p)
-		var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
-		var outer_edge := inner_edge + BAND_THICK
-		var shadow_col := _alpha(SHADOW, fade)
-		for step in ARC_STEPS:
-			var a0 := lerpf(ARC_START, a_end, float(step) / float(ARC_STEPS))
-			var a1 := lerpf(ARC_START, a_end, float(step + 1) / float(ARC_STEPS))
-			var shadow_pts := PackedVector2Array()
-			for pt in _quad(center, inner_edge, outer_edge, a0, a1):
-				shadow_pts.append(pt + SHADOW_OFFSET)
-			canvas.draw_colored_polygon(shadow_pts, shadow_col)
-	for visual in shown.size():
-		var band := int(shown[visual])
-		var p := _band_progress(visual)
-		if p <= 0.0:
-			continue
-		var a_end := lerpf(ARC_START, ARC_END, p)
-		var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
-		var outer_edge := inner_edge + BAND_THICK
-		var red := _alpha(RANK_REDS[band], fade)
-		var fill_colors := PackedColorArray([
-			_alpha(FILL_INNER, fade),
-			_alpha(FILL_OUTER, fade),
-			_alpha(FILL_OUTER, fade),
-			_alpha(FILL_INNER, fade),
-		])
-		for step in ARC_STEPS:
-			var a0 := lerpf(ARC_START, a_end, float(step) / float(ARC_STEPS))
-			var a1 := lerpf(ARC_START, a_end, float(step + 1) / float(ARC_STEPS))
-			canvas.draw_polygon(_quad(center, inner_edge, outer_edge, a0, a1), fill_colors)
-		var scan := _alpha(WARM_GREY_LIGHT, 0.06 * fade)
-		for k in [1, 2]:
-			var r := inner_edge + BAND_THICK * float(k) / 3.0
-			canvas.draw_polyline(_arc_points(center, r, ARC_START, a_end), scan, 1.0, false)
-		var groove := _alpha(RANK_REDS[band], 0.35 * fade)
-		canvas.draw_polyline(_arc_points(center, inner_edge + 4.0, ARC_START, a_end), groove, 1.0, false)
-		canvas.draw_polyline(_arc_points(center, outer_edge - 4.0, ARC_START, a_end), groove, 1.0, false)
-		canvas.draw_polyline(_arc_points(center, outer_edge, ARC_START, a_end), red, 2.0, false)
-		canvas.draw_polyline(_arc_points(center, inner_edge, ARC_START, a_end), red, 2.0, false)
-		canvas.draw_line(_point(center, inner_edge, ARC_START), _point(center, outer_edge, ARC_START), red, 2.0, false)
-		canvas.draw_line(_point(center, inner_edge, a_end), _point(center, outer_edge, a_end), red, 2.0, false)
-		var mid_r := (inner_edge + outer_edge) * 0.5
-		var left_at := _point(center, mid_r, ARC_START)
-		_paint_chevron(canvas, left_at, _chevron_color(band, -1, fade))
-		if p >= 1.0:
-			_paint_chevron(canvas, _point(center, mid_r, ARC_END), _chevron_color(band, 1, fade))
-		_paint_glyph(canvas, left_at, band, red)
-	if _open:
-		_paint_sockets(canvas)
-		_paint_pips(canvas)
+	for child in _list.get_children():
+		_list.remove_child(child)
+		child.queue_free()
+	for i in _tab_buttons.size():
+		var on := i == _tab
+		var color := MenuLook.ACCENT if on else MenuLook.TEXT
+		_tab_buttons[i].add_theme_color_override("font_color", color)
+		_tab_buttons[i].add_theme_color_override("font_hover_color", MenuLook.ACCENT if not on else Color.WHITE)
+	_tools.visible = _tab == TAB_ITEMS
+	_refresh_tools()
+	match _tab:
+		TAB_ITEMS:
+			_build_items()
+		TAB_STATS:
+			_build_stats()
+		TAB_PAY:
+			_build_pay()
+		TAB_AREAS:
+			_build_areas()
+	_refresh_footer()
 
 
-func _band_progress(visual: int) -> float:
-	if not _open:
-		return clampf(_close_t / CLOSE_SEC, 0.0, 1.0)
-	var t := clampf((_anim_t - float(visual) * BAND_STAGGER_SEC) / SWEEP_SEC, 0.0, 1.0)
-	return 1.0 - pow(1.0 - t, 3.0)
+func _refresh_tools() -> void:
+	_sort_button.text = "SORT: %s" % SORT_NAMES[_sort]
+	var rank := "ALL" if _rank_filter < 0 else ItemDef.rarity_glyph_index(_rank_filter)
+	_rank_button.text = "RANK: %s" % rank
+	var fam := "ALL" if _family_filter.is_empty() else _family_filter.to_upper()
+	_family_button.text = "TYPE: %s" % fam
 
 
-func _alpha(color: Color, amount: float) -> Color:
-	return Color(color.r, color.g, color.b, color.a * amount)
+func _refresh_footer() -> void:
+	var run := _run()
+	var bankroll := 0
+	var equipped := 0
+	var cap := 7
+	if run != null:
+		bankroll = int(run.state.bankroll_cents)
+		equipped = run.state.equipped_item_ids.size()
+		if run.has_method("max_equip_slots"):
+			cap = int(run.call("max_equip_slots"))
+	_balance.text = "BALANCE: %d" % bankroll
+	_cap.visible = _owned_count() > 0
+	_cap.text = "%d/%d" % [equipped, cap]
+	_cap.add_theme_color_override("font_color", OUTLINE if equipped >= cap else MenuLook.TEXT)
 
 
-func _chevron_color(band: int, direction: int, fade: float) -> Color:
-	if not band_can_scroll(band):
-		return _alpha(WARM_GREY, 0.7 * fade)
-	if _hover_arrow == Vector2i(band, direction):
-		return _alpha(RANK_REDS[band].lerp(WARM_GREY_LIGHT, 0.55), fade)
-	return _alpha(RANK_REDS[maxi(band, 1)], fade)
-
-
-func _paint_glyph(canvas: Control, end_at: Vector2, band: int, color: Color) -> void:
-	var glyph := ItemDef.rarity_glyph_index(band)
-	if glyph.is_empty():
+func _build_items() -> void:
+	var items := _listed_items()
+	if items.is_empty():
+		_list.add_child(_note("No items yet." if _owned_count() == 0 else "Nothing matches."))
 		return
-	var at := end_at + Vector2(-20.0, 16.0 + float(GLYPH_PX) * 0.8)
-	canvas.draw_string(MenuLook.FONT, at, glyph, HORIZONTAL_ALIGNMENT_CENTER, 40.0, GLYPH_PX, color)
+	for item in items:
+		_list.add_child(_item_row(item))
 
 
-func _paint_sockets(canvas: Control) -> void:
-	var pulse := 0.5 + 0.5 * sin(_time * 2.4)
-	for icon in _icons:
-		if not icon.visible:
-			continue
-		var item_id := str(icon.get_meta("item_id", ""))
-		if item_id.is_empty():
-			continue
-		var a := float(icon.get_meta("reveal", 1.0))
-		if a <= 0.0:
-			continue
-		var hovered := item_id == _hover_id
-		var c := icon.position + icon.size * 0.5
-		var r := SOCKET_R + (2.0 if hovered else 0.0)
-		var ring := WARM_GREY_LIGHT if hovered else WARM_GREY
-		if _is_equipped(item_id):
-			canvas.draw_circle(c, r + 3.0 + pulse * 2.0, _alpha(OUTLINE, a * (0.1 + 0.1 * pulse)))
-			canvas.draw_circle(c, r, _alpha(SOCKET_FILL, a))
-			ring = OUTLINE.lerp(WARM_GREY_LIGHT, 0.4) if hovered else OUTLINE
-		else:
-			canvas.draw_circle(c, r, _alpha(SOCKET_EMPTY, a))
-		var flash := clampf(float(_flash.get(item_id, 0.0)) / FLASH_SEC, 0.0, 1.0)
-		if flash > 0.0:
-			ring = ring.lerp(Color.WHITE, flash)
-			canvas.draw_circle(c, r, _alpha(Color.WHITE, 0.35 * flash * a))
-		canvas.draw_arc(c, r, 0.0, TAU, 40, _alpha(ring, a), 2.5 if hovered else 2.0, true)
+func _item_row(item: Resource) -> Button:
+	var item_id := str(item.get("id"))
+	var equipped := _is_equipped(item_id)
+	var row := Button.new()
+	row.name = "Row_%s" % item_id
+	row.focus_mode = Control.FOCUS_NONE
+	row.flat = true
+	row.custom_minimum_size = Vector2(0.0, (ICON_PX + 8.0) * _scale())
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.set_meta("item_id", item_id)
+	var base := StyleBoxFlat.new()
+	base.bg_color = ROW_ON if equipped else Color(0, 0, 0, 0)
+	base.anti_aliasing = false
+	var hover := base.duplicate() as StyleBoxFlat
+	hover.bg_color = ROW_ON.lightened(0.08) if equipped else ROW_HOVER
+	for state_name in ["normal", "focus", "disabled"]:
+		row.add_theme_stylebox_override(state_name, base)
+	for state_name in ["hover", "pressed", "hover_pressed"]:
+		row.add_theme_stylebox_override(state_name, hover)
+	row.pressed.connect(_on_row_pressed.bind(item_id))
+	row.mouse_entered.connect(_on_row_hover.bind(row))
+	row.mouse_exited.connect(_on_row_exit.bind(item_id))
+
+	var line := HBoxContainer.new()
+	line.set_anchors_preset(Control.PRESET_FULL_RECT)
+	line.offset_left = 6.0
+	line.offset_right = -6.0
+	line.add_theme_constant_override("separation", 12)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(line)
+	var tint := Color.WHITE if equipped else GREYED
+	var icon := TextureRect.new()
+	icon.name = "Icon"
+	icon.texture = ItemDef.cached_wheel_texture(item)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(ICON_PX, ICON_PX) * _scale()
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.modulate = tint
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.add_child(icon)
+	var title := _label(ItemDef.rarity_name(item), ROW_PX, MenuLook.TEXT if equipped else WARM_GREY_LIGHT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	line.add_child(title)
+	line.add_child(_label(ItemDef.family_name(item).to_upper(), SMALL_PX, MenuLook.DIM if not equipped else WARM_GREY_LIGHT))
+	line.add_child(_label("ON" if equipped else "--", ROW_PX, OUTLINE if equipped else WARM_GREY))
+	return row
 
 
-func _paint_pips(canvas: Control) -> void:
-	if _cap == null or not _cap.visible or _pips_total <= 0:
+func _build_stats() -> void:
+	var groups: Dictionary = {}
+	var order: Array = []
+	for item in _equipped_items():
+		var fam := ItemDef.family_name(item)
+		if not groups.has(fam):
+			groups[fam] = []
+			order.append(fam)
+		(groups[fam] as Array).append(item)
+	if order.is_empty():
+		_list.add_child(_note("No active effects. Equip an item on ITEMS."))
 		return
-	var rings := _shown_bands().size()
-	var outer := _inner + float(rings) * (BAND_THICK + BAND_GAP) - BAND_GAP
-	var row_w := float(_pips_total) * PIP_PX + float(_pips_total - 1) * PIP_GAP
-	var x := _center.x - row_w * 0.5
-	var y := _center.y - outer - 8.0 - PIP_PX
-	for i in _pips_total:
-		var rect := Rect2(Vector2(x + float(i) * (PIP_PX + PIP_GAP), y), Vector2(PIP_PX, PIP_PX))
-		if i < _pips_filled:
-			canvas.draw_rect(rect, OUTLINE, true)
-		else:
-			canvas.draw_rect(rect, WARM_GREY, false, 1.0)
+	order.sort()
+	var width := _text_width()
+	for fam in order:
+		_list.add_child(_label(String(fam).to_upper(), SMALL_PX, MenuLook.ACCENT))
+		for item in groups[fam]:
+			var text := "%s: %s" % [ItemDef.rarity_name(item), str(item.get("description"))]
+			var desc := ItemDescFormat.make_label("Stat_%s" % str(item.get("id")), _px(SMALL_PX), width)
+			ItemDescFormat.set_text(desc, text)
+			_list.add_child(desc)
 
 
-func _quad(center: Vector2, inner_edge: float, outer_edge: float, a0: float, a1: float) -> PackedVector2Array:
-	return PackedVector2Array([
-		_point(center, inner_edge, a0),
-		_point(center, outer_edge, a0),
-		_point(center, outer_edge, a1),
-		_point(center, inner_edge, a1),
-	])
+func _build_pay() -> void:
+	var grid := GridContainer.new()
+	grid.name = "PayGrid"
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 0)
+	_list.add_child(grid)
+	grid.add_child(_label("", SMALL_PX))
+	grid.add_child(_label("SYMBOL", SMALL_PX, MenuLook.ACCENT))
+	for length in [3, 4, 5]:
+		grid.add_child(_label("x%d" % length, SMALL_PX, MenuLook.ACCENT))
+	var items := _equipped_items()
+	for symbol in _load_symbols():
+		var icon := TextureRect.new()
+		icon.texture = symbol.get("texture")
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = Vector2(ICON_PX, ICON_PX) * _scale()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		grid.add_child(icon)
+		var name_label := _label(str(symbol.get("display_name")), ROW_PX)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(name_label)
+		for length in [3, 4, 5]:
+			var base := float(symbol.call("payout_multiplier_for_length", length))
+			var now := _fx.pay_preview(items, symbol, length)
+			var changed := not is_equal_approx(base, now)
+			grid.add_child(_label(_pay_text(now), ROW_PX, OUTLINE if changed else MenuLook.TEXT))
+	_list.add_child(_note("Win = bet x value x multiplier. Red = raised by your items."))
+	if _has_effect(items, &"trinity_run"):
+		_list.add_child(_note("+ more during the Vice Round."))
+	if _has_effect(items, &"paid_spin_payout_scalar"):
+		_list.add_child(_note("+ grows with each paid spin in a fight."))
 
 
-func _arc_points(center: Vector2, radius: float, a0: float, a1: float) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	for step in ARC_STEPS + 1:
-		var angle := lerpf(a0, a1, float(step) / float(ARC_STEPS))
-		pts.append(_point(center, radius, angle))
-	return pts
+func _build_areas() -> void:
+	var rows := area_rows()
+	var cleared := 0
+	for row in rows:
+		if bool(row["cleared"]):
+			cleared += 1
+	_list.add_child(_label("AREAS CLEARED %d/%d" % [cleared, rows.size()], ROW_PX, MenuLook.ACCENT))
+	var grid := GridContainer.new()
+	grid.name = "AreaGrid"
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 4)
+	_list.add_child(grid)
+	for row in rows:
+		var done := bool(row["cleared"])
+		var placed := int(row["placed"])
+		var name_label := _label(String(row["label"]), ROW_PX, MenuLook.TEXT if placed > 0 else WARM_GREY)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(name_label)
+		var count := "%d/%d" % [int(row["taken"]), placed] if placed > 0 else "-"
+		grid.add_child(_label(count, ROW_PX, MenuLook.TEXT if placed > 0 else WARM_GREY))
+		grid.add_child(_label("CLEARED" if done else "", ROW_PX, OUTLINE))
 
 
-func _paint_chevron(canvas: Control, at: Vector2, color: Color) -> void:
-	var back := PackedVector2Array([
-		at + Vector2(-9.0, -7.0),
-		at + Vector2(0.0, 9.0),
-		at + Vector2(9.0, -7.0),
-	])
-	canvas.draw_colored_polygon(back, _alpha(FILL_INNER, color.a))
-	canvas.draw_polyline(back, color, 3.0, true)
+func _pay_text(value: float) -> String:
+	if is_equal_approx(value, roundf(value)):
+		return "%d" % roundi(value)
+	return "%.1f" % value
+
+
+func _has_effect(items: Array, effect_id: StringName) -> bool:
+	for item in items:
+		if item != null and StringName(str(item.get("effect_id"))) == effect_id:
+			return true
+	return false
+
+
+func _load_symbols() -> Array:
+	if not _symbols.is_empty():
+		return _symbols
+	for path in SYMBOL_PATHS:
+		var symbol := load(path)
+		if symbol != null:
+			_symbols.append(symbol)
+	return _symbols
+
+
+func _symbol_by_id(symbol_id: String) -> Resource:
+	for symbol in _load_symbols():
+		if str(symbol.get("id")) == symbol_id:
+			return symbol
+	return null
+
+
+func _listed_items() -> Array:
+	var owned := _owned_items()
+	var order: Dictionary = {}
+	for i in owned.size():
+		order[str(owned[i].get("id"))] = i
+	var out: Array = []
+	for item in owned:
+		if _rank_filter >= 0 and int(item.get("rarity")) != _rank_filter:
+			continue
+		if not _family_filter.is_empty() and ItemDef.family_name(item) != _family_filter:
+			continue
+		out.append(item)
+	match _sort:
+		SORT_RARITY:
+			out.sort_custom(func(a, b): return _by_rarity(a, b, order))
+		SORT_NEWEST:
+			out.sort_custom(func(a, b): return int(order[str(a.get("id"))]) > int(order[str(b.get("id"))]))
+		SORT_NAME:
+			out.sort_custom(func(a, b): return _display_name(a).naturalnocasecmp_to(_display_name(b)) < 0)
+		SORT_FAMILY:
+			out.sort_custom(func(a, b): return _by_family(a, b, order))
+	return out
+
+
+func _by_rarity(a: Resource, b: Resource, order: Dictionary) -> bool:
+	var ra := int(a.get("rarity"))
+	var rb := int(b.get("rarity"))
+	if ra != rb:
+		return ra < rb
+	return int(order[str(a.get("id"))]) < int(order[str(b.get("id"))])
+
+
+func _by_family(a: Resource, b: Resource, order: Dictionary) -> bool:
+	var fa := ItemDef.family_name(a)
+	var fb := ItemDef.family_name(b)
+	if fa != fb:
+		return fa.naturalnocasecmp_to(fb) < 0
+	return _by_rarity(a, b, order)
+
+
+func _display_name(item: Resource) -> String:
+	var text := str(item.get("display_name")).strip_edges()
+	return text if not text.is_empty() else str(item.get("id"))
+
+
+func _owned_items() -> Array:
+	var run := _run()
+	if run == null or not run.has_method("owned_items"):
+		return []
+	var out: Array = []
+	for item in run.call("owned_items"):
+		if item != null:
+			out.append(item)
+	return out
+
+
+func _equipped_items() -> Array:
+	var run := _run()
+	if run == null or not run.has_method("equipped_items"):
+		return []
+	var out: Array = []
+	for item in run.call("equipped_items"):
+		if item != null:
+			out.append(item)
+	return out
+
+
+func _current_state_key() -> String:
+	var run := _run()
+	if run == null:
+		return ""
+	return "%s|%s|%d" % [
+		",".join(run.state.owned_item_ids),
+		",".join(run.state.equipped_item_ids),
+		int(run.state.bankroll_cents),
+	]
+
+
+func _make_button(text: String, size_px: int) -> Button:
+	var button := Button.new()
+	button.text = text
+	MenuLook.apply_button(button, _px(size_px), Control.SIZE_SHRINK_BEGIN)
+	button.focus_mode = Control.FOCUS_NONE
+	var pad := StyleBoxEmpty.new()
+	pad.content_margin_left = 8
+	pad.content_margin_right = 8
+	pad.content_margin_top = 2
+	pad.content_margin_bottom = 2
+	for state_name in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		button.add_theme_stylebox_override(state_name, pad)
+	return button
+
+
+func _label(text: String, size_px: int, color: Color = MenuLook.TEXT) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	MenuLook.apply_label(label, _px(size_px), color)
+	return label
+
+
+func _note(text: String) -> Control:
+	var note := ItemDescFormat.make_label("Note", _px(SMALL_PX), _text_width())
+	note.text = text
+	note.add_theme_color_override("default_color", WARM_GREY_LIGHT)
+	return note
+
+
+func _text_width() -> float:
+	return maxf(_box.custom_minimum_size.x - 64.0 * _scale(), 120.0)
+
+
+func _rule() -> ColorRect:
+	var rule := ColorRect.new()
+	rule.color = MenuLook.ACCENT
+	rule.custom_minimum_size = Vector2(0.0, 2.0)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rule
+
+
+func _frame_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = FILL
+	style.border_color = OUTLINE
+	style.set_border_width_all(3)
+	style.anti_aliasing = false
+	style.corner_detail = 1
+	style.set_corner_radius_all(0)
+	style.shadow_color = Color(0.04, 0.04, 0.04, 0.95)
+	style.shadow_offset = Vector2(5, 6)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
+	return style
+
+
+func _on_tab_pressed(tab: int) -> void:
+	_play_sfx(&"item_wheel_click")
+	_scroll.scroll_vertical = 0
+	set_tab(tab)
+
+
+func _on_close_pressed() -> void:
+	close_wheel()
+
+
+func _on_sort_pressed() -> void:
+	_play_sfx(&"item_wheel_click")
+	set_sort((_sort + 1) % SORT_NAMES.size())
+
+
+func _on_rank_pressed() -> void:
+	_play_sfx(&"item_wheel_click")
+	var next := _rank_filter + 1
+	if next >= ItemDef.RARITY_GLYPHS.size():
+		next = -1
+	set_rank_filter(next)
+
+
+func _on_family_pressed() -> void:
+	_play_sfx(&"item_wheel_click")
+	var options := family_options()
+	if options.is_empty():
+		set_family_filter("")
+		return
+	var at := options.find(_family_filter)
+	if _family_filter.is_empty():
+		set_family_filter(options[0])
+	elif at < 0 or at + 1 >= options.size():
+		set_family_filter("")
+	else:
+		set_family_filter(options[at + 1])
+
+
+func _on_row_pressed(item_id: String) -> void:
+	_play_sfx(&"item_wheel_click")
+	toggle_item(item_id)
+
+
+func toggle_item(item_id: String) -> void:
+	var run := _run()
+	if run != null and run.has_method("toggle_equip"):
+		run.call("toggle_equip", item_id)
+	_rebuild()
+	if not _hover_id.is_empty():
+		var row := _list.find_child("Row_%s" % _hover_id, false, false) as Control
+		if row != null:
+			_show_hover(row)
+
+
+func _on_row_hover(row: Control) -> void:
+	_show_hover(row)
+
+
+func _show_hover(row: Control) -> void:
+	var item_id := str(row.get_meta("item_id", ""))
+	var item := _item_by_id(item_id)
+	if item == null:
+		return
+	_hover_id = item_id
+	var card := _card()
+	if card == null or not card.has_method("show_screen_item"):
+		return
+	var box_rect := _box.get_global_rect()
+	var row_rect := row.get_global_rect()
+	card.call(
+		"show_screen_item",
+		Vector2(box_rect.end.x + 12.0, row_rect.position.y),
+		ItemDef.rarity_name(item),
+		str(item.get("description")),
+		item.get("icon")
+	)
+
+
+func _on_row_exit(item_id: String) -> void:
+	if _hover_id != item_id:
+		return
+	_hover_id = ""
+	call_deferred("_hide_hover_if_clear")
+
+
+func _on_scrolled(_value: float) -> void:
+	_hover_id = ""
+	_hide_hover()
+
+
+func _hide_hover_if_clear() -> void:
+	if not _hover_id.is_empty():
+		return
+	_hide_hover()
+
+
+func _item_by_id(item_id: String) -> Resource:
+	for item in _owned_items():
+		if str(item.get("id")) == item_id:
+			return item
+	return null
+
+
+func _warm_wheel_textures() -> void:
+	for item in _owned_items():
+		ItemDef.cached_wheel_texture(item)
 
 
 func _can_open() -> bool:
@@ -566,223 +918,6 @@ func _find_player() -> Node2D:
 	return scene.find_child("Player", true, false) as Node2D
 
 
-func _metrics() -> Dictionary:
-	var player := _find_player()
-	if player == null:
-		return {}
-	var sprite := player.get_node_or_null("AnimatedSprite") as AnimatedSprite2D
-	var center := Vector2.ZERO
-	var inner := 64.0
-	if sprite != null:
-		var xf := sprite.get_global_transform_with_canvas()
-		var rect := _sprite_local_rect(sprite)
-		if rect.size.y > 2.0:
-			var head := Vector2(rect.get_center().x, rect.position.y + rect.size.y * 0.16)
-			center = xf * head
-			var top := xf * Vector2(rect.position.x, rect.position.y)
-			var bottom := xf * Vector2(rect.position.x, rect.end.y)
-			inner = clampf(absf(bottom.y - top.y) * 0.22, 48.0, 120.0)
-		else:
-			center = xf.origin
-	else:
-		center = player.get_global_transform_with_canvas().origin
-	return {"center": center, "inner": inner}
-
-
-func _shown_bands() -> Array[int]:
-	var bands: Array[int] = []
-	bands.append(0)
-	for band in range(1, BAND_COUNT):
-		if _items_for_band(band).is_empty():
-			continue
-		bands.append(band)
-	return bands
-
-
-func _visual_index(band: int) -> int:
-	return _shown_bands().find(band)
-
-
-func _items_for_band(band: int) -> Array:
-	_refresh_band_items()
-	if band < 0 or band >= _band_items.size():
-		return []
-	return _band_items[band]
-
-
-func _refresh_band_items() -> void:
-	var run := _run()
-	var key := PackedStringArray()
-	if run != null:
-		key = run.state.owned_item_ids
-	if _band_key_set and key == _band_key:
-		return
-	_band_key = key.duplicate()
-	_band_key_set = true
-	_band_items.clear()
-	for band in BAND_COUNT:
-		_band_items.append([])
-	if run == null or not run.has_method("owned_items"):
-		return
-	for item in run.call("owned_items"):
-		if item == null:
-			continue
-		var band := int(item.get("rarity"))
-		if band < 0 or band >= BAND_COUNT:
-			continue
-		ItemDef.cached_wheel_texture(item)
-		_band_items[band].append(item)
-
-
-func _visible_slice(items: Array, scroll: int) -> Array:
-	if items.size() <= VISIBLE_COUNT:
-		return items
-	var out: Array = []
-	for i in VISIBLE_COUNT:
-		out.append(items[posmod(scroll + i, items.size())])
-	return out
-
-
-func _slot_angles(count: int) -> Array:
-	var left := ARC_START + 0.48
-	var right := ARC_END - 0.48
-	var mid := (left + right) * 0.5
-	var step := (right - left) * 0.5
-	if count <= 1:
-		return [mid]
-	if count == 2:
-		return [mid - step * 0.5, mid + step * 0.5]
-	return [left, mid, right]
-
-
-func _place_icons() -> void:
-	var slot := 0
-	for band in BAND_COUNT:
-		var shown := _visible_slice(_items_for_band(band), _scroll[band])
-		var angles: Array = _slot_angles(shown.size())
-		var mid_r := _mid_radius(band)
-		var sweep := _band_progress(maxi(_visual_index(band), 0))
-		for i in shown.size():
-			var icon := _icons[slot]
-			slot += 1
-			var item: Resource = shown[i]
-			var item_id := str(item.get("id"))
-			var px := ICON_HOVER_PX if item_id == _hover_id else ICON_PX
-			icon.visible = true
-			icon.custom_minimum_size = Vector2(px, px)
-			icon.size = Vector2(px, px)
-			var cached := ItemDef.cached_wheel_texture(item)
-			var prev_id := str(icon.get_meta("item_id", ""))
-			if prev_id != item_id or icon.texture_normal != cached:
-				icon.texture_normal = cached
-			var frac := (float(angles[i]) - ARC_START) / (ARC_END - ARC_START)
-			var reveal := clampf((sweep - frac + 0.1) * 5.0, 0.0, 1.0)
-			icon.modulate = _alpha(Color.WHITE if _is_equipped(item_id) else GREYED, reveal)
-			icon.set_meta("reveal", reveal)
-			icon.set_meta("item_id", item_id)
-			var at := _point(_center, mid_r, float(angles[i]))
-			icon.position = at - icon.size * 0.5
-	while slot < _icons.size():
-		_icons[slot].visible = false
-		_icons[slot].set_meta("item_id", "")
-		slot += 1
-
-
-func _warm_wheel_textures() -> void:
-	var run := _run()
-	if run == null or not run.has_method("owned_items"):
-		return
-	for item in run.call("owned_items"):
-		if item == null:
-			continue
-		ItemDef.cached_wheel_texture(item)
-
-
-func _place_arrows() -> void:
-	var index := 0
-	var shown := _shown_bands()
-	for band in BAND_COUNT:
-		var band_on := shown.has(band)
-		var mid_r := _mid_radius(band)
-		for direction in [-1, 1]:
-			var arrow := _arrows[index]
-			index += 1
-			arrow.visible = band_on
-			if not band_on:
-				continue
-			arrow.size = Vector2(HIT_PX, HIT_PX)
-			arrow.set_meta("band", band)
-			arrow.set_meta("dir", direction)
-			var angle := ARC_START if direction < 0 else ARC_END
-			var at := _point(_center, mid_r, angle)
-			arrow.position = at - arrow.size * 0.5
-
-
-func _place_cap() -> void:
-	var owned := _owned_count()
-	_cap.visible = owned > 0
-	if owned <= 0:
-		return
-	var run := _run()
-	var equipped := 0
-	var cap := 7
-	if run != null:
-		equipped = run.state.equipped_item_ids.size()
-		if run.has_method("max_equip_slots"):
-			cap = int(run.call("max_equip_slots"))
-	_cap.text = "%d/%d" % [equipped, cap]
-	_pips_filled = equipped
-	_pips_total = cap
-	_cap.add_theme_color_override("font_color", OUTLINE if equipped >= cap else MenuLook.TEXT)
-	_cap.reset_size()
-	var label_size := _cap.get_combined_minimum_size()
-	var rings := _shown_bands().size()
-	var outer := _inner + float(rings) * (BAND_THICK + BAND_GAP) - BAND_GAP
-	_cap.position = Vector2(
-		_center.x - label_size.x * 0.5,
-		_center.y - outer - label_size.y - 12.0 - PIP_PX
-	)
-
-
-func _mid_radius(band: int) -> float:
-	var visual := _visual_index(band)
-	if visual < 0:
-		visual = 0
-	var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
-	return inner_edge + BAND_THICK * 0.5
-
-
-func _point(center: Vector2, radius: float, angle: float) -> Vector2:
-	return center + Vector2(cos(angle), sin(angle)) * radius
-
-
-func _scroll_band(band: int, delta: int) -> void:
-	if band < 0 or band >= BAND_COUNT or delta == 0:
-		return
-	var count := _items_for_band(band).size()
-	if count <= VISIBLE_COUNT:
-		return
-	_scroll[band] = posmod(_scroll[band] + delta, count)
-	_layout()
-
-
-func _band_at(screen_pos: Vector2) -> int:
-	if not _open:
-		return -1
-	var delta := screen_pos - _center
-	var dist := delta.length()
-	var angle := atan2(delta.y, delta.x)
-	if angle > 0.08 and angle < PI - 0.08:
-		return -1
-	var shown := _shown_bands()
-	for visual in shown.size():
-		var inner_edge := _inner + float(visual) * (BAND_THICK + BAND_GAP)
-		var outer_edge := inner_edge + BAND_THICK
-		if dist >= inner_edge - 4.0 and dist <= outer_edge + 4.0:
-			return int(shown[visual])
-	return -1
-
-
 func _hit_player(screen_pos: Vector2) -> bool:
 	var player := _find_player()
 	if player == null:
@@ -818,97 +953,10 @@ func _run() -> Node:
 	return get_node_or_null("/root/AxelRun")
 
 
-func _on_icon_pressed(icon: TextureButton) -> void:
-	var item_id := str(icon.get_meta("item_id", ""))
-	if item_id.is_empty():
-		return
-	_play_sfx(&"item_wheel_click")
-	_flash[item_id] = FLASH_SEC
-	var run := _run()
-	if run != null and run.has_method("toggle_equip"):
-		run.call("toggle_equip", item_id)
-	_layout()
-
-
 func _play_sfx(cue: StringName) -> void:
 	var sfx := get_node_or_null("/root/AxelSfx")
 	if sfx != null and sfx.has_method("play"):
 		sfx.call("play", cue)
-
-
-func _on_icon_hover(icon: TextureButton) -> void:
-	var item_id := str(icon.get_meta("item_id", ""))
-	if item_id.is_empty():
-		return
-	var item := _item_by_id(item_id)
-	if item == null:
-		return
-	_hover_id = item_id
-	var card := _card()
-	if card == null or not card.has_method("show_screen_item"):
-		return
-	card.call(
-		"show_screen_item",
-		_grown_corner(icon),
-		ItemDef.rarity_name(item),
-		str(item.get("description")),
-		item.get("icon")
-	)
-
-
-func _follow_hover() -> void:
-	if _hover_id.is_empty():
-		return
-	var card := _card()
-	if card == null or not card.has_method("nudge_screen_item"):
-		return
-	for icon in _icons:
-		if not icon.visible:
-			continue
-		if str(icon.get_meta("item_id", "")) != _hover_id:
-			continue
-		card.call("nudge_screen_item", _grown_corner(icon))
-		return
-
-
-func _grown_corner(icon: Control) -> Vector2:
-	var rect := icon.get_global_rect()
-	return rect.get_center() + Vector2(ICON_HOVER_PX, ICON_HOVER_PX) * 0.5
-
-
-func _on_icon_exit(icon: TextureButton) -> void:
-	var item_id := str(icon.get_meta("item_id", ""))
-	if _hover_id != item_id:
-		return
-	_hover_id = ""
-	call_deferred("_hide_hover_if_clear")
-
-
-func _hide_hover_if_clear() -> void:
-	if not _hover_id.is_empty():
-		return
-	_hide_hover()
-
-
-func _on_arrow_pressed(arrow: Button) -> void:
-	_scroll_band(int(arrow.get_meta("band", -1)), int(arrow.get_meta("dir", 0)))
-
-
-func _on_arrow_hover(arrow: Button) -> void:
-	_hover_arrow = Vector2i(int(arrow.get_meta("band", -1)), int(arrow.get_meta("dir", 0)))
-
-
-func _on_arrow_exit(arrow: Button) -> void:
-	if _hover_arrow == Vector2i(int(arrow.get_meta("band", -1)), int(arrow.get_meta("dir", 0))):
-		_hover_arrow = Vector2i(-1, 0)
-
-
-func _item_by_id(item_id: String) -> Resource:
-	for band in BAND_COUNT:
-		for item in _items_for_band(band):
-			if str(item.get("id")) == item_id:
-				return item
-	return null
 
 
 func _card() -> Node:
@@ -923,10 +971,6 @@ func _card() -> Node:
 	if world != null and world.has_method("_ensure_info_card"):
 		return world.call("_ensure_info_card", scene)
 	return null
-
-
-func _hide_floor_card() -> void:
-	_hide_hover()
 
 
 func _hide_hover() -> void:

@@ -174,6 +174,8 @@ var inventory := ItemInventoryScript.new()
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
 const POWER_ACT_SEC := 0.48
+const VICE_POWER_ORDER: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
+var _vice_power_index := 0
 var _dev_guarantee_trinity: bool = false
 var _dev_guarantee_fs_clear: bool = false
 var _dev_guarantee_payout_1000x: bool = false
@@ -225,6 +227,10 @@ func _ready() -> void:
 	_feel.name = "CombatFeel"
 	add_child(_feel)
 	_feel.setup(self, grid_ui)
+	_feel.sfx_cue.connect(_on_feel_sfx_cue)
+
+func _on_feel_sfx_cue(cue_id: StringName) -> void:
+	sfx_requested.emit(cue_id)
 
 func _load_symbols_from_export() -> void:
 	_weights.clear()
@@ -1603,13 +1609,13 @@ func await_victory_confirm() -> void:
 func _notify_free_spins_entry() -> void:
 	sfx_requested.emit(&"free_spins")
 	if _feel != null:
-		_feel.play_banner("FREE SPINS", 1.8, 0.78)
+		_feel.play_bonus_intro(&"free_spins", "FREE SPINS")
 
 
 func _notify_free_spins_entry_async() -> void:
 	sfx_requested.emit(&"free_spins")
 	if _feel != null and not _dev_skip_visuals:
-		await _feel.play_banner("FREE SPINS", 1.8, 0.78)
+		await _feel.play_bonus_intro(&"free_spins", "FREE SPINS")
 
 
 func _play_count_flash_for_lines(lines: Array) -> void:
@@ -2248,9 +2254,11 @@ func _play_meter_full_transition_async() -> void:
 	emit_signal("meter_full_transition_started")
 	emit_signal("readouts_progressed")
 	sfx_requested.emit(&"trinity")
+	var intro_played := false
 	if _feel != null and not _dev_skip_visuals:
-		await _feel.play_banner("VICE ROUND", 1.8, 0.82, false, grid_ui)
+		await _feel.play_bonus_intro(&"vice", "VICE ROUND", grid_ui, _vice_icon_textures())
 		_feel.highlight_power(powers.current_id())
+		intro_played = true
 	vice_banner_finished.emit()
 	if _dev_skip_visuals or not enable_transition_fx:
 		await _pause_visual(pause_after_power_sec * 0.6)
@@ -2262,13 +2270,34 @@ func _play_meter_full_transition_async() -> void:
 		_grid_border_tween = CombatPace.bind(create_tween())
 		_grid_border_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		_grid_border_tween.tween_property(grid_frame, "border_color", border_target, border_wait_sec)
-	for i in maxi(grid_flash_count, 1):
+	var flashes := 1 if intro_played else maxi(grid_flash_count, 1)
+	for i in flashes:
 		await _play_grid_white_flash_async(grid_flash_duration_sec, grid_flash_peak_alpha)
 
 
 	if grid_frame != null and _grid_border_tween != null and is_instance_valid(_grid_border_tween):
 		await _pause_visual(border_wait_sec)
 	await _pause_visual(meter_handoff_pause_sec)
+
+func _vice_icon_textures() -> Array[Texture2D]:
+	var out: Array[Texture2D] = []
+	for id in VICE_POWER_ORDER:
+		var sym := _power_symbol_by_id.get(id, null) as SymbolDef
+		if sym != null:
+			var tex := sym.texture_for_power_intro()
+			if tex != null:
+				out.append(tex)
+	return out
+
+func _on_power_intro_peak(display_text: String, target: Control) -> void:
+	if _feel == null or target == null or not is_instance_valid(target):
+		return
+	var xf := target.get_global_transform_with_canvas()
+	var center := xf * (target.size * 0.5)
+	var radius := target.size.x * 0.5 * xf.get_scale().x
+	var loud := _in_trinity_round and _vice_power_index > 0
+	var tag := "%d/%d" % [_vice_power_index, VICE_POWER_ORDER.size()] if loud else ""
+	_feel.power_pop(center, radius, display_text, tag, loud)
 
 func _play_meter_full_transition_sync() -> void:
 	emit_signal("meter_full_transition_started")
@@ -2371,6 +2400,7 @@ func _play_power_intro_flash_async(power_id: StringName) -> void:
 	_power_intro_tween.parallel().tween_property(target, "modulate:a", 1.0, scale_in * 0.8)
 	if power_intro_glow != null:
 		_power_intro_tween.parallel().tween_property(power_intro_glow, "color:a", clampf(power_intro_glow_alpha, 0.0, 1.0), scale_in)
+	_power_intro_tween.tween_callback(_on_power_intro_peak.bind(display_text, target))
 	if hold > 0.0:
 		_power_intro_tween.tween_interval(hold)
 	_power_intro_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
@@ -2477,10 +2507,12 @@ func _run_trinity_round_async() -> Dictionary:
 	await _repopulate_grid_handoff_async("trinity_entry")
 	if await _grant_trinity_first_miss_extra_spins_async(out):
 		return out
-	var order: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
+	var order: Array[StringName] = VICE_POWER_ORDER
 	for id in order:
 		powers.set_current_id(id)
+		_vice_power_index = order.find(id) + 1
 		await _play_power_intro_flash_async(id)
+		_vice_power_index = 0
 		_open_power_fx_log()
 		_note_vice_potency(tmods)
 		_trigger_item_power(id, float(tmods.get("vice_potency", 1.0)), false, false)

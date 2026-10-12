@@ -16,6 +16,19 @@ const FILE_PX := 1024
 const COMBAT_RES_PX := 120
 const WHEEL_RES_PX := 64
 const RARITY_GLYPHS: PackedStringArray = ["◇", "◈", "◆", "★", "✦"]
+const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
+const FAMILY_NAMES := {
+	"A": "Power Chain",
+	"B": "Premium Meter",
+	"C": "Vice Round",
+	"D": "Free Spins",
+	"E": "Diagonal Wins",
+	"F": "Board-Count",
+	"G": "Sealed Grid",
+	"H": "True-path",
+	"M": "Corner Multipliers",
+}
+const FAMILY_FALLBACK := "Unique"
 
 static var _wheel_cache: Dictionary = {}
 
@@ -44,6 +57,17 @@ static func rarity_name(item: Resource) -> String:
 	if base.is_empty():
 		return glyph
 	return "%s %s" % [glyph, base]
+
+
+static func family_name(item: Resource) -> String:
+	if item == null:
+		return FAMILY_FALLBACK
+	var fam := str(item.get("family")).strip_edges()
+	if fam.is_empty():
+		return FAMILY_FALLBACK
+	if FAMILY_NAMES.has(fam):
+		return String(FAMILY_NAMES[fam])
+	return ItemLinesScript.display_name(fam)
 
 
 static func cached_wheel_texture(item: Resource) -> Texture2D:
