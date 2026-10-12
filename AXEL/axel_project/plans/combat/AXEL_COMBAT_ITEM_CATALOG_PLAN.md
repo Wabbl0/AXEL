@@ -399,10 +399,49 @@ Not player-final. Right-hand ITEMS list:
 
 ## Player-facing descriptions
 
-- In-game text lives in `combat/data/items/*.tres` `description` (mirrored in `tools/combat/generate_item_resources.py`). The tables above are design rules, not player text.
+- In-game text lives in `combat/data/items/*.tres` `description` (mirrored in `tools/combat/generate_item_resources.py`). Edit both together. Do not rerun the generator to sync text: it also rewrites placeholder icons over the real 1024 px files. The tables above are design rules, not player text.
 - Plain words, one or two short sentences, real numbers from the params. Say what the player sees and gets.
-- Never use item codes (`C-G`), or inside words: glyph, scalar, potency, premium meter, resolver, legal cell, seal, playtest Base target. Use: SKULL meter / SKULL step, strength, shapes, power symbols, MULTIPLIER, BET, GOAL, normal spins.
-- Sealed-grid items (`*-G`): refill is never run in the live game, so they read as "Normal spins: wins pay X% more".
+- Never use item codes (`C-G`), or inside words: glyph, scalar, potency, premium meter, resolver, legal cell, seal, playtest Base target.
+- Sealed-grid items (`*-G`): refill is never run in the live game, so they read as "Paid spins: wins pay X% more".
+
+### Glossary (2026-10-12, playtest batch E)
+
+Every item description, tutorial card and Guide page uses these words. `tools/qa/item_wording_check.gd` fails on the banned ones.
+
+| Say | Meaning | Never say |
+| --- | --- | --- |
+| symbol | anything in a cell | picture, icon, tile |
+| Normal symbol | the shape symbols | shapes |
+| Power symbol | cigarette, alcohol, bloody hand | |
+| Wild | the wild skull | |
+| grid | the 5×5 play area | board |
+| cell | one grid square | |
+| win | a line of 3, 4 or 5 matching symbols | |
+| BET, BALANCE, GOAL, MULTIPLIER | HUD words, in caps | |
+| Skull Meter, Skull Meter step | the meter in the spin skull (3 steps) | SKULL step, SKULL meter |
+| a power activates | what a power does when it goes off | |
+| paid spin, Vice Round, Free Spins | the three kinds of spin | normal spins, booze, Trinity, SUPER Free Spins |
+
+### When an item pulses (activation rule)
+
+An item pulses in the combat item box only on the spin where its effect actually changed something. Odds-only items pulse once at fight start.
+
+| effect_id | Pulses when |
+| --- | --- |
+| `girl_power_chance` (Static Spark, Faulty Relay, Glitch Button) | the random power activates because of the item (the roll is above the base chance and at or below the boosted chance; same single rng draw) |
+| `spawn_weight_normals`, `power_symbol_weight` | once at fight start |
+| `paid_spin_payout_scalar`, `normal_payout_bonus`, `power_payout_bonus`, `sealed_grid` | its bonus added something this spin |
+| `premium_meter` | it added extra Skull Meter steps |
+| `board_count` | the threshold was met and it paid |
+| `corner_glyphs` | a win went through one of its cells |
+| `diagonal` | a diagonal line won |
+| `power_chain`, `trinity_run`, `trinity_echo`, `free_spins`, `power_charm` | its extra event happened |
+| `extra_wild_on_create`, `first_dead_power_spawn`, `dead_spin_power_catchup`, `null_gravity` | it spawned or moved something |
+| `first_paid_spin_refund` | the refund was paid |
+| `goal_head_start` | once at fight start |
+| `extra_inventory_slots` | never in combat |
+
+Corner-glyph cells show their number on the grid (`x2`, `x2.5` for wins through the cell, `+3` for MULTIPLIER adds), not the rarity shape.
 
 ## Icons (live)
 

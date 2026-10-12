@@ -36,7 +36,7 @@ const LESSONS := {
 	},
 	"fight_spin": {
 		"title": "Fights",
-		"body": "Click the SKULL, or press E, to spin. Match 3 or more of the same picture in a row or a column.",
+		"body": "Click the SKULL, or press E, to spin. Match 3 or more of the same symbol in a row or a column.",
 	},
 	"fight_stakes": {
 		"action_only": true,
@@ -63,7 +63,7 @@ const LESSONS := {
 	"slot_match": {
 		"freeze": true,
 		"title": "Matches",
-		"body": "3 or more of the same picture in a row or a column is a win. Each win pays your BET times that picture's value, times the MULTIPLIER.",
+		"body": "3 or more of the same symbol in a row or a column is a win. Each win pays your BET times that symbol's value, times the MULTIPLIER.",
 	},
 	"slot_history": {
 		"freeze": true,
@@ -73,7 +73,7 @@ const LESSONS := {
 	"slot_power": {
 		"freeze": true,
 		"title": "The Skull",
-		"body": "Cigarette, alcohol and bloody hand are powers. Matching them fills the SKULL meter. When the SKULL is full, something worse begins.",
+		"body": "Cigarette, alcohol and bloody hand are Power symbols. Matching them fills the Skull Meter. When the Skull Meter is full, something worse begins.",
 	},
 	"slot_multiplier": {
 		"freeze": true,
@@ -83,7 +83,7 @@ const LESSONS := {
 	"slot_vice": {
 		"freeze": true,
 		"title": "Vice Round",
-		"body": "The SKULL is full. Every power fires once, and the ICONS are eaten. Clear the board to earn a prize.",
+		"body": "The Skull Meter is full. Every power activates once, and the symbols are eaten. Clear the grid to earn a prize.",
 	},
 	"guide_pause": {
 		"title": "Guide",
