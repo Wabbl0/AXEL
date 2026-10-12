@@ -26,6 +26,8 @@ const _BEHIND_ZONE_NAMES: PackedStringArray = [
 	"ChairBlock_Behind",
 	"LeftCabinetBlock_Behind",
 ]
+const _BEHIND_SUFFIX := "_Behind"
+const _NEVER_BEHIND_Y := -1.0e9
 
 var _door_interact_area: Area2D
 var _key_near_area: Area2D
@@ -186,6 +188,40 @@ func _play_enter_dialogue() -> void:
 func _process(delta: float) -> void:
 	super._process(delta)
 	_check_key_near()
+	_sync_behind_cutoffs()
+
+
+func _sync_behind_cutoffs() -> void:
+	if not is_instance_valid(_player) or not _player.has_method("set_leaf_y_cutoff"):
+		return
+	var feet: Vector2 = _player.call("_get_collision_feet_anchor")
+	for slot in _BEHIND_ZONE_NAMES.size():
+		var blocker_name := _BEHIND_ZONE_NAMES[slot].trim_suffix(_BEHIND_SUFFIX)
+		var blocker := get_node_or_null(
+			"WalkableWorld/EnvironmentColliders/%s/CollisionPolygon2D" % blocker_name
+		) as CollisionPolygon2D
+		if blocker == null or blocker.polygon.size() < 3:
+			continue
+		_player.call("set_leaf_y_cutoff", slot, _front_edge_y_at(blocker, feet.x))
+
+
+func _front_edge_y_at(blocker: CollisionPolygon2D, at_x: float) -> float:
+	var points := PackedVector2Array()
+	for local_point in blocker.polygon:
+		points.append(blocker.to_global(local_point))
+	var front := _NEVER_BEHIND_Y
+	var hit := false
+	for i in points.size():
+		var a := points[i]
+		var b := points[(i + 1) % points.size()]
+		if at_x < minf(a.x, b.x) or at_x > maxf(a.x, b.x):
+			continue
+		var y := maxf(a.y, b.y)
+		if absf(b.x - a.x) > 0.001:
+			y = lerpf(a.y, b.y, (at_x - a.x) / (b.x - a.x))
+		front = maxf(front, y)
+		hit = true
+	return front if hit else _NEVER_BEHIND_Y
 
 
 func _check_key_near() -> void:

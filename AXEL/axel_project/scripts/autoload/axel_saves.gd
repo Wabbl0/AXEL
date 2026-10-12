@@ -86,7 +86,12 @@ func has_any_slot() -> bool:
 
 
 func has_map() -> bool:
-	return GameManager.has_memory_scene(MAP_MEMORY_KEY)
+	if GameManager.has_memory_scene(MAP_MEMORY_KEY):
+		return true
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not bool(run.state.tutorial_fight_done):
+		return false
+	return not (run.has_method("is_in_encounter") and bool(run.call("is_in_encounter")))
 
 
 func consume_skip_intro() -> bool:

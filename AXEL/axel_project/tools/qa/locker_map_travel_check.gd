@@ -38,6 +38,7 @@ func _main() -> void:
 		return
 
 	_check_entrance_target()
+	_check_map_after_tutorial(run, gm)
 	_check_unlock(world, run, gm)
 	_check_fill_keeps_existing(world, run)
 	await _check_pins_and_cards(world, run)
@@ -52,6 +53,26 @@ func _main() -> void:
 		for msg in _failures:
 			push_error("locker_map_travel_check: %s" % msg)
 		quit(1)
+
+
+func _check_map_after_tutorial(run: Node, gm: Node) -> void:
+	var saves := root.get_node_or_null("AxelSaves")
+	if saves == null:
+		_failures.append("AxelSaves missing")
+		return
+	run.call("reset_run")
+	if bool(gm.call("has_memory_scene", "scene_3")):
+		return
+	if bool(saves.call("has_map")):
+		_failures.append("map should stay locked before the locker or the tutorial fight")
+	run.state.tutorial_fight_done = true
+	run.state.in_encounter = true
+	if bool(saves.call("has_map")):
+		_failures.append("map should stay locked during the tutorial fight")
+	run.state.in_encounter = false
+	if not bool(saves.call("has_map")):
+		_failures.append("map should unlock after the tutorial fight even if the locker was never opened")
+	run.call("reset_run")
 
 
 func _check_entrance_target() -> void:

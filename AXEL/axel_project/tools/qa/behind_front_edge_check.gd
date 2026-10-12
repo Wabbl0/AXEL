@@ -51,8 +51,40 @@ func _main() -> void:
 		if not await _check_room(room):
 			quit(1)
 			return
+	if not await _check_lounge_desk_edge():
+		quit(1)
+		return
 	print("Behind front-edge check OK.")
 	quit(0)
+
+
+func _check_lounge_desk_edge() -> bool:
+	var packed := load("res://scenes/Arc_4/4.1_TeachersLounge.tscn") as PackedScene
+	var scene := packed.instantiate()
+	root.add_child(scene)
+	for i in 30:
+		await process_frame
+	var ok := true
+	var blocker := scene.get_node("WalkableWorld/EnvironmentColliders/TableBlock/CollisionPolygon2D") as CollisionPolygon2D
+	var behind := scene.get_node("WalkableWorld/EnvironmentColliders/TableBlock_Behind/CollisionPolygon2D") as CollisionPolygon2D
+	var leg := behind.to_global(Vector2(848.0, 1469.0))
+	var beside := leg + Vector2(-40.0, -30.0)
+	var cut_beside := float(scene.call("_front_edge_y_at", blocker, beside.x))
+	if cut_beside >= beside.y:
+		_fail("4.1 Mike beside the desk's left leg (feet %s) counts as behind (cutoff %.1f)" % [beside, cut_beside])
+		ok = false
+	var back := leg + Vector2(80.0, -140.0)
+	var cut_back := float(scene.call("_front_edge_y_at", blocker, back.x))
+	if cut_back <= back.y:
+		_fail("4.1 Mike behind the desk (feet %s) should be behind (cutoff %.1f)" % [back, cut_back])
+		ok = false
+	var outside := float(scene.call("_front_edge_y_at", blocker, leg.x - 400.0))
+	if outside > -1.0e8:
+		_fail("4.1 feet left of the desk should never be behind it")
+		ok = false
+	scene.queue_free()
+	await process_frame
+	return ok
 
 
 func _check_room(room: Dictionary) -> bool:

@@ -11,6 +11,8 @@ const STUB_DOOR_LINES := {
 	"extra_4": "Not allowed.",
 }
 
+const CLASSROOM_FLOOR_DEPTH := 0.1
+
 @export var vertical_far_scale: float = 1.5
 
 var _cafeteria_area: Area2D
@@ -28,6 +30,8 @@ var _depth_factor: float = 1.0
 var _last_cover_scale: float = 0.0
 var _last_bg_position: Vector2 = Vector2.ZERO
 var _spawn_placement_pending := false
+var _last_player_pos := Vector2.INF
+const _TELEPORT_PX := 64.0
 
 
 func _ready() -> void:
@@ -205,10 +209,11 @@ func _apply_spawn_peek_if_pending() -> void:
 			latch_zone("lounge")
 			arm_zone_grace("lounge")
 		"classroom_door":
-			InteractArrival.apply_arrival_inside(
+			_player.global_position = InteractArrival.place_in_area(
 				_player, _classroom_area, _arrival_t, Vector2.AXIS_X,
-				InteractArrival.PeekEdge.TOP, 0.5
+				InteractArrival.PeekEdge.BOTTOM, CLASSROOM_FLOOR_DEPTH
 			)
+			InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_Y)
 			latch_zone("classroom")
 			arm_zone_grace("classroom")
 	_pending_spawn_side = ""
@@ -219,6 +224,7 @@ func _physics_process(_delta: float) -> void:
 	if not _cover_layout_ready or _is_transitioning:
 		return
 	if not _spawn_placement_pending:
+		_reseed_depth_after_teleport()
 		_update_depth_factor_from_player()
 	_apply_player_cover_and_depth(_player)
 
@@ -231,14 +237,45 @@ func _apply_player_cover_and_depth(player_node: CharacterBody2D) -> void:
 	player_node.speed *= _depth_factor
 
 
-func _update_depth_factor_from_player() -> void:
-	if not is_instance_valid(_size_ramp_area) or not is_instance_valid(_player):
+func _reseed_depth_after_teleport() -> void:
+	if not is_instance_valid(_player):
 		return
+	var pos := _player.global_position
+	var jumped := not _last_player_pos.is_finite() or pos.distance_to(_last_player_pos) >= _TELEPORT_PX
+	_last_player_pos = pos
+	if jumped:
+		_depth_factor = depth_for_position(pos)
+
+
+func depth_for_position(world_pos: Vector2) -> float:
+	var local := _ramp_local(world_pos)
+	if not local.is_finite():
+		return _depth_factor
+	var shape := _size_ramp_area.get_node("CollisionShape2D") as CollisionShape2D
+	var size := (shape.shape as RectangleShape2D).size
+	if absf(local.x) > size.x * 0.5 or absf(local.y) > size.y * 0.5:
+		return vertical_far_scale
+	var t := clampf((local.y + size.y * 0.5) / size.y, 0.0, 1.0)
+	return lerpf(1.0, vertical_far_scale, t)
+
+
+func _ramp_local(world_pos: Vector2) -> Vector2:
+	if not is_instance_valid(_size_ramp_area):
+		return Vector2.INF
 	var shape := _size_ramp_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
 	if shape == null or not (shape.shape is RectangleShape2D):
+		return Vector2.INF
+	return _size_ramp_area.to_local(world_pos) - shape.position
+
+
+func _update_depth_factor_from_player() -> void:
+	if not is_instance_valid(_player):
 		return
+	var local_pos := _ramp_local(_player.global_position)
+	if not local_pos.is_finite():
+		return
+	var shape := _size_ramp_area.get_node("CollisionShape2D") as CollisionShape2D
 	var rect_shape := shape.shape as RectangleShape2D
-	var local_pos := _size_ramp_area.to_local(_player.global_position) - shape.position
 	var half := rect_shape.size * 0.5
 	if absf(local_pos.x) > half.x or absf(local_pos.y) > half.y:
 		return

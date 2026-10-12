@@ -654,6 +654,13 @@ func _set_leaf_poly_slot(
 	mat.set_shader_parameter("leaf_poly_%d_part_cutoffs" % slot, part_cutoffs)
 
 
+func set_leaf_y_cutoff(slot: int, y_cutoff: float) -> void:
+	var mat := animated_sprite.material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("leaf_y_cutoff_%d" % slot, y_cutoff)
+
+
 func set_leaf_occlusion_active(_active: bool) -> void:
 
 
