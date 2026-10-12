@@ -142,15 +142,15 @@ Root (`extends ExplorationRoom`)
 | Export | Default | Purpose |
 |--------|---------|---------|
 | `background_path` | — | `NodePath` to `WalkableWorld/Background` |
-| `fit_mode` | `cover` | `BackgroundLayout.FitMode` (`cover` or `contain`) |
+| `fit_mode` | `cover` | `BackgroundLayout.FitMode` (`cover` or `contain`). Live: `static_locked` rooms always run **contain** (`effective_fit_mode()`), so the whole PNG shows; this export only feeds the 1920×1280 cover baseline for `PlayerCoverSync` and movable-follow rooms |
 | `camera_mode` | `static_locked` | Enable `movable_follow` only when pan is needed |
 | `margin_px` | `0` | Inset art rect for CRT trim (often `12`; static edge-reveal rooms skip this auto-zoom path) |
-| `edge_reveal` | `-1` | Negative = use shared reveal budget on `static_locked` + `cover`; `0` = plain cover; positive = per-scene reveal override |
+| `edge_reveal` | `-1` | Only for `cover` layouts; ignored by `static_locked` rooms (they are contain) |
 | `target_path` | — | Follow target |
 | `background_y` | `0` | Vertical offset |
 | `follow_smoothing` | `5` | Movable follow lerp |
 | `max_auto_zoom` | `4` | Cap auto-zoom for small art |
-| `static_center` | `(inf, inf)` | Optional fixed center for `static_locked` |
+| `static_center` | `(inf, inf)` | Ignored by `static_locked` contain rooms (the camera centers on the picture at zoom 1) |
 
 ### `_ready()` order
 
@@ -372,7 +372,7 @@ Do not duplicate a walkable room into a second `.tscn` just to skip the intro. O
 
 - Base `1920×1280` (3:2) in `project.godot`. Stretch stays **disabled** (no letterbox / Keep-aspect canvas stretch — that shrank dialogue fonts).
 - Game tab / OS window may be any size or aspect; `BackgroundCamera` cover-fits the PNG and recomputes on `size_changed`.
-- Static-locked `cover` rooms may reveal a thin clear-color strip instead of cropping as hard on wide monitors. Shared default comes from `BackgroundLayout.MAX_EDGE_REVEAL`; movable-follow rooms (1.1 / 2.4) stay on plain cover. Every non-combat scene uses the same dark edge: it starts at 0% opacity 3 px outside that scene’s background texture and reaches 80% opacity over the next 40 px. The TV curve is off so the edge is not mirrored. Combat stays flat.
+- Static-locked rooms use contain (playtest batch E): the whole picture is visible at any window shape, with dark bars where the shape differs from the PNG. Movable-follow rooms (1.1 / 2.4) stay on plain cover and scroll to the rest. Every non-combat scene uses the same dark edge: it starts at 0% opacity 3 px outside that scene’s background texture and reaches 80% opacity over the next 40 px. The TV curve is off so the edge is not mirrored. Combat stays flat.
 - Mike, walls (`EnvironmentColliders`), and art share one cover scale via `PlayerCoverSync` from the 1920×1280 baseline (1.1/1.2: `_OLD_BG_SCALE`; 1.4: `0.352` room baseline; Mike is authored at `0.198` / `185.3`, same as 1.2).
 - Exploration clear color in `project.godot` stays pure white so any exposed strip turns dark under the shipped noir/CRT stack instead of grey or red.
 - `exploration_viewport.gd` is **inert** (kept so 1.1/1.2 still load).

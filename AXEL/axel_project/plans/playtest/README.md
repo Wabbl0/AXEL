@@ -24,7 +24,7 @@ One plan per note. Do not implement from this index. Open the single plan for th
 | E during a spin skipped too much; now 3×, then 8× (shipped) | [Rush steps](2026-10-11_combat_rush_steps.md) |
 | Loss: art falls away, then GONE or IT TAKES YOU, then the buttons | [Combat loss](2026-09-23_combat_loss_collapse.md) |
 | Highlight ghosts, BALANCE card repeats, GOAL drops, item text, wild on 4/5 | [Combat HUD fixes](2026-10-11_combat_hud_fixes.md) |
-| 0.1.6 exe playtest: tutorials, skull, Vice/Free Spins, FX, items, wording, rooms (26 fixes) | [Playtest batch E](2026-10-12_playtest_batch_e.md) |
+| 0.1.6 exe playtest: tutorials, skull, Vice/Free Spins, FX, items, wording, rooms (26 fixes, shipped) | [Playtest batch E](2026-10-12_playtest_batch_e.md) |
 
 ## Pause
 
