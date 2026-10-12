@@ -894,7 +894,7 @@ func _camera_layout_args(scene: Node) -> Dictionary:
 	var background_y := 0.0
 	var edge := -1.0
 	if cam != null:
-		fit = cam.fit_mode as LayoutScript.FitMode
+		fit = (cam.call("effective_fit_mode") if cam.has_method("effective_fit_mode") else cam.fit_mode) as LayoutScript.FitMode
 		background_y = cam.background_y
 		edge = cam.edge_reveal
 	if edge < 0.0 and fit == LayoutScript.FitMode.COVER:

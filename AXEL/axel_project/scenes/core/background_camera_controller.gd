@@ -69,11 +69,12 @@ func _run_pipeline() -> void:
 	_viewport_size = Layout.get_viewport_size(self)
 	var world_rect := _world_rect
 	var effective_edge_reveal := _resolved_edge_reveal()
+	var effective_fit := effective_fit_mode()
 	if not background_path.is_empty():
 		var background := get_node_or_null(background_path) as Sprite2D
 		if background != null:
 			var layout: Dictionary = Layout.apply(
-				background, _viewport_size, fit_mode, background_y, effective_edge_reveal
+				background, _viewport_size, effective_fit, background_y, effective_edge_reveal
 			)
 			if not layout.is_empty():
 				Layout.apply_to_sprite(background, layout)
@@ -96,13 +97,20 @@ func _run_pipeline() -> void:
 		_viewport_size,
 		static_center,
 		max_auto_zoom,
-		effective_edge_reveal
+		effective_edge_reveal,
+		effective_fit == Layout.FitMode.CONTAIN
 	)
 	_inset_rect = _rect_with_margin(world_rect, margin_px)
 
 
+func effective_fit_mode() -> Layout.FitMode:
+	if camera_mode == CameraMode.STATIC_LOCKED:
+		return Layout.FitMode.CONTAIN
+	return fit_mode
+
+
 func _resolved_edge_reveal() -> float:
-	if fit_mode != Layout.FitMode.COVER or camera_mode != CameraMode.STATIC_LOCKED:
+	if effective_fit_mode() != Layout.FitMode.COVER or camera_mode != CameraMode.STATIC_LOCKED:
 		return 0.0
 	if edge_reveal < 0.0:
 		return Layout.MAX_EDGE_REVEAL
@@ -119,12 +127,24 @@ static func apply_limits(
 	lock_center: Vector2 = Vector2.INF,
 	max_zoom: float = DEFAULT_MAX_AUTO_ZOOM,
 	edge_reveal_amount: float = 0.0,
+	show_whole: bool = false,
 ) -> void:
 	if world_rect.size.x <= 0.0 or world_rect.size.y <= 0.0:
 		return
 
 	var inset := _rect_with_margin(world_rect, margin_inset_px)
 	camera.limit_smoothed = false
+	if show_whole and mode == CameraMode.STATIC_LOCKED:
+		camera.zoom = Vector2.ONE
+		camera.position_smoothing_enabled = false
+		var whole_center := world_rect.get_center()
+		camera.global_position = whole_center
+		var whole_half := viewport_size * 0.5
+		camera.limit_left = int(floor(whole_center.x - whole_half.x))
+		camera.limit_right = int(ceil(whole_center.x + whole_half.x))
+		camera.limit_top = int(floor(whole_center.y - whole_half.y))
+		camera.limit_bottom = int(ceil(whole_center.y + whole_half.y))
+		return
 	if edge_reveal_amount > 0.0:
 		camera.zoom = Vector2.ONE
 	else:
