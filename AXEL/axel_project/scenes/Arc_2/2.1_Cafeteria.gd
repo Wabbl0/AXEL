@@ -228,20 +228,14 @@ func _apply_kitchen_peek_if_pending() -> void:
 	if not _pending_kitchen_peek or not is_instance_valid(_player):
 		return
 	_pending_kitchen_peek = false
-	var feet_landed := InteractArrival.place_on_area(
+	_player.global_position = InteractArrival.place_in_area(
 		_player,
 		_kitchen_area,
 		_arrival_t,
 		Vector2.AXIS_X,
 		InteractArrival.PeekEdge.CENTER_Y,
-		0.0
+		0.5
 	)
-	var front := _player.get_node_or_null("CollisionFront") as CollisionShape2D
-	if front != null:
-		var offset := _player.to_global(front.position) - _player.global_position
-		_player.global_position = feet_landed + offset
-	else:
-		_player.global_position = feet_landed
 	var env := env_colliders()
 	var tex := env.to_local(_player.global_position)
 	tex.y = KITCHEN_STAND_TEX_Y

@@ -347,11 +347,14 @@ func _assert_kitchen_return_at_door(t: float) -> bool:
 	) as Area2D
 	var tex: Vector2 = env.to_local(player.global_position)
 	print("2.3→2.1 t=%s player_tex=%s" % [t, tex])
-	var expected_x := 1905.0 + 278.0 * t
-	if absf(tex.x - expected_x) > 40.0:
+	var kitchen_box := InteractArrival._area_rect_in_env(area, env)
+	var inset := InteractArrival._front_radius_in_env(player, env)
+	var expected_x := lerpf(kitchen_box.position.x + inset, kitchen_box.end.x - inset, t)
+	var front_x := env.to_local(player.to_global((player.get_node("CollisionFront") as Node2D).position)).x
+	if absf(front_x - expected_x) > 8.0:
 		push_error(
-			"InteractArrival FAIL: 2.3→2.1 X off kitchen door (t=%s tex=%s expected_x=%s)"
-			% [t, tex, expected_x]
+			"InteractArrival FAIL: 2.3→2.1 X off kitchen door (t=%s front_x=%s expected_x=%s)"
+			% [t, front_x, expected_x]
 		)
 		scene.queue_free()
 		await process_frame
@@ -402,7 +405,8 @@ func _test_cafeteria_to_classrooms_inside_box() -> bool:
 			% [t, result["node_tex"], center, result["world_rect"], result["player_global"]]
 		)
 		var node_tex: Vector2 = result["node_tex"]
-		if absf(node_tex.x - center.x) > 40.0 or absf(node_tex.y - center.y) > 40.0:
+		var door_box: Rect2 = result["box"]
+		if absf(node_tex.x - center.x) > 40.0 or not door_box.has_point(node_tex):
 			push_error(
 				"InteractArrival FAIL: 2.1→2.4 Player node not at live box center (t=%s tex=%s want %s)"
 				% [t, node_tex, center]
@@ -458,6 +462,7 @@ func _spawn_24_from_cafeteria(t: float) -> Dictionary:
 		"node_tex": node_tex,
 		"node_tex_x": node_tex.x,
 		"box_center": box.get_center(),
+		"box": box,
 		"player_global": player.global_position,
 		"world_rect": BackgroundLayout.compute_global_world_rect(bg),
 	}
@@ -481,7 +486,8 @@ func _test_corridor_to_classroom_on_door_box() -> bool:
 			% [t, result["node_tex"], center, result["world_rect"], result["player_global"]]
 		)
 		var node_tex: Vector2 = result["node_tex"]
-		if absf(node_tex.x - center.x) > 40.0 or absf(node_tex.y - center.y) > 40.0:
+		var door_box: Rect2 = result["box"]
+		if absf(node_tex.x - center.x) > 40.0 or not door_box.has_point(node_tex):
 			push_error(
 				"InteractArrival FAIL: 2.4→5.1 Player node not at live door center (t=%s tex=%s want %s)"
 				% [t, node_tex, center]
@@ -496,7 +502,7 @@ func _test_corridor_to_classroom_on_door_box() -> bool:
 			)
 			return false
 		var door_wall: Rect2 = result["door_wall"]
-		if door_wall.size.x > 0.0 and door_wall.has_point(node_tex):
+		if door_wall.size.x > 0.0 and door_wall.has_point(result["front_tex"]):
 			push_error(
 				"InteractArrival FAIL: 2.4→5.1 Player node inside DoorWall (t=%s tex=%s wall=%s)"
 				% [t, node_tex, door_wall]
@@ -552,8 +558,10 @@ func _spawn_51_from_corridor(t: float) -> Dictionary:
 			door_wall_rect = Rect2(min_v, max_v - min_v)
 	var out := {
 		"node_tex": node_tex,
+		"front_tex": env.to_local(InteractArrival._hitbox_point(player)),
 		"node_tex_x": node_tex.x,
 		"box_center": box.get_center(),
+		"box": box,
 		"player_global": player.global_position,
 		"world_rect": BackgroundLayout.compute_global_world_rect(bg),
 		"door_wall": door_wall_rect,
