@@ -27,10 +27,7 @@ const SKULL_SHADOW_COLOR := Color(0.04, 0.04, 0.04, 1.0)
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const READY_HOVER_SCALE := 1.1
 const BREATH_AMP := 0.03
-const BREATH_SEC := 1.6
-const HEART_SEC := 1.4
-const HEART_SCALE := 0.025
-const HEART_GLOW := 0.6
+const BREATH_SEC := 2.4
 const BUSY_ALPHA := 0.5
 const READY_FADE_SPEED := 7.0
 const RIM_SCALE := 1.07
@@ -39,7 +36,8 @@ const RIM_HOVER_ALPHA := 0.85
 const FLASH_TINT := Color(0.12, 0.12, 0.12)
 const TILT_MAX := 0.105
 const IDLE_NUDGE_SEC := 6.0
-const NUDGE_CHIP_SEC := 1.6
+const CHIP_IN_SEC := 0.4
+const CHIP_OUT_SEC := 0.2
 const SHAKE_BOOST := 2.0
 const CALM_PUNCH := 0.4
 const MOUTH_POS := Vector2(346.0, 560.0)
@@ -101,7 +99,7 @@ var _tilt := 0.0
 var _idle_time := 0.0
 var _fired := false
 var _feel_started := false
-var _chip_hold := 0.0
+var _idle_chip_on := false
 var _hover_tween: Tween
 var _punch_tween: Tween
 var _jitter_tween: Tween
@@ -185,8 +183,7 @@ func set_ready(on: bool, nudge_ok: bool = true) -> void:
 	_idle_time = 0.0
 	_retarget_hover()
 	if not on:
-		_chip_hold = 0.0
-		_show_chip(false)
+		_hide_idle_chip()
 
 
 func is_ready_to_spin() -> bool:
@@ -202,9 +199,8 @@ func set_hovered(on: bool) -> void:
 	if on and is_ready_to_spin():
 		if not _reduce_flashing():
 			_play_jitter(6.0, 4, 0.03)
-		_show_chip(true)
-	elif not on and _chip_hold <= 0.0:
-		_show_chip(false)
+	if on:
+		_hide_idle_chip()
 
 
 func _tick_hover_outline(delta: float) -> void:
@@ -245,8 +241,7 @@ func set_pressed(on: bool) -> void:
 func play_fire() -> void:
 	_fired = true
 	_idle_time = 0.0
-	_chip_hold = 0.0
-	_show_chip(false)
+	_hide_idle_chip()
 	var k := _punch_k()
 	_tween_punch([[Vector2.ONE * (1.0 + 0.18 * k), 0.07, Tween.TRANS_SINE], [Vector2.ONE, 0.45, Tween.TRANS_ELASTIC]])
 	_tween_boost(1.0, 0.4)
@@ -272,7 +267,7 @@ func play_gulp(sections: int) -> void:
 func play_nudge() -> void:
 	var k := _punch_k()
 	_tween_punch([[Vector2.ONE * (1.0 + 0.12 * k), 0.1, Tween.TRANS_SINE], [Vector2.ONE, 0.35, Tween.TRANS_BACK]])
-	_chip_hold = NUDGE_CHIP_SEC
+	_idle_chip_on = true
 	_show_chip(true)
 	if _reduce_flashing():
 		return
@@ -282,6 +277,14 @@ func play_nudge() -> void:
 
 func note_input() -> void:
 	_idle_time = 0.0
+	_hide_idle_chip()
+
+
+func _hide_idle_chip() -> void:
+	if not _idle_chip_on and not is_chip_showing():
+		return
+	_idle_chip_on = false
+	_show_chip(false)
 
 
 func _punch_k() -> float:
@@ -298,16 +301,15 @@ func _tick_feel(delta: float) -> void:
 		var dx := get_global_mouse_position().x - rect.get_center().x
 		tilt_target = clampf(dx / half, -1.0, 1.0) * TILT_MAX
 	_tilt = lerpf(_tilt, tilt_target, clampf(delta * 10.0, 0.0, 1.0))
-	if _chip_hold > 0.0:
-		_chip_hold -= delta
-		if _chip_hold <= 0.0 and not _hovering:
-			_show_chip(false)
-	if is_ready_to_spin() and _nudge_allowed and not _hovering and not _pressing:
+	var idle_ok := is_ready_to_spin() and _nudge_allowed and not _hovering and not _pressing
+	if _idle_chip_on and not idle_ok:
+		_hide_idle_chip()
+	if idle_ok and not _idle_chip_on:
 		_idle_time += delta
 		if _idle_time >= IDLE_NUDGE_SEC:
 			_idle_time = 0.0
 			play_nudge()
-	else:
+	elif not idle_ok:
 		_idle_time = 0.0
 	if _stream != null:
 		var want_stream := _shown_sections() >= 3 and not _reduce_flashing() and is_visible_in_tree()
@@ -319,8 +321,7 @@ func _apply_feel_layer() -> void:
 	var t := float(Time.get_ticks_msec()) * 0.001
 	var calm := _reduce_flashing()
 	var breath_amp := BREATH_AMP * (0.5 if calm else 1.0) * _ready_mix
-	var heart := 0.0 if calm else _heartbeat(t) * _ready_mix
-	var s := _punch * _hover_scale * (1.0 + sin(t * TAU / BREATH_SEC) * breath_amp + heart * HEART_SCALE)
+	var s := _punch * _hover_scale * (1.0 + sin(t * TAU / BREATH_SEC) * breath_amp)
 	var alpha := lerpf(BUSY_ALPHA, 1.0, _ready_mix)
 	var tint := Color.WHITE.lerp(FLASH_TINT, clampf(_flash, 0.0, 1.0))
 	tint.a = alpha
@@ -336,7 +337,7 @@ func _apply_feel_layer() -> void:
 		_drop_shadow.modulate.a = alpha
 	if _glow == null:
 		return
-	var ga := maxf(_fill_glow_alpha, heart * HEART_GLOW)
+	var ga := _fill_glow_alpha
 	if _hovering and is_ready_to_spin():
 		ga = maxf(ga, RIM_HOVER_ALPHA)
 	ga = maxf(ga, _glow_boost) * alpha * (1.0 - _outline_alpha)
@@ -351,14 +352,6 @@ func _apply_feel_layer() -> void:
 	_glow.rotation = _tilt
 	_glow.position = _jitter
 	_glow.modulate = Color(RIM_COLOR.r, RIM_COLOR.g, RIM_COLOR.b, clampf(ga, 0.0, 1.0))
-
-
-func _heartbeat(t: float) -> float:
-	var period := HEART_SEC * (0.5 if _shown_sections() >= 3 else 1.0)
-	var phase := fmod(t, period) / period
-	var first := maxf(0.0, 1.0 - absf(phase - 0.06) / 0.06)
-	var second := maxf(0.0, 1.0 - absf(phase - 0.24) / 0.06) * 0.7
-	return maxf(first, second)
 
 
 func _shown_sections() -> int:
@@ -536,9 +529,9 @@ func _show_chip(on: bool) -> void:
 	_chip_tween = CombatPace.bind(create_tween())
 	if on:
 		_chip.visible = true
-		_chip_tween.tween_property(_chip, "modulate:a", 1.0, 0.12)
+		_chip_tween.tween_property(_chip, "modulate:a", 1.0, CHIP_IN_SEC)
 	else:
-		_chip_tween.tween_property(_chip, "modulate:a", 0.0, 0.12)
+		_chip_tween.tween_property(_chip, "modulate:a", 0.0, CHIP_OUT_SEC)
 		_chip_tween.tween_callback(_chip.hide)
 
 

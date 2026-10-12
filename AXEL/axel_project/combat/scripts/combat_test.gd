@@ -1674,6 +1674,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if _handle_bet_hotkey(event):
 		return
+	if _wants_click_rush(event):
+		CombatPace.rush_beat()
+		return
 	if _wants_spin_hotkey(event) and _rush_allowed():
 		get_viewport().set_input_as_handled()
 		if _loss_presentation_open():
@@ -1696,6 +1699,33 @@ func _wants_spin_hotkey(event: InputEvent) -> bool:
 	if Engine.is_editor_hint():
 		return false
 	return event.is_action_pressed("interact")
+
+
+func _wants_click_rush(event: InputEvent) -> bool:
+	if Engine.is_editor_hint() or not (event is InputEventMouseButton):
+		return false
+	var mouse := event as InputEventMouseButton
+	if not mouse.pressed or mouse.button_index != MOUSE_BUTTON_LEFT:
+		return false
+	if _loss_presentation_open() or _tutorial_freezing() or not _rush_allowed():
+		return false
+	return not _click_hits_interactive(mouse.position)
+
+
+func _click_hits_interactive(at: Vector2) -> bool:
+	var tutorial := _tutorial_node()
+	if tutorial != null and tutorial.has_method("claims_point") and bool(tutorial.call("claims_point", at)):
+		return true
+	var node := get_viewport().gui_get_hovered_control() as Node
+	while node != null:
+		if node is BaseButton or node is Range or node is LineEdit:
+			return true
+		if node is CombatHudPiece and (node as CombatHudPiece).clickable and not (_spin_busy and node == _piece_execute):
+			return true
+		if node.has_method("pulse_items"):
+			return true
+		node = node.get_parent()
+	return false
 
 
 func _close_tutorial_freeze_card() -> bool:

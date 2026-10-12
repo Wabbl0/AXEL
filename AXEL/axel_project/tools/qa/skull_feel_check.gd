@@ -99,11 +99,10 @@ func _check_hover_forward(skull: Control, piece: Control) -> void:
 	var hover_scale := float(skull.get("_hover_scale"))
 	if hover_scale < 1.05:
 		_fail("ready hover should grow the skull, got %.3f" % hover_scale)
-	if not bool(skull.call("is_chip_showing")):
-		_fail("hover should show the spin chip")
-	var glow := skull.get_node_or_null("Glow") as CanvasItem
-	if glow == null or not glow.visible:
-		_fail("hover should light the rim glow")
+	if bool(skull.call("is_chip_showing")):
+		_fail("hover should not show the spin chip")
+	if float(skull.get("_outline_alpha")) < 0.5:
+		_fail("hover should show the white skull outline")
 	piece.call("_on_mouse_exited")
 	await _wait(0.35)
 	if bool(skull.get("_hovering")):
@@ -149,6 +148,22 @@ func _check_nudge(skull: Control) -> void:
 	await _wait(0.2)
 	if not bool(skull.call("is_chip_showing")):
 		_fail("idle nudge should show the spin chip")
+	await _wait(2.0)
+	if not bool(skull.call("is_chip_showing")):
+		_fail("idle spin chip should stay until hover or input")
+	skull.call("note_input")
+	await _wait(0.3)
+	if bool(skull.call("is_chip_showing")):
+		_fail("input should hide the idle spin chip")
+	skull.set("_idle_time", 5.95)
+	await _wait(0.2)
+	skull.call("set_hovered", true)
+	await _wait(0.3)
+	if bool(skull.call("is_chip_showing")):
+		_fail("hover should hide the idle spin chip")
+	skull.call("set_hovered", false)
+	skull.set("_idle_time", 5.95)
+	await _wait(0.2)
 	skull.call("set_ready", false, true)
 	await _wait(0.3)
 	if bool(skull.call("is_chip_showing")):
