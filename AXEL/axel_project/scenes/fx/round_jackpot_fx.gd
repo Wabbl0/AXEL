@@ -37,12 +37,11 @@ const SKULL_SPEED_MIN := 600.0
 const SKULL_SPEED_MAX := 1500.0
 const SKULL_GRAVITY := 260.0
 const SKULL_DRAG := 1.1
-const SKULL_FALL_SPEED := 520.0
 const SKULL_BOUNCE := 0.62
 const SKULL_WALL_BOUNCE := 0.5
 const SKULL_BOUNCES_MIN := 2
 const SKULL_BOUNCES_MAX := 3
-const SKULL_MAX_AGE := 14.0
+const SKULL_MAX_AGE := 24.0
 const RING_LIFE := 0.55
 const RING_RADIUS := 900.0
 const GATHER_LIFT_SHARE := 0.28
@@ -50,6 +49,7 @@ const GATHER_RING_LAG := 0.05
 const GATHER_END_SCALE := 0.45
 
 static var _skull_tex: Texture2D
+static var _skull_ink := Rect2(0.0, 0.0, 1.0, 1.0)
 
 var _front: Control
 var _flames
@@ -319,11 +319,22 @@ func _gather_pose(g: Dictionary) -> Dictionary:
 	}
 
 
+func _skull_low(rot: float) -> float:
+	_skull_texture()
+	var box := Rect2(
+		Vector2(-SKULL_DRAW, -SKULL_DRAW) * 0.5 + _skull_ink.position * SKULL_DRAW,
+		_skull_ink.size * SKULL_DRAW
+	)
+	var low := -INF
+	for corner in [box.position, Vector2(box.end.x, box.position.y), Vector2(box.position.x, box.end.y), box.end]:
+		low = maxf(low, (corner as Vector2).rotated(rot).y)
+	return low
+
+
 func _tick_skulls(d: float) -> void:
-	var h := size.y if size.y > 0.0 else 1280.0
+	var h := FLAME_BURST_SCRIPT.view_bottom(self)
 	var w := size.x if size.x > 0.0 else 1920.0
 	var half := SKULL_DRAW * 0.5
-	var floor_y := h - 8.0 - half
 	var i := _skulls.size() - 1
 	while i >= 0:
 		var k: Dictionary = _skulls[i]
@@ -333,10 +344,9 @@ func _tick_skulls(d: float) -> void:
 		var vel: Vector2 = k["vel"]
 		vel *= maxf(1.0 - SKULL_DRAG * d, 0.0)
 		vel.y += SKULL_GRAVITY * d
-		if falling:
-			vel.y = maxf(vel.y, SKULL_FALL_SPEED)
 		var pos: Vector2 = (k["pos"] as Vector2) + vel * d
 		k["rot"] = float(k["rot"]) + float(k["spin"]) * d
+		var floor_y := h - _skull_low(float(k["rot"]))
 		if pos.x < half and vel.x < 0.0:
 			pos.x = half
 			vel.x = -vel.x * SKULL_WALL_BOUNCE
@@ -432,11 +442,9 @@ func _draw_front() -> void:
 	if _front == null:
 		return
 	for s in _sparks:
-		var life := float(s["life"])
-		var a := clampf((life - float(s["age"])) / (life * 0.4), 0.0, 1.0)
-		var c: Color = s["color"]
-		c.a = a
-		var sz := float(s["size"])
+		var look: Array = FLAME_BURST_SCRIPT.spark_look(s["color"], float(s["age"]), float(s["life"]), float(s["size"]) * 7.0 + float(s["life"]) * 13.0)
+		var c: Color = look[0]
+		var sz := float(s["size"]) * float(look[1])
 		_front.draw_rect(Rect2((s["pos"] as Vector2) - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), c)
 	if _skulls.is_empty() and _gathers.is_empty():
 		return
@@ -481,5 +489,9 @@ static func _skull_texture() -> Texture2D:
 				image.set_pixel(x, y, Color(0, 0, 0, 0))
 			elif px.r < 0.35 and px.g < 0.35 and px.b < 0.35:
 				image.set_pixel(x, y, Color(1, 1, 1, px.a))
+	var used := image.get_used_rect()
+	var dims := Vector2(image.get_width(), image.get_height())
+	if used.size.x > 0 and used.size.y > 0:
+		_skull_ink = Rect2(Vector2(used.position) / dims, Vector2(used.size) / dims)
 	_skull_tex = ImageTexture.create_from_image(image)
 	return _skull_tex

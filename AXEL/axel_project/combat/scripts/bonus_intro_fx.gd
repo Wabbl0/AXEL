@@ -5,6 +5,7 @@ signal impact(strength: int)
 
 const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const SKULL_ART := preload("res://combat/art/grid_symbols/satanic_wild.png")
+const FLAME_BURST_SCRIPT := preload("res://combat/scripts/flame_burst.gd")
 const RED := Color(0.86, 0.08, 0.08, 1.0)
 const DIM_RED := Color(0.45, 0.03, 0.03, 1.0)
 const WHITE := Color(1.0, 1.0, 1.0, 1.0)
@@ -621,11 +622,9 @@ func _draw_icons() -> void:
 
 func _draw_sparks() -> void:
 	for s in _sparks:
-		var life := float(s["life"])
-		var a := clampf((life - float(s["age"])) / (life * 0.4), 0.0, 1.0)
-		var c: Color = s["color"]
-		c.a = a
-		var sz := float(s["size"])
+		var look: Array = FLAME_BURST_SCRIPT.spark_look(s["color"], float(s["age"]), float(s["life"]), float(s["size"]) * 7.0 + float(s["life"]) * 13.0)
+		var c: Color = look[0]
+		var sz := float(s["size"]) * float(look[1])
 		draw_rect(Rect2((s["pos"] as Vector2) - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), c)
 
 

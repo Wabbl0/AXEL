@@ -3,6 +3,7 @@ extends Control
 const VT323_FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const MILL_SHEET := "res://assets/sprites/combat/wind_mill_blades_48x48.png"
 const FLAME_SHEET := "res://assets/sprites/combat/flame_1_48x48.png"
+const FLAME_BURST_SCRIPT := preload("res://combat/scripts/flame_burst.gd")
 const TICKER_TEXT := "Nothing but us chickens."
 const TICKER_H := 63.0
 const MILL_DRAW := 96.0
@@ -248,7 +249,7 @@ func _slice_strip(path: String, punch_black: bool) -> Array[Texture2D]:
 	if image.is_compressed():
 		image.decompress()
 	if punch_black:
-		image = _punch_black(image)
+		image = FLAME_BURST_SCRIPT.palette_grey(_punch_black(image))
 	var cell := image.get_height()
 	if cell <= 0:
 		return out
