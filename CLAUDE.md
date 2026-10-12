@@ -115,3 +115,4 @@ Notes:
 
 - "Commit and push" means only: git commit, then push. No version bump and no export. Most testing happens inside Godot.
 - Make a release build only when I clearly ask for a new release (for example "make a new release"). Then follow the `release-build` skill.
+- "Export" (for example "export X.X.+1") means only: bump the version and export the builds. "Update docs" means only: edit the docs. Neither one means commit or push. Leave the changes uncommitted until I say "commit and push".
