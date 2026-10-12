@@ -20,6 +20,7 @@ func _main() -> void:
 	await _assert_dead_board_fires_power()
 	await _assert_winning_board_respects_chance()
 	await _assert_meter_bonus_updates_counter()
+	await _assert_meter_resets_each_free_spin()
 	await _assert_winnings_wait_for_round_end()
 	await _assert_vice_winnings_wait()
 	await _assert_free_spin_round_plays_itself()
@@ -174,6 +175,29 @@ func _assert_meter_bonus_updates_counter() -> void:
 	var counter := cr.get_free_spin_counter()
 	if counter != Vector2i(2, 8):
 		push_error("Meter fill should make the next spin 2/8, got %s." % str(counter))
+		quit(1)
+		return
+	cr.queue_free()
+	await process_frame
+
+
+func _assert_meter_resets_each_free_spin() -> void:
+	var cr := await _spawn()
+	_open_choice(cr, 7451)
+	cr.choose_free_spins_power(&"bloody_hand")
+	cr.girl_power_chance = 0.0
+	_checkerboard(cr)
+	var cigarette := _symbol(cr, &"cigarette")
+	for x in 3:
+		cr.grid.set_cell(Vector2i(x, 0), cigarette)
+	cr.spin_sync()
+	if cr.meter.sections_filled != 0:
+		push_error("A partial Skull Meter should reset after a free spin, still %d." % cr.meter.sections_filled)
+		quit(1)
+		return
+	var counter := cr.get_free_spin_counter()
+	if counter != Vector2i(2, 4):
+		push_error("A partial meter should not add spins, counter %s." % str(counter))
 		quit(1)
 		return
 	cr.queue_free()

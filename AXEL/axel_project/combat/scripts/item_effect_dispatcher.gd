@@ -96,11 +96,16 @@ func note_paid_spin_passives(items: Array) -> void:
 		match eid:
 			&"paid_spin_payout_scalar":
 				hit = float(p.get("per_paid_spin", 0.0)) > 0.0
-			&"spawn_weight_normals", &"power_symbol_weight", &"girl_power_chance":
-				hit = true
 			&"sealed_grid":
 				hit = float(p.get("payout_bonus", 0.0)) > 0.0
 		if hit:
+			note_proc(item)
+
+
+func note_fight_start_passives(items: Array) -> void:
+	for item in items:
+		var eid := _eff(item)
+		if eid == &"spawn_weight_normals" or eid == &"power_symbol_weight":
 			note_proc(item)
 
 

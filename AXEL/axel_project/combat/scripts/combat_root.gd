@@ -619,6 +619,7 @@ func setup_new_grid(seed_value: int) -> void:
 	_music_reset_combat_encounter()
 	_refresh_goal_head_start()
 	_item_fx.note_param(inventory.items, &"goal_head_start", "paid_percent")
+	_item_fx.note_fight_start_passives(inventory.items)
 	_flush_item_procs()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
@@ -685,7 +686,7 @@ func spin() -> void:
 	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
-	_reset_premium_meter_after_paid_spin()
+	_reset_premium_meter_after_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED and _state != State.FREE_SPINS_CHOOSE:
@@ -749,7 +750,7 @@ func spin_sync() -> void:
 	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
-	_reset_premium_meter_after_paid_spin()
+	_reset_premium_meter_after_spin()
 	_refresh_grid_border_for_state()
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED and _state != State.FREE_SPINS_CHOOSE:
@@ -885,6 +886,7 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	_music_reset_combat_encounter()
 	_refresh_goal_head_start()
 	_item_fx.note_param(inventory.items, &"goal_head_start", "paid_percent")
+	_item_fx.note_fight_start_passives(inventory.items)
 	_flush_item_procs()
 	emit_signal("spin_started", _current_seed)
 	emit_signal("readouts_progressed")
@@ -989,6 +991,7 @@ func _resolve_cascade_loop_sync() -> Dictionary:
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
+		_note_line_glyph_procs(lines)
 		_note_paid_line_procs(lines)
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
@@ -1057,6 +1060,7 @@ func _resolve_trinity_cascade_loop_sync() -> Dictionary:
 		var line_win := _estimate_payout(lines)
 		out["payout"] = int(out["payout"]) + line_win
 		out["line_payout"] = int(out["line_payout"]) + line_win
+		_note_line_glyph_procs(lines)
 		_note_paid_line_procs(lines)
 		_add_round_winnings(line_win)
 		out["wilds_placed"] = int(out["wilds_placed"]) + _count_wild_spawns(lines)
@@ -2117,7 +2121,12 @@ func _summarize_lines(lines: Array) -> Array:
 	return out
 
 func _should_trigger_girl_power() -> bool:
-	return rng.randf() <= _item_fx.girl_power_chance(inventory.items, girl_power_chance)
+	var roll := rng.randf()
+	var fired := roll <= _item_fx.girl_power_chance(inventory.items, girl_power_chance)
+	if fired and roll > clampf(girl_power_chance + _item_fx.pending_power_chance, 0.0, 1.0):
+		_item_fx.note_effect(inventory.items, &"girl_power_chance")
+		_flush_item_procs()
+	return fired
 
 func _try_free_spin_power_async(spin_summary: Dictionary) -> void:
 	if not free_spins.active or not _free_spin_power_should_fire():
@@ -2149,9 +2158,7 @@ func _free_spin_power_should_fire() -> bool:
 		return true
 	return _should_trigger_girl_power()
 
-func _reset_premium_meter_after_paid_spin() -> void:
-	if free_spins.active:
-		return
+func _reset_premium_meter_after_spin() -> void:
 	meter.reset()
 
 func _apply_meter_from_lines(lines: Array) -> void:
