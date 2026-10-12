@@ -24,7 +24,7 @@ func _main() -> void:
 	root.size = WINDOW
 	await process_frame
 	await _check_room_card()
-	await _check_stays_below()
+	await _check_flips_above()
 	if _failures.is_empty():
 		print("World item card check OK.")
 		quit(0)
@@ -75,7 +75,7 @@ func _check_room_card() -> void:
 	_assert_card(card, items_indicator, "1.4 room")
 
 
-func _check_stays_below() -> void:
+func _check_flips_above() -> void:
 	var card := InfoCardScript.new()
 	card.name = "BelowCard"
 	root.add_child(card)
@@ -93,13 +93,13 @@ func _check_stays_below() -> void:
 		desc = str(item.get("description"))
 		icon = item.get("icon") as Texture2D
 	card.call("show_item", Vector2(924.0, 1194.0), item_name, desc, icon, fake)
-	await _wait_settled(card, "below")
-	_assert_card(card, fake.rect, "below")
+	await _wait_settled(card, "above")
+	_assert_card(card, fake.rect, "above", true)
 	card.queue_free()
 	fake.queue_free()
 
 
-func _assert_card(card: Node, items_indicator: Rect2, where: String) -> void:
+func _assert_card(card: Node, items_indicator: Rect2, where: String, above: bool = false) -> void:
 	if card == null:
 		_fail("%s: card missing" % where)
 		return
@@ -162,11 +162,18 @@ func _assert_card(card: Node, items_indicator: Rect2, where: String) -> void:
 		var card_rect := root_ctrl.get_global_rect()
 		if card_rect.size.x <= 1.0:
 			card_rect = panel.get_global_rect()
-		var gap := card_rect.position.y - items_indicator.end.y
-		if absf(gap - ITEMS_INDICATOR_GAP) > 3.0:
-			_fail("%s: card gap %.1f should be %.0f under the items_indicator" % [where, gap, ITEMS_INDICATOR_GAP])
-		if card_rect.position.y + 1.0 < items_indicator.end.y:
-			_fail("%s: card must stay under the items_indicator" % where)
+		if above:
+			var gap_up := items_indicator.position.y - card_rect.end.y
+			if absf(gap_up - ITEMS_INDICATOR_GAP) > 3.0:
+				_fail("%s: card gap %.1f should be %.0f above the items_indicator" % [where, gap_up, ITEMS_INDICATOR_GAP])
+			if card_rect.end.y > float(WINDOW.y) - EDGE + 1.0:
+				_fail("%s: card runs off the bottom of the window" % where)
+		else:
+			var gap := card_rect.position.y - items_indicator.end.y
+			if absf(gap - ITEMS_INDICATOR_GAP) > 3.0:
+				_fail("%s: card gap %.1f should be %.0f under the items_indicator" % [where, gap, ITEMS_INDICATOR_GAP])
+			if card_rect.position.y + 1.0 < items_indicator.end.y:
+				_fail("%s: card must stay under the items_indicator" % where)
 	if root_ctrl.position.x < EDGE - 1.0:
 		_fail("%s: card left the 8px window pad" % where)
 	var panel_rect := panel.get_global_rect()

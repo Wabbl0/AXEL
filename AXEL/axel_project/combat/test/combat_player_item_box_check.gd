@@ -207,10 +207,16 @@ func _assert_named_item_rows(ui: Node, where: String, player_list: bool = false)
 	if icons.is_empty():
 		_fail("%s: no item row icons" % where)
 		return
+	var panel := ui.find_child("PlayerItemPanel", true, false)
+	var row_px := PLAYER_ICON_PX
+	if panel != null and panel.has_method("row_height"):
+		row_px = float(panel.call("row_height"))
+	if player_list and (row_px > PLAYER_ICON_PX + 0.5 or row_px < 72.0):
+		_fail("%s: row height %.1f should be 72..144" % [where, row_px])
 	for icon in icons:
 		if player_list:
-			if not is_equal_approx(icon.custom_minimum_size.x, PLAYER_ICON_PX) or not is_equal_approx(icon.custom_minimum_size.y, PLAYER_ICON_PX):
-				_fail("%s: icon slot %s not 144x144" % [where, icon.custom_minimum_size])
+			if not is_equal_approx(icon.custom_minimum_size.x, row_px) or not is_equal_approx(icon.custom_minimum_size.y, row_px):
+				_fail("%s: icon slot %s not the %.0f row height" % [where, icon.custom_minimum_size, row_px])
 			var tex := icon.texture
 			if tex == null or tex.get_width() != PLAYER_ICON_RES_PX or tex.get_height() != PLAYER_ICON_RES_PX:
 				_fail("%s: combat icon resolution is not 120x120" % where)
@@ -231,8 +237,9 @@ func _assert_named_item_rows(ui: Node, where: String, player_list: bool = false)
 		for desc in descs:
 			if desc.visible:
 				_fail("%s: desc should start hidden until title hover" % where)
-		if names[0].get_theme_font_size("font_size") != PLAYER_NAME_FONT:
-			_fail("%s: name font %d not %d" % [where, names[0].get_theme_font_size("font_size"), PLAYER_NAME_FONT])
+		var want_font := maxi(int(round(float(PLAYER_NAME_FONT) * row_px / PLAYER_ICON_PX)), 24)
+		if names[0].get_theme_font_size("font_size") != want_font:
+			_fail("%s: name font %d not %d" % [where, names[0].get_theme_font_size("font_size"), want_font])
 		if descs[0].get_theme_font_size("font_size") != PLAYER_DESC_FONT:
 			_fail("%s: desc font %d not %d" % [where, descs[0].get_theme_font_size("font_size"), PLAYER_DESC_FONT])
 		if not names.is_empty() and not icons.is_empty():

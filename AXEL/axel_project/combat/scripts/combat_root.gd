@@ -1210,7 +1210,7 @@ func _refresh_glyph_marks() -> void:
 			var key := "%d:%d" % [x, y]
 			var glyph := ""
 			if _item_fx.glyphs.has(key):
-				glyph = ItemDef.rarity_glyph_index(int(_item_fx.glyphs[key].get("rarity", 0)))
+				glyph = ItemEffectDispatcher.glyph_label(_item_fx.glyphs[key])
 			slot.call("set_glyph_mark", glyph)
 
 func _get_slot(coord: Vector2i) -> Node:

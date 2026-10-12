@@ -486,6 +486,16 @@ func roll_glyphs(items: Array, rng: CombatRNG) -> void:
 		}
 
 
+static func glyph_label(g: Dictionary) -> String:
+	var mult := float(g.get("mult", 2.0))
+	if not ["winnings", "split"].has(str(g.get("dest", "winnings"))):
+		return "+%d" % maxi(1, int(round(mult)))
+	var shown := snappedf(mult, 0.1)
+	if is_equal_approx(shown, roundf(shown)):
+		return "x%d" % int(roundf(shown))
+	return "x%.1f" % shown
+
+
 func note_glyph_owner(items: Array, key: String) -> void:
 	var g: Dictionary = glyphs.get(key, {})
 	var owner_id := StringName(str(g.get("item_id", "")))

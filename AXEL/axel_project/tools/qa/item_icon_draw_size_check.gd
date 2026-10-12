@@ -74,8 +74,11 @@ func _check_combat(fails: PackedStringArray) -> void:
 		if icon == null or not bool(icon.get_meta("item_row_icon", false)):
 			continue
 		measured += 1
-		if not is_equal_approx(icon.custom_minimum_size.x, COMBAT_SLOT) or not is_equal_approx(icon.custom_minimum_size.y, COMBAT_SLOT):
-			fails.append("combat icon slot %s not 144x144" % icon.custom_minimum_size)
+		var row_px := float(panel.call("row_height"))
+		if row_px > COMBAT_SLOT + 0.5 or row_px < 72.0:
+			fails.append("combat row height %.1f should be 72..144" % row_px)
+		if not is_equal_approx(icon.custom_minimum_size.x, row_px) or not is_equal_approx(icon.custom_minimum_size.y, row_px):
+			fails.append("combat icon slot %s not the %.0f row height" % [icon.custom_minimum_size, row_px])
 		var tex := icon.texture
 		if tex == null or tex.get_width() != COMBAT_RES or tex.get_height() != COMBAT_RES:
 			fails.append("combat icon resolution is not 120x120")

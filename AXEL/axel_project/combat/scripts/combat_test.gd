@@ -2489,6 +2489,7 @@ func _attach_player_item_box() -> void:
 		_player_box = EmptyItemDvdScript.new() as Control
 	else:
 		_player_box = PlayerItemPanelScript.new() as Control
+		_player_box.connect("order_changed", _on_item_box_order_changed)
 	host.add_child(_player_box)
 	if piece.has_method("attach"):
 		piece.call("attach", _player_box, host)
@@ -2554,7 +2555,27 @@ func _refresh_equipped_list() -> void:
 		items = inv.items
 	if _player_box.has_method("set_slot_cap") and inv.has_method("get_current_max_slots"):
 		_player_box.call("set_slot_cap", int(inv.get_current_max_slots()))
+	var run := get_node_or_null("/root/AxelRun")
+	if run != null and _player_box.has_method("set_order"):
+		_player_box.call("set_order", run.state.item_box_order)
 	_player_box.call("set_equipped_items", items)
+
+
+func _on_item_box_order_changed(item_ids: Array) -> void:
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null:
+		return
+	run.state.item_box_order = PackedStringArray(item_ids)
+	var saves := get_node_or_null("/root/AxelSaves")
+	if saves != null and saves.has_method("save_active"):
+		saves.call("save_active")
+
+
+func _sync_item_box_reorder() -> void:
+	if _player_box == null or not is_instance_valid(_player_box) or not ("reorder_enabled" in _player_box):
+		return
+	var idle := not _spin_busy and combat != null and _can_use_combat_api() and combat.get_state() == CombatRoot.State.IDLE
+	_player_box.set("reorder_enabled", idle and not combat.free_spins.active)
 
 
 func _clear_combat_wipe() -> void:
@@ -4686,6 +4707,7 @@ func _process(delta: float) -> void:
 		_sync_skull_ready()
 		_sync_freeze_overlay()
 		_sync_rush_hold(delta)
+		_sync_item_box_reorder()
 	if Engine.is_editor_hint() and not editor_preview_enabled:
 		return
 	if _item_desc_panel == null or not _item_desc_panel.visible:

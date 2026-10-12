@@ -360,6 +360,8 @@ func _update_screen_position() -> void:
 	var pos := Vector2(items_indicator.get_center().x - card_w * 0.5, items_indicator.end.y + gap)
 	var view_size := Vector2(viewport.get_visible_rect().size)
 	pos.x = clampf(pos.x, WINDOW_PAD, maxf(view_size.x - card_w - WINDOW_PAD, WINDOW_PAD))
+	if pos.y + card_size.y > view_size.y - WINDOW_PAD:
+		pos.y = maxf(items_indicator.position.y - gap - card_size.y, WINDOW_PAD)
 	_root.position = pos
 	_root.size = card_size
 
