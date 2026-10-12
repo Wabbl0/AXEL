@@ -83,7 +83,8 @@ const STAKE_BUTTON_SIZE_NARROW := 28.0
 const WINNINGS_COUNTER_MAX_DURATION := 0.25
 const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
-const FIRST_TUTORIAL_DELAY_SEC := 2.5
+const SPIN_TUTORIAL_DELAY_SEC := 1.0
+const ITEMS_TUTORIAL_DELAY_SEC := 0.5
 const FREEZE_LESSONS: Array[String] = ["slot_match", "slot_history", "slot_multiplier", "slot_power", "slot_vice"]
 const HELD_FREEZE_BEAT_SEC := 0.2
 const HELD_FREEZE_TIMEOUT_SEC := 2.0
@@ -2845,7 +2846,19 @@ func _tutorial_complete(lesson_id: String) -> void:
 
 func _tutorial_blocks_spin() -> bool:
 	var tutorial := _tutorial_node()
-	return tutorial != null and tutorial.has_method("blocks_spin") and bool(tutorial.call("blocks_spin"))
+	if tutorial == null or not tutorial.has_method("blocks_spin"):
+		return false
+	if bool(tutorial.call("blocks_spin")):
+		return true
+	return _spin_lesson_not_shown_yet(tutorial)
+
+
+func _spin_lesson_not_shown_yet(tutorial: Node) -> bool:
+	if not tutorial.has_method("wants") or not bool(tutorial.call("wants", "fight_spin")):
+		return false
+	if not _can_use_combat_api() or combat == null or combat.get_spins_used() != 0:
+		return false
+	return not bool(tutorial.call("is_showing", "fight_spin"))
 
 
 func _tutorial_freezing() -> bool:
@@ -2930,7 +2943,7 @@ func _show_freeze_overlay() -> void:
 	if _freeze_tween != null and _freeze_tween.is_valid():
 		_freeze_tween.kill()
 	_freeze_tween = create_tween()
-	_freeze_tween.tween_property(mat, "shader_parameter/amount", 1.0, 0.18)
+	_freeze_tween.tween_property(mat, "shader_parameter/amount", 1.0, 0.05)
 	if not calm:
 		_freeze_tween.tween_property(mat, "shader_parameter/burst", 0.35, 0.5)
 
@@ -2975,18 +2988,20 @@ func _maybe_queue_fight_tutorials(delta: float) -> void:
 		_first_tutorial_idle_sec = 0.0
 		return
 	_first_tutorial_idle_sec += delta
-	if _first_tutorial_idle_sec < FIRST_TUTORIAL_DELAY_SEC:
-		return
 	var tutorial := _tutorial_node()
 	if tutorial == null or not tutorial.has_method("request"):
 		return
+	var spin_wanted := tutorial.has_method("wants") and bool(tutorial.call("wants", "fight_spin"))
+	var start_delay := SPIN_TUTORIAL_DELAY_SEC if spin_wanted else ITEMS_TUTORIAL_DELAY_SEC
+	if _first_tutorial_idle_sec < start_delay:
+		return
 	tutorial.call("request", "fight_spin")
+	if _tutorial_equipped_count() > 0:
+		tutorial.call("request", "fight_items")
 	if not _after_match_lessons.has("fight_stakes"):
 		_after_match_lessons.append("fight_stakes")
 	if not _after_match_lessons.has("fight_goal"):
 		_after_match_lessons.append("fight_goal")
-	if _tutorial_equipped_count() > 0 and not _after_match_lessons.has("fight_items"):
-		_after_match_lessons.append("fight_items")
 
 
 func _release_after_match_lessons() -> void:

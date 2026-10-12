@@ -58,7 +58,7 @@ const LESSONS := {
 	},
 	"items_wheel": {
 		"title": "Items",
-		"body": "Tab, Q, R, or I opens your items. Clicking MIKE does too. Click to switch.",
+		"body": "Tab, Q, R, or I opens your items. Clicking MIKE does too. Click an item to switch it on or off. The tabs show stats, pays and areas.",
 	},
 	"slot_match": {
 		"freeze": true,
@@ -101,7 +101,7 @@ const GLOW_PIECES := {
 	"slot_history": ["NEW_History"],
 	"slot_power": ["NEW_Execute"],
 	"slot_multiplier": ["NEW_Multiplier"],
-	"slot_vice": ["NEW_Execute"],
+	"slot_vice": [],
 	"guide_pause": ["NEW_Settings"],
 }
 
@@ -487,7 +487,9 @@ func _try_start() -> void:
 	var idx := _free_slot_index()
 	if idx < 0:
 		return
-	if is_open() or _stack_gap_left > 0.0:
+	if is_open():
+		return
+	if _stack_gap_left > 0.0 and not _lesson_freezes(_queue[0]):
 		return
 	if _freeze_pending and not _lesson_freezes(_queue[0]):
 		return
@@ -620,10 +622,6 @@ func _on_card_gui_input(event: InputEvent, idx: int) -> void:
 	if not mouse.pressed or mouse.button_index != MOUSE_BUTTON_LEFT:
 		return
 	_slots[idx].bar_panel.accept_event()
-	if _lesson_gates(_slots[idx].open_id):
-		if _slots[idx].phase == Phase.TYPING:
-			_force_waiting(_slots[idx])
-		return
 	_on_exit_pressed_slot(idx)
 
 

@@ -133,7 +133,7 @@ func _check_glow_map(tutorial: Node, failures: Array[String]) -> void:
 	_expect_pieces(tutorial, failures, "slot_match", ["NEW_Grid"])
 	_expect_pieces(tutorial, failures, "slot_history", ["NEW_History"])
 	_expect_pieces(tutorial, failures, "slot_power", ["NEW_Execute"])
-	_expect_pieces(tutorial, failures, "slot_vice", ["NEW_Execute"])
+	_expect_pieces(tutorial, failures, "slot_vice", [])
 	_expect_pieces(tutorial, failures, "slot_multiplier", ["NEW_Multiplier"])
 	var none: PackedStringArray = tutorial.call("glow_piece_names", "move_walk")
 	if not none.is_empty():
@@ -353,25 +353,20 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 	if not bool(tutorial.call("blocks_spin")):
 		failures.append("stakes card does not block spinning")
 
-	var body_click := InputEventMouseButton.new()
-	body_click.button_index = MOUSE_BUTTON_LEFT
-	body_click.pressed = true
-	tutorial.call("_on_card_gui_input", body_click, 0)
-	await create_timer(0.6).timeout
-	if _open_lesson(tutorial) != "fight_stakes":
-		failures.append("a click on the stakes card body closed it")
-
 	tutorial.call("request", "slot_power")
 	await create_timer(0.6).timeout
 	if _open_lesson(tutorial) != "fight_stakes":
 		failures.append("a freeze card bumped the stakes card")
 	if host2.visible:
 		failures.append("a freeze card opened a second host over the stakes card")
-	tutorial.call("complete", "fight_stakes")
+	var body_click := InputEventMouseButton.new()
+	body_click.button_index = MOUSE_BUTTON_LEFT
+	body_click.pressed = true
+	tutorial.call("_on_card_gui_input", body_click, 0)
 	if not await _wait_lesson(tutorial, "slot_power"):
 		failures.append("freeze card did not follow the stakes card")
 	if not bool(tutorial.call("_is_seen", "fight_stakes")):
-		failures.append("stakes card not marked seen after the bet change")
+		failures.append("stakes card not marked seen after a click on it")
 	tutorial.call("close_freeze_card")
 	if not await _wait_lesson(tutorial, "fight_items"):
 		failures.append("items card did not follow the freeze card")
