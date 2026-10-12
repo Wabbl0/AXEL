@@ -41,6 +41,10 @@ func _run() -> void:
 	await _shot(skull, "fluid_spit_a.png")
 	await _hold(14)
 	await _shot(skull, "fluid_spit_b.png")
+	skull.call("set_flame_crown", true)
+	skull.call("set_fill", 1.0 / 3.0)
+	await _hold(40)
+	await _shot(skull, "free_spins_flames.png")
 	quit(0)
 
 

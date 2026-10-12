@@ -789,6 +789,8 @@ func _connect_runtime_signals() -> void:
 		combat.round_winnings_hold_started.connect(_on_round_winnings_hold_started)
 	if not combat.free_spins_bonus_granted.is_connected(_on_free_spins_bonus_granted):
 		combat.free_spins_bonus_granted.connect(_on_free_spins_bonus_granted)
+	if not combat.vice_power_fired.is_connected(_on_vice_power_fired):
+		combat.vice_power_fired.connect(_on_vice_power_fired)
 	if not combat.sfx_requested.is_connected(_on_sfx_requested):
 		combat.sfx_requested.connect(_on_sfx_requested)
 	if not choose_bloody_hand_button.pressed.is_connected(_on_choose_bloody_hand_pressed):
@@ -3216,6 +3218,11 @@ func _set_spin_bars_visible(on: bool) -> void:
 func _on_free_spins_bonus_granted(_added: int) -> void:
 	_refresh_spin_bars()
 	_skull_spit(false)
+
+
+func _on_vice_power_fired(index: int, count: int) -> void:
+	if _premium_skull != null and _premium_skull.has_method("drain_fluid_to") and count > 0:
+		_premium_skull.call("drain_fluid_to", 1.0 - float(index + 1) / float(count))
 
 
 func _on_vice_round_cleared() -> void:

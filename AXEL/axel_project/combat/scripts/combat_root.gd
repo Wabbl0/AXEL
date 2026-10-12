@@ -17,6 +17,7 @@ signal sfx_requested(cue: StringName)
 signal goal_victory_requested()
 signal vice_banner_finished()
 signal vice_round_cleared()
+signal vice_power_fired(index: int, count: int)
 
 @export var symbol_resources: Array[Resource] = []
 
@@ -2528,6 +2529,7 @@ func _run_trinity_round_async() -> Dictionary:
 		_close_power_fx_log()
 		out["power_triggered"] = true
 		await _play_power_act_fx(fx_log)
+		vice_power_fired.emit(order.find(id), order.size())
 		var post_power := await _resolve_trinity_cascade_loop_async()
 		_merge_spin_summary(out, post_power)
 		_apply_trinity_spin_followup(post_power)

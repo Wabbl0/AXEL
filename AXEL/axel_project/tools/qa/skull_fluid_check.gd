@@ -43,6 +43,7 @@ func _main() -> void:
 	_check_layer(skull)
 	await _check_fill_steps(skull)
 	await _check_spit_ignores_reset(skull)
+	await _check_vice_drain(skull, combat)
 	await _check_signals(skull, combat)
 	scene.queue_free()
 	vp.queue_free()
@@ -117,6 +118,28 @@ func _check_spit_ignores_reset(skull: Control) -> void:
 		_fail("spit should finish within about 1 second")
 	if _level(skull) > 0.001:
 		_fail("spit should leave the skull empty, got %.3f" % _level(skull))
+
+
+func _check_vice_drain(skull: Control, combat: Node) -> void:
+	skull.call("set_fill", 1.0)
+	await _wait(0.7)
+	for i in 3:
+		combat.emit_signal("vice_power_fired", i, 3)
+		await _wait(0.5)
+		skull.call("set_fill", 1.0)
+		var want := 1.0 - float(i + 1) / 3.0
+		if absf(_level(skull) - want) > 0.02:
+			_fail("Vice power %d should leave the fluid at %.2f, got %.3f" % [i + 1, want, _level(skull)])
+	combat.emit_signal("vice_round_cleared")
+	await _wait(0.06)
+	if _level(skull) > 0.02:
+		_fail("Vice clear spit should not refill an empty skull, got %.3f" % _level(skull))
+	await _wait(1.0)
+	skull.call("set_fill", 0.0)
+	skull.call("set_fill", 1.0)
+	await _wait(0.7)
+	if absf(_level(skull) - 1.0) > 0.01:
+		_fail("after the meter resets the fluid should fill again, got %.3f" % _level(skull))
 
 
 func _check_signals(skull: Control, combat: Node) -> void:

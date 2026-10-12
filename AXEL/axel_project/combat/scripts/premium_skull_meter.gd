@@ -15,11 +15,15 @@ const HudDropShadowScript := preload("res://combat/scripts/hud_drop_shadow.gd")
 const FLAME_CROWN_SHEET := "res://assets/sprites/combat/flame_6_48x48.png"
 const FLAME_CROWN_SHADER := preload("res://combat/shaders/flame_crown.gdshader")
 const FLAME_CROWN_FPS := 10.0
-const FLAME_CROWN_COPIES := 6.0
-const FLAME_CROWN_THIN := 0.56
-const FLAME_CROWN_ARC := 0.41
-const FLAME_CROWN_POS := Vector2(-46.0, -97.0)
-const FLAME_CROWN_SIZE := Vector2(780.0, 400.0)
+const FLAME_CROWN_COPIES := 13.0
+const FLAME_CROWN_ARC_HALF := 1.75
+const FLAME_CROWN_HEIGHT_K := 0.7
+const FLAME_CROWN_SIDE_K := 0.55
+const FLAME_CROWN_BASE_IN_K := 0.07
+const FLAME_CROWN_PAD := 12.0
+const FLAME_CROWN_FIT_SHARE := 0.55
+const FLAME_CROWN_FALLBACK_CENTER := Vector2(339.0, 289.0)
+const FLAME_CROWN_FALLBACK_RADII := Vector2(291.0, 262.0)
 const FLAME_DIM_BORDER := 14.0
 const PUNCH_BLACK := 0.08
 const SKULL_SHADOW_OFFSET := Vector2(-4.0, 5.0)
@@ -61,6 +65,9 @@ const SPIT_SMALL_K := 0.4
 const SPIT_GULP_SEC := 0.12
 const SPIT_DRAIN_SEC := 0.55
 const SPIT_VELOCITY := Vector2(760.0, 1600.0)
+const DRAIN_SEC := 0.35
+const DRIP_K := 0.2
+const DRIP_VELOCITY_K := 0.45
 
 @onready var _glow: TextureRect = $Glow
 @onready var _stage1: TextureRect = $SkullStage1
@@ -118,6 +125,7 @@ var _fluid_anchor: Node2D
 var _fluid: ColorRect
 var _spit: CPUParticles2D
 var _fluid_level := 0.0
+var _fluid_cap := 1.0
 var _fluid_slosh := 0.0
 var _fluid_clock := 0.0
 var _fluid_tween: Tween
@@ -571,13 +579,22 @@ func _ensure_flame_crown() -> void:
 	var image := _load_flame_crown_image()
 	if image == null:
 		return
+	var fit := _fit_cranium()
+	var center: Vector2 = fit["center"]
+	var radii: Vector2 = fit["radii"]
+	var tall := radii.y * FLAME_CROWN_HEIGHT_K
+	var base_in := radii.x * FLAME_CROWN_BASE_IN_K
+	var reach := tall + FLAME_CROWN_PAD
+	var low := center.y - cos(FLAME_CROWN_ARC_HALF) * radii.y + tall * FLAME_CROWN_SIDE_K + FLAME_CROWN_PAD
+	var box_pos := Vector2(center.x - radii.x - reach, center.y - radii.y - reach)
+	var box_end := Vector2(center.x + radii.x + reach, low)
 	var rect := ColorRect.new()
 	rect.name = "FreeSpinFlameCrown"
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	rect.color = Color(1, 1, 1, 1)
-	rect.position = FLAME_CROWN_POS
-	rect.size = FLAME_CROWN_SIZE
+	rect.position = box_pos
+	rect.size = box_end - box_pos
 	rect.visible = false
 	add_child(rect)
 	if _glow != null:
@@ -590,12 +607,55 @@ func _ensure_flame_crown() -> void:
 	mat.set_shader_parameter("frame", 0.0)
 	mat.set_shader_parameter("frame_count", float(_flame_count))
 	mat.set_shader_parameter("copies", FLAME_CROWN_COPIES)
-	mat.set_shader_parameter("thin", FLAME_CROWN_THIN)
-	mat.set_shader_parameter("arc", FLAME_CROWN_ARC)
+	mat.set_shader_parameter("center", center - box_pos)
+	mat.set_shader_parameter("radii", radii)
+	mat.set_shader_parameter("arc_half", FLAME_CROWN_ARC_HALF)
+	mat.set_shader_parameter("height_top", tall)
+	mat.set_shader_parameter("height_side", FLAME_CROWN_SIDE_K)
+	mat.set_shader_parameter("base_in", base_in)
 	mat.set_shader_parameter("ink_top", _flame_ink_top)
 	mat.set_shader_parameter("ink_bottom", _flame_ink_bottom)
 	rect.material = mat
 	_flame_crown = rect
+
+
+func _fit_cranium() -> Dictionary:
+	var fallback := {"center": FLAME_CROWN_FALLBACK_CENTER, "radii": FLAME_CROWN_FALLBACK_RADII}
+	if _stage3 == null or _stage3.texture == null:
+		return fallback
+	var image := _stage3.texture.get_image()
+	if image == null or image.get_width() <= 0 or image.get_height() <= 0:
+		return fallback
+	if image.is_compressed():
+		image.decompress()
+	var used := image.get_used_rect()
+	if used.size.y <= 0:
+		return fallback
+	var lim := used.position.y + int(float(used.size.y) * FLAME_CROWN_FIT_SHARE)
+	var best_y := -1
+	var best_l := 0
+	var best_r := -1
+	for y in range(used.position.y, lim, 2):
+		var left := -1
+		var right := -1
+		for x in range(used.position.x, used.end.x, 2):
+			if image.get_pixel(x, y).a > 0.1:
+				if left < 0:
+					left = x
+				right = x
+		if left >= 0 and right - left > best_r - best_l:
+			best_y = y
+			best_l = left
+			best_r = right
+	if best_y < 0:
+		return fallback
+	var tex_size := Vector2(image.get_width(), image.get_height())
+	var box := _stage3.size if _stage3.size.x > 1.0 else tex_size
+	var k := minf(box.x / tex_size.x, box.y / tex_size.y)
+	var off := _stage3.position + (box - tex_size * k) * 0.5
+	var tex_center := Vector2((best_l + best_r) * 0.5, best_y)
+	var tex_radii := Vector2((best_r - best_l) * 0.5, best_y - used.position.y)
+	return {"center": off + tex_center * k, "radii": tex_radii * k}
 
 
 func _advance_flame_crown(delta: float) -> void:
@@ -760,6 +820,8 @@ func _apply_full_face_lift(on: bool) -> void:
 func set_fill(f: float) -> void:
 	var before := _shown_sections()
 	_fill = clampf(f, 0.0, 1.0)
+	if _fill <= 0.0:
+		_fluid_cap = 1.0
 	_apply_stage_visibility()
 	if not _full_face_locked:
 		_apply_fill_feel()
@@ -780,8 +842,9 @@ func play_spit(big: bool = true) -> void:
 	if not _reduce_flashing():
 		_play_jitter(8.0 * k, 5, 0.03)
 	_kick_slosh(1.0)
+	var peak := 1.0 if _fluid_cap >= 0.999 else _fluid_level
 	_fluid_tween = CombatPace.bind(create_tween())
-	_fluid_tween.tween_property(self, "_fluid_level", 1.0, SPIT_GULP_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_fluid_tween.tween_property(self, "_fluid_level", peak, SPIT_GULP_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_fluid_tween.tween_callback(_emit_spit.bind(big))
 	_fluid_tween.tween_property(self, "_fluid_level", 0.0, SPIT_DRAIN_SEC * (1.0 if big else 0.75)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_fluid_tween.tween_callback(_end_spit)
@@ -789,6 +852,29 @@ func play_spit(big: bool = true) -> void:
 
 func is_spitting() -> bool:
 	return _spitting
+
+
+func drain_fluid_to(level: float) -> void:
+	_fluid_cap = clampf(level, 0.0, 1.0)
+	if _spitting:
+		return
+	_retarget_fluid()
+	if not _reduce_flashing():
+		_emit_drip()
+
+
+func _fluid_target() -> float:
+	return minf(_fill, _fluid_cap)
+
+
+func _emit_drip() -> void:
+	if _spit == null or not is_instance_valid(_spit):
+		return
+	_spit.amount = maxi(int(SPIT_DROPS * DRIP_K), 1)
+	_spit.initial_velocity_min = SPIT_VELOCITY.x * DRIP_VELOCITY_K
+	_spit.initial_velocity_max = SPIT_VELOCITY.y * DRIP_VELOCITY_K
+	_spit.restart()
+	_spit.emitting = true
 
 
 func fluid_level() -> float:
@@ -822,16 +908,18 @@ func _emit_spit(big: bool) -> void:
 func _retarget_fluid() -> void:
 	if _spitting:
 		return
+	var target := _fluid_target()
 	if not _feel_started:
-		_fluid_level = _fill
+		_fluid_level = target
 		return
-	if is_equal_approx(_fluid_level, _fill):
+	if is_equal_approx(_fluid_level, target):
 		return
 	if _fluid_tween != null and _fluid_tween.is_valid():
 		_fluid_tween.kill()
-	_kick_slosh(0.8 if _fill > _fluid_level else 0.5)
+	var rising := target > _fluid_level
+	_kick_slosh(0.8 if rising else 0.5)
 	_fluid_tween = CombatPace.bind(create_tween())
-	_fluid_tween.tween_property(self, "_fluid_level", _fill, FLUID_RISE_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_fluid_tween.tween_property(self, "_fluid_level", target, FLUID_RISE_SEC if rising else DRAIN_SEC).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 func _kick_slosh(peak: float) -> void:
