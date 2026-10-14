@@ -118,3 +118,13 @@ Notes:
 - "Commit and push" means only: git commit, then push. No version bump and no export. Most testing happens inside Godot.
 - Make a release build only when I clearly ask for a new release (for example "make a new release"). Then follow the `release-build` skill.
 - "Export" (for example "export X.X.+1") means only: bump the version and export the builds. "Update docs" means only: edit the docs. Neither one means commit or push. Leave the changes uncommitted until I say "commit and push".
+
+### Shortcut: "cp,r,ud"
+
+I may open a fresh chat with "cp,r,ud" (or any subset, or the long form "commit and push, release and update docs"). `cp` = commit and push, `r` = release, `ud` = update docs.
+
+- Do every named step without asking, in this order: `ud`, then run the checks, then `r` (release-build skill: bump, export, delete old builds), then `cp` (one commit of all pending changes, then push).
+- Do only the named steps. Commit or push only when `cp` is named. "update docs - new export" (`ud` + `r`) means no commit and no push, even though the release-build skill lists a commit step.
+- I run several chats in parallel. Treat uncommitted changes from other chats as part of the job.
+- Pick the version bump yourself (small polish = last number) and tell me which one you picked.
+- Report failed checks, but do not stop for failures the pending changes did not cause.
