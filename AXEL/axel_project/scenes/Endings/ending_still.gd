@@ -39,11 +39,24 @@ func _leave() -> void:
 	if _busy:
 		return
 	_busy = true
+	if ending_id == "7.5":
+		get_tree().change_scene_to_file(EPILOGUE)
+		return
 	var saves := get_node_or_null("/root/AxelSaves")
+	if _can_start_again(saves):
+		saves.call("begin_new_game_and_enter", int(saves.get("active_slot")))
+		return
 	if saves != null and saves.has_method("deactivate"):
 		saves.call("deactivate")
-	var dest := EPILOGUE if ending_id == "7.5" else TITLE
-	get_tree().change_scene_to_file(dest)
+	get_tree().change_scene_to_file(TITLE)
+
+
+func _can_start_again(saves: Node) -> bool:
+	if saves == null or not saves.has_method("begin_new_game_and_enter"):
+		return false
+	if not bool(saves.call("is_active")):
+		return false
+	return not bool(saves.call("is_play_scene_session"))
 
 
 func _lines() -> Array:

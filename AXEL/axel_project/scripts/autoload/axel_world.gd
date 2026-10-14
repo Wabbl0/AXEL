@@ -100,6 +100,10 @@ const ROOM_ANSWER_ALIASES := {
 	"res://scenes/Arc_3/3.1_Backyard.tscn": ["backyard"],
 }
 
+const BOARD_SYMBOLS: PackedStringArray = ["Δ", "Ω", "†", "‡", "§", "¶", "¤", "∞", "◊", "∑"]
+const BOARD_SYMBOL_SEED_SALT := 7919
+const CORPSE_ORDER_SEED_SALT := 104729
+
 const REASON_WALK := "walk"
 const REASON_ITEM := "item_pickup"
 const REASON_LORE := "lore_pickup"
@@ -893,7 +897,9 @@ func _camera_layout_args(scene: Node) -> Dictionary:
 	var fit: LayoutScript.FitMode = LayoutScript.FitMode.COVER
 	var background_y := 0.0
 	var edge := -1.0
+	var keep := false
 	if cam != null:
+		keep = bool(cam.call("keeps_height")) if cam.has_method("keeps_height") else false
 		fit = (cam.call("effective_fit_mode") if cam.has_method("effective_fit_mode") else cam.fit_mode) as LayoutScript.FitMode
 		background_y = cam.background_y
 		edge = cam.edge_reveal
@@ -901,7 +907,7 @@ func _camera_layout_args(scene: Node) -> Dictionary:
 		edge = LayoutScript.MAX_EDGE_REVEAL
 	else:
 		edge = clampf(edge, 0.0, 0.5)
-	return {"fit": fit, "y": background_y, "edge": edge}
+	return {"fit": fit, "y": background_y, "edge": edge, "keep": keep}
 
 
 func _layout_probe(scene: Node, args: Dictionary) -> void:
@@ -919,7 +925,7 @@ func _layout_probe(scene: Node, args: Dictionary) -> void:
 	var sync := PlayerCoverSync.new()
 	sync.bind_from_player(player)
 	sync.bind_design_from_background(bg, fit, background_y)
-	var layout := LayoutScript.apply(bg, view, fit, background_y, edge)
+	var layout := LayoutScript.apply(bg, view, fit, background_y, edge, bool(args.get("keep", false)))
 	if layout.is_empty():
 		return
 	LayoutScript.apply_to_sprite(bg, layout)
@@ -1897,7 +1903,35 @@ func spend_board_guess() -> void:
 	_save()
 
 
-func answered_item_equipped() -> bool:
+func ensure_board_symbol() -> String:
+	var run := _run()
+	if run == null:
+		return ""
+	var symbol := String(run.state.board_symbol)
+	if BOARD_SYMBOLS.has(symbol):
+		return symbol
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _run_seed(run) + BOARD_SYMBOL_SEED_SALT
+	symbol = BOARD_SYMBOLS[rng.randi_range(0, BOARD_SYMBOLS.size() - 1)]
+	run.state.board_symbol = symbol
+	_save()
+	return symbol
+
+
+func corpse_symbol_order() -> PackedStringArray:
+	var order: Array = Array(BOARD_SYMBOLS).duplicate()
+	var run := _run()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = (_run_seed(run) if run != null else 1) + CORPSE_ORDER_SEED_SALT
+	for i in range(order.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var swap = order[i]
+		order[i] = order[j]
+		order[j] = swap
+	return PackedStringArray(order)
+
+
+func corpse_symbol_correct(symbol: String) -> bool:
 	var run := _run()
 	if run == null:
 		return false
@@ -1906,10 +1940,13 @@ func answered_item_equipped() -> bool:
 		return false
 	if not bool(gm.call("get_flag", "hasName")):
 		return false
-	var item_id := String(run.state.board_item_id)
-	if item_id.is_empty():
-		return false
-	return Array(run.state.equipped_item_ids).has(item_id)
+	var answer := String(run.state.board_symbol)
+	return not answer.is_empty() and symbol == answer
+
+
+func _run_seed(run: Node) -> int:
+	var run_seed := int(run.state.seed)
+	return run_seed if run_seed != 0 else 1
 
 
 func _ensure_floor_plan() -> void:

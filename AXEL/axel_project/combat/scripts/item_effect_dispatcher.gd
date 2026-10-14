@@ -5,6 +5,9 @@ const ALL_POWERS: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
 const PAID_SPIN_SCALAR_TOTAL_CAP := 2.0
 const EXTRA_WILDS_PER_CREATE_CAP := 1
 const HEAD_START_CAP := 0.5
+const LINE_PAYOUT_BONUS_CAP := 1.0
+const GLYPH_MULT_SPIN_CAP := 4
+const FREE_SPINS_EXTRA_CAP := 4
 
 var dead_power_streak: int = 0
 var pending_power_chance: float = 0.0
@@ -18,6 +21,7 @@ var trinity_win_scalar_accum: float = 0.0
 var fs_first_win_this_spin: bool = true
 var glyphs: Dictionary = {}
 var meter_frac_accum: float = 0.0
+var glyph_mult_added_this_spin: int = 0
 var chaining: bool = false
 var girl_power_this_spin: bool = false
 var _procs: Array[StringName] = []
@@ -44,6 +48,7 @@ func reset_spin() -> void:
 	chaining = false
 	girl_power_this_spin = false
 	glyphs.clear()
+	glyph_mult_added_this_spin = 0
 
 
 func note_proc(item: Resource) -> void:
@@ -276,7 +281,7 @@ func line_payout_bonus(
 			note_proc(item)
 	if in_trinity:
 		bonus += trinity_win_scalar_accum
-	return bonus
+	return minf(bonus, LINE_PAYOUT_BONUS_CAP)
 
 
 func pay_preview(items: Array, symbol: Resource, length: int) -> float:
@@ -304,12 +309,15 @@ func diagonal_opts(items: Array) -> Dictionary:
 		"wilds": false,
 		"meter_frac": 0.0,
 		"full_lines": false,
+		"min_length": 3,
 	}
 	for item in items:
 		if _eff(item) != &"diagonal":
 			continue
 		var p := _params(item)
 		opts["mode"] = str(p.get("mode", "none"))
+		if p.has("min_length"):
+			opts["min_length"] = int(p.get("min_length", 3))
 		if p.has("wilds"):
 			opts["wilds"] = bool(p.get("wilds", false))
 		if p.has("meter_frac"):
@@ -353,6 +361,7 @@ func meter_mods(items: Array) -> Dictionary:
 		"gain_mult": 1.0,
 		"length_boost": 0,
 		"any_line_fills": false,
+		"any_line_fill_amount": 3,
 		"wild_extra": 0,
 		"overflow": false,
 		"first_fills_section": false,
@@ -370,6 +379,8 @@ func meter_mods(items: Array) -> Dictionary:
 				mods["length_boost"] = int(p.get("length_boost", 0))
 			if p.has("any_line_fills"):
 				mods["any_line_fills"] = bool(p.get("any_line_fills", false))
+			if p.has("any_line_fill_amount"):
+				mods["any_line_fill_amount"] = int(p.get("any_line_fill_amount", 3))
 			mods["wild_extra"] = int(mods["wild_extra"]) + int(p.get("wild_extra", 0))
 			if p.has("overflow"):
 				mods["overflow"] = bool(p.get("overflow", false))
@@ -423,6 +434,7 @@ func free_spins_mods(items: Array) -> Dictionary:
 			mods["first_win_wild"] = bool(p.get("first_win_wild", false))
 		if p.has("chain_random_potency"):
 			mods["chain_random_potency"] = float(p.get("chain_random_potency", 0.0))
+	mods["extra_spins"] = mini(int(mods["extra_spins"]), FREE_SPINS_EXTRA_CAP)
 	return mods
 
 
@@ -566,11 +578,12 @@ func extra_wilds_for_create(items: Array, rng: CombatRNG) -> int:
 			continue
 		var p := _params(item)
 		if bool(p.get("always", false)):
-			extra += 1
-			note_proc(item)
+			if _roll_item_chance(p, rng):
+				extra += 1
+				note_proc(item)
 			continue
 		if bool(p.get("first_each_spin", false)):
-			if first_wild_this_spin:
+			if first_wild_this_spin and _roll_item_chance(p, rng):
 				extra += 1
 				note_proc(item)
 			continue
@@ -585,6 +598,19 @@ func extra_wilds_for_create(items: Array, rng: CombatRNG) -> int:
 			note_proc(item)
 	first_wild_this_spin = false
 	return mini(extra, EXTRA_WILDS_PER_CREATE_CAP)
+
+
+func _roll_item_chance(p: Dictionary, rng: CombatRNG) -> bool:
+	if not p.has("chance"):
+		return true
+	return rng != null and rng.randf() <= float(p.get("chance", 0.0))
+
+
+func glyph_mult_room(want: int) -> int:
+	var room := maxi(GLYPH_MULT_SPIN_CAP - glyph_mult_added_this_spin, 0)
+	var got := mini(want, room)
+	glyph_mult_added_this_spin += got
+	return got
 
 
 func apply_c5_c9_from_items(items: Array, produced_win: bool, power_triggered: bool) -> void:

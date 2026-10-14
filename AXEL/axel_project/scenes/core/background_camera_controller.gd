@@ -30,6 +30,7 @@ var _target: Node2D
 var _world_rect: Rect2 = Rect2()
 var _inset_rect: Rect2 = Rect2()
 var _viewport_size: Vector2 = Vector2.ZERO
+var _pan_x: bool = false
 
 
 func _ready() -> void:
@@ -42,17 +43,33 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if camera_mode != CameraMode.MOVABLE_FOLLOW:
-		return
 	if not follow_enabled:
 		return
 	if not is_instance_valid(_target):
+		return
+	if camera_mode != CameraMode.MOVABLE_FOLLOW:
+		if _pan_x:
+			_follow_x(delta)
 		return
 	var desired := _target.global_position
 	var next := desired
 	if follow_smoothing > 0.0:
 		next = global_position.lerp(desired, 1.0 - exp(-follow_smoothing * delta))
 	global_position = clamp_center_to_rect(next, _inset_rect, _viewport_size, zoom)
+
+
+func _follow_x(delta: float) -> void:
+	var desired_x := _target.global_position.x
+	var next_x := desired_x
+	if follow_smoothing > 0.0 and absf(desired_x - global_position.x) < _viewport_size.x * 0.5:
+		next_x = lerpf(global_position.x, desired_x, 1.0 - exp(-follow_smoothing * delta))
+	global_position = clamp_center_to_rect(
+		Vector2(next_x, global_position.y), _world_rect, _viewport_size, zoom
+	)
+
+
+func keeps_height() -> bool:
+	return camera_mode == CameraMode.STATIC_LOCKED and not target_path.is_empty()
 
 
 func set_follow_enabled(follow_on: bool) -> void:
@@ -74,7 +91,8 @@ func _run_pipeline() -> void:
 		var background := get_node_or_null(background_path) as Sprite2D
 		if background != null:
 			var layout: Dictionary = Layout.apply(
-				background, _viewport_size, effective_fit, background_y, effective_edge_reveal
+				background, _viewport_size, effective_fit, background_y, effective_edge_reveal,
+				keeps_height()
 			)
 			if not layout.is_empty():
 				Layout.apply_to_sprite(background, layout)
@@ -101,6 +119,7 @@ func _run_pipeline() -> void:
 		effective_fit == Layout.FitMode.CONTAIN
 	)
 	_inset_rect = _rect_with_margin(world_rect, margin_px)
+	_pan_x = keeps_height() and world_rect.size.x > _viewport_size.x + 0.5
 
 
 func effective_fit_mode() -> Layout.FitMode:
@@ -138,8 +157,17 @@ static func apply_limits(
 		camera.zoom = Vector2.ONE
 		camera.position_smoothing_enabled = false
 		var whole_center := world_rect.get_center()
-		camera.global_position = whole_center
 		var whole_half := viewport_size * 0.5
+		if world_rect.size.x > viewport_size.x + 0.5 and is_instance_valid(target):
+			camera.global_position = clamp_center_to_rect(
+				Vector2(target.global_position.x, whole_center.y), world_rect, viewport_size, Vector2.ONE
+			)
+			camera.limit_left = int(floor(world_rect.position.x))
+			camera.limit_right = int(ceil(world_rect.position.x + world_rect.size.x))
+			camera.limit_top = int(floor(whole_center.y - whole_half.y))
+			camera.limit_bottom = int(ceil(whole_center.y + whole_half.y))
+			return
+		camera.global_position = whole_center
 		camera.limit_left = int(floor(whole_center.x - whole_half.x))
 		camera.limit_right = int(ceil(whole_center.x + whole_half.x))
 		camera.limit_top = int(floor(whole_center.y - whole_half.y))

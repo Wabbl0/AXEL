@@ -4,6 +4,7 @@ const CORRIDOR_SCENE := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
 const DESK_SCENE := "res://scenes/Arc_5/5.2_ClassroomDesk.tscn"
 const BOARD_FAIL_LINE := "Nah."
 const BOARD_SUCCESS_LINE := "You know the name now. You wish you didn't."
+const BOARD_SYMBOL_LINE := "Something's scratched under it: %s"
 const _LEAF_FADE_ALPHA := 0.2
 const _LEAF_GATE_SOFTNESS := 12.0
 const _BEHIND_ZONE_NAMES: PackedStringArray = [
@@ -177,7 +178,18 @@ func _board_lines(question: Dictionary) -> Array:
 	var lines: Array = BOARD_INTRO.duplicate()
 	if bool(question.get("ready", false)):
 		lines.append("\"%s\"" % String(question.get("line", "")))
+	if GameManager.get_flag("hasName"):
+		var symbol := _board_symbol()
+		if not symbol.is_empty():
+			lines.append(BOARD_SYMBOL_LINE % symbol)
 	return lines
+
+
+func _board_symbol() -> String:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("ensure_board_symbol"):
+		return String(world.call("ensure_board_symbol"))
+	return ""
 
 
 func _resolve_board_answer(typed: String) -> void:
@@ -191,8 +203,12 @@ func _resolve_board_answer(typed: String) -> void:
 		GameManager.set_flag("hasName", true)
 		GameManager.set_flag("knowsName", true)
 		GameManager.add_inventory_item("hasName", "Name")
+		var symbol := _board_symbol()
 		if is_instance_valid(_top_dialogue):
-			await _top_dialogue.show_line(BOARD_SUCCESS_LINE)
+			var success_lines: Array = [BOARD_SUCCESS_LINE]
+			if not symbol.is_empty():
+				success_lines.append(BOARD_SYMBOL_LINE % symbol)
+			await _top_dialogue.show_lines(success_lines)
 		if not is_instance_valid(self):
 			return
 		if world != null and world.has_method("start_lore_fight"):

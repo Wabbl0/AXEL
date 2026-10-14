@@ -38,7 +38,7 @@ The Godot project is in `AXEL/axel_project` (`project.godot`). Main scene: `res:
 
 **Narrative / overworld** (`scenes/`): `GameManager` (`exports/GameManager.gd`) holds flags, memories and spawn sides. `AxelWorld` decides when a fight starts. The true ending needs the name item equipped, otherwise Ending 4.
 
-**Combat** (`combat/`): 5×5 grid, deterministic RNG, wins are 3+ lines (no cluster wins), wild spawns on exactly-3 lines. Powers: cigarette, alcohol, bloody hand. Bonus flow: normal spins, then Vice Round, then Free Spins. Fights end at GOAL or when a paid spin cannot be afforded. Start balance 3000. Goal ladder 50/60/70/80/90/110/175/300/550, then ×1.5 (rounded to 5); every fight is a new seed.
+**Combat** (`combat/`): 5×5 grid, deterministic RNG, wins are 3+ lines (no cluster wins), wild spawns on exactly-3 lines. Powers: cigarette, alcohol, bloody hand. Bonus flow: normal spins, then Vice Round, then Free Spins. Fights end at GOAL or when a paid spin cannot be afforded. Start balance 3000. Goal ladder 50/60/70/80/95/115/145/190/250/330, then ×1.5 (rounded to 5); every fight is a new seed.
 
 - Keep combat deterministic.
 - Only `AxelRun` starts a fight. Combat reads no story flags.
@@ -95,14 +95,16 @@ Scripts:
 - `combat/test/combat_test_scaffold_check.gd`
 - `tools/scene_smoke_check.gd`
 - `tools/qa/audio_bus_layout_check.gd`
-- `settings_persistence_check.gd`
-- `pause_contract_check.gd`
-- `menu_nav_check.gd`
+- `tools/qa/settings_persistence_check.gd`
+- `tools/qa/pause_contract_check.gd`
+- `tools/qa/menu_nav_check.gd`
 
 Notes:
 - In headless scene checks, force `root.size = Vector2i(1920,1280)`.
 - Run `--import` once first so `class_name` types resolve.
 - After HUD changes, check live UI sizes. Wrapping Labels in Godot 4.7 need `custom_maximum_size`.
+- Screenshots: use `tools/qa/capture_scene.ps1`.
+- Every other non-headless Godot run (one-off `*_capture.gd` scripts, `--quit-after` shader checks) goes through `tools/qa/run_quiet.ps1 [-Script res://...] [-QuitAfter N] [-UserArgs ...]`. Never launch a visible Godot window directly. `run_quiet.ps1` writes a temporary `override.cfg` so the window has no focus from the start, opens it at 64×64 in the top-left, and passes `--capture`, so `AxelSettings` skips my saved window mode, moves the window off-screen and deletes the override. Keep all of this when editing these tools.
 
 ## Working style
 

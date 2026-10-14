@@ -164,6 +164,9 @@ func _apply_one(section: String, key: String) -> void:
 func _apply_window_mode() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
+	if OS.get_cmdline_user_args().has("--capture"):
+		_apply_capture_window()
+		return
 
 	if not _config.has_section_key("video", "window_mode"):
 		return
@@ -180,7 +183,7 @@ func _apply_window_mode() -> void:
 
 
 func _apply_window_size() -> void:
-	if DisplayServer.get_name() == "headless":
+	if DisplayServer.get_name() == "headless" or OS.get_cmdline_user_args().has("--capture"):
 		return
 	if String(get_value("video", "window_mode")) != "windowed":
 		return
@@ -193,6 +196,16 @@ func _apply_window_size() -> void:
 	var tree := get_tree()
 	if tree != null:
 		tree.root.size = parsed
+
+
+func _apply_capture_window() -> void:
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
+	DisplayServer.window_set_position(Vector2i(-10000, -10000))
+	var override_path := ProjectSettings.globalize_path("res://override.cfg")
+	if not FileAccess.file_exists(override_path):
+		return
+	if FileAccess.get_file_as_string(override_path).replace("\r", "").strip_edges() == "[display]\n\nwindow/size/no_focus=true":
+		DirAccess.remove_absolute(override_path)
 
 
 static func parse_size_string(raw: String) -> Vector2i:

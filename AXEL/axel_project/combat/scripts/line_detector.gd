@@ -25,6 +25,14 @@ static func find_lines(cells: Array, opts: Dictionary = {}) -> Array:
 			_scan_run(cells, lines, Vector2i(start_col, 0), Vector2i(-1, 1), start_col + 1)
 		for start_row in range(1, ROWS - 2):
 			_scan_run(cells, lines, Vector2i(COLS - 1, start_row), Vector2i(-1, 1), ROWS - start_row)
+	var diag_min := int(opts.get("min_length", 3))
+	if diag_min > 3:
+		var kept: Array = []
+		for line in lines:
+			if str(line.get("axis", "")) == "d" and int(line.get("length", 0)) < diag_min:
+				continue
+			kept.append(line)
+		return kept
 	return lines
 
 static func score_wild_at(cells: Array, at: Vector2i, opts: Dictionary = {}) -> int:

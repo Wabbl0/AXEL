@@ -58,6 +58,10 @@ software drivers. A VNC desktop is also available on `DISPLAY=:1`.
  (audio falls back to a dummy driver — the ALSA "cannot find card" errors are expected).
 - **Scene -> PNG capture (Windows):** `powershell -File AXEL/axel_project/tools/qa/capture_scene.ps1 -Scene <res://scene.tscn> -Out <out.png> [-Frames N] [-Size WxH] [-Mode windowed|borderless|fullscreen]`
  drives `res://tools/qa/capture_scene.gd` with the console exe, windowed (never `--headless`).
+ It launches through `tools/qa/run_quiet.ps1`, which every non-headless Godot run must use (one-off `*_capture.gd` scripts,
+ `--quit-after` shader checks): a temporary `override.cfg` sets no-focus from window creation, the window starts 64×64 at the top-left,
+ and the `--capture` user arg makes `AxelSettings` skip the saved window mode/size, move the window off-screen and delete the override.
+ Never launch a visible Godot window directly.
  `tools/qa/capture_matrix.ps1` sweeps all real scenes at the five target sizes;
  `tools/qa/scan_captures.ps1` flags blank frames. On Linux use Xvfb with the same `.gd` script.
 

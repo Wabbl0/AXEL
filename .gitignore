@@ -16,6 +16,9 @@
 # QA capture output (regenerable PNGs from tools/qa/capture_scene.ps1)
 /out/
 
+# Temporary no-focus override written by tools/qa/run_quiet.ps1
+/AXEL/axel_project/override.cfg
+
 # Dated leftover archive dumps that were already untracked at their old paths
 AXEL/axel_project/archive/**/html/
 AXEL/axel_project/archive/**/out/

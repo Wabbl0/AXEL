@@ -5,6 +5,10 @@ extends Control
 
 const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const TITLE_SCENE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
+const BASEMENT_DOOR_ROOM := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
+const ENDING_4 := "res://scenes/Endings/7.4_Ending4.tscn"
+const ENDING_TRUE := "res://scenes/Endings/7.5_EndingTrue.tscn"
+const SYMBOL_COLUMNS := 5
 
 var _busy := false
 var _dialogue: Node
@@ -111,6 +115,8 @@ func _offer_choices(def: Dictionary) -> void:
 		_style_choice(submit)
 		submit.pressed.connect(_on_submit)
 		_choices.add_child(submit)
+	if bool(def.get("symbols", false)):
+		_offer_symbols()
 	for choice in def.get("choices", []):
 		if not _choice_visible(choice):
 			continue
@@ -120,6 +126,47 @@ func _offer_choices(def: Dictionary) -> void:
 		var dest := String(choice.get("to", ""))
 		button.pressed.connect(func() -> void: _go(dest, choice))
 		_choices.add_child(button)
+
+
+func _offer_symbols() -> void:
+	var grid := GridContainer.new()
+	grid.columns = SYMBOL_COLUMNS
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	_choices.add_child(grid)
+	for symbol in _symbol_order():
+		var button := Button.new()
+		button.text = symbol
+		button.add_theme_font_override("font", FONT)
+		button.add_theme_font_size_override("font_size", 56)
+		button.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		button.add_theme_color_override("font_hover_color", Color(1, 0.25, 0.25, 1))
+		button.custom_minimum_size = Vector2(72, 72)
+		var dest := _symbol_dest(symbol)
+		button.pressed.connect(func() -> void: _go(dest, {}))
+		grid.add_child(button)
+
+
+func _symbol_order() -> PackedStringArray:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("corpse_symbol_order"):
+		return PackedStringArray()
+	return world.call("corpse_symbol_order")
+
+
+func symbol_choices() -> Dictionary:
+	var out := {}
+	for symbol in _symbol_order():
+		out[symbol] = _symbol_dest(symbol)
+	return out
+
+
+func _symbol_dest(symbol: String) -> String:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("corpse_symbol_correct"):
+		if bool(world.call("corpse_symbol_correct", symbol)):
+			return ENDING_TRUE
+	return ENDING_4
 
 
 func _style_choice(button: Button) -> void:
@@ -139,13 +186,6 @@ func _gm() -> Node:
 func _flag(flag_name: String) -> bool:
 	var gm := _gm()
 	return gm != null and bool(gm.call("get_flag", flag_name))
-
-
-func _answered_item_equipped() -> bool:
-	var world := get_node_or_null("/root/AxelWorld")
-	if world == null or not world.has_method("answered_item_equipped"):
-		return false
-	return bool(world.call("answered_item_equipped"))
 
 
 func _choice_visible(choice: Dictionary) -> bool:
@@ -173,6 +213,9 @@ func _apply_enter_effects(def: Dictionary) -> void:
 	var mem := String(def.get("memory", ""))
 	if not mem.is_empty():
 		gm.call("add_memory_once", mem)
+	var spawn := String(def.get("spawn", ""))
+	if not spawn.is_empty():
+		gm.call("set_basement_spawn_side", spawn)
 
 
 func _on_submit() -> void:
@@ -219,7 +262,12 @@ func _draw_floorplan() -> void:
 
 
 func _on_x() -> void:
-	_go(String(_def().get("back", TITLE_SCENE)), {})
+	var def: Dictionary = _def()
+	var back := String(def.get("back", TITLE_SCENE))
+	var effects := {}
+	if back == BASEMENT_DOOR_ROOM:
+		effects["spawn"] = "basement_door"
+	_go(back, effects)
 
 
 func _go(path: String, choice: Dictionary) -> void:
@@ -239,19 +287,19 @@ func _def() -> Dictionary:
 			return {
 				"label": "BASEMENT DOOR",
 				"lines": PackedStringArray(["The basement door. It still knows you."]),
-				"back": "res://scenes/Arc_1/1.4_BasementDoor.tscn",
+				"back": BASEMENT_DOOR_ROOM,
 				"choices": [
 					{"label": "Unlock with key", "need": "hasKey", "to": "res://scenes/Arc_6/6.3_BasementStairs.tscn"},
-					{"label": "Try the handle", "need_not": "hasKey", "to": "res://scenes/Arc_6/6.2_BasementLocked.tscn"},
-					{"label": "Go back", "to": "res://scenes/Arc_1/1.4_BasementDoor.tscn"},
+					{"label": "Try the handle (Locked)", "need_not": "hasKey", "to": "res://scenes/Arc_6/6.2_BasementLocked.tscn"},
+					{"label": "Go back", "to": BASEMENT_DOOR_ROOM, "spawn": "basement_door"},
 				],
 			}
 		"6.2":
 			return {
 				"label": "LOCKED",
 				"lines": PackedStringArray(["You need a key, dumbass."]),
-				"back": "res://scenes/Arc_6/6.1_BasementDoor.tscn",
-				"choices": [{"label": "Go back", "to": "res://scenes/Arc_6/6.1_BasementDoor.tscn"}],
+				"back": BASEMENT_DOOR_ROOM,
+				"choices": [{"label": "Go back", "to": BASEMENT_DOOR_ROOM, "spawn": "basement_door"}],
 			}
 		"6.3":
 			return {
@@ -264,8 +312,8 @@ func _def() -> Dictionary:
 				"back": "res://scenes/Arc_6/6.1_BasementDoor.tscn",
 				"choices": [
 					{"label": "Go down", "need": "hasFlashlight", "to": "res://scenes/Arc_6/6.4_BasementMain.tscn"},
-					{"label": "Go down anyway", "need_not": "hasFlashlight", "to": "res://scenes/Endings/7.2_Ending2.tscn"},
-					{"label": "I'm not ready", "to": "res://scenes/Arc_1/1.4_BasementDoor.tscn"},
+					{"label": "Go down", "need_not": "hasFlashlight", "to": "res://scenes/Endings/7.2_Ending2.tscn"},
+					{"label": "I'm not ready", "to": BASEMENT_DOOR_ROOM, "spawn": "basement_door"},
 				],
 			}
 		"6.4":
@@ -275,7 +323,7 @@ func _def() -> Dictionary:
 				"back": "res://scenes/Arc_6/6.6_BasementStuck.tscn",
 				"choices": [
 					{"label": "Pick up the shovel", "need_not": "hasShovel", "to": "res://scenes/Arc_6/6.5_BasementShovelPickup.tscn"},
-					{"label": "Dig", "need": "hasShovel", "to": "res://scenes/Arc_6/6.7_BasementDigging.tscn"},
+					{"label": "Dig (Requires shovel)", "need": "hasShovel", "to": "res://scenes/Arc_6/6.7_BasementDigging.tscn"},
 					{"label": "Turn back", "to": "res://scenes/Arc_6/6.6_BasementStuck.tscn"},
 				],
 			}
@@ -303,14 +351,12 @@ func _def() -> Dictionary:
 				"choices": [{"label": "FACE THE TRUTH", "to": "res://scenes/Arc_6/6.8_BasementCorpse.tscn"}],
 			}
 		"6.8":
-			var corpse_dest := "res://scenes/Endings/7.4_Ending4.tscn"
-			if _answered_item_equipped():
-				corpse_dest = "res://scenes/Endings/7.5_EndingTrue.tscn"
 			return {
 				"label": "CORPSE",
 				"lines": PackedStringArray(["The body is waiting for a name."]),
 				"back": "res://scenes/Arc_6/6.4_BasementMain.tscn",
-				"choices": [{"label": "Face it", "to": corpse_dest}],
+				"symbols": true,
+				"choices": [],
 			}
 		"5.3":
 			return {

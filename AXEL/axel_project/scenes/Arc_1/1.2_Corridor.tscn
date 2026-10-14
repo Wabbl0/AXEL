@@ -14,7 +14,7 @@
 size = Vector2(2416.6453, 208)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_bottom"]
-size = Vector2(2416.6453, 62.27112)
+size = Vector2(2541.817, 62.27112)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_vertical_left"]
 size = Vector2(99, 1515)
@@ -29,7 +29,7 @@ size = Vector2(38.5, 1515)
 size = Vector2(80, 690.4762)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_upper_block"]
-size = Vector2(2423.0767, 90)
+size = Vector2(2509.1577, 90)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_locker_pass"]
 size = Vector2(40, 820.5128)
@@ -66,7 +66,7 @@ shape = SubResource("RectangleShape2D_wall_top")
 position = Vector2(1172, 1442)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/BottomWall" unique_id=310166024]
-position = Vector2(0, 56.168457)
+position = Vector2(62.585815, 56.168457)
 shape = SubResource("RectangleShape2D_wall_bottom")
 
 [node name="LeftWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1349544675]
@@ -96,14 +96,14 @@ position = Vector2(2390, 763)
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/ExitTrigger" unique_id=1200780202]
-position = Vector2(10.989014, 388.09894)
+position = Vector2(75.09155, 388.09894)
 shape = SubResource("RectangleShape2D_exit_trigger")
 
 [node name="LockerWall" type="StaticBody2D" parent="WalkableWorld/EnvironmentColliders" unique_id=1200780001]
 position = Vector2(1172, 659)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="WalkableWorld/EnvironmentColliders/LockerWall" unique_id=1200780002]
-position = Vector2(37.706665, 103.0365)
+position = Vector2(80.74695, 103.0365)
 shape = SubResource("RectangleShape2D_upper_block")
 debug_color = Color(0.49424207, 0.87887543, 0.9511325, 0.41960785)
 
@@ -127,6 +127,7 @@ shape = SubResource("RectangleShape2D_locker_pass")
 [node name="Camera2D" type="Camera2D" parent="." unique_id=448339486]
 script = ExtResource("14_camera_script")
 background_path = NodePath("../WalkableWorld/Background")
+target_path = NodePath("../PlayerLayer/Player")
 static_center = Vector2(560, 0)
 
 [node name="PlayerLayer" type="CanvasLayer" parent="." unique_id=558325097]

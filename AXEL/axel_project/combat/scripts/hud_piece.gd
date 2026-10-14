@@ -131,6 +131,15 @@ func _strip_widget_chrome(widget: Control) -> void:
 		btn.add_theme_stylebox_override("focus", empty)
 
 
+func set_base_scale(value: Vector2) -> void:
+	if _pop_tween != null and _pop_tween.is_valid():
+		_pop_tween.kill()
+	if _feel_tween != null and _feel_tween.is_valid():
+		_feel_tween.kill()
+	_base_scale = value
+	scale = value
+
+
 func pop() -> void:
 	if not pop_on_change:
 		return

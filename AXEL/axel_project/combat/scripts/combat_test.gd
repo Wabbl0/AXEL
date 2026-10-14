@@ -21,6 +21,19 @@ const GRID_COLUMN_GAP := 10.0
 const RESPONSIVE_NARROW_W := 900.0
 
 const HUD_ART_SIZE := Vector2(3508.0, 2480.0)
+const PORTRAIT_PLATE_SIZE := Vector2(2480.0, 4960.0)
+const PORTRAIT_GRID_ORIGIN := Vector2(915.0, 87.0)
+const PORTRAIT_LAYOUT := {
+	"NEW_Settings": [Vector2(40.0, 40.0), 1.6],
+	"NEW_Goal": [Vector2(40.0, 300.0), 1.1],
+	"NEW_Multiplier": [Vector2(933.0, 341.0), 1.1],
+	"NEW_History": [Vector2(1898.0, 300.0), 0.71],
+	"NEW_Grid": [Vector2(137.0, 960.0), 1.32],
+	"NEW_Items": [Vector2(40.0, 4090.0), 0.68],
+	"NEW_Bets": [Vector2(612.0, 4257.0), 1.3],
+	"NEW_Execute": [Vector2(1817.0, 4090.0), 0.9],
+}
+const PORTRAIT_GRID_RIDERS: PackedStringArray = ["MOVE_PremiumBar", "MOVE_SpinMoney"]
 const CENTER_COLUMN_SEPARATION := 10
 const GRID_HOST_MIN_HEIGHT := 200.0
 const WINNINGS_BAND_MIN_HEIGHT := 40.0
@@ -85,7 +98,7 @@ const WINNINGS_COUNTER_MIN_STEP := 0.004
 const WINNINGS_COUNTER_MAX_STEP := 0.02
 const SPIN_TUTORIAL_DELAY_SEC := 1.0
 const ITEMS_TUTORIAL_DELAY_SEC := 0.5
-const FREEZE_LESSONS: Array[String] = ["slot_match", "slot_history", "slot_multiplier", "slot_power", "slot_vice"]
+const FREEZE_LESSONS: Array[String] = ["slot_vice"]
 const HELD_FREEZE_BEAT_SEC := 0.2
 const HELD_FREEZE_TIMEOUT_SEC := 2.0
 const HISTORY_MINI_ICON_SIZE := int(round(18.0 * COMBAT_TEXT_SCALE))
@@ -292,6 +305,8 @@ var _bet_strip_tween: Tween
 var _widgets_bound_to_pieces: bool = false
 var _last_spin_money_text: String = ""
 var _widget_layer: Node
+var _hud_portrait := false
+var _hud_landscape_spots: Dictionary = {}
 var _piece_grid: CombatHudPiece
 var _skull_click_polygon: Node
 var _spin_request_frame: int = -1
@@ -771,6 +786,8 @@ func _connect_runtime_signals() -> void:
 		combat.spin_started.connect(_on_spin_started)
 	if not combat.line_win_resolved.is_connected(_on_line_win_resolved):
 		combat.line_win_resolved.connect(_on_line_win_resolved)
+	if not combat.lines_found.is_connected(_on_lines_found):
+		combat.lines_found.connect(_on_lines_found)
 	if not combat.readouts_progressed.is_connected(_refresh_readouts):
 		combat.readouts_progressed.connect(_refresh_readouts)
 	if not combat.spin_finished.is_connected(_on_spin_finished):
@@ -1671,7 +1688,7 @@ func _style_stake_buttons() -> void:
 
 func _input(event: InputEvent) -> void:
 	_note_skull_input(event)
-	if _wants_spin_hotkey(event) and _close_tutorial_freeze_card():
+	if _wants_spin_hotkey(event) and _tutorial_freezing():
 		get_viewport().set_input_as_handled()
 		return
 	if _handle_bet_hotkey(event):
@@ -1728,15 +1745,6 @@ func _click_hits_interactive(at: Vector2) -> bool:
 			return true
 		node = node.get_parent()
 	return false
-
-
-func _close_tutorial_freeze_card() -> bool:
-	var tutorial := _tutorial_node()
-	if tutorial == null or not tutorial.has_method("close_freeze_card"):
-		return false
-	if not bool(tutorial.call("is_freezing")):
-		return false
-	return bool(tutorial.call("close_freeze_card"))
 
 
 func _handle_bet_hotkey(event: InputEvent) -> bool:
@@ -2138,8 +2146,6 @@ func _on_premium_meter_changed(previous_sections: int, next_sections: int) -> vo
 	_sync_premium_bar_color(next_sections, true)
 	if next_sections > previous_sections:
 		_play_combat_sfx(&"skull")
-		if next_sections < 3:
-			_tutorial_request("slot_power")
 
 
 func _on_sfx_requested(cue: StringName) -> void:
@@ -2160,16 +2166,26 @@ func _on_seed_spin_value_changed(value: float) -> void:
 	_refresh_spin_button_state()
 
 func _on_bet_minus_pressed() -> void:
-	_tutorial_complete("fight_stakes")
+	_tutorial_bet_touched()
 	combat.step_bet(-1)
 	_refresh_readouts()
 	_animate_bet_strip()
 
 func _on_bet_plus_pressed() -> void:
-	_tutorial_complete("fight_stakes")
+	_tutorial_bet_touched()
 	combat.step_bet(1)
 	_refresh_readouts()
 	_animate_bet_strip()
+
+func _tutorial_bet_touched() -> void:
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("wants"):
+		return
+	if bool(tutorial.call("is_showing", "fight_stakes")):
+		_tutorial_complete("fight_stakes")
+		return
+	if bool(tutorial.call("wants", "fight_stakes")):
+		tutorial.call("request", "fight_stakes", {"stack": true})
 
 func _set_default_bet() -> void:
 	if not _can_use_combat_api():
@@ -2184,11 +2200,34 @@ func _on_line_win_resolved(event: Dictionary) -> void:
 	var payout_cents: int = int(event.get("payout_cents", 0))
 	if payout_cents <= 0:
 		return
-	_tutorial_request("slot_match")
 	_tutorial_request("slot_history")
-	if int(event.get("cascade_multiplier", 1)) >= 2:
-		_tutorial_request("slot_multiplier")
+	_tutorial_request("slot_power")
 	_append_history_spin_row(event)
+
+func _on_lines_found(lines: Array) -> void:
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("wants") or combat == null:
+		return
+	var held := false
+	if bool(tutorial.call("wants", "slot_match")):
+		tutorial.call("request", "slot_match", {"freeze": true})
+		held = true
+	if bool(tutorial.call("wants", "slot_power")) and _lines_have_power(lines):
+		tutorial.call("request", "slot_power", {"freeze": true, "stack": true})
+		held = true
+	if combat.get_multiplier_value() >= 2 and bool(tutorial.call("wants", "slot_multiplier")):
+		tutorial.call("request", "slot_multiplier", {"freeze": true})
+		held = true
+	if held and bool(tutorial.call("is_freezing")):
+		combat.lines_gate_open = false
+
+func _lines_have_power(lines: Array) -> bool:
+	for line in lines:
+		if not (line is Dictionary):
+			continue
+		if combat.is_power_symbol(StringName((line as Dictionary).get("symbol_id", &""))):
+			return true
+	return false
 
 func _append_history_spin_row(event: Dictionary) -> void:
 	if _history_spin_list == null:
@@ -2920,8 +2959,6 @@ func _tutorial_freezing() -> bool:
 
 
 func _tutorial_gate_pending() -> bool:
-	if _after_match_lessons.has("fight_stakes"):
-		return true
 	var tutorial := _tutorial_node()
 	return tutorial != null and tutorial.has_method("is_gate_open") and bool(tutorial.call("is_gate_open"))
 
@@ -3064,7 +3101,7 @@ func _release_after_match_lessons() -> void:
 		return
 	if combat.get_spins_used() < 1 or combat.get_state() != CombatRoot.State.IDLE:
 		return
-	if not _held_freeze_lessons.is_empty() and not _after_match_lessons.has("fight_stakes"):
+	if not _held_freeze_lessons.is_empty():
 		return
 	var tutorial := _tutorial_node()
 	if tutorial == null or not tutorial.has_method("request"):
@@ -3083,6 +3120,11 @@ func _sync_tutorial_gates() -> void:
 		return
 	if tutorial.has_method("set_freeze_pending"):
 		tutorial.call("set_freeze_pending", not _held_freeze_lessons.is_empty())
+	if tutorial.has_method("set_playing_along") and combat != null and _can_use_combat_api():
+		var playing: bool = combat.get_state() != CombatRoot.State.IDLE or combat.is_encounter_complete()
+		tutorial.call("set_playing_along", playing)
+	if combat != null and not combat.lines_gate_open and not bool(tutorial.call("is_freezing")):
+		combat.lines_gate_open = true
 	if combat == null or combat.vice_entry_gate_open:
 		return
 	if _held_freeze_lessons.is_empty() and not bool(tutorial.call("is_freezing")):
@@ -3624,18 +3666,86 @@ func _fit_hud_canvas(viewport_override: Vector2 = Vector2.ZERO) -> void:
 		vp = get_viewport_rect().size
 	if vp.x <= 1.0 or vp.y <= 1.0:
 		return
-	var s := minf(vp.x / HUD_ART_SIZE.x, vp.y / HUD_ART_SIZE.y)
+	var portrait := vp.x < vp.y
+	_apply_hud_orientation(canvas, portrait)
+	var plate := PORTRAIT_PLATE_SIZE if portrait else HUD_ART_SIZE
+	var area := Rect2(Vector2.ZERO, vp)
+	if portrait:
+		var view := PortraitUi.view_size(self)
+		var safe := PortraitUi.safe_rect(self)
+		var top := safe.position.y / view.y
+		var tall := safe.size.y / view.y
+		area = Rect2(Vector2(0.0, vp.y * top), Vector2(vp.x, vp.y * tall))
+	var s := minf(area.size.x / plate.x, area.size.y / plate.y)
 	canvas.set_anchors_preset(Control.PRESET_TOP_LEFT, false)
 	canvas.anchor_left = 0.0
 	canvas.anchor_top = 0.0
 	canvas.anchor_right = 0.0
 	canvas.anchor_bottom = 0.0
-	canvas.size = HUD_ART_SIZE
+	canvas.size = plate
 	canvas.scale = Vector2(s, s)
-	canvas.position = Vector2(
-		(vp.x - HUD_ART_SIZE.x * s) * 0.5,
-		(vp.y - HUD_ART_SIZE.y * s) * 0.5
+	canvas.position = area.position + Vector2(
+		(area.size.x - plate.x * s) * 0.5,
+		(area.size.y - plate.y * s) * 0.5
 	)
+
+
+func is_hud_portrait() -> bool:
+	return _hud_portrait
+
+
+func _apply_hud_orientation(canvas: Control, portrait: bool) -> void:
+	if _hud_landscape_spots.is_empty():
+		_remember_landscape_spots(canvas)
+	if portrait == _hud_portrait:
+		return
+	_hud_portrait = portrait
+	var plate := PORTRAIT_PLATE_SIZE if portrait else HUD_ART_SIZE
+	var art := canvas.get_node_or_null("HudArt") as CanvasItem
+	if art != null:
+		art.visible = not portrait
+	for holder_name in ["HudPieces", "EncounterWinOverlay"]:
+		var holder := canvas.get_node_or_null(holder_name) as Control
+		if holder != null:
+			holder.offset_right = holder.offset_left + plate.x
+			holder.offset_bottom = holder.offset_top + plate.y
+	for piece_name in _hud_landscape_spots.keys():
+		var piece := canvas.find_child(piece_name, true, false) as Control
+		if piece == null:
+			continue
+		var spot: Array = _hud_landscape_spots[piece_name]
+		var pos: Vector2 = spot[0]
+		var sc: float = spot[1]
+		if portrait:
+			var target := _portrait_spot(piece_name, pos)
+			if target.is_empty():
+				continue
+			sc = target[1]
+			pos = (target[0] as Vector2) - piece.pivot_offset * (1.0 - sc)
+		piece.position = pos
+		if piece.has_method("set_base_scale"):
+			piece.call("set_base_scale", Vector2(sc, sc))
+		else:
+			piece.scale = Vector2(sc, sc)
+
+
+func _remember_landscape_spots(canvas: Control) -> void:
+	var names: Array = PORTRAIT_LAYOUT.keys()
+	names.append_array(Array(PORTRAIT_GRID_RIDERS))
+	for piece_name in names:
+		var piece := canvas.find_child(piece_name, true, false) as Control
+		if piece != null:
+			_hud_landscape_spots[piece_name] = [piece.position, piece.scale.x]
+
+
+func _portrait_spot(piece_name: String, landscape_pos: Vector2) -> Array:
+	if PORTRAIT_LAYOUT.has(piece_name):
+		return PORTRAIT_LAYOUT[piece_name]
+	if piece_name in PORTRAIT_GRID_RIDERS:
+		var grid: Array = PORTRAIT_LAYOUT["NEW_Grid"]
+		var gs: float = grid[1]
+		return [(grid[0] as Vector2) + (landscape_pos - PORTRAIT_GRID_ORIGIN) * gs, gs]
+	return []
 
 func _apply_hud_chrome() -> void:
 	_apply_economics_typography()

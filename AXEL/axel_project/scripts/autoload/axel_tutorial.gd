@@ -28,6 +28,9 @@ const EXIT_ROOM := 0.9
 const CARD_LAYER := 114
 const TOP_CARD_LAYER := 230
 const TOP_LESSONS: Array[String] = ["guide_pause"]
+const FIGHT_ORDER: Array[String] = ["slot_history", "slot_power", "fight_stakes", "fight_goal"]
+const READ_LOCK_SEC := 0.8
+const CALM_WAIT_SEC := 6.0
 
 const LESSONS := {
 	"move_walk": {
@@ -39,16 +42,17 @@ const LESSONS := {
 		"body": "Click the SKULL, or press E, to spin. Match 3 or more of the same symbol in a row or a column.",
 	},
 	"fight_stakes": {
-		"action_only": true,
-		"gate": true,
-		"title": "Fights",
+		"calm_timer": true,
+		"title": "Bets",
 		"body": "BALANCE is your chips. The BET is spent each spin. If BALANCE drops below 100, you lose. Press + or - to change the BET. Q and R work too.",
 	},
 	"fight_goal": {
+		"calm_timer": true,
 		"title": "Goal",
 		"body": "Every win fills the GOAL. Fill it to win the fight.",
 	},
 	"fight_items": {
+		"calm_timer": true,
 		"title": "Fights",
 		"body": "Equipped ITEMS sit on the left. They act on their own and are how you win. Hover a name to read it.",
 	},
@@ -66,12 +70,12 @@ const LESSONS := {
 		"body": "3 or more of the same symbol in a row or a column is a win. Each win pays your BET times that symbol's value, times the MULTIPLIER.",
 	},
 	"slot_history": {
-		"freeze": true,
+		"calm_timer": true,
 		"title": "History",
 		"body": "Every win is listed in the HISTORY box, with what it paid.",
 	},
 	"slot_power": {
-		"freeze": true,
+		"calm_timer": true,
 		"title": "The Skull",
 		"body": "Cigarette, alcohol and bloody hand are Power symbols. Matching them fills the Skull Meter. When the Skull Meter is full, something worse begins.",
 	},
@@ -113,6 +117,8 @@ var _debug_enabled := false
 var _freeze_on := false
 var _freeze_pending := false
 var _queue: Array[String] = []
+var _queue_opts: Dictionary = {}
+var _playing_along := false
 var _marked: Dictionary = {}
 var _hud_rects: Dictionary = {}
 var _reversed_open: AudioStreamWAV
@@ -139,6 +145,8 @@ class CardSlot:
 	var typed: int = 0
 	var type_acc: float = 0.0
 	var wait_left: float = -1.0
+	var lock_left: float = 0.0
+	var freezes: bool = false
 	var run_token: int = 0
 	var laid_out: bool = false
 	var card_host: Control
@@ -169,26 +177,56 @@ func debug_set_enabled(enabled: bool) -> void:
 	_debug_enabled = enabled
 
 
-func request(id: String) -> void:
+func request(id: String, opts: Dictionary = {}) -> void:
 	if not _allows():
 		return
 	if not LESSONS.has(id):
 		return
-	if _is_seen(id) or _queue.has(id) or _is_showing_id(id):
+	if _is_seen(id) or _is_showing_id(id):
 		return
-	if _lesson_gates(id):
+	var stack := bool(opts.get("stack", false))
+	var freeze := bool(opts.get("freeze", _lesson_freezes(id)))
+	if _queue.has(id):
+		if not stack and not freeze:
+			return
+		_queue.erase(id)
+	_queue_opts[id] = {"freeze": freeze, "stack": stack}
+	if stack:
 		_queue.insert(0, id)
-	elif _lesson_freezes(id):
+	elif _lesson_gates(id):
+		_queue.insert(0, id)
+	elif freeze:
 		_queue.insert(_first_calm_index(), id)
 		_bump_calm_cards()
 	else:
-		_queue.append(id)
+		_queue.insert(_ordered_index(id), id)
 	_sync_freeze()
+
+
+func _ordered_index(id: String) -> int:
+	var rank := FIGHT_ORDER.find(id)
+	if rank < 0:
+		return _queue.size()
+	for i in _queue.size():
+		var other := FIGHT_ORDER.find(_queue[i])
+		if other > rank and not _entry_freezes(_queue[i]):
+			return i
+	return _queue.size()
+
+
+func _entry_freezes(id: String) -> bool:
+	if _queue_opts.has(id):
+		return bool(_queue_opts[id].get("freeze", false))
+	return _lesson_freezes(id)
+
+
+func _entry_stacks(id: String) -> bool:
+	return _queue_opts.has(id) and bool(_queue_opts[id].get("stack", false))
 
 
 func _first_calm_index() -> int:
 	for i in _queue.size():
-		if not _lesson_freezes(_queue[i]) and not _lesson_gates(_queue[i]):
+		if not _entry_freezes(_queue[i]) and not _lesson_gates(_queue[i]) and not _entry_stacks(_queue[i]):
 			return i
 	return _queue.size()
 
@@ -197,7 +235,7 @@ func _bump_calm_cards() -> void:
 	for slot in _slots:
 		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 			continue
-		if _lesson_freezes(slot.open_id) or _lesson_gates(slot.open_id):
+		if slot.freezes or _lesson_gates(slot.open_id):
 			continue
 		var id: String = slot.open_id
 		_force_waiting(slot)
@@ -247,6 +285,31 @@ func set_freeze_pending(on: bool) -> void:
 	_freeze_pending = on
 
 
+func set_playing_along(on: bool) -> void:
+	_playing_along = on
+
+
+func drop_queued_fight_lessons() -> void:
+	var kept: Array[String] = []
+	for id in _queue:
+		if _is_fight(id) and id != "guide_pause":
+			_queue_opts.erase(id)
+			continue
+		kept.append(id)
+	_queue = kept
+	_sync_freeze()
+
+
+func has_blocking_fight_card() -> bool:
+	for slot in _slots:
+		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
+			continue
+		if slot.open_id == "guide_pause" or not _is_fight(slot.open_id):
+			continue
+		return true
+	return false
+
+
 func has_active_card() -> bool:
 	for slot in _slots:
 		if slot.phase != Phase.IDLE and slot.phase != Phase.CLOSING:
@@ -268,10 +331,19 @@ func dismiss_open_card() -> bool:
 	for slot in _slots:
 		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 			continue
-		_force_waiting(slot)
-		_start_close(slot)
+		_player_close(slot)
 		return true
 	return false
+
+
+func _player_close(slot: CardSlot) -> void:
+	if slot.phase == Phase.OPENING or slot.phase == Phase.TYPING:
+		_force_waiting(slot)
+		_begin_wait(slot)
+		return
+	if slot.phase != Phase.WAITING or slot.lock_left > 0.0:
+		return
+	_start_close(slot)
 
 
 func _lesson_freezes(id: String) -> bool:
@@ -281,12 +353,12 @@ func _lesson_freezes(id: String) -> bool:
 func _wants_freeze() -> bool:
 	if not is_gate_open():
 		for id in _queue:
-			if _lesson_freezes(id):
+			if _entry_freezes(id):
 				return true
 	for slot in _slots:
 		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 			continue
-		if _lesson_freezes(slot.open_id):
+		if slot.freezes:
 			return true
 	return false
 
@@ -326,10 +398,9 @@ func close_freeze_card() -> bool:
 	for slot in _slots:
 		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 			continue
-		if not _lesson_freezes(slot.open_id):
+		if not slot.freezes:
 			continue
-		_force_waiting(slot)
-		_start_close(slot)
+		_player_close(slot)
 		return true
 	return false
 
@@ -339,10 +410,11 @@ func complete(id: String) -> void:
 		return
 	var idx := _queue.find(id)
 	if not _is_showing_id(id):
-		if _lesson_freezes(id):
+		if _entry_freezes(id):
 			return
 		if idx >= 0:
 			_queue.remove_at(idx)
+			_queue_opts.erase(id)
 		_mark_seen(id)
 		return
 	if idx >= 0:
@@ -469,9 +541,21 @@ func _process(delta: float) -> void:
 	for slot in _slots:
 		if slot.phase == Phase.TYPING:
 			_advance_type(slot, delta)
+		elif slot.phase == Phase.WAITING:
+			_tick_wait(slot, delta)
 	_sync_glows()
 	_try_start()
 	_sync_freeze()
+
+
+func _tick_wait(slot: CardSlot, delta: float) -> void:
+	if slot.lock_left > 0.0:
+		slot.lock_left = maxf(0.0, slot.lock_left - delta)
+	if slot.wait_left < 0.0 or not _playing_along or _freeze_on:
+		return
+	slot.wait_left -= delta
+	if slot.wait_left <= 0.0:
+		_start_close(slot)
 
 
 func _free_slot_index() -> int:
@@ -488,10 +572,15 @@ func _try_start() -> void:
 	if idx < 0:
 		return
 	if is_open():
+		if not _entry_stacks(_queue[0]):
+			return
+		var stacked := _queue[0]
+		_queue.remove_at(0)
+		_open_slot(idx, stacked)
 		return
-	if _stack_gap_left > 0.0 and not _lesson_freezes(_queue[0]):
+	if _stack_gap_left > 0.0 and not _entry_freezes(_queue[0]) and not _entry_stacks(_queue[0]):
 		return
-	if _freeze_pending and not _lesson_freezes(_queue[0]):
+	if _freeze_pending and not _entry_freezes(_queue[0]):
 		return
 	var id := _queue[0]
 	_queue.remove_at(0)
@@ -502,6 +591,10 @@ func _try_start() -> void:
 func _open_slot(idx: int, id: String) -> void:
 	var slot: CardSlot = _slots[idx]
 	slot.open_id = id
+	slot.freezes = _entry_freezes(id)
+	_queue_opts.erase(id)
+	slot.wait_left = -1.0
+	slot.lock_left = 0.0
 	slot.phase = Phase.OPENING
 	slot.laid_out = false
 	_card_layer.layer = TOP_CARD_LAYER if TOP_LESSONS.has(id) else CARD_LAYER
@@ -594,7 +687,10 @@ func _on_body_meta_clicked(meta: Variant, idx: int) -> void:
 func _begin_wait(slot: CardSlot) -> void:
 	slot.phase = Phase.WAITING
 	_refresh_type_loop()
+	slot.lock_left = READ_LOCK_SEC
 	slot.wait_left = -1.0
+	if not slot.freezes and LESSONS.has(slot.open_id) and bool(LESSONS[slot.open_id].get("calm_timer", false)):
+		slot.wait_left = CALM_WAIT_SEC
 
 
 func _dismiss_one_card() -> void:
@@ -611,8 +707,7 @@ func _on_exit_pressed_slot(idx: int) -> void:
 	var slot: CardSlot = _slots[idx]
 	if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 		return
-	_force_waiting(slot)
-	_start_close(slot)
+	_player_close(slot)
 
 
 func _on_card_gui_input(event: InputEvent, idx: int) -> void:
@@ -666,7 +761,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not _freeze_on:
 		return
-	if not _is_dismiss_event(event) and not event.is_action_pressed("interact"):
+	if not _is_dismiss_event(event):
 		return
 	if close_freeze_card():
 		get_viewport().set_input_as_handled()
@@ -705,13 +800,15 @@ func _story_busy() -> bool:
 func _on_scene_changed() -> void:
 	var kept: Array[String] = []
 	for id in _queue:
-		if not _lesson_freezes(id):
+		if not _entry_freezes(id):
 			kept.append(id)
 	_queue = kept
+	_queue_opts.clear()
+	_playing_along = false
 	for slot in _slots:
 		if slot.phase == Phase.IDLE or slot.phase == Phase.CLOSING:
 			continue
-		if _lesson_action_only(slot.open_id) or _lesson_freezes(slot.open_id):
+		if _lesson_action_only(slot.open_id) or slot.freezes:
 			_force_waiting(slot)
 			_start_close(slot, _lesson_gates(slot.open_id))
 	_sync_freeze()
@@ -898,7 +995,7 @@ func _open_fight_glow_names() -> Dictionary:
 		):
 			continue
 		for piece_name in glow_piece_names(slot.open_id):
-			if piece_name == "NEW_Grid" and _lesson_freezes(slot.open_id):
+			if piece_name == "NEW_Grid" and slot.freezes:
 				continue
 			wanted[String(piece_name)] = true
 	return wanted

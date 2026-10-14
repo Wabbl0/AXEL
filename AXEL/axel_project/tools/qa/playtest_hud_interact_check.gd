@@ -1,6 +1,7 @@
 extends SceneTree
 
 const ROOM := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
+const BASEMENT := "res://scenes/Arc_6/6.1_BasementDoor.tscn"
 const COMBAT := "res://combat/combat_test.tscn"
 const WINDOW := Vector2i(1920, 1280)
 
@@ -57,22 +58,25 @@ func _check_door_chip() -> void:
 		await process_frame
 	if scene.has_method("_refresh_active_zones"):
 		scene.call("_refresh_active_zones")
-	if scene.has_method("on_zone_interact"):
-		scene.call("on_zone_interact", "door")
-	for _i in 10:
-		await process_frame
-	if current_scene == null or current_scene.scene_file_path != ROOM:
-		_fail("1.4 door [E] left the room")
-		return
 	if dialogue.has_method("is_sequence_busy") and not bool(dialogue.call("is_sequence_busy")):
 		if dialogue.has_method("show_line"):
-			dialogue.call("show_line", "Not yet.", 3.0)
+			dialogue.call("show_line", "Testing.", 3.0)
 	for _i in 8:
 		await process_frame
 	if prompt.has_method("is_prompt_visible") and not bool(prompt.call("is_prompt_visible")):
 		_fail("door [E] should stay visible while a line is playing")
-	if is_instance_valid(scene):
-		scene.queue_free()
+	if dialogue.has_method("interrupt_line"):
+		dialogue.call("interrupt_line")
+	for _i in 4:
+		await process_frame
+	if scene.has_method("on_zone_interact"):
+		scene.call("on_zone_interact", "door")
+	for _i in 120:
+		await process_frame
+		if current_scene != null and current_scene.scene_file_path == BASEMENT:
+			break
+	if current_scene == null or current_scene.scene_file_path != BASEMENT:
+		_fail("1.4 door [E] did not open 6.1")
 	await process_frame
 
 

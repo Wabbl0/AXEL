@@ -52,7 +52,9 @@
 >
 > Maybe it's in the kitchen. I don't know.
 >
-> You're dumb.
+> Your dumb.
+
+*("Your dumb." is misspelled on purpose. Do not fix it.)*
 
 **Choices:**
 
@@ -60,6 +62,8 @@
 | Button label | Target                       |
 | ------------ | ---------------------------- |
 | Start again  | School Exterior (full reset) |
+
+**Implemented (Godot):** Endings 2, 3, 4 and the Epilogue start a fresh run at `1.1` in the same save slot (`AxelSaves.begin_new_game_and_enter`). Ending 1 goes to the main menu.
 
 
 ---
@@ -95,7 +99,7 @@
 
 **Dialogue:**
 
-> [the basement corpse checks that the answered floor item is equipped; if not, this ending]
+> [the basement corpse: a wrong symbol, or a board that was never answered, leads here]
 >
 > You hear sirens.
 >

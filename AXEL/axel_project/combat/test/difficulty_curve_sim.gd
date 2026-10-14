@@ -42,6 +42,9 @@ var _bet_style: String = "min"
 var _real_seeds: bool = false
 var _stalls: int = 0
 var _fight_limit: int = 0
+var _pick_style: String = "random"
+var _choices: int = 3
+var _lane: String = ""
 var _wager: Array[int] = []
 var _payout: Array[int] = []
 var _cost: Array[int] = []
@@ -89,10 +92,10 @@ func _main() -> void:
 			var row: Array = SCHEDULE[fight_i]
 			var rank := int(row[1])
 			if rank >= 0:
-				var item = _pick_item(rank, pick_rng)
+				var item = _pick_item(rank, pick_rng) if _pick_style == "random" else _pick_synergy(rank, owned, pick_rng)
 				if item != null:
 					owned.append(item)
-			var equipped: Array = owned.slice(maxi(owned.size() - MAX_EQUIPPED, 0))
+			var equipped: Array = owned.slice(maxi(owned.size() - MAX_EQUIPPED, 0)) if _pick_style == "random" else _best_loadout(owned)
 			var tutorial := String(row[0]) == "tutorial"
 			var result := _play_fight(
 				cr,
@@ -198,6 +201,10 @@ func _read_config() -> void:
 	_bet_style = OS.get_environment("DIFF_BET") if not OS.get_environment("DIFF_BET").is_empty() else "min"
 	_real_seeds = OS.get_environment("DIFF_REAL_SEEDS") == "1"
 	_fight_limit = int(_env_float("DIFF_FIGHTS", 0))
+	if not OS.get_environment("DIFF_PICK").is_empty():
+		_pick_style = OS.get_environment("DIFF_PICK")
+	_choices = maxi(int(_env_float("DIFF_CHOICES", 3)), 1)
+	_lane = OS.get_environment("DIFF_LANE")
 
 
 func _source_const(source: String, name: String, fallback: String) -> String:
@@ -242,6 +249,69 @@ func _pick_item(rank: int, rng: RandomNumberGenerator) -> Resource:
 			return pool[rng.randi_range(0, pool.size() - 1)]
 		r -= 1
 	return null
+
+
+func _family_of(item: Resource) -> String:
+	return str(item.get("family")).strip_edges()
+
+
+func _main_family(owned: Array) -> String:
+	if not _lane.is_empty():
+		return _lane
+	var counts := {}
+	var best := ""
+	var best_score := -1
+	for item in owned:
+		var fam := _family_of(item)
+		if fam.is_empty():
+			continue
+		counts[fam] = int(counts.get(fam, 0)) + 10 + int(item.get("rarity"))
+		if int(counts[fam]) > best_score:
+			best_score = int(counts[fam])
+			best = fam
+	return best
+
+
+func _pick_synergy(rank: int, owned: Array, rng: RandomNumberGenerator) -> Resource:
+	var r := clampi(rank, 0, RANK_LETTERS.size() - 1)
+	var pool: Array = []
+	while r >= 0:
+		for item in _items_by_rank[r]:
+			if not owned.has(item):
+				pool.append(item)
+		if not pool.is_empty():
+			break
+		r -= 1
+	if pool.is_empty():
+		return null
+	var offered: Array = []
+	for _i in mini(_choices, pool.size()):
+		var pick = pool[rng.randi_range(0, pool.size() - 1)]
+		pool.erase(pick)
+		offered.append(pick)
+	var fam := _main_family(owned)
+	if not fam.is_empty():
+		for item in offered:
+			if _family_of(item) == fam:
+				return item
+	if not _lane.is_empty() or owned.is_empty():
+		return offered[0]
+	for item in offered:
+		if not _family_of(item).is_empty():
+			return item
+	return offered[0]
+
+
+func _best_loadout(owned: Array) -> Array:
+	if owned.size() <= MAX_EQUIPPED:
+		return owned.duplicate()
+	var fam := _main_family(owned)
+	var ranked := owned.duplicate()
+	ranked.sort_custom(func(a, b):
+		var sa := int(a.get("rarity")) + (5 if _family_of(a) == fam else 0)
+		var sb := int(b.get("rarity")) + (5 if _family_of(b) == fam else 0)
+		return sa > sb)
+	return ranked.slice(0, MAX_EQUIPPED)
 
 
 func _fight_seed(run_i: int, fight_i: int) -> int:
@@ -337,8 +407,8 @@ func _median(values: Array) -> int:
 
 
 func _print_report(entered: Array[int], deaths: Array[int], goals: Array, wallets: Array, spins: Array) -> void:
-	print("DIFF_CONFIG ladder=%s growth=%.2f lore=%.2f bankroll=%d bet=%s runs=%d real_seeds=%s" % [
-		str(_ladder), _growth, _lore_step, _bankroll, _bet_style, _runs, str(_real_seeds),
+	print("DIFF_CONFIG ladder=%s growth=%.2f lore=%.2f bankroll=%d bet=%s runs=%d real_seeds=%s pick=%s choices=%d lane=%s" % [
+		str(_ladder), _growth, _lore_step, _bankroll, _bet_style, _runs, str(_real_seeds), _pick_style, _choices, _lane,
 	])
 	var items := 0
 	var dead := 0

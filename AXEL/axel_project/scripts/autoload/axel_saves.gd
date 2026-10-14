@@ -65,6 +65,10 @@ func is_active() -> bool:
 	return active_slot >= 0 and active_slot < SLOT_COUNT
 
 
+func is_play_scene_session() -> bool:
+	return _play_scene_session
+
+
 func last_living_slot() -> int:
 	if _is_living(_last_slot):
 		return _last_slot

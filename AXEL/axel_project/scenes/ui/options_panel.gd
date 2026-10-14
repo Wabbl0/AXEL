@@ -17,13 +17,15 @@ const _SettingsScript := preload("res://scripts/autoload/axel_settings.gd")
 
 var _sliders: Array[HSlider] = []
 var _size_option: OptionButton
+var _k := 1.0
+var _built_portrait := false
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build()
-	get_viewport().size_changed.connect(_apply_scale)
+	get_viewport().size_changed.connect(_on_size_changed)
 	set_process_unhandled_input(true)
 
 
@@ -35,7 +37,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		closed.emit()
 
 
+func _px(authored: int) -> int:
+	return maxi(roundi(float(authored) * _k), 8)
+
+
+func _on_size_changed() -> void:
+	if PortraitUi.is_portrait(self) or _built_portrait:
+		_build()
+		return
+	_apply_scale()
+
+
 func _build() -> void:
+	_built_portrait = PortraitUi.is_portrait(self)
+	_k = PortraitUi.boost(self, 1.5)
 	_sliders.clear()
 	for child in get_children():
 		child.queue_free()
@@ -64,7 +79,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = "OPTIONS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	MenuLook.apply_label(title, 64, MenuLook.ACCENT)
+	MenuLook.apply_label(title, _px(64), MenuLook.ACCENT)
 	_center(title)
 	col.add_child(title)
 
@@ -85,7 +100,7 @@ func _build() -> void:
 	var back := Button.new()
 	back.name = "BackButton"
 	back.text = "Back"
-	MenuLook.apply_button(back, 43)
+	MenuLook.apply_button(back, _px(43))
 	_center(back)
 	back.pressed.connect(func() -> void: closed.emit())
 	col.add_child(back)
@@ -97,17 +112,17 @@ func _section(col: VBoxContainer, text: String) -> void:
 	var label := Label.new()
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	MenuLook.apply_label(label, 37, MenuLook.ACCENT)
+	MenuLook.apply_label(label, _px(37), MenuLook.ACCENT)
 	col.add_child(label)
 
 
 func _caption(text: String) -> Label:
 	var caption_label := Label.new()
 	caption_label.text = text
-	caption_label.custom_minimum_size.x = _CAPTION_WIDTH
+	caption_label.custom_minimum_size.x = _CAPTION_WIDTH * _k
 	caption_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	caption_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	MenuLook.apply_label(caption_label, 32)
+	MenuLook.apply_label(caption_label, _px(32))
 	return caption_label
 
 
@@ -156,7 +171,7 @@ func _option(col: VBoxContainer, caption: String, section: String, key: String, 
 	var row := _row()
 	row.add_child(_caption(caption))
 	var opt := OptionButton.new()
-	MenuLook.apply_button(opt, 32, Control.SIZE_SHRINK_BEGIN)
+	MenuLook.apply_button(opt, _px(32), Control.SIZE_SHRINK_BEGIN)
 	var current := String(AxelSettings.get_value(section, key))
 	for i in values.size():
 		opt.add_item(values[i], i)
@@ -201,5 +216,7 @@ func _apply_scale() -> void:
 	if screen_w <= 1.0:
 		return
 	var bar_w := screen_w * _BAR_SCREEN_FRACTION
+	if PortraitUi.is_portrait(self):
+		bar_w = maxf(screen_w * 0.9 - _CAPTION_WIDTH * _k - _ROW_GAP, screen_w * _BAR_SCREEN_FRACTION)
 	for slider in _sliders:
 		slider.custom_minimum_size.x = bar_w

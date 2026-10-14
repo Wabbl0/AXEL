@@ -9,6 +9,7 @@ signal premium_meter_changed(previous_sections: int, next_sections: int)
 signal meter_full_transition_started()
 signal matched_symbols_resolved(entries: Array)
 signal line_win_resolved(event: Dictionary)
+signal lines_found(lines: Array)
 signal winnings_popup_border_touched(event: Dictionary)
 signal round_winnings_hold_started()
 signal free_spins_bonus_granted(added: int)
@@ -182,6 +183,7 @@ var _dev_guarantee_fs_clear: bool = false
 var _dev_guarantee_payout_1000x: bool = false
 var _dev_skip_visuals: bool = false
 var vice_entry_gate_open: bool = true
+var lines_gate_open: bool = true
 var _goal_burst_playing: bool = false
 var _power_fx_log: Array = []
 var _power_fx_depth: int = 0
@@ -293,6 +295,10 @@ func step_bet(delta: int) -> void:
 
 func get_state() -> int:
 	return _state as int
+
+func is_power_symbol(symbol_id: StringName) -> bool:
+	var sd := _symbols_by_id.get(symbol_id, null) as SymbolDef
+	return sd != null and sd.power_id != &""
 
 func get_multiplier_value() -> int:
 	return multiplier.value
@@ -953,6 +959,8 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		if lines.is_empty():
 			break
 		out["produced_any_win"] = true
+		lines_found.emit(lines)
+		await _await_lines_gate()
 		await _resolve_lines(lines)
 		await _apply_gravity_and_refill(not free_spins.active)
 		_emit_line_win_events(lines)
@@ -972,6 +980,12 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		_apply_glyph_payouts(lines, out)
 		_refresh_multiplier_label()
 	return out
+
+func _await_lines_gate() -> void:
+	var tree := get_tree()
+	while not lines_gate_open and tree != null and is_inside_tree():
+		await tree.process_frame
+
 
 func _resolve_cascade_loop_sync() -> Dictionary:
 	var out := _empty_spin_summary()
@@ -2179,8 +2193,9 @@ func _apply_meter_from_lines(lines: Array) -> void:
 		if bool(mods.get("first_fills_section", false)) and _item_fx.first_premium_this_spin:
 			add = 1
 			_item_fx.note_param(inventory.items, &"premium_meter", "first_fills_section")
-		if bool(mods.get("any_line_fills", false)) and add < 3:
-			add = 3
+		var fill_amount := int(mods.get("any_line_fill_amount", 3))
+		if bool(mods.get("any_line_fills", false)) and add < fill_amount:
+			add = fill_amount
 			_item_fx.note_param(inventory.items, &"premium_meter", "any_line_fills")
 		var pre_mult := add
 		add = int(round(float(add) * float(mods.get("gain_mult", 1.0))))
@@ -3076,9 +3091,13 @@ func _apply_glyph_payouts(lines: Array, out: Dictionary) -> void:
 				var extra2 := _to_cents(float(line_pay) * (mult - 1.0) * win_frac)
 				out["payout"] = int(out["payout"]) + extra2
 				_add_round_winnings(extra2)
-				multiplier.add(maxi(1, int(round((mult - 1.0) * (1.0 - win_frac)))))
+				var split_add := _item_fx.glyph_mult_room(maxi(1, int(round((mult - 1.0) * (1.0 - win_frac)))))
+				if split_add > 0:
+					multiplier.add(split_add)
 			else:
-				multiplier.add(maxi(1, int(round(mult))))
+				var all_add := _item_fx.glyph_mult_room(maxi(1, int(round(mult))))
+				if all_add > 0:
+					multiplier.add(all_add)
 
 
 func _music_notify_trinity() -> void:

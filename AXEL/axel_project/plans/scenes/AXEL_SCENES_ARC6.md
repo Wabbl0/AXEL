@@ -19,7 +19,7 @@
 | ----------------------- | --------- | --------------- |
 | Unlock with key         | Has key   | Basement Stairs |
 | Try the handle (Locked) | No key    | Basement Locked |
-| Go back                 | —         | Locker Hub      |
+| Go back                 | —         | Locker Hub (1.4) |
 
 
 ---
@@ -37,7 +37,7 @@
 
 | Button label | Target     |
 | ------------ | ---------- |
-| Go back      | Locker Hub |
+| Go back      | Locker Hub (1.4) |
 
 
 ---
@@ -61,7 +61,7 @@
 | ------------- | -------------- | ------------- |
 | Go down       | Has flashlight | Basement Main |
 | Go down       | No flashlight  | Ending 2      |
-| I'm not ready | —              | Locker Hub    |
+| I'm not ready | —              | Locker Hub (1.4) |
 
 
 ---
@@ -150,6 +150,15 @@
 
 > The body is waiting for a name.
 
-**Implemented (Godot):** Grey-box `6.8` does not ask you to type. **Face it** opens the true ending when the classroom board was answered and that floor item is equipped. Otherwise it opens Ending 4. Ending 3 is not opened from here.
+**Choices:** ten symbol buttons (`Δ Ω † ‡ § ¶ ¤ ∞ ◊ ∑`) in a seed-shuffled order.
+
+| Pick | Condition | Target |
+| ---- | --------- | ------ |
+| The board's symbol | Board answered (`hasName`) | True Ending |
+| Any other symbol, or board never answered | — | Ending 4 |
+
+**Implemented (Godot):** Grey-box `6.8` does not ask you to type. It shows the ten symbols (`AxelWorld.corpse_symbol_order()`); `AxelWorld.corpse_symbol_correct()` picks the true ending. No equipped-item check. Ending 3 is not opened from here.
+
+**Wiring note:** "Locker Hub" in this file means the `1.4` basement door room. The `1.4` door always opens `6.1`; going back to `1.4` places the player at the door.
 
 ---

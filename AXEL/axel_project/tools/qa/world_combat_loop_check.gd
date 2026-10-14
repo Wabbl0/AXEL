@@ -489,7 +489,7 @@ func _check_walk_gate(world: Node, run: Node) -> void:
 
 func _check_goal_ladder(run: Node) -> void:
 	run.call("reset_run")
-	var want := [50, 60, 70, 80, 90, 110, 175, 300, 550]
+	var want := [50, 60, 70, 80, 95, 115, 145, 190, 250, 330]
 	for i in want.size():
 		run.state.world_fight_count = i + 1
 		var got := int(run.call("world_goal_base_cents"))

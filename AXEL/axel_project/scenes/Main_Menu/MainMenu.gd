@@ -8,6 +8,7 @@ extends Control
 @onready var _quit_button: Button = %QuitButton
 
 var _backdrop: TextureRect
+var _box: VBoxContainer
 var _time := 0.0
 var _overwrite_box: VBoxContainer
 var _overwrite_label: Label
@@ -16,7 +17,8 @@ var _overwrite_label: Label
 func _ready() -> void:
 	_backdrop = MenuLook.make_backdrop(self, true)
 	var chrome := MenuLook.make_chrome_layer(self)
-	$CenterBox.reparent(chrome)
+	_box = $CenterBox as VBoxContainer
+	_box.reparent(chrome)
 	_style_buttons()
 	_refresh_continue()
 	_continue_button.pressed.connect(_on_continue)
@@ -140,8 +142,63 @@ func _focus_start() -> void:
 
 
 func _style_buttons() -> void:
-	var title := find_child("TitleLabel", true, false) as Label
+	var title := _box.get_node_or_null("TitleLabel") as Label if _box != null else null
 	if title != null:
-		MenuLook.apply_label(title, MenuLook.scaled_font(self, 96), MenuLook.ACCENT)
+		MenuLook.apply_label(title, PortraitUi.font(self, 96, 3.2), MenuLook.ACCENT)
 	for button in [_continue_button, _new_button, _load_button, _options_button, _credits_button, _quit_button]:
-		MenuLook.apply_button(button, MenuLook.scaled_font(self, 36))
+		MenuLook.apply_button(button, PortraitUi.font(self, 36, 2.4))
+	_layout_box()
+	_layout_overwrite()
+
+
+func _layout_box() -> void:
+	if _box == null:
+		return
+	if not PortraitUi.is_portrait(self):
+		_box.set_anchors_preset(Control.PRESET_CENTER)
+		_box.offset_left = -280
+		_box.offset_top = -280
+		_box.offset_right = 280
+		_box.offset_bottom = 280
+		_box.add_theme_constant_override("separation", 12)
+		return
+	var safe := PortraitUi.safe_rect(self)
+	var rect := Rect2(
+		safe.position.x + safe.size.x * 0.05,
+		safe.position.y + safe.size.y * 0.12,
+		safe.size.x * 0.9,
+		safe.size.y * 0.78
+	)
+	_box.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_box.offset_left = rect.position.x
+	_box.offset_top = rect.position.y
+	_box.offset_right = rect.end.x
+	_box.offset_bottom = rect.end.y
+	var used := 0.0
+	var shown := 0
+	for child in _box.get_children():
+		var c := child as Control
+		if c == null or not c.visible:
+			continue
+		used += c.get_combined_minimum_size().y
+		shown += 1
+	var gap := 12.0
+	if shown > 1:
+		gap = maxf((rect.size.y - used) / float(shown - 1), 12.0)
+	_box.add_theme_constant_override("separation", roundi(gap))
+
+
+func _layout_overwrite() -> void:
+	if _overwrite_box == null:
+		return
+	var portrait := PortraitUi.is_portrait(self)
+	var half := PortraitUi.view_size(self).x * 0.45 if portrait else 320.0
+	_overwrite_box.offset_left = -half
+	_overwrite_box.offset_right = half
+	_overwrite_label.custom_maximum_size = Vector2(half * 2.0, -1)
+	MenuLook.apply_label(_overwrite_label, PortraitUi.font(self, 28, 2.0), MenuLook.TEXT)
+	for row in _overwrite_box.get_children():
+		if row is HBoxContainer:
+			for b in row.get_children():
+				if b is Button:
+					MenuLook.apply_button(b, PortraitUi.font(self, 32, 2.2))

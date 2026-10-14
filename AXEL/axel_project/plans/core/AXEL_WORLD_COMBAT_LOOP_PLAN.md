@@ -76,7 +76,7 @@ unwired.
 
 ### World goal ladder
 
-`AxelRun.WORLD_GOAL_LADDER_CENTS` = `50, 60, 70, 80, 90, 110, 175, 300, 550`
+`AxelRun.WORLD_GOAL_LADDER_CENTS` = `50, 60, 70, 80, 95, 115, 145, 190, 250, 330`
 (HUD units = raw cents), indexed by `RunState.world_fight_count` (monotonic).
 `world_encounter_index` also counts up without wrapping, so each fight gets its own
 seed. Past the last rung each further fight multiplies by `1.5`, rounded to 5. It reaches combat as a plain
@@ -221,13 +221,13 @@ a cleared area.
   room; walking near one shows its real name, description and icon.
 - Floor items show `[E]` on the walk-near card, join the item inventory (and auto-equip if a slot is free), and start a fight. The first walk-up opens the Items lesson, and E does not take the item while that card is open.
 - `1.1` and `1.2` never hold a floor item. `3.1` holds two.
-- Fight goals climb 50, 60, 70, 80, 90, 110, 175, 300, 550, then ×1.5 (rounded to 5).
+- Fight goals climb 50, 60, 70, 80, 95, 115, 145, 190, 250, 330, then ×1.5 (rounded to 5).
 - The first area's floor items are Common; after that pickup, every area you
   have not taken from reads one rank higher and its items_indicators show the new rarity.
 - The locker has no START RUN button and no LOCKER overlay; flashlight, key, and name pictures sit on the locker. Combat equip is the item wheel.
 - The locker map and pause Map are the same picture. A room with floor items travels only after a visit and one pickup there. Entrance loads `1.2` only after `1.4` has been visited. Before that, the Entrance click does nothing. A click on the room you opened the map from does nothing. Hallway on the map is `2.4`. The basement is not a travel button; its items_indicator is pinned on the right half of Entrance. Items_indicators are placed when the game starts. Each map items_indicator shows the rarity mark, and a rarity step redraws the items_indicators and the hover cards.
 - A wipe plays before each fight; a win settles winnings and the goal text, then shows Round Complete! with bets used and the post-win balance, fades, and returns to the same room and spot.
-- The `1.4` center door plays `"Not yet."` and stays in the room. Walking off the right edge loads `2.1`.
+- The `1.4` center door loads grey-box `6.1` (basement chain, then endings). Walking off the right edge loads `2.1`.
 
 ## Manual test checklist
 
@@ -236,8 +236,8 @@ a cleared area.
    goal and an empty item panel. Last spin / all-in pays the goal from real
    matches. Win → back in `1.2` where you stood.
 3. Walk to `1.4`, walk near the items_indicator: its real name, description and icon
-   show before you press `[E]`. Take it → fight (next ladder rung, 150) → win.
-   The chained door only plays `"Not yet."` and stays in the room.
+   show before you press `[E]`. Take it → fight (next ladder rung, 60) → win.
+   The chained door loads grey-box `6.1`.
 4. Return to `1.1` / `1.2` and walk: fights can now happen. `3.1` still cannot walk-fight, but it does have items_indicators.
 5. Open the locker map at the start: every floor-item room already has an items_indicator. The basement items_indicator sits on the right half of Entrance. Clicking the room you are already in does nothing. Before visiting `2.3`, kitchen does not travel. Walk there, pick up one items_indicator, reopen: the click works. Hover shows the remaining items_indicators and their cards. The other items_indicators show the next rarity.
 

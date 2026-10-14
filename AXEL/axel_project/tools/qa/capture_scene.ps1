@@ -31,9 +31,8 @@ if ($Out -notmatch "^(user|res)://") {
     }
 }
 
-& $godot --path (Join-Path $repo "AXEL/axel_project") -s res://tools/qa/capture_scene.gd -- `
-    "--scene=$Scene" "--out=$Out" "--frames=$Frames" "--size=$Size" "--mode=$Mode" 2>&1 |
-    ForEach-Object { $_ }
+& (Join-Path $PSScriptRoot "run_quiet.ps1") -Script "res://tools/qa/capture_scene.gd" `
+    -UserArgs @("--scene=$Scene", "--out=$Out", "--frames=$Frames", "--size=$Size", "--mode=$Mode")
 $code = $LASTEXITCODE
 if ($code -eq 0) {
     Write-Output "CAPTURE_DRIVER_RESULT status=pass out=$Out"

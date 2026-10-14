@@ -147,51 +147,67 @@ func _check_one_guess(world: Node, run: Node) -> void:
 
 
 func _check_corpse(world: Node, run: Node, gm: Node) -> void:
-	run.state.board_item_id = "C1"
-	run.state.board_room_scene = KITCHEN
-	run.state.equipped_item_ids = PackedStringArray()
+	run.state.seed = 222
+	run.state.board_symbol = ""
+	var symbol := String(world.call("ensure_board_symbol"))
+	if symbol.is_empty():
+		_fail("board symbol was empty")
+		return
+	run.state.board_symbol = ""
+	if String(world.call("ensure_board_symbol")) != symbol:
+		_fail("board symbol changed for the same seed")
+	var order: PackedStringArray = world.call("corpse_symbol_order")
+	if order.size() != 10 or not order.has(symbol):
+		_fail("corpse should offer the ten symbols, got %d" % order.size())
+	if PackedStringArray(world.call("corpse_symbol_order")) != order:
+		_fail("corpse symbol order changed for the same seed")
+	var wrong := ""
+	for other in order:
+		if other != symbol:
+			wrong = other
+			break
 	gm.call("set_flag", "hasName", false)
-	if bool(world.call("answered_item_equipped")):
+	if bool(world.call("corpse_symbol_correct", symbol)):
 		_fail("corpse passed before the board was answered")
-	if _corpse_dest() != ENDING_NONE:
-		_fail("corpse scene did not send a missed answer to ending 4")
+	var dests := _corpse_dests()
+	if String(dests.get(symbol, "")) != ENDING_NONE:
+		_fail("corpse scene did not send an unanswered board to ending 4")
 	gm.call("set_flag", "hasName", true)
-	if bool(world.call("answered_item_equipped")):
-		_fail("corpse passed when the item was not equipped")
-	if _corpse_dest() != ENDING_NONE:
-		_fail("corpse scene passed without the item equipped")
-	run.state.equipped_item_ids = PackedStringArray(["C2"])
-	if bool(world.call("answered_item_equipped")):
-		_fail("a different equipped item passed the corpse")
-	if _corpse_dest() != ENDING_NONE:
-		_fail("corpse scene accepted a different item")
-	run.state.equipped_item_ids = PackedStringArray(["C1"])
-	if not bool(world.call("answered_item_equipped")):
-		_fail("the answered item did not pass when equipped")
-	if _corpse_dest() != ENDING_TRUE:
-		_fail("corpse scene did not open the true ending")
+	if bool(world.call("corpse_symbol_correct", wrong)):
+		_fail("a wrong symbol passed the corpse")
+	if not bool(world.call("corpse_symbol_correct", symbol)):
+		_fail("the board symbol did not pass the corpse")
+	dests = _corpse_dests()
+	if String(dests.get(symbol, "")) != ENDING_TRUE:
+		_fail("corpse scene did not open the true ending for the right symbol")
+	if String(dests.get(wrong, "")) != ENDING_NONE:
+		_fail("corpse scene did not send a wrong symbol to ending 4")
+	var true_count := 0
+	for key in dests.keys():
+		if String(dests[key]) == ENDING_TRUE:
+			true_count += 1
+	if true_count != 1:
+		_fail("exactly one symbol should open the true ending, got %d" % true_count)
 	gm.call("set_flag", "hasName", false)
-	run.state.equipped_item_ids = PackedStringArray()
 
 
-func _corpse_dest() -> String:
+func _corpse_dests() -> Dictionary:
 	var packed: PackedScene = load(CORPSE)
 	if packed == null:
 		_fail("could not load the corpse scene")
-		return ""
+		return {}
 	var node := packed.instantiate()
 	root.add_child(node)
 	var def: Dictionary = node.call("_def")
 	if bool(def.get("input", false)):
 		_fail("corpse still asks for typed text")
-	var choices: Array = def.get("choices", [])
-	var dest := ""
-	if choices.size() == 1:
-		dest = String((choices[0] as Dictionary).get("to", ""))
-	else:
-		_fail("corpse should offer one face-it choice, got %d" % choices.size())
+	if not bool(def.get("symbols", false)):
+		_fail("corpse does not offer the symbol picker")
+	var dests: Dictionary = node.call("symbol_choices")
+	if dests.size() != 10:
+		_fail("corpse should offer ten symbol buttons, got %d" % dests.size())
 	node.free()
-	return dest
+	return dests
 
 
 func _check_nametag_icon(run: Node, gm: Node) -> void:
@@ -218,5 +234,9 @@ func _check_round_trip(run: Node) -> void:
 	var restored = RunState.from_dict(parsed as Dictionary)
 	if restored.board_item_id != "C1" or restored.board_room_scene != KITCHEN:
 		_fail("board question was lost on save")
+	run.state.board_symbol = "§"
+	var parsed_symbol: Variant = JSON.parse_string(JSON.stringify(run.call("to_dict")))
+	if RunState.from_dict(parsed_symbol as Dictionary).board_symbol != "§":
+		_fail("board symbol was lost on save")
 	if not restored.board_guess_spent:
 		_fail("spent guess was lost on save")

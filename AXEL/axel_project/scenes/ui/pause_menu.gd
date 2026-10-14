@@ -12,6 +12,7 @@ var _guide_button: Button
 var _map_button: Button
 var _dev_button: Button
 var _seed_label: Label
+var _title: Label
 
 
 func _ready() -> void:
@@ -84,6 +85,7 @@ func _build() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	MenuLook.apply_label(title, 64, MenuLook.ACCENT)
 	_menu.add_child(title)
+	_title = title
 
 	_add_menu_button("Resume", func() -> void: AxelPause.request_unpause())
 	_add_menu_button("Options", _open_options)
@@ -119,6 +121,30 @@ func _build() -> void:
 	_guide.visible = false
 	_guide.closed.connect(_show_main)
 	_root.add_child(_guide)
+	_apply_portrait()
+	get_viewport().size_changed.connect(_apply_portrait)
+
+
+func _apply_portrait() -> void:
+	if _menu == null or _title == null:
+		return
+	var k := PortraitUi.boost(self, 2.0)
+	var title_k := PortraitUi.boost(self, 2.6)
+	var gap_k := PortraitUi.boost(self, 3.2)
+	MenuLook.apply_label(_title, roundi(64.0 * title_k), MenuLook.ACCENT)
+	_menu.add_theme_constant_override("separation", roundi(8.0 * gap_k))
+	for child in _menu.get_children():
+		if child is Button:
+			MenuLook.apply_button(child, roundi(32.0 * k))
+	MenuLook.apply_label(_seed_label, roundi(22.0 * k), MenuLook.DIM)
+	var lift := 16.0
+	if PortraitUi.is_portrait(self):
+		var view := PortraitUi.view_size(self)
+		var safe := PortraitUi.safe_rect(self)
+		lift = view.y - safe.end.y + 16.0
+	_seed_label.offset_left = -360.0 * k
+	_seed_label.offset_top = -48.0 * k - lift + 16.0
+	_seed_label.offset_bottom = -lift
 
 
 func _add_menu_button(caption: String, cb: Callable) -> Button:

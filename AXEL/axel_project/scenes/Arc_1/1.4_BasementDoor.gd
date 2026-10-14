@@ -2,7 +2,8 @@ extends ExplorationRoom
 
 const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
-const DOOR_LINE := "Not yet."
+const BASEMENT_SCENE := "res://scenes/Arc_6/6.1_BasementDoor.tscn"
+const BASEMENT_RETURN_T := 1.0
 const CAFETERIA_PEEK_MARGIN_PX := 12.0
 const CORRIDOR_PEEK_MARGIN_PX := 12.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
@@ -18,6 +19,7 @@ var _cafeteria_exit_trigger: Area2D
 var _exit_trigger: Area2D
 var _pending_cafeteria_peek := false
 var _pending_corridor_peek := false
+var _pending_door_return := false
 var _arrival_t := InteractArrival.DEFAULT_T
 var _exit_trigger_armed := true
 var _cafeteria_exit_armed := true
@@ -80,13 +82,14 @@ func extra_blocks_interact() -> bool:
 func on_zone_interact(zone_id: String) -> void:
 	match zone_id:
 		"door":
-			_play_door_line()
+			_enter_basement()
 
 
-func _play_door_line() -> void:
+func _enter_basement() -> void:
 	if extra_blocks_interact() or InteractZoneGate.dialogue_busy(_top_dialogue):
 		return
-	_play_door_line_async()
+	GameManager.set_basement_door_line_seen(true)
+	begin_scene_change(BASEMENT_SCENE)
 
 
 func _restore_player_position_if_needed() -> void:
@@ -95,6 +98,10 @@ func _restore_player_position_if_needed() -> void:
 	if GameManager.has_pause_map_return_for(scene_file_path):
 		return
 	var basement_side := GameManager.take_basement_spawn_side()
+	if basement_side == "basement_door":
+		_pending_door_return = true
+		call_deferred("_apply_door_return_after_wake")
+		return
 	if basement_side == "cafeteria_right":
 		_pending_cafeteria_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
@@ -104,14 +111,6 @@ func _restore_player_position_if_needed() -> void:
 		_pending_corridor_peek = true
 		_arrival_t = InteractArrival.take_arrival_t_or_default()
 		call_deferred("_apply_corridor_peek_after_wake")
-
-
-func _play_door_line_async() -> void:
-	_line_running = true
-	await _top_dialogue.show_line(DOOR_LINE, 3.0)
-	_line_running = false
-	GameManager.set_basement_door_line_seen(true)
-	show_interact_prompt()
 
 
 func _on_exit_body_entered(body: Node) -> void:
@@ -151,6 +150,8 @@ func on_world_space_synced(_cover_scale: float, _bg_position: Vector2) -> void:
 		call_deferred("_apply_cafeteria_peek_after_wake")
 	elif _pending_corridor_peek:
 		call_deferred("_apply_corridor_peek_after_wake")
+	elif _pending_door_return:
+		call_deferred("_apply_door_return_after_wake")
 
 
 func _apply_cafeteria_peek_after_wake() -> void:
@@ -163,6 +164,27 @@ func _apply_corridor_peek_after_wake() -> void:
 	wake_static_colliders()
 	await await_two_physics_frames()
 	_apply_corridor_peek_if_pending()
+
+
+func _apply_door_return_after_wake() -> void:
+	wake_static_colliders()
+	await await_two_physics_frames()
+	_apply_door_return_if_pending()
+
+
+func _apply_door_return_if_pending() -> void:
+	if not _pending_door_return or not is_instance_valid(_player):
+		return
+	_pending_door_return = false
+	_player.global_position = InteractArrival.place_on_area(
+		_player,
+		_door_interact_area,
+		BASEMENT_RETURN_T,
+		Vector2.AXIS_Y,
+		InteractArrival.PeekEdge.CENTER_X,
+		0.0
+	)
+	call_deferred("_clamp_arrived_player")
 
 
 func _apply_cafeteria_peek_if_pending() -> void:

@@ -41,22 +41,29 @@ func _build() -> void:
 	host.name = "SavesHost"
 	host.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_chrome.add_child(host)
+	var half_w := _col_half_w()
+	var half_h := 360.0
+	var portrait := PortraitUi.is_portrait(self)
+	if portrait:
+		half_h = PortraitUi.safe_rect(self).size.y * 0.42
 	var col := VBoxContainer.new()
 	col.name = "SavesColumn"
 	col.set_anchors_preset(Control.PRESET_CENTER)
-	col.offset_left = -_COL_HALF_W
-	col.offset_right = _COL_HALF_W
-	col.offset_top = -360
-	col.offset_bottom = 360
-	col.add_theme_constant_override("separation", 16)
+	col.offset_left = -half_w
+	col.offset_right = half_w
+	col.offset_top = -half_h
+	col.offset_bottom = half_h
+	if portrait:
+		col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", roundi(16.0 * PortraitUi.boost(self, 1.6)))
 	col.propagate_maximum_size = true
-	col.custom_maximum_size = Vector2(_COL_HALF_W * 2.0, -1.0)
+	col.custom_maximum_size = Vector2(half_w * 2.0, -1.0)
 	host.add_child(col)
 
 	var title := Label.new()
 	title.text = "NEW GAME" if open_mode == "new" else "LOAD GAME"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	MenuLook.apply_label(title, MenuLook.scaled_font(self, 48), MenuLook.ACCENT)
+	MenuLook.apply_label(title, PortraitUi.font(self, 48, 2.6), MenuLook.ACCENT)
 	col.add_child(title)
 
 	for i in AxelSaves.SLOT_COUNT:
@@ -66,8 +73,8 @@ func _build() -> void:
 	_status.name = "SavesStatus"
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_maximum_size = Vector2(_COL_HALF_W * 2.0, -1.0)
-	MenuLook.apply_label(_status, MenuLook.scaled_font(self, 22), MenuLook.DIM)
+	_status.custom_maximum_size = Vector2(half_w * 2.0, -1.0)
+	MenuLook.apply_label(_status, PortraitUi.font(self, 22, 1.8), MenuLook.DIM)
 	col.add_child(_status)
 	if not _status_hold.is_empty():
 		_status.text = _status_hold
@@ -76,15 +83,22 @@ func _build() -> void:
 	var back := Button.new()
 	back.name = "BackButton"
 	back.text = "Back"
-	MenuLook.apply_button(back, MenuLook.scaled_font(self, 32))
+	MenuLook.apply_button(back, PortraitUi.font(self, 32, 2.2))
 	back.pressed.connect(func() -> void: MenuLook.go(get_tree(), MenuLook.TITLE_SCENE))
 	col.add_child(back)
 	MenuLook.grab_first_focus(host)
 
 
+func _col_half_w() -> float:
+	if PortraitUi.is_portrait(self):
+		return PortraitUi.view_size(self).x * 0.45
+	return _COL_HALF_W
+
+
 func _make_slot_row(slot: int) -> Control:
 	if open_mode != "load":
 		return _make_slot_button(slot)
+	var portrait := PortraitUi.is_portrait(self)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	row.propagate_maximum_size = true
@@ -92,16 +106,24 @@ func _make_slot_row(slot: int) -> Control:
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.clip_text = true
 	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_child(button)
+	var outer: VBoxContainer = null
+	if portrait:
+		outer = VBoxContainer.new()
+		outer.propagate_maximum_size = true
+		outer.add_child(button)
+		row.alignment = BoxContainer.ALIGNMENT_END
+		outer.add_child(row)
+	else:
+		row.add_child(button)
 	var seed_n := _slot_seed(slot)
 	if seed_n != 0:
 		var seed_btn := Button.new()
 		seed_btn.name = "SeedSlot%d" % (slot + 1)
 		seed_btn.text = "seed %d" % seed_n
-		MenuLook.apply_button(seed_btn, MenuLook.scaled_font(self, 28), Control.SIZE_SHRINK_END)
+		MenuLook.apply_button(seed_btn, PortraitUi.font(self, 28, 1.8), Control.SIZE_SHRINK_END)
 		seed_btn.clip_text = true
 		seed_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		seed_btn.custom_maximum_size = Vector2(220.0, -1.0)
+		seed_btn.custom_maximum_size = Vector2(220.0 * PortraitUi.boost(self, 1.8), -1.0)
 		seed_btn.mouse_entered.connect(func() -> void: _show_seed_hover(seed_btn, seed_n))
 		seed_btn.mouse_exited.connect(_hide_seed_hover)
 		seed_btn.pressed.connect(func() -> void: _on_seed_pressed(seed_n))
@@ -109,7 +131,7 @@ func _make_slot_row(slot: int) -> Control:
 	var delete_btn := Button.new()
 	delete_btn.name = "DeleteSlot%d" % (slot + 1)
 	delete_btn.text = "Delete"
-	MenuLook.apply_button(delete_btn, MenuLook.scaled_font(self, 28), Control.SIZE_SHRINK_END)
+	MenuLook.apply_button(delete_btn, PortraitUi.font(self, 28, 1.8), Control.SIZE_SHRINK_END)
 	var font := delete_btn.get_theme_font("font")
 	var fs := delete_btn.get_theme_font_size("font_size")
 	var word_w := 80.0
@@ -119,6 +141,8 @@ func _make_slot_row(slot: int) -> Control:
 	MenuLook.set_button_disabled(delete_btn, AxelSaves.is_empty(slot))
 	delete_btn.pressed.connect(func() -> void: _on_delete_pressed(slot))
 	row.add_child(delete_btn)
+	if outer != null:
+		return outer
 	return row
 
 
@@ -126,7 +150,7 @@ func _make_slot_button(slot: int) -> Button:
 	var button := Button.new()
 	button.name = "Slot%d" % (slot + 1)
 	button.text = _slot_label(slot)
-	MenuLook.apply_button(button, MenuLook.scaled_font(self, 28), Control.SIZE_SHRINK_BEGIN)
+	MenuLook.apply_button(button, PortraitUi.font(self, 28, 1.8), Control.SIZE_SHRINK_BEGIN)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if open_mode == "load":
 		MenuLook.set_button_disabled(
@@ -149,7 +173,9 @@ func _slot_label(slot: int) -> String:
 	if stamp > 0:
 		when = Time.get_datetime_string_from_unix_time(stamp, true)
 	var dead := "  DIED" if bool(header.get("dead", false)) else ""
-	return "Slot %d%s  —  %s  |  %dm %ds  |  %s" % [
+	var fmt := "Slot %d%s  —  %s
+%dm %ds  |  %s" if PortraitUi.is_portrait(self) else "Slot %d%s  —  %s  |  %dm %ds  |  %s"
+	return fmt % [
 		slot + 1,
 		dead,
 		String(header.get("last_room", "?")),
@@ -205,7 +231,7 @@ func _ensure_seed_hover() -> void:
 	_seed_hover.visible = false
 	_seed_hover.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_seed_hover.z_index = 20
-	MenuLook.apply_label(_seed_hover, MenuLook.scaled_font(self, 28), MenuLook.TEXT)
+	MenuLook.apply_label(_seed_hover, PortraitUi.font(self, 28, 1.8), MenuLook.TEXT)
 	add_child(_seed_hover)
 
 

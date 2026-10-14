@@ -122,7 +122,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![U2](../../combat/art/item_icons/U2.png) | `U2` | **Iron Lighter**      | Normal-symbol payout value `+20%`                                                                |
 | ![U3](../../combat/art/item_icons/U3.png) | `U3` | **Weighted Vice Die** | Makes power symbols 10% more likely to appear                                                    |
 | ![U4](../../combat/art/item_icons/U4.png) | `U4` | **Faulty Relay**      | Random power activation chance `+10%`                                                            |
-| ![U5](../../combat/art/item_icons/U5.png) | `U5` | **Split Wick**        | When a wild is created, `25%` chance to spawn one extra wild in nearest valid empty cell         |
+| ![U5](../../combat/art/item_icons/U5.png) | `U5` | **Split Wick**        | When a wild is created, `15%` chance to spawn one extra wild in nearest valid empty cell         |
 | ![U6](../../combat/art/item_icons/U6.png) | `U6` | **Cigarette Charm**   | Cigarette symbol chance `+15%`; Cigarette power removes `+1` extra low-pay set at `20%` chance   |
 | ![U7](../../combat/art/item_icons/U7.png) | `U7` | **Alcohol Charm**     | Alcohol symbol chance `+15%`; Alcohol power has `30%` chance to add `+1` extra wild              |
 | ![U8](../../combat/art/item_icons/U8.png) | `U8` | **Bloody Hand Charm** | Bloody-hand symbol chance `+15%`; Bloody-hand power transforms `+1` extra symbol at `25%` chance |
@@ -139,7 +139,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![U-D](../../combat/art/item_icons/U-D.png) | `U-D` | **Free Spins Primer** | `D`    | Free Spins start with `+2` extra spins                                |
 | ![U-E](../../combat/art/item_icons/U-E.png) | `U-E` | **Diagonal Compass**  | `E`    | Enables both major diagonals for 3+ contiguous wins                   |
 | ![U-F](../../combat/art/item_icons/U-F.png) | `U-F` | **Threshold Knot**    | `F`    | Threshold `7+`; bonus `0.50×` stake (then `0.431` payout scalar)      |
-| ![U-M](../../combat/art/item_icons/U-M.png) | `U-M` | **Ink Tag**           | `M`    | 3 cells, multiplier `x2`–`x3`; winnings-only bonus                    |
+| ![U-M](../../combat/art/item_icons/U-M.png) | `U-M` | **Ink Tag**           | `M`    | 3 cells, multiplier `x1.5`–`x2.5`; winnings-only bonus                |
 | ![U-G](../../combat/art/item_icons/U-G.png) | `U-G` | **Rusted Hasp**       | `G`    | Same as `C-G` with stronger payout bonus (`+20%`); regular spins only |
 | ![U-H](../../combat/art/item_icons/U-H.png) | `U-H` | **Torn Label**        | `H`    | Each fight starts with **10%** of the goal already paid              |
 
@@ -157,7 +157,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![R2](../../combat/art/item_icons/R2.png) | `R2` | **Gilded Commons** | Normal-symbols pay 35% more and are 10% more likely to appear                                                  |
 | ![R3](../../combat/art/item_icons/R3.png) | `R3` | **Triune Sigil**   | Power symbols are 15% more likely to appear and pay 15% more                                                   |
 | ![R4](../../combat/art/item_icons/R4.png) | `R4` | **Glitch Button**  | Random power activation chance doubled (no downside)                               |
-| ![R5](../../combat/art/item_icons/R5.png) | `R5` | **Chain Wildseed** | Every 3rd wild created in an encounter automatically creates a bonus wild                                      |
+| ![R5](../../combat/art/item_icons/R5.png) | `R5` | **Chain Wildseed** | Every 5th wild created in an encounter automatically creates a bonus wild                                      |
 | ![R6](../../combat/art/item_icons/R6.png) | `R6` | **Vice Echo**      | When a random power triggers, `30%` chance to trigger a second at `50%` potency                                |
 
 
@@ -172,7 +172,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![R-D](../../combat/art/item_icons/R-D.png) | `R-D` | **Free Spins Injector** | `D`    | During Free Spins, each cascade adds `+1` extra payout step                                    |
 | ![R-E](../../combat/art/item_icons/R-E.png) | `R-E` | **Diagonal Grid Lens**  | `E`    | Major diagonal only; diagonal wins can spawn wilds on exact-3 middle cells                    |
 | ![R-F](../../combat/art/item_icons/R-F.png) | `R-F` | **Threshold Brand**     | `F`    | Threshold `6+`; `0.75×` stake (then `0.431` scalar); once per cascade step                     |
-| ![R-M](../../combat/art/item_icons/R-M.png) | `R-M` | **Scratch Ticket**      | `M`    | 3 cells, `x2`–`x3`; on match split **60%** to spin winnings, **40%** bump to active multiplier |
+| ![R-M](../../combat/art/item_icons/R-M.png) | `R-M` | **Scratch Ticket**      | `M`    | 2 cells, `x2`–`x3`; on match split **60%** to spin winnings, **40%** bump to active multiplier |
 | ![R-G](../../combat/art/item_icons/R-G.png) | `R-G` | **Basement Bar**        | `G`    | Stronger seal + payout trade (`+30%`); regular spins only                                      |
 | ![R-H](../../combat/art/item_icons/R-H.png) | `R-H` | **Witness Slip**        | `H`    | Each fight starts with **15%** of the goal already paid                                       |
 
@@ -188,7 +188,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ----------------------------------------- | ---- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![E1](../../combat/art/item_icons/E1.png) | `E1` | **Ash Crown**        | Each power symbol (cigarette / alcohol / bloody hand) is 20% more likely to appear; potency +25%                                                |
 | ![E2](../../combat/art/item_icons/E2.png) | `E2` | **Null Gravity Pin** | On fully non-winning spin, `40%` chance to force one random power activation                                                                    |
-| ![E3](../../combat/art/item_icons/E3.png) | `E3` | **Echo Loom**        | First wild created each spin duplicates into nearest legal cell                                                                                 |
+| ![E3](../../combat/art/item_icons/E3.png) | `E3` | **Echo Loom**        | First wild created each spin has a `50%` chance to duplicate into nearest legal cell                                                             |
 | ![E4](../../combat/art/item_icons/E4.png) | `E4` | **Overflow Ledger**  | Each paid spin adds `+0.15x` payout scalar (cap `+1.50x`). `+5%` total power-symbol chance **while equipped** (not per paid spin) |
 
 
@@ -198,12 +198,12 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | Icon                                        | ID    | Name                   | Family | Effect                                                                                                                  |
 | ------------------------------------------- | ----- | ---------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------- |
 | ![E-A](../../combat/art/item_icons/E-A.png) | `E-A` | **Vice Relay Spine**   | `A`    | Each power activation triggers both other powers at `50%` potency                                                       |
-| ![E-B](../../combat/art/item_icons/E-B.png) | `E-B` | **Meter Furnace**      | `B`    | Premium meter fills on any winning premium line (live: at least a full 3-section fill) |
+| ![E-B](../../combat/art/item_icons/E-B.png) | `E-B` | **Meter Furnace**      | `B`    | Premium meter fills on any winning premium line (live: at least 2 sections, `any_line_fill_amount`) |
 | ![E-C](../../combat/art/item_icons/E-C.png) | `E-C` | **Vice Halo**          | `C`    | During the Vice Round, every power fires at **150%** strength (`vice_potency: 1.5`)                                              |
 | ![E-D](../../combat/art/item_icons/E-D.png) | `E-D` | **Free Spins Engine**  | `D`    | First win each Free Spins spin duplicates 1 winning symbol into wild                                                    |
 | ![E-E](../../combat/art/item_icons/E-E.png) | `E-E` | **Diagonal Cruciform** | `E`    | Both major diagonals; diagonal wins contribute to premium meter at `75%` normal contribution                            |
 | ![E-F](../../combat/art/item_icons/E-F.png) | `E-F` | **Threshold Tribunal** | `F`    | Threshold `6+`; `0.75×` stake (then `0.431` scalar); board-count also grants **one** premium meter section              |
-| ![E-M](../../combat/art/item_icons/E-M.png) | `E-M` | **CRT Etching**        | `M`    | 4 cells, `x2`–`x3`; a marked win adds the full mark (rounded) to the active multiplier (`dest: all_mult`)          |
+| ![E-M](../../combat/art/item_icons/E-M.png) | `E-M` | **CRT Etching**        | `M`    | 3 cells, `x2`–`x3`; a marked win adds the full mark (rounded) to the active multiplier (`dest: all_mult`)          |
 | ![E-G](../../combat/art/item_icons/E-G.png) | `E-G` | **Mason Lock**         | `G`    | Large payout trade (`+40%`); regular spins only                                                                         |
 | ![E-H](../../combat/art/item_icons/E-H.png) | `E-H` | **Confession Card**    | `H`    | Each fight starts with **20%** of the goal already paid                                                                |
 
@@ -217,7 +217,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 
 | Icon                                      | ID   | Name               | Effect                                                                                                                                                                                                |
 | ----------------------------------------- | ---- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ![L1](../../combat/art/item_icons/L1.png) | `L1` | **Twin Pentagram** | Whenever a wild is created, create one additional wild (legendary-only pool, late-game)                                                                                                               |
+| ![L1](../../combat/art/item_icons/L1.png) | `L1` | **Twin Pentagram** | Whenever a wild is created, `50%` chance to create one additional wild (legendary-only pool, late-game)                                                                                               |
 | ![L2](../../combat/art/item_icons/L2.png) | `L2` | **Vice Overclock** | Each power activation activates all other powers afterward at full potency (once-per-spin cap). This is the family-A legendary unique                                                                 |
 | ![L3](../../combat/art/item_icons/L3.png) | `L3` | **Void Satchel**   | Expands loadout capacity by `+2` slots (max 9). Utility/meta item; legendary-only gating in `ItemInventory`. Does not contribute to payout scalar. World scatter still never rolls `L2` / `L3` / `R6` |
 
@@ -232,7 +232,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![L-B](../../combat/art/item_icons/L-B.png) | `L-B` | **Meter Blood Moon**       | `B`    | First premium win each spin fills **one** meter section (overwrites a longer first line to 1); can overflow                                      |
 | ![L-C](../../combat/art/item_icons/L-C.png) | `L-C` | **Vice Crucible**          | `C`    | During Vice Round, chosen power + one extra random power at `60%` potency when bloody hand / alcohol / cigarette fire in the Vice Round sequence |
 | ![L-D](../../combat/art/item_icons/L-D.png) | `L-D` | **Free Spins Catastrophe** | `D`    | During Free Spins, each power activation chains one extra random power at `75%` potency                                                          |
-| ![L-E](../../combat/art/item_icons/L-E.png) | `L-E` | **Diagonal Covenant**      | `E`    | Diagonal wins treated as full standard line wins. Live mode is `all` (more than the two main diagonals) + wilds                                  |
+| ![L-E](../../combat/art/item_icons/L-E.png) | `L-E` | **Diagonal Covenant**      | `E`    | Diagonal wins treated as full standard line wins. Live mode is `all` with `min_length` 4 (diagonals of 3 do not count) + wilds                  |
 | ![L-F](../../combat/art/item_icons/L-F.png) | `L-F` | **Threshold Dominion**     | `F`    | Threshold `8+`; board-count wins become full resolver wins (line wins first; leftover matching cells clear)                                      |
 | ![L-M](../../combat/art/item_icons/L-M.png) | `L-M` | **Red Glyph**              | `M`    | 4 cells, `x2.5`–`x3.5`; glyph value immediately to active total multiplier for the spin                                                          |
 | ![L-G](../../combat/art/item_icons/L-G.png) | `L-G` | **Iron Lung**              | `G`    | Maximum seal + payout trade (`+50%`); regular spins only. Not combat-gated — basement floor scatter is the only world roll for family `G`        |
@@ -286,9 +286,9 @@ Live combat never calls `grid.refill()`. Empty cells already stay empty for ever
 | ID    | Cells | Mult          | Destination                                                     |
 | ----- | ----- | ------------- | --------------------------------------------------------------- |
 | `C-M` | 1     | `x2`–`x2.5`   | winnings                                                        |
-| `U-M` | 3     | `x2`–`x3`     | winnings                                                        |
-| `R-M` | 3     | `x2`–`x3`     | split 60% winnings / 40% multiplier                             |
-| `E-M` | 4     | `x2`–`x3`     | all_mult — full mark value to the multiplier |
+| `U-M` | 3     | `x1.5`–`x2.5` | winnings                                                        |
+| `R-M` | 2     | `x2`–`x3`     | split 60% winnings / 40% multiplier                             |
+| `E-M` | 3     | `x2`–`x3`     | all_mult — full mark value to the multiplier |
 | `L-M` | 4     | `x2.5`–`x3.5` | all_mult                                                        |
 
 
@@ -467,3 +467,14 @@ A whole-run sim (`combat/test/difficulty_curve_sim.gd`) showed Rare+ loadouts pa
 - `R5` every 3rd wild; `R-E` major diagonal only (keeps wilds); `E-B` no wild extra; `L-F` threshold `8+`.
 - Global caps in `ItemEffectDispatcher`: the summed paid-spin payout scalar is capped at `+2.0x` (`PAID_SPIN_SCALAR_TOTAL_CAP`), and all extra-wild items together add at most `+1` wild per created wild (`EXTRA_WILDS_PER_CREATE_CAP`).
 - `L-E` is unchanged: full lines always spawn wilds, and the global wild cap applies.
+
+## Nerf pass (2026-10-14)
+
+Whole-run sims showed the payout rate passing 100% after about 6–7 items, so late fights could not be lost (data: `plans/playtest/2026-10-14_item_power_audit.md`). Shipped:
+
+- Extra-wild line: `U5` 25% → 15%; `R5` every 3rd → every 5th wild; `E3` and `L1` now roll a `50%` chance (`"chance": 0.5`, `_roll_item_chance` on the combat RNG).
+- `L-E` keeps mode `all` but needs `min_length` 4, so diagonal 3-lines no longer count or spawn wilds.
+- `E-B`: any Power win fills at least 2 sections, not the whole meter.
+- M family: `U-M` `x1.5`–`x2.5`; `R-M` 3 → 2 cells; `E-M` 4 → 3 cells. `L-M` unchanged.
+- New global caps in `ItemEffectDispatcher`: summed line payout bonus `+100%` (`LINE_PAYOUT_BONUS_CAP`), glyph additions to the MULTIPLIER `+4` per spin (`GLYPH_MULT_SPIN_CAP`), Free Spins extra spins `+4` (`FREE_SPINS_EXTRA_CAP`).
+- Open: `L-E` is now over-nerfed (about no items) and `L-M` is weaker than `R5`; re-balance the Legendaries as a group. D-family and Vice-only C items still do nothing on their own. `glyph_params` uses the last glyph item's `mult_min`/`mult_max` for every glyph cell.

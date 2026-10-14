@@ -31,6 +31,7 @@ extends Resource
 @export var board_item_id: String = ""
 @export var board_room_scene: String = ""
 @export var board_guess_spent: bool = false
+@export var board_symbol: String = ""
 @export var tutorial_seen: PackedStringArray = PackedStringArray()
 @export var item_box_order: PackedStringArray = PackedStringArray()
 
@@ -66,6 +67,7 @@ func to_dict() -> Dictionary:
 		"board_item_id": board_item_id,
 		"board_room_scene": board_room_scene,
 		"board_guess_spent": board_guess_spent,
+		"board_symbol": board_symbol,
 		"tutorial_seen": Array(tutorial_seen),
 		"item_box_order": Array(item_box_order),
 	}
@@ -104,6 +106,7 @@ static func from_dict(data: Dictionary) -> RunState:
 	state.board_item_id = String(data.get("board_item_id", ""))
 	state.board_room_scene = String(data.get("board_room_scene", ""))
 	state.board_guess_spent = bool(data.get("board_guess_spent", false))
+	state.board_symbol = String(data.get("board_symbol", ""))
 	state.tutorial_seen = PackedStringArray(data.get("tutorial_seen", []))
 	state.item_box_order = PackedStringArray(data.get("item_box_order", []))
 	return state

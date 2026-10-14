@@ -24,6 +24,8 @@ func _main() -> void:
 	await _check_move_card(tutorial, failures)
 	await _check_spin_card_moves_off_glow(tutorial, failures)
 	await _check_card_stack(tutorial, failures)
+	await _check_fight_order(tutorial, failures)
+	await _check_calm_timer(tutorial, failures)
 	await _check_slot_freeze(tutorial, failures)
 	await _check_click_and_close_keys(tutorial, failures)
 	await _check_highlight_above_noir(failures)
@@ -336,45 +338,148 @@ func _check_card_stack(tutorial: Node, failures: Array[String]) -> void:
 	if not await _wait_lesson(tutorial, "fight_stakes"):
 		failures.append("stakes card did not open")
 		return
+	_expect_flanked_title(tutorial, failures, "Bets")
 	var exit0 := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
 	if exit0 == null or not exit0.visible:
 		failures.append("stakes card should have an X")
-	await create_timer(2.0).timeout
+	await create_timer(1.0).timeout
 	if host2.visible:
 		failures.append("a second card opened while the first was still up")
+	if bool(tutorial.call("blocks_spin")):
+		failures.append("stakes card blocks spinning")
 
-	var open_before := bool(tutorial.call("is_open"))
-	Input.action_press("interact")
-	await process_frame
-	Input.action_release("interact")
-	await process_frame
-	if open_before and not bool(tutorial.call("is_open")):
-		failures.append("interact closed a tutorial card")
-	if not bool(tutorial.call("blocks_spin")):
-		failures.append("stakes card does not block spinning")
-
-	tutorial.call("request", "slot_power")
-	await create_timer(0.6).timeout
+	for _i in 6:
+		Input.action_press("interact")
+		await process_frame
+		Input.action_release("interact")
+		await process_frame
 	if _open_lesson(tutorial) != "fight_stakes":
-		failures.append("a freeze card bumped the stakes card")
-	if host2.visible:
-		failures.append("a freeze card opened a second host over the stakes card")
+		failures.append("interact closed a tutorial card")
+
+	tutorial.call("request", "slot_power", {"freeze": true, "stack": true})
+	var stacked := false
+	for _i in 120:
+		await process_frame
+		if _slot_lesson(tutorial, 1) == "slot_power":
+			stacked = true
+			break
+	if not stacked:
+		failures.append("a power match did not stack its card over the stakes card")
+	if _open_lesson(tutorial) != "fight_stakes":
+		failures.append("the stacked power card bumped the stakes card")
+	if not bool(tutorial.call("is_freezing")):
+		failures.append("the stacked power card did not freeze time")
+
+	await _wait_slot_ready(tutorial, 0)
 	var body_click := InputEventMouseButton.new()
 	body_click.button_index = MOUSE_BUTTON_LEFT
 	body_click.pressed = true
 	tutorial.call("_on_card_gui_input", body_click, 0)
-	if not await _wait_lesson(tutorial, "slot_power"):
-		failures.append("freeze card did not follow the stakes card")
+	await process_frame
+	if _open_lesson(tutorial) != "fight_stakes":
+		failures.append("a click closed the stakes card inside the read lock")
+	await create_timer(1.0).timeout
+	tutorial.call("_on_card_gui_input", body_click, 0)
+	for _i in 120:
+		await process_frame
+		if _open_lesson(tutorial) != "fight_stakes":
+			break
 	if not bool(tutorial.call("_is_seen", "fight_stakes")):
 		failures.append("stakes card not marked seen after a click on it")
+	await _wait_slot_ready(tutorial, 1)
+	await create_timer(1.0).timeout
 	tutorial.call("close_freeze_card")
 	if not await _wait_lesson(tutorial, "fight_items"):
-		failures.append("items card did not follow the freeze card")
+		failures.append("items card did not follow the cards before it")
 	await _close_both_cards(tutorial)
 	tutorial.call("request", "fight_stakes")
 	await create_timer(0.6).timeout
 	if bool(tutorial.call("is_showing", "fight_stakes")):
 		failures.append("stakes card came back after it was seen")
+
+
+func _check_fight_order(tutorial: Node, failures: Array[String]) -> void:
+	await create_timer(0.7).timeout
+	_forget(tutorial, "items_hand")
+	tutorial.call("request", "items_hand")
+	if not await _wait_lesson(tutorial, "items_hand"):
+		failures.append("blocker card did not open for the order check")
+		return
+	for id in ["fight_goal", "slot_power", "slot_history"]:
+		_forget(tutorial, id)
+		tutorial.call("request", id)
+	var queue: Array = tutorial.get("_queue")
+	var want := ["slot_history", "slot_power", "fight_goal"]
+	if queue.slice(0, 3) != want:
+		failures.append("fight cards are not in the default order: %s" % [queue])
+	tutorial.call("drop_queued_fight_lessons")
+	queue = tutorial.get("_queue")
+	for id in want:
+		if queue.has(id):
+			failures.append("%s stayed queued after the fight ended" % id)
+	await _close_card(tutorial)
+
+
+func _check_calm_timer(tutorial: Node, failures: Array[String]) -> void:
+	await create_timer(0.7).timeout
+	_forget(tutorial, "fight_goal")
+	tutorial.call("set_playing_along", false)
+	tutorial.call("request", "fight_goal")
+	if not await _wait_lesson(tutorial, "fight_goal"):
+		failures.append("goal card did not open for the timer check")
+		return
+	await _wait_slot_ready(tutorial, 0)
+	await create_timer(7.0).timeout
+	if _open_lesson(tutorial) != "fight_goal":
+		failures.append("a calm card timed out while the player was idle")
+	if not bool(tutorial.call("has_blocking_fight_card")):
+		failures.append("an open goal card does not hold Round Complete")
+	tutorial.call("set_playing_along", true)
+	await create_timer(6.5).timeout
+	if _open_lesson(tutorial) == "fight_goal":
+		failures.append("a calm card did not time out while playing")
+	if not bool(tutorial.call("_is_seen", "fight_goal")):
+		failures.append("a timed-out calm card was not marked seen")
+	tutorial.call("set_playing_along", false)
+	for _i in 60:
+		await process_frame
+		if not bool(tutorial.call("is_open")):
+			break
+
+
+func _forget(tutorial: Node, id: String) -> void:
+	var marked: Dictionary = tutorial.get("_marked")
+	marked.erase(id)
+	var run := root.get_node_or_null("AxelRun")
+	if run != null:
+		var seen: PackedStringArray = run.state.tutorial_seen
+		var at := seen.find(id)
+		if at >= 0:
+			seen.remove_at(at)
+			run.state.tutorial_seen = seen
+	var profile := root.get_node_or_null("AxelProfile")
+	if profile != null:
+		var config: ConfigFile = profile.get("_config")
+		var list := PackedStringArray(config.get_value("profile", "tutorials_seen", PackedStringArray()))
+		var idx := list.find(id)
+		if idx >= 0:
+			list.remove_at(idx)
+			config.set_value("profile", "tutorials_seen", list)
+
+
+func _slot_lesson(tutorial: Node, idx: int) -> String:
+	var slot = tutorial.get("_slots")[idx]
+	if slot.phase == 0 or slot.phase == 4:
+		return ""
+	return String(slot.open_id)
+
+
+func _wait_slot_ready(tutorial: Node, idx: int) -> void:
+	for _i in 600:
+		await process_frame
+		var slot = tutorial.get("_slots")[idx]
+		if slot.phase == 3:
+			return
 
 
 func _check_click_and_close_keys(tutorial: Node, failures: Array[String]) -> void:
@@ -383,6 +488,8 @@ func _check_click_and_close_keys(tutorial: Node, failures: Array[String]) -> voi
 	if not await _wait_lesson(tutorial, "items_wheel"):
 		failures.append("items_wheel card did not open for the click check")
 		return
+	await _wait_slot_ready(tutorial, 0)
+	await create_timer(1.0).timeout
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
@@ -402,6 +509,8 @@ func _check_click_and_close_keys(tutorial: Node, failures: Array[String]) -> voi
 		return
 	if pause != null and bool(pause.call("_can_pause_here")):
 		failures.append("pause is allowed while a card is up")
+	await _wait_slot_ready(tutorial, 0)
+	await create_timer(1.0).timeout
 	var esc := InputEventAction.new()
 	esc.action = &"pause"
 	esc.pressed = true
@@ -494,9 +603,9 @@ func _expect_flanked_title(tutorial: Node, failures: Array[String], want: String
 
 func _close_card(tutorial: Node) -> void:
 	var exit_button := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
-	if exit_button != null:
-		exit_button.emit_signal("pressed")
-	for _i in 180:
+	for _i in 600:
+		if exit_button != null and exit_button.visible:
+			exit_button.emit_signal("pressed")
 		await process_frame
 		if not bool(tutorial.call("is_open")):
 			return
@@ -505,11 +614,11 @@ func _close_card(tutorial: Node) -> void:
 func _close_both_cards(tutorial: Node) -> void:
 	var exit0 := tutorial.get_node_or_null("CardLayer/CardHost/ExitButton") as Button
 	var exit1 := tutorial.get_node_or_null("CardLayer/CardHost2/ExitButton") as Button
-	if exit0 != null and exit0.visible:
-		exit0.emit_signal("pressed")
-	if exit1 != null and exit1.visible:
-		exit1.emit_signal("pressed")
-	for _i in 240:
+	for _i in 600:
+		if exit0 != null and exit0.visible:
+			exit0.emit_signal("pressed")
+		if exit1 != null and exit1.visible:
+			exit1.emit_signal("pressed")
 		await process_frame
 		if not bool(tutorial.call("is_open")):
 			return

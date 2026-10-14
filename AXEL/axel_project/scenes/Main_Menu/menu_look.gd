@@ -227,7 +227,8 @@ static func layout_backdrop(bg: TextureRect, time_sec: float) -> void:
 	if tex.x < 1.0 or tex.y < 1.0:
 		return
 	var cover := maxf(vp.x / tex.x, vp.y / tex.y)
-	var drawn := tex * (cover / BACKDROP_ZOOM_OUT)
+	var zoom_out := 1.0 if vp.x < vp.y else BACKDROP_ZOOM_OUT
+	var drawn := tex * (cover / zoom_out)
 	var origin := (vp - drawn) * 0.5
 	var ox := sin(time_sec * 0.07) * 18.0
 	var oy := cos(time_sec * 0.05) * 12.0

@@ -13,6 +13,10 @@ const ROOM_SCENES := {
 	"5.4": "res://scenes/Arc_5/5.4_ClassroomBoardSuccess.tscn",
 }
 
+const BASEMENT_DOOR_ROOM := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
+const ENDING_4 := "res://scenes/Endings/7.4_Ending4.tscn"
+const ENDING_TRUE := "res://scenes/Endings/7.5_EndingTrue.tscn"
+
 const ENDINGS := [
 	"res://scenes/Endings/7.2_Ending2.tscn",
 	"res://scenes/Endings/7.3_Ending3.tscn",
@@ -94,6 +98,39 @@ func _main() -> void:
 	if not bool(gm.call("get_flag", "hasName")) or not bool(gm.call("get_flag", "knowsName")):
 		failures.append("5.4 should set hasName and knowsName")
 	board.queue_free()
+	await process_frame
+
+	for room_id in ["6.1", "6.2", "6.3"]:
+		var back_scene: PackedScene = load(String(ROOM_SCENES[room_id]))
+		var back_node: Node = back_scene.instantiate()
+		root.add_child(back_node)
+		var back_def: Dictionary = back_node.call("_def")
+		for choice in back_def.get("choices", []):
+			if String(choice.get("to", "")) != BASEMENT_DOOR_ROOM:
+				continue
+			if String(choice.get("spawn", "")) != "basement_door":
+				failures.append("%s choice back to 1.4 has no basement_door spawn" % room_id)
+			gm.set("basement_spawn_side", "")
+			back_node.call("_apply_enter_effects", choice)
+			if String(gm.call("take_basement_spawn_side")) != "basement_door":
+				failures.append("%s choice did not set the basement_door spawn" % room_id)
+		back_node.queue_free()
+		await process_frame
+
+	var corpse_scene: PackedScene = load(String(ROOM_SCENES["6.8"]))
+	var corpse: Node = corpse_scene.instantiate()
+	root.add_child(corpse)
+	var corpse_def: Dictionary = corpse.call("_def")
+	if not bool(corpse_def.get("symbols", false)):
+		failures.append("6.8 should offer the symbol picker")
+	var corpse_dests: Dictionary = corpse.call("symbol_choices")
+	if corpse_dests.size() != 10:
+		failures.append("6.8 should offer ten symbols, got %d" % corpse_dests.size())
+	for symbol in corpse_dests.keys():
+		var dest := String(corpse_dests[symbol])
+		if dest != ENDING_4 and dest != ENDING_TRUE:
+			failures.append("6.8 symbol %s goes to %s" % [symbol, dest])
+	corpse.queue_free()
 
 	if failures.is_empty():
 		print("Greybox flow check OK.")

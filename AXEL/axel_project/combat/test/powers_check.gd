@@ -646,8 +646,10 @@ func _assert_glyphs_pulse_only_owner() -> void:
 	var owners := {}
 	for key in fx.glyphs.keys():
 		owners[str(fx.glyphs[key]["item_id"])] = int(owners.get(str(fx.glyphs[key]["item_id"]), 0)) + 1
-	if int(owners.get(str(ticket.get("id")), 0)) != 3 or int(owners.get(str(etching.get("id")), 0)) != 4:
-		push_error("Glyph owners should be 3 ticket + 4 etching cells, got %s" % owners)
+	var ticket_cells := int(ticket.get("effect_params").get("cells", 0))
+	var etching_cells := int(etching.get("effect_params").get("cells", 0))
+	if int(owners.get(str(ticket.get("id")), 0)) != ticket_cells or int(owners.get(str(etching.get("id")), 0)) != etching_cells:
+		push_error("Glyph owners should be %d ticket + %d etching cells, got %s" % [ticket_cells, etching_cells, owners])
 		quit(1)
 		return
 	for key in fx.glyphs.keys():

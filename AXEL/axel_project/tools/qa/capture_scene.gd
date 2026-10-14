@@ -52,6 +52,10 @@ func _main() -> void:
 		return
 
 
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
+	if _mode != "fullscreen":
+		DisplayServer.window_set_position(Vector2i(-10000, -10000))
+		await process_frame
 	match _mode:
 		"fullscreen":
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -60,6 +64,8 @@ func _main() -> void:
 			root.size = _size
 		_:
 			root.size = _size
+	if _mode != "fullscreen":
+		DisplayServer.window_set_position(Vector2i(-10000, -10000))
 	await process_frame
 
 

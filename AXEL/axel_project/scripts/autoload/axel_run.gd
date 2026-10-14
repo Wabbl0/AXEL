@@ -10,7 +10,7 @@ const ITEM_DIR := "res://combat/data/items/"
 const LORE_FLAGS: PackedStringArray = ["hasFlashlight", "hasKey", "hasShovel", "hasName"]
 const LORE_GOAL_BONUS := 0.15
 const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
-	50, 60, 70, 80, 90, 110, 175, 300, 550,
+	50, 60, 70, 80, 95, 115, 145, 190, 250, 330,
 ]
 const WORLD_GOAL_LADDER_GROWTH := 1.5
 const WORLD_GOAL_LADDER_ROUNDING := 5
@@ -583,6 +583,7 @@ func _show_round_complete_card() -> void:
 	var root := _live_combat_root()
 	if root != null and root.has_method("play_goal_win_burst"):
 		await root.call("play_goal_win_burst")
+	await _await_fight_cards_closed()
 	var pace := get_node_or_null("/root/CombatPace")
 	if pace != null and pace.has_method("clear_rush"):
 		pace.call("clear_rush")
@@ -602,6 +603,17 @@ func _show_round_complete_card() -> void:
 		if gathered and root != null and root.has_method("hide_goal_skulls"):
 			root.call("hide_goal_skulls")
 		await _await_round_intro(fx)
+
+
+func _await_fight_cards_closed() -> void:
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	if tutorial == null or not tutorial.has_method("has_blocking_fight_card"):
+		return
+	tutorial.call("drop_queued_fight_lessons")
+	var tree := get_tree()
+	while tree != null and bool(tutorial.call("has_blocking_fight_card")):
+		tutorial.call("set_playing_along", true)
+		await tree.process_frame
 
 
 func _await_round_intro(fx: Node) -> void:

@@ -35,6 +35,7 @@ static func apply(
 	fit_mode: FitMode = FitMode.COVER,
 	background_y: float = DEFAULT_BACKGROUND_Y,
 	edge_reveal: float = 0.0,
+	keep_height: bool = false,
 ) -> Dictionary:
 	var empty: Dictionary = {}
 	var tex := sprite.texture
@@ -50,6 +51,9 @@ static func apply(
 	match fit_mode:
 		FitMode.CONTAIN:
 			scale_factor = contain_scale
+			if keep_height:
+				var baseline := minf(DESIGN_VIEWPORT.x / tex_size.x, DESIGN_VIEWPORT.y / tex_size.y)
+				scale_factor = maxf(contain_scale, baseline * viewport_size.y / DESIGN_VIEWPORT.y)
 		_:
 			scale_factor = cover_scale
 			if edge_reveal > 0.0:
