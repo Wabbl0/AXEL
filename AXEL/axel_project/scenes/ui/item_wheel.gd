@@ -46,6 +46,7 @@ var _family_button: Button
 var _scroll: ScrollContainer
 var _list: VBoxContainer
 var _balance: Label
+var _dread: Label
 var _cap: Label
 var _open := false
 var _tab := TAB_ITEMS
@@ -274,6 +275,11 @@ func _build() -> void:
 	_balance.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	MenuLook.apply_label(_balance, ROW_PX, MenuLook.TEXT)
 	footer.add_child(_balance)
+	_dread = Label.new()
+	_dread.name = "Dread"
+	_dread.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	MenuLook.apply_label(_dread, ROW_PX, OUTLINE)
+	footer.add_child(_dread)
 	_cap = Label.new()
 	_cap.name = "EquipCap"
 	_cap.visible = false
@@ -375,6 +381,7 @@ func _layout_box() -> void:
 	for button in [_sort_button, _rank_button, _family_button]:
 		button.add_theme_font_size_override("font_size", _px(SMALL_PX))
 	_balance.add_theme_font_size_override("font_size", _px(ROW_PX))
+	_dread.add_theme_font_size_override("font_size", _px(ROW_PX))
 	_cap.add_theme_font_size_override("font_size", _px(ROW_PX))
 
 
@@ -431,6 +438,11 @@ func _refresh_footer() -> void:
 		if run.has_method("max_equip_slots"):
 			cap = int(run.call("max_equip_slots"))
 	_balance.text = "BALANCE: %d" % bankroll
+	var dread := 0.0
+	if run != null and run.has_method("dread_pct"):
+		dread = float(run.call("dread_pct"))
+	_dread.visible = dread > 0.0
+	_dread.text = "DREAD %d%%" % int(round(dread * 100.0))
 	_cap.visible = _owned_count() > 0
 	_cap.text = "%d/%d" % [equipped, cap]
 	_cap.add_theme_color_override("font_color", OUTLINE if equipped >= cap else MenuLook.TEXT)

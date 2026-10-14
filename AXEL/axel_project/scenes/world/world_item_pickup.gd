@@ -259,7 +259,7 @@ func _show_info_card() -> void:
 			"show_item",
 			global_position,
 			display_name(),
-			description(),
+			_card_description(),
 			_icon_texture(),
 			_marker
 		)
@@ -282,3 +282,14 @@ func _hide_info_card_immediate() -> void:
 		_info_card.call("hide_card_immediate")
 	elif _info_card.has_method("hide_card"):
 		_info_card.call("hide_card")
+
+
+func _card_description() -> String:
+	var text := description()
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not run.has_method("dread_for_item"):
+		return text
+	var pct := int(round(float(run.call("dread_for_item", item_id)) * 100.0))
+	if pct <= 0:
+		return text
+	return "%s  +%d%% Dread" % [text, pct]

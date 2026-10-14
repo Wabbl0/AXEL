@@ -34,6 +34,10 @@ const SCHEDULE: Array = [
 var _items_by_rank: Array = [[], [], [], [], []]
 var _ladder: Array[int] = []
 var _growth: float = 1.5
+var _growth_step: float = 0.0
+var _dread_item_scale: float = 1.0
+var _dread_memory: float = 0.10
+const DREAD_BY_RANK: Array[float] = [0.04, 0.05, 0.06, 0.08, 0.10]
 var _rounding: int = 25
 var _lore_step: float = 0.15
 var _bankroll: int = 1000
@@ -88,6 +92,7 @@ func _main() -> void:
 		pick_rng.seed = 7001 + run_i * 7919
 		var wallet := _bankroll
 		var owned: Array = []
+		var dread := 0.0
 		for fight_i in fights:
 			var row: Array = SCHEDULE[fight_i]
 			var rank := int(row[1])
@@ -95,13 +100,16 @@ func _main() -> void:
 				var item = _pick_item(rank, pick_rng) if _pick_style == "random" else _pick_synergy(rank, owned, pick_rng)
 				if item != null:
 					owned.append(item)
+					dread += DREAD_BY_RANK[clampi(rank, 0, 4)] * _dread_item_scale
+			if String(row[0]).ends_with("memory"):
+				dread += _dread_memory
 			var equipped: Array = owned.slice(maxi(owned.size() - MAX_EQUIPPED, 0)) if _pick_style == "random" else _best_loadout(owned)
 			var tutorial := String(row[0]) == "tutorial"
 			var result := _play_fight(
 				cr,
 				_fight_seed(run_i, fight_i),
 				[] if tutorial else equipped,
-				0.0 if tutorial else _lore_step * float(int(row[2])),
+				0.0 if tutorial else _lore_step * float(int(row[2])) + dread,
 				_goal_base(fight_i + 1),
 				tutorial,
 				wallet,
@@ -194,6 +202,9 @@ func _read_config() -> void:
 		if not part.strip_edges().is_empty():
 			_ladder.append(int(part.strip_edges()))
 	_growth = _env_float("DIFF_GROWTH", float(_source_const(source, "WORLD_GOAL_LADDER_GROWTH", "1.5")))
+	_growth_step = _env_float("DIFF_GROWTH_STEP", float(_source_const(source, "WORLD_GOAL_GROWTH_STEP", "0.0")))
+	_dread_item_scale = _env_float("DIFF_DREAD_ITEM", 1.0)
+	_dread_memory = _env_float("DIFF_DREAD_MEMORY", float(_source_const(source, "DREAD_PER_MEMORY", "0.10")))
 	_rounding = int(_env_float("DIFF_ROUNDING", float(_source_const(source, "WORLD_GOAL_LADDER_ROUNDING", "25"))))
 	_lore_step = _env_float("DIFF_LORE", float(_source_const(source, "LORE_GOAL_BONUS", "0.15")))
 	_bankroll = int(_env_float("DIFF_BANKROLL", float(_source_const(source, "STARTING_BANKROLL_CENTS", "1000"))))
@@ -327,8 +338,8 @@ func _goal_base(fight_count: int) -> int:
 	if rung <= last:
 		return _ladder[rung]
 	var value := float(_ladder[last])
-	for _i in rung - last:
-		value *= _growth
+	for i in rung - last:
+		value *= _growth + _growth_step * float(i)
 	return maxi(int(round(value / float(_rounding))) * _rounding, 1)
 
 
@@ -407,8 +418,8 @@ func _median(values: Array) -> int:
 
 
 func _print_report(entered: Array[int], deaths: Array[int], goals: Array, wallets: Array, spins: Array) -> void:
-	print("DIFF_CONFIG ladder=%s growth=%.2f lore=%.2f bankroll=%d bet=%s runs=%d real_seeds=%s pick=%s choices=%d lane=%s" % [
-		str(_ladder), _growth, _lore_step, _bankroll, _bet_style, _runs, str(_real_seeds), _pick_style, _choices, _lane,
+	print("DIFF_CONFIG step=%.3f dread_item=%.2f dread_mem=%.2f ladder=%s growth=%.2f lore=%.2f bankroll=%d bet=%s runs=%d real_seeds=%s pick=%s choices=%d lane=%s" % [
+		_growth_step, _dread_item_scale, _dread_memory, str(_ladder), _growth, _lore_step, _bankroll, _bet_style, _runs, str(_real_seeds), _pick_style, _choices, _lane,
 	])
 	var items := 0
 	var dead := 0

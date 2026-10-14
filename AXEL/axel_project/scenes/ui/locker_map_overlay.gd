@@ -88,6 +88,7 @@ const AREAS: Array[Dictionary] = [
 	},
 ]
 
+var show_items := false
 var _root: Control
 var _rock: Control
 var _map: TextureRect
@@ -660,6 +661,8 @@ func _refresh_pins() -> void:
 	for child in old_pins:
 		_pin_host.remove_child(child)
 		child.free()
+	if not show_items:
+		return
 	var chrome := 1.0
 	if is_inside_tree():
 		chrome = UiViewportScale.factor(self)
@@ -715,7 +718,7 @@ func _clear_cards() -> void:
 
 
 func _refresh_cards() -> void:
-	if _card_host == null or _hover_index < 0:
+	if _card_host == null or _hover_index < 0 or not show_items:
 		_clear_cards()
 		return
 	_clear_cards()

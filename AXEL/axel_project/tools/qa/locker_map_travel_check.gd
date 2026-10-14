@@ -187,7 +187,23 @@ func _check_pins_and_cards(world: Node, run: Node) -> void:
 	for entry in entries:
 		(entry as Dictionary)["x"] = plate.x * 0.5
 		(entry as Dictionary)["y"] = plate.y * 0.5
+	var hidden := OverlayScript.new()
+	root.add_child(hidden)
+	hidden.call("open")
+	for _i in 3:
+		await process_frame
+	var hidden_index := _area_index(hidden, "Cafeteria")
+	if hidden_index >= 0:
+		hidden.call("_on_part_enter", hidden_index, 0)
+		for _i in 3:
+			await process_frame
+	if not hidden.find_children("ItemPin*", "TextureRect", true, false).is_empty():
+		_fail("map should not show item pins by default")
+	if hidden.find_child("ItemCard", true, false) != null:
+		_fail("map should not show item cards by default")
+	hidden.queue_free()
 	var overlay := OverlayScript.new()
+	overlay.set("show_items", true)
 	root.add_child(overlay)
 	if overlay.has_method("open"):
 		overlay.call("open")
@@ -289,6 +305,7 @@ func _check_spots_at_start(world: Node) -> void:
 		if shown.is_empty():
 			_fail("%s is on the map but has no pin" % String(row.get("name", "")))
 	var overlay := OverlayScript.new()
+	overlay.set("show_items", true)
 	root.add_child(overlay)
 	if overlay.has_method("open"):
 		overlay.call("open")
@@ -342,6 +359,7 @@ func _check_retier_on_map(world: Node, run: Node) -> void:
 		if not item_id.begins_with("U"):
 			_fail("map still lists %s after the rarity step" % item_id)
 	var overlay := OverlayScript.new()
+	overlay.set("show_items", true)
 	root.add_child(overlay)
 	if overlay.has_method("open"):
 		overlay.call("open")
@@ -376,6 +394,7 @@ func _check_same_room(world: Node, gm: Node) -> void:
 		_fail("corridor visit did not unlock entrance")
 		return
 	var overlay := OverlayScript.new()
+	overlay.set("show_items", true)
 	root.add_child(overlay)
 	var got: Array[String] = []
 	overlay.travel_requested.connect(func(path: String) -> void: got.append(path))
@@ -397,6 +416,7 @@ func _check_same_room(world: Node, gm: Node) -> void:
 	for _i in 12:
 		await process_frame
 	overlay = OverlayScript.new()
+	overlay.set("show_items", true)
 	root.add_child(overlay)
 	got.clear()
 	overlay.travel_requested.connect(func(path: String) -> void: got.append(path))

@@ -390,6 +390,9 @@ func start_fight_to_scene(reason: String, return_scene: String) -> bool:
 
 
 func start_memory_fight(return_scene: String) -> bool:
+	var run := _run()
+	if run != null and run.has_method("add_memory_dread"):
+		run.call("add_memory_dread")
 	if not is_enabled():
 		return false
 	return start_fight_to_scene(REASON_MEMORY, return_scene)
@@ -512,6 +515,8 @@ func take_item(scene_path: String, index: int) -> void:
 		if not item_id.is_empty() and not owned.has(item_id):
 			owned.append(item_id)
 			run.state.owned_item_ids = PackedStringArray(owned)
+			if run.has_method("add_item_dread"):
+				run.call("add_item_dread", item_id)
 		var profile := get_node_or_null("/root/AxelProfile")
 		if profile != null and not item_id.is_empty():
 			profile.call("mark_item_found", item_id)

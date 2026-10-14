@@ -25,6 +25,7 @@ extends Resource
 @export var world_return_tex_valid: bool = false
 @export var world_encounter_index: int = 0
 @export var world_fight_count: int = 0
+@export var dread_pct: float = 0.0
 @export var tutorial_fight_pending: bool = false
 @export var tutorial_fight_done: bool = false
 @export var fought_rooms: PackedStringArray = PackedStringArray()
@@ -61,6 +62,7 @@ func to_dict() -> Dictionary:
 		"world_return_tex_valid": world_return_tex_valid,
 		"world_encounter_index": world_encounter_index,
 		"world_fight_count": world_fight_count,
+		"dread_pct": dread_pct,
 		"tutorial_fight_pending": tutorial_fight_pending,
 		"tutorial_fight_done": tutorial_fight_done,
 		"fought_rooms": Array(fought_rooms),
@@ -100,6 +102,7 @@ static func from_dict(data: Dictionary) -> RunState:
 	state.world_return_tex_valid = bool(data.get("world_return_tex_valid", false))
 	state.world_encounter_index = maxi(int(data.get("world_encounter_index", 0)), 0)
 	state.world_fight_count = maxi(int(data.get("world_fight_count", 0)), 0)
+	state.dread_pct = maxf(float(data.get("dread_pct", 0.0)), 0.0)
 	state.tutorial_fight_pending = bool(data.get("tutorial_fight_pending", false))
 	state.tutorial_fight_done = bool(data.get("tutorial_fight_done", false))
 	state.fought_rooms = PackedStringArray(data.get("fought_rooms", []))

@@ -1135,6 +1135,9 @@ func _resolve_lines_impl(lines: Array) -> void:
 		var can_wild := wild_line_lengths.has(int(line["length"])) and not free_spins.active
 		if axis == "d" and not allow_diag_wilds:
 			can_wild = false
+		var diag_wild_lengths: Array = diag_opts.get("wild_lengths", [])
+		if axis == "d" and allow_diag_wilds and not diag_wild_lengths.is_empty():
+			can_wild = diag_wild_lengths.has(int(line["length"])) and not free_spins.active
 		if can_wild:
 			var mid: Vector2i = cells[int(cells.size() / 2.0)]
 			wild_spawns[mid] = true
@@ -3080,24 +3083,10 @@ func _apply_glyph_payouts(lines: Array, out: Dictionary) -> void:
 				continue
 			paid[key] = true
 			var g: Dictionary = _item_fx.glyphs[key]
-			var dest := str(g.get("dest", "winnings"))
 			var mult := float(g.get("mult", 2.0))
-			var win_frac := float(g.get("win_frac", 1.0))
-			if dest == "winnings":
-				var extra := _to_cents(float(line_pay) * (mult - 1.0))
-				out["payout"] = int(out["payout"]) + extra
-				_add_round_winnings(extra)
-			elif dest == "split":
-				var extra2 := _to_cents(float(line_pay) * (mult - 1.0) * win_frac)
-				out["payout"] = int(out["payout"]) + extra2
-				_add_round_winnings(extra2)
-				var split_add := _item_fx.glyph_mult_room(maxi(1, int(round((mult - 1.0) * (1.0 - win_frac)))))
-				if split_add > 0:
-					multiplier.add(split_add)
-			else:
-				var all_add := _item_fx.glyph_mult_room(maxi(1, int(round(mult))))
-				if all_add > 0:
-					multiplier.add(all_add)
+			var extra := _to_cents(float(line_pay) * (mult - 1.0))
+			out["payout"] = int(out["payout"]) + extra
+			_add_round_winnings(extra)
 
 
 func _music_notify_trinity() -> void:

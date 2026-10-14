@@ -6,7 +6,6 @@ const PAID_SPIN_SCALAR_TOTAL_CAP := 2.0
 const EXTRA_WILDS_PER_CREATE_CAP := 1
 const HEAD_START_CAP := 0.5
 const LINE_PAYOUT_BONUS_CAP := 1.0
-const GLYPH_MULT_SPIN_CAP := 4
 const FREE_SPINS_EXTRA_CAP := 4
 
 var dead_power_streak: int = 0
@@ -21,7 +20,6 @@ var trinity_win_scalar_accum: float = 0.0
 var fs_first_win_this_spin: bool = true
 var glyphs: Dictionary = {}
 var meter_frac_accum: float = 0.0
-var glyph_mult_added_this_spin: int = 0
 var chaining: bool = false
 var girl_power_this_spin: bool = false
 var _procs: Array[StringName] = []
@@ -48,7 +46,6 @@ func reset_spin() -> void:
 	chaining = false
 	girl_power_this_spin = false
 	glyphs.clear()
-	glyph_mult_added_this_spin = 0
 
 
 func note_proc(item: Resource) -> void:
@@ -310,6 +307,7 @@ func diagonal_opts(items: Array) -> Dictionary:
 		"meter_frac": 0.0,
 		"full_lines": false,
 		"min_length": 3,
+		"wild_lengths": [],
 	}
 	for item in items:
 		if _eff(item) != &"diagonal":
@@ -318,6 +316,8 @@ func diagonal_opts(items: Array) -> Dictionary:
 		opts["mode"] = str(p.get("mode", "none"))
 		if p.has("min_length"):
 			opts["min_length"] = int(p.get("min_length", 3))
+		if p.has("wild_lengths"):
+			opts["wild_lengths"] = p.get("wild_lengths", [])
 		if p.has("wilds"):
 			opts["wilds"] = bool(p.get("wilds", false))
 		if p.has("meter_frac"):
@@ -443,8 +443,6 @@ func glyph_params(items: Array) -> Dictionary:
 		"cells": 0,
 		"mult_min": 2.0,
 		"mult_max": 2.5,
-		"dest": "winnings",
-		"win_frac": 1.0,
 	}
 	for item in items:
 		if _eff(item) != &"corner_glyphs":
@@ -455,10 +453,6 @@ func glyph_params(items: Array) -> Dictionary:
 			params["mult_min"] = float(p.get("mult_min", 2.0))
 		if p.has("mult_max"):
 			params["mult_max"] = float(p.get("mult_max", 2.5))
-		if p.has("dest"):
-			params["dest"] = str(p.get("dest", "winnings"))
-		if p.has("win_frac"):
-			params["win_frac"] = float(p.get("win_frac", 1.0))
 	return params
 
 
@@ -496,8 +490,6 @@ func roll_glyphs(items: Array, rng: CombatRNG) -> void:
 		var owner: Resource = owners[i] if i < owners.size() else null
 		glyphs[key] = {
 			"mult": mult,
-			"dest": str(gp["dest"]),
-			"win_frac": float(gp["win_frac"]),
 			"item_id": StringName(str(owner.get("id"))) if owner != null else &"",
 			"rarity": int(owner.get("rarity")) if owner != null else 0,
 		}
@@ -505,8 +497,6 @@ func roll_glyphs(items: Array, rng: CombatRNG) -> void:
 
 static func glyph_label(g: Dictionary) -> String:
 	var mult := float(g.get("mult", 2.0))
-	if not ["winnings", "split"].has(str(g.get("dest", "winnings"))):
-		return "+%d" % maxi(1, int(round(mult)))
 	var shown := snappedf(mult, 0.1)
 	if is_equal_approx(shown, roundf(shown)):
 		return "x%d" % int(roundf(shown))
@@ -604,13 +594,6 @@ func _roll_item_chance(p: Dictionary, rng: CombatRNG) -> bool:
 	if not p.has("chance"):
 		return true
 	return rng != null and rng.randf() <= float(p.get("chance", 0.0))
-
-
-func glyph_mult_room(want: int) -> int:
-	var room := maxi(GLYPH_MULT_SPIN_CAP - glyph_mult_added_this_spin, 0)
-	var got := mini(want, room)
-	glyph_mult_added_this_spin += got
-	return got
 
 
 func apply_c5_c9_from_items(items: Array, produced_win: bool, power_triggered: bool) -> void:

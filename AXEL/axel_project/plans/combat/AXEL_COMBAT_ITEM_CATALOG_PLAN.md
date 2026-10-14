@@ -172,7 +172,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![R-D](../../combat/art/item_icons/R-D.png) | `R-D` | **Free Spins Injector** | `D`    | During Free Spins, each cascade adds `+1` extra payout step                                    |
 | ![R-E](../../combat/art/item_icons/R-E.png) | `R-E` | **Diagonal Grid Lens**  | `E`    | Major diagonal only; diagonal wins can spawn wilds on exact-3 middle cells                    |
 | ![R-F](../../combat/art/item_icons/R-F.png) | `R-F` | **Threshold Brand**     | `F`    | Threshold `6+`; `0.75×` stake (then `0.431` scalar); once per cascade step                     |
-| ![R-M](../../combat/art/item_icons/R-M.png) | `R-M` | **Scratch Ticket**      | `M`    | 2 cells, `x2`–`x3`; on match split **60%** to spin winnings, **40%** bump to active multiplier |
+| ![R-M](../../combat/art/item_icons/R-M.png) | `R-M` | **Scratch Ticket**      | `M`    | 2 cells, `x2`–`x3`; multiplies only the matched line through it (winnings only) |
 | ![R-G](../../combat/art/item_icons/R-G.png) | `R-G` | **Basement Bar**        | `G`    | Stronger seal + payout trade (`+30%`); regular spins only                                      |
 | ![R-H](../../combat/art/item_icons/R-H.png) | `R-H` | **Witness Slip**        | `H`    | Each fight starts with **15%** of the goal already paid                                       |
 
@@ -203,7 +203,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![E-D](../../combat/art/item_icons/E-D.png) | `E-D` | **Free Spins Engine**  | `D`    | First win each Free Spins spin duplicates 1 winning symbol into wild                                                    |
 | ![E-E](../../combat/art/item_icons/E-E.png) | `E-E` | **Diagonal Cruciform** | `E`    | Both major diagonals; diagonal wins contribute to premium meter at `75%` normal contribution                            |
 | ![E-F](../../combat/art/item_icons/E-F.png) | `E-F` | **Threshold Tribunal** | `F`    | Threshold `6+`; `0.75×` stake (then `0.431` scalar); board-count also grants **one** premium meter section              |
-| ![E-M](../../combat/art/item_icons/E-M.png) | `E-M` | **CRT Etching**        | `M`    | 3 cells, `x2`–`x3`; a marked win adds the full mark (rounded) to the active multiplier (`dest: all_mult`)          |
+| ![E-M](../../combat/art/item_icons/E-M.png) | `E-M` | **CRT Etching**        | `M`    | 3 cells, `x2`–`x3`; multiplies only the matched line through it (winnings only)          |
 | ![E-G](../../combat/art/item_icons/E-G.png) | `E-G` | **Mason Lock**         | `G`    | Large payout trade (`+40%`); regular spins only                                                                         |
 | ![E-H](../../combat/art/item_icons/E-H.png) | `E-H` | **Confession Card**    | `H`    | Each fight starts with **20%** of the goal already paid                                                                |
 
@@ -232,9 +232,9 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![L-B](../../combat/art/item_icons/L-B.png) | `L-B` | **Meter Blood Moon**       | `B`    | First premium win each spin fills **one** meter section (overwrites a longer first line to 1); can overflow                                      |
 | ![L-C](../../combat/art/item_icons/L-C.png) | `L-C` | **Vice Crucible**          | `C`    | During Vice Round, chosen power + one extra random power at `60%` potency when bloody hand / alcohol / cigarette fire in the Vice Round sequence |
 | ![L-D](../../combat/art/item_icons/L-D.png) | `L-D` | **Free Spins Catastrophe** | `D`    | During Free Spins, each power activation chains one extra random power at `75%` potency                                                          |
-| ![L-E](../../combat/art/item_icons/L-E.png) | `L-E` | **Diagonal Covenant**      | `E`    | Diagonal wins treated as full standard line wins. Live mode is `all` with `min_length` 4 (diagonals of 3 do not count) + wilds                  |
+| ![L-E](../../combat/art/item_icons/L-E.png) | `L-E` | **Diagonal Covenant**      | `E`    | Diagonal wins treated as full standard line wins. Live mode is `all` with `min_length` 4 (diagonals of 3 do not count); a 4-long diagonal spawns a wild (`wild_lengths` [4])                  |
 | ![L-F](../../combat/art/item_icons/L-F.png) | `L-F` | **Threshold Dominion**     | `F`    | Threshold `8+`; board-count wins become full resolver wins (line wins first; leftover matching cells clear)                                      |
-| ![L-M](../../combat/art/item_icons/L-M.png) | `L-M` | **Red Glyph**              | `M`    | 4 cells, `x2.5`–`x3.5`; glyph value immediately to active total multiplier for the spin                                                          |
+| ![L-M](../../combat/art/item_icons/L-M.png) | `L-M` | **Red Glyph**              | `M`    | 4 cells, `x2.5`–`x3.5`; multiplies only the matched line through it (winnings only)                                                          |
 | ![L-G](../../combat/art/item_icons/L-G.png) | `L-G` | **Iron Lung**              | `G`    | Maximum seal + payout trade (`+50%`); regular spins only. Not combat-gated — basement floor scatter is the only world roll for family `G`        |
 | ![L-H](../../combat/art/item_icons/L-H.png) | `L-H` | **True Name Tag**          | `H`    | Each fight starts with **25%** of the goal already paid. Strongest live H percent. True Ending meta flags are **not wired**                     |
 
@@ -287,9 +287,9 @@ Live combat never calls `grid.refill()`. Empty cells already stay empty for ever
 | ----- | ----- | ------------- | --------------------------------------------------------------- |
 | `C-M` | 1     | `x2`–`x2.5`   | winnings                                                        |
 | `U-M` | 3     | `x1.5`–`x2.5` | winnings                                                        |
-| `R-M` | 2     | `x2`–`x3`     | split 60% winnings / 40% multiplier                             |
-| `E-M` | 3     | `x2`–`x3`     | all_mult — full mark value to the multiplier |
-| `L-M` | 4     | `x2.5`–`x3.5` | all_mult                                                        |
+| `R-M` | 2     | `x2`–`x3`     | winnings                                                        |
+| `E-M` | 3     | `x2`–`x3`     | winnings                                                         |
+| `L-M` | 4     | `x2.5`–`x3.5` | winnings                                                        |
 
 
 ---
@@ -441,7 +441,7 @@ An item pulses in the combat item box only on the spin where its effect actually
 | `goal_head_start` | once at fight start |
 | `extra_inventory_slots` | never in combat |
 
-Corner-glyph cells show their number on the grid (`x2`, `x2.5` for wins through the cell, `+3` for MULTIPLIER adds), not the rarity shape.
+Corner-glyph cells show their number on the grid (`x2`, `x2.5`: the line through the cell pays that much more), not the rarity shape.
 
 ## Icons (live)
 
@@ -476,5 +476,7 @@ Whole-run sims showed the payout rate passing 100% after about 6–7 items, so l
 - `L-E` keeps mode `all` but needs `min_length` 4, so diagonal 3-lines no longer count or spawn wilds.
 - `E-B`: any Power win fills at least 2 sections, not the whole meter.
 - M family: `U-M` `x1.5`–`x2.5`; `R-M` 3 → 2 cells; `E-M` 4 → 3 cells. `L-M` unchanged.
-- New global caps in `ItemEffectDispatcher`: summed line payout bonus `+100%` (`LINE_PAYOUT_BONUS_CAP`), glyph additions to the MULTIPLIER `+4` per spin (`GLYPH_MULT_SPIN_CAP`), Free Spins extra spins `+4` (`FREE_SPINS_EXTRA_CAP`).
+- New global caps in `ItemEffectDispatcher`: summed line payout bonus `+100%` (`LINE_PAYOUT_BONUS_CAP`), Free Spins extra spins `+4` (`FREE_SPINS_EXTRA_CAP`).
 - Open: `L-E` is now over-nerfed (about no items) and `L-M` is weaker than `R5`; re-balance the Legendaries as a group. D-family and Vice-only C items still do nothing on their own. `glyph_params` uses the last glyph item's `mult_min`/`mult_max` for every glyph cell.
+- L-E buff (2026-10-14): 4-long diagonals spawn a wild in the middle cell (`wild_lengths: [4]`); 5-long diagonals do not.
+- Glyph rule (2026-10-14): every M item multiplies only the matched line through its cell; no glyph adds to the global MULTIPLIER (the normal +1x per cascade still applies). `dest`/`win_frac` and `GLYPH_MULT_SPIN_CAP` are gone. The last-item range quirk in `glyph_params` stays on purpose.

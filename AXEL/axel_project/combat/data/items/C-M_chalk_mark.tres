@@ -11,5 +11,5 @@ rarity = 0
 family = "M"
 description = "Marks 1 random cell. A win through it pays x2 to x2.5."
 effect_id = &"corner_glyphs"
-effect_params = {"cells": 1, "mult_min": 2.0, "mult_max": 2.5, "dest": "winnings"}
+effect_params = {"cells": 1, "mult_min": 2.0, "mult_max": 2.5}
 icon = ExtResource("2_icon")

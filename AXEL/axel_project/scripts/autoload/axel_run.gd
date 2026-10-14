@@ -13,6 +13,9 @@ const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
 	50, 60, 70, 80, 95, 115, 145, 190, 250, 330,
 ]
 const WORLD_GOAL_LADDER_GROWTH := 1.5
+const WORLD_GOAL_GROWTH_STEP := 0.02
+const DREAD_BY_RANK := {"C": 0.04, "U": 0.05, "R": 0.06, "E": 0.08, "L": 0.10}
+const DREAD_PER_MEMORY := 0.10
 const WORLD_GOAL_LADDER_ROUNDING := 5
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
 const GUIDE_LESSON := "guide_pause"
@@ -137,6 +140,30 @@ func lore_goal_bonus() -> float:
 	return float(n) * LORE_GOAL_BONUS
 
 
+func dread_pct() -> float:
+	return float(state.dread_pct)
+
+
+static func dread_for_item(item_id: String) -> float:
+	if item_id.is_empty():
+		return 0.0
+	return float(DREAD_BY_RANK.get(item_id.left(1), 0.0))
+
+
+func add_item_dread(item_id: String) -> void:
+	state.dread_pct = float(state.dread_pct) + dread_for_item(item_id)
+	_persist()
+
+
+func add_memory_dread() -> void:
+	state.dread_pct = float(state.dread_pct) + DREAD_PER_MEMORY
+	_persist()
+
+
+func goal_bonus_pct() -> float:
+	return lore_goal_bonus() + dread_pct()
+
+
 func current_encounter_path() -> String:
 	if state.world_encounter:
 		var world_i: int = posmod(int(state.world_encounter_index), WORLD_ENCOUNTER_PATHS.size())
@@ -174,8 +201,8 @@ func world_goal_base_cents() -> int:
 	if rung <= last:
 		return int(WORLD_GOAL_LADDER_CENTS[rung])
 	var value := float(WORLD_GOAL_LADDER_CENTS[last])
-	for _i in rung - last:
-		value *= WORLD_GOAL_LADDER_GROWTH
+	for i in rung - last:
+		value *= WORLD_GOAL_LADDER_GROWTH + WORLD_GOAL_GROWTH_STEP * float(i)
 	var step := float(WORLD_GOAL_LADDER_ROUNDING)
 	return maxi(int(round(value / step)) * WORLD_GOAL_LADDER_ROUNDING, 1)
 
@@ -365,7 +392,7 @@ func _wire_combat_root() -> void:
 
 	var tutorial := is_tutorial_encounter()
 	if root.has_method("set_lore_goal_bonus"):
-		root.call("set_lore_goal_bonus", 0.0 if tutorial else lore_goal_bonus())
+		root.call("set_lore_goal_bonus", 0.0 if tutorial else goal_bonus_pct())
 	if root.has_method("set_equipped_items"):
 		root.call("set_equipped_items", [] if tutorial else equipped_items())
 	if state.world_encounter and root.has_method("set_goal_base_target_cents"):
