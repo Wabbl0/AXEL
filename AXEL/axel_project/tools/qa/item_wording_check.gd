@@ -61,8 +61,8 @@ func _scan(where: String, text: String) -> void:
 		var re: RegEx = p[0]
 		var label: String = p[1]
 		if label.is_empty():
-			if text.findn("skull meter") >= 0 and text.find("Skull Meter") < 0:
-				_failures.append("%s: write Skull Meter with capitals" % where)
+			if text.findn("skull meter") >= 0 and text.find("Skull Meter") < 0 and text.find("SKULL METER") < 0:
+				_failures.append("%s: write Skull Meter or SKULL METER with capitals" % where)
 			continue
 		var hit := re.search(text)
 		if hit != null:

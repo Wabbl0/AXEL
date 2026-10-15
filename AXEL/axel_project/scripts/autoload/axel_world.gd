@@ -180,6 +180,11 @@ const FIGHT_INTRO_LINES: Array[String] = [
 	"You want it back? Then face it. Win, and it's yours.",
 	"And sure, lean on your vices. Smokes, booze, blood. You always do.",
 ]
+const TICKET_HINT_LINES: Array[String] = [
+	"That one's yours now. No taking it back.",
+	"But the next one doesn't have to be.",
+	"The ticket machine by your locker sells rerolls.",
+]
 const DREAD_INTRO_LINES: Array[String] = [
 	"That's the guilt piling up.",
 	"The more you dig up, the harder it gets to face.",
@@ -194,6 +199,7 @@ var _pending_return_tex := Vector2.ZERO
 var _pending_return_valid := false
 var _return_placing := false
 var _starting_fight := false
+var _ticket_hint_pending := false
 var _populate_token: Dictionary = {}
 var _encounters_suppressed := false
 var _spot_pass := 0
@@ -250,6 +256,7 @@ func reset_world() -> void:
 	_pending_return_scene = ""
 	_pending_return_valid = false
 	_starting_fight = false
+	_ticket_hint_pending = false
 
 
 func area_for_scene(scene_path: String) -> String:
@@ -773,11 +780,25 @@ func _record_fight_room(scene_path: String) -> void:
 	run.state.fought_rooms = PackedStringArray(rooms)
 
 
-func notify_fight_won(_reason: String, dest_scene: String, tex: Vector2, has_tex: bool) -> void:
+func notify_fight_won(reason: String, dest_scene: String, tex: Vector2, has_tex: bool) -> void:
 	notify_fight_ended()
+	if reason == REASON_ITEM:
+		_unlock_ticket_machine()
 	_pending_return_scene = dest_scene
 	_pending_return_tex = tex
 	_pending_return_valid = has_tex
+
+
+func _unlock_ticket_machine() -> void:
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile == null or bool(profile.call("is_ticket_machine_unlocked")):
+		return
+	profile.call("unlock_ticket_machine")
+	_ticket_hint_pending = true
+
+
+func is_ticket_hint_pending() -> bool:
+	return _ticket_hint_pending
 
 
 func notify_fight_ended() -> void:
@@ -1013,7 +1034,25 @@ func _on_scene_changed() -> void:
 	if is_enabled() and path == TUTORIAL_SCENE and is_locker_tutorial_pending():
 		_start_locker_tutorial(scene)
 	_request_items_wheel_lesson(scene)
+	_queue_ticket_hint(scene)
 	_queue_deep_air_line(scene)
+
+
+func _queue_ticket_hint(scene: Node) -> void:
+	if not _ticket_hint_pending or scene.find_child("Player", true, false) == null:
+		return
+	for _i in DEEP_AIR_TRIES:
+		await get_tree().create_timer(DEEP_AIR_WAIT_SEC, false).timeout
+		if not _ticket_hint_pending or not is_instance_valid(scene) or _current_scene() != scene or _starting_fight:
+			return
+		var dialogue := scene.find_child("TopDialogueOverlay", true, false)
+		if dialogue == null or not dialogue.has_method("show_lines"):
+			return
+		if dialogue.has_method("is_sequence_busy") and bool(dialogue.call("is_sequence_busy")):
+			continue
+		_ticket_hint_pending = false
+		await dialogue.show_lines(TICKET_HINT_LINES)
+		return
 
 
 func _queue_deep_air_line(scene: Node) -> void:

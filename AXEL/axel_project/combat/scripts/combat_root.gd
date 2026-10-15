@@ -10,6 +10,7 @@ signal meter_full_transition_started()
 signal matched_symbols_resolved(entries: Array)
 signal line_win_resolved(event: Dictionary)
 signal lines_found(lines: Array)
+signal line_step_resolved(lines: Array)
 signal winnings_popup_border_touched(event: Dictionary)
 signal round_winnings_hold_started()
 signal free_spins_bonus_granted(added: int)
@@ -669,6 +670,11 @@ func get_chip_bar_goal_label() -> String:
 func is_chip_bar_goal_complete() -> bool:
 	return _encounter_goal_winnings_cents >= get_chip_bar_goal_target_cents()
 
+func lines_reach_goal(lines: Array) -> bool:
+	if is_chip_bar_goal_complete():
+		return false
+	return _encounter_goal_winnings_cents + _estimate_payout(lines) >= get_chip_bar_goal_target_cents()
+
 func get_meter_sections_filled() -> int:
 	return meter.sections_filled
 
@@ -1140,6 +1146,8 @@ func _resolve_cascade_loop_async() -> Dictionary:
 		_apply_board_count_bonus(out, true)
 		_apply_glyph_payouts(lines, out)
 		_refresh_multiplier_label()
+		line_step_resolved.emit(lines)
+		await _await_lines_gate()
 	return out
 
 func _await_lines_gate() -> void:
@@ -1395,6 +1403,12 @@ func _refresh_glyph_marks() -> void:
 			if _item_fx.glyphs.has(key):
 				glyph = ItemEffectDispatcher.glyph_label(_item_fx.glyphs[key])
 			slot.call("set_glyph_mark", glyph)
+
+func slot_icon_at(coord: Vector2i) -> TextureRect:
+	var slot := _get_slot(coord)
+	if slot == null:
+		return null
+	return slot.get_node_or_null("Icon") as TextureRect
 
 func _get_slot(coord: Vector2i) -> Node:
 	var idx := _coord_to_index(coord)

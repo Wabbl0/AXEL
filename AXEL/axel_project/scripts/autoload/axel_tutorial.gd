@@ -28,7 +28,7 @@ const EXIT_ROOM := 0.9
 const CARD_LAYER := 114
 const TOP_CARD_LAYER := 230
 const TOP_LESSONS: Array[String] = ["guide_pause"]
-const FIGHT_ORDER: Array[String] = ["slot_history", "slot_power", "fight_stakes", "fight_goal"]
+const FIGHT_ORDER: Array[String] = ["slot_pays", "fight_stakes", "slot_multiplier", "slot_history", "slot_power", "fight_goal"]
 const READ_LOCK_SEC := 0.8
 const CALM_WAIT_SEC := 6.0
 
@@ -40,14 +40,13 @@ const LESSONS := {
 	},
 	"fight_spin": {
 		"title": "Fights",
-		"body": "Click the SKULL, or press E, to spin. Match 3 or more of the same symbol in a row or a column.",
-		"touch_body": "Tap the SKULL to spin. Match 3 or more of the same symbol in a row or a column.",
+		"body": "Click the SKULL...to spin.",
+		"touch_body": "Tap the SKULL...to spin.",
 	},
 	"fight_stakes": {
 		"calm_timer": true,
 		"title": "Bets",
-		"body": "BALANCE is your chips. The BET is spent each spin. If BALANCE drops below 100, you lose. Press + or - to change the BET. Q and R work too.",
-		"touch_body": "BALANCE is your chips. The BET is spent each spin. If BALANCE drops below 100, you lose. Tap + or - to change the BET.",
+		"body": "BALANCE is your chips. The BET is spent each spin. If BALANCE drops below 100, you lose.",
 	},
 	"fight_goal": {
 		"calm_timer": true,
@@ -77,7 +76,12 @@ const LESSONS := {
 	"slot_match": {
 		"freeze": true,
 		"title": "Matches",
-		"body": "3 or more of the same symbol in a row or a column is a win. Each win pays your BET times that symbol's value, times the MULTIPLIER.",
+		"body": "3 or more...is a win.",
+	},
+	"slot_pays": {
+		"freeze": true,
+		"title": "Matches",
+		"body": "Each win pays your BET..., times the MULTIPLIER.",
 	},
 	"slot_history": {
 		"calm_timer": true,
@@ -87,7 +91,7 @@ const LESSONS := {
 	"slot_power": {
 		"calm_timer": true,
 		"title": "The Skull",
-		"body": "Cigarette, alcohol and bloody hand are Power symbols. Matching them fills the Skull Meter. When the Skull Meter is full, something worse begins.",
+		"body": "Cigarette, Alcohol and Bloody Hand are POWER SYMBOLS. Matching them fills the SKULL METER. When the SKULL METER is full, something worse begins.",
 	},
 	"slot_multiplier": {
 		"freeze": true,
@@ -97,7 +101,7 @@ const LESSONS := {
 	"slot_vice": {
 		"freeze": true,
 		"title": "Vice Round",
-		"body": "The Skull Meter is full. Every power activates once, and the symbols are eaten. Clear the grid to earn a prize.",
+		"body": "The SKULL METER is full. Every power activates once, and the symbols are eaten. Clear the grid to earn a prize.",
 	},
 	"guide_pause": {
 		"title": "Guide",
@@ -113,6 +117,7 @@ const GLOW_PIECES := {
 	"fight_goal": ["NEW_Goal"],
 	"fight_items": ["NEW_Items"],
 	"slot_match": ["NEW_Grid"],
+	"slot_pays": [],
 	"slot_history": ["NEW_History"],
 	"slot_power": ["NEW_Execute"],
 	"slot_multiplier": ["NEW_Multiplier"],

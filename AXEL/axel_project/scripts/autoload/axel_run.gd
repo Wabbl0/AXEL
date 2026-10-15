@@ -171,6 +171,13 @@ func ticket_price() -> int:
 	return maxi(int(round(value / 5.0)) * 5, 5)
 
 
+func ticket_machine_open() -> bool:
+	if int(state.tickets_bought) > 0 or int(state.tickets) > 0:
+		return true
+	var profile := get_node_or_null("/root/AxelProfile")
+	return profile != null and bool(profile.call("is_ticket_machine_unlocked"))
+
+
 func can_buy_ticket() -> bool:
 	return int(state.bankroll_cents) - ticket_price() >= TICKET_MIN_LEFT
 

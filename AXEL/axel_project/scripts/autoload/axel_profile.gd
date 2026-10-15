@@ -72,6 +72,14 @@ func mark_free_spins_seen() -> void:
 	_set_flag("free_spins_seen")
 
 
+func is_ticket_machine_unlocked() -> bool:
+	return bool(_config.get_value(SECTION, "ticket_machine_unlocked", false))
+
+
+func unlock_ticket_machine() -> void:
+	_set_flag("ticket_machine_unlocked")
+
+
 func items_found() -> PackedStringArray:
 	return _list("items_found")
 

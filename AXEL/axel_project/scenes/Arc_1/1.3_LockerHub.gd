@@ -42,10 +42,17 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if _ticket_machine != null:
-		_ticket_machine.visible = not _first_visit_dialogue_running and not _is_transitioning and not _map_is_open()
+		_ticket_machine.visible = (
+			_ticket_machine_open() and not _first_visit_dialogue_running and not _is_transitioning and not _map_is_open()
+		)
 	if _esc_hint == null:
 		return
 	_esc_hint.visible = not _first_visit_dialogue_running and not _is_transitioning and not _map_is_open()
+
+
+func _ticket_machine_open() -> bool:
+	var run := get_node_or_null("/root/AxelRun")
+	return run != null and run.has_method("ticket_machine_open") and bool(run.call("ticket_machine_open"))
 
 
 func _map_is_open() -> bool:

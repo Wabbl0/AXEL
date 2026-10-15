@@ -15,7 +15,7 @@ resource_name = "Panner"
 pan = 0.5
 
 [resource]
-bus/0/volume_db = -11.951987
+bus/0/volume_db = -0.39491463
 bus/0/effect/0/effect = SubResource("AudioEffectCompressor_j3pel")
 bus/0/effect/0/enabled = true
 bus/0/effect/1/effect = SubResource("AudioEffectHardLimiter_master")

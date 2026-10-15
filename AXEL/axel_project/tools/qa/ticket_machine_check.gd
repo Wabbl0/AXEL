@@ -34,9 +34,11 @@ func _main() -> void:
 	elif first != second:
 		_fail("same seed and state gave different rerolls: %s vs %s" % [first, second])
 	_check_reroll_survives_rankup(world, run)
-	await _check_hub(run)
+	_check_unlock(world, run)
+	await _check_hub(world, run)
 	world.call("reset_world")
 	run.call("reset_run")
+	root.get_node_or_null("AxelProfile").call("reset_profile")
 	if _failures.is_empty():
 		print("ticket_machine_check: OK")
 		quit(0)
@@ -125,8 +127,35 @@ func _check_reroll_survives_rankup(world: Node, run: Node) -> void:
 			ids.append(item_id)
 
 
-func _check_hub(run: Node) -> void:
+func _check_unlock(world: Node, run: Node) -> void:
+	var profile := root.get_node_or_null("AxelProfile")
+	profile.call("reset_profile")
 	run.call("reset_run")
+	world.call("reset_world")
+	if bool(run.call("ticket_machine_open")):
+		_fail("ticket machine open before the first item fight")
+	world.call("notify_fight_won", "walk", "", Vector2.ZERO, false)
+	if bool(run.call("ticket_machine_open")):
+		_fail("a walk fight unlocked the ticket machine")
+	world.call("notify_fight_won", "item_pickup", "", Vector2.ZERO, false)
+	if not bool(run.call("ticket_machine_open")):
+		_fail("first item fight did not unlock the ticket machine")
+	if not bool(world.call("is_ticket_hint_pending")):
+		_fail("first item fight did not queue the ticket hint")
+	run.call("reset_run")
+	world.call("reset_world")
+	if not bool(run.call("ticket_machine_open")):
+		_fail("ticket machine not open at the start of the next run")
+	world.call("notify_fight_won", "item_pickup", "", Vector2.ZERO, false)
+	if bool(world.call("is_ticket_hint_pending")):
+		_fail("ticket hint queued again on a later run")
+
+
+func _check_hub(world: Node, run: Node) -> void:
+	var profile := root.get_node_or_null("AxelProfile")
+	profile.call("reset_profile")
+	run.call("reset_run")
+	root.get_node("GameManager").call("add_memory_once", "scene_3")
 	var packed := load(HUB) as PackedScene
 	if packed == null:
 		_fail("hub scene missing")
@@ -136,8 +165,15 @@ func _check_hub(run: Node) -> void:
 	for _i in 3:
 		await process_frame
 	var machine := hub.find_child("TicketMachine", true, false) as Control
+	if machine != null and machine.visible:
+		_fail("ticket machine visible before it is unlocked")
+	world.call("notify_fight_won", "item_pickup", "", Vector2.ZERO, false)
+	for _i in 2:
+		await process_frame
 	if machine == null:
 		_fail("hub has no ticket machine")
+	elif not machine.visible:
+		_fail("ticket machine hidden after unlock")
 	else:
 		var buy := machine.find_child("BuyButton", true, false) as Button
 		if buy == null or not buy.text.contains("300"):

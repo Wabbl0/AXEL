@@ -11,6 +11,7 @@ const COMBAT_ROOT_INSTANCED_CHILDREN := [
 const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const ItemLinesScript := preload("res://combat/scripts/item_lines.gd")
 const EmptyItemDvdScript := preload("res://combat/scripts/empty_item_dvd.gd")
+const TutorialCellGlowScript := preload("res://combat/scripts/tutorial_cell_glow.gd")
 const PlayerItemPanelScript := preload("res://combat/scripts/player_item_panel.gd")
 const HudDropShadowScript := preload("res://combat/scripts/hud_drop_shadow.gd")
 const POWER_BLOODY_HAND: StringName = &"bloody_hand"
@@ -99,6 +100,7 @@ const WINNINGS_COUNTER_MAX_STEP := 0.02
 const SPIN_TUTORIAL_DELAY_SEC := 1.0
 const ITEMS_TUTORIAL_DELAY_SEC := 0.5
 const FREEZE_LESSONS: Array[String] = ["slot_vice"]
+const PAYS_CHAIN_LESSONS: Array[String] = ["slot_pays", "fight_stakes", "slot_multiplier", "slot_history"]
 const HELD_FREEZE_BEAT_SEC := 0.2
 const HELD_FREEZE_TIMEOUT_SEC := 2.0
 const HISTORY_MINI_ICON_SIZE := int(round(18.0 * COMBAT_TEXT_SCALE))
@@ -263,7 +265,10 @@ var _winnings_counter_running: bool = false
 var _winnings_counter_generation: int = 0
 var _first_tutorial_idle_sec := 0.0
 var _held_freeze_lessons: Array[String] = []
-var _after_match_lessons: Array[String] = []
+var _pays_chain_armed := false
+var _pays_chain_goal := false
+var _tutorial_cell_glow: CanvasLayer
+var _tutorial_cell_lesson := ""
 var _held_freeze_sec := 0.0
 var _held_freeze_settled_sec := 0.0
 var _runtime_initialized: bool = false
@@ -791,6 +796,8 @@ func _connect_runtime_signals() -> void:
 		combat.line_win_resolved.connect(_on_line_win_resolved)
 	if not combat.lines_found.is_connected(_on_lines_found):
 		combat.lines_found.connect(_on_lines_found)
+	if not combat.line_step_resolved.is_connected(_on_line_step_resolved):
+		combat.line_step_resolved.connect(_on_line_step_resolved)
 	if not combat.readouts_progressed.is_connected(_refresh_readouts):
 		combat.readouts_progressed.connect(_refresh_readouts)
 	if not combat.spin_finished.is_connected(_on_spin_finished):
@@ -2187,9 +2194,6 @@ func _tutorial_bet_touched() -> void:
 		return
 	if bool(tutorial.call("is_showing", "fight_stakes")):
 		_tutorial_complete("fight_stakes")
-		return
-	if bool(tutorial.call("wants", "fight_stakes")):
-		tutorial.call("request", "fight_stakes", {"stack": true})
 
 func _set_default_bet() -> void:
 	if not _can_use_combat_api():
@@ -2204,8 +2208,6 @@ func _on_line_win_resolved(event: Dictionary) -> void:
 	var payout_cents: int = int(event.get("payout_cents", 0))
 	if payout_cents <= 0:
 		return
-	_tutorial_request("slot_history")
-	_tutorial_request("slot_power")
 	_append_history_spin_row(event)
 
 func _on_lines_found(lines: Array) -> void:
@@ -2213,17 +2215,84 @@ func _on_lines_found(lines: Array) -> void:
 	if tutorial == null or not tutorial.has_method("wants") or combat == null:
 		return
 	var held := false
-	if bool(tutorial.call("wants", "slot_match")):
-		tutorial.call("request", "slot_match", {"freeze": true})
+	var reaches_goal := bool(tutorial.call("wants", "fight_goal")) and combat.lines_reach_goal(lines)
+	if not _pays_chain_armed and _tutorial_wants_any(tutorial, PAYS_CHAIN_LESSONS):
+		_pays_chain_armed = true
+		_pays_chain_goal = reaches_goal
+		if bool(tutorial.call("wants", "slot_match")):
+			tutorial.call("request", "slot_match", {"freeze": true})
+			_show_tutorial_cells("slot_match", _line_cells(lines, false))
+			held = true
+	elif reaches_goal:
+		tutorial.call("request", "fight_goal", {"freeze": true})
+		_show_tutorial_cells("fight_goal", _line_cells(lines, false))
 		held = true
-	if bool(tutorial.call("wants", "slot_power")) and _lines_have_power(lines):
-		tutorial.call("request", "slot_power", {"freeze": true, "stack": true})
-		held = true
-	if combat.get_multiplier_value() >= 2 and bool(tutorial.call("wants", "slot_multiplier")):
-		tutorial.call("request", "slot_multiplier", {"freeze": true})
+	elif bool(tutorial.call("wants", "slot_power")) and _lines_have_power(lines):
+		tutorial.call("request", "slot_power", {"freeze": true})
+		_show_tutorial_cells("slot_power", _line_cells(lines, true))
 		held = true
 	if held and bool(tutorial.call("is_freezing")):
 		combat.lines_gate_open = false
+
+func _on_line_step_resolved(_lines: Array) -> void:
+	if not _pays_chain_armed:
+		return
+	_pays_chain_armed = false
+	var tutorial := _tutorial_node()
+	if tutorial == null or not tutorial.has_method("request") or combat == null:
+		return
+	var chain: Array[String] = PAYS_CHAIN_LESSONS.duplicate()
+	if _pays_chain_goal:
+		chain.append("fight_goal")
+	_pays_chain_goal = false
+	for lesson_id in chain:
+		tutorial.call("request", lesson_id, {"freeze": true})
+	if bool(tutorial.call("is_freezing")):
+		combat.lines_gate_open = false
+
+func _tutorial_wants_any(tutorial: Node, ids: Array[String]) -> bool:
+	for lesson_id in ids:
+		if bool(tutorial.call("wants", lesson_id)):
+			return true
+	return false
+
+func _line_cells(lines: Array, power_only: bool) -> Array:
+	var out: Array = []
+	for line in lines:
+		if not (line is Dictionary):
+			continue
+		var d := line as Dictionary
+		if power_only and not combat.is_power_symbol(StringName(d.get("symbol_id", &""))):
+			continue
+		for cell in d.get("cells", []):
+			if not out.has(cell):
+				out.append(cell)
+	return out
+
+func _show_tutorial_cells(lesson_id: String, coords: Array) -> void:
+	if _tutorial_cell_glow == null or not is_instance_valid(_tutorial_cell_glow):
+		_tutorial_cell_glow = TutorialCellGlowScript.new()
+		_tutorial_cell_glow.name = "TutorialCellGlow"
+		add_child(_tutorial_cell_glow)
+	var arts: Array[TextureRect] = []
+	for coord in coords:
+		var art: TextureRect = combat.slot_icon_at(coord as Vector2i)
+		if art != null:
+			arts.append(art)
+	_tutorial_cell_lesson = lesson_id
+	_tutorial_cell_glow.call("show_cells", arts, _reduce_flashing_on())
+
+func _sync_tutorial_cell_glow() -> void:
+	if _tutorial_cell_lesson.is_empty():
+		return
+	if _tutorial_cell_glow == null or not is_instance_valid(_tutorial_cell_glow):
+		_tutorial_cell_lesson = ""
+		return
+	var tutorial := _tutorial_node()
+	if tutorial != null and tutorial.has_method("wants") and bool(tutorial.call("wants", _tutorial_cell_lesson)):
+		return
+	_tutorial_cell_glow.call("hide_cells")
+	_tutorial_cell_lesson = ""
 
 func _lines_have_power(lines: Array) -> bool:
 	for line in lines:
@@ -3099,30 +3168,6 @@ func _maybe_queue_fight_tutorials(delta: float) -> void:
 	tutorial.call("request", "fight_spin")
 	if _tutorial_equipped_count() > 0:
 		tutorial.call("request", "fight_items")
-	if not _after_match_lessons.has("fight_stakes"):
-		_after_match_lessons.append("fight_stakes")
-	if not _after_match_lessons.has("fight_goal"):
-		_after_match_lessons.append("fight_goal")
-
-
-func _release_after_match_lessons() -> void:
-	if _after_match_lessons.is_empty():
-		return
-	if not _can_use_combat_api() or combat == null:
-		return
-	if combat.get_spins_used() < 1 or combat.get_state() != CombatRoot.State.IDLE:
-		return
-	if not _held_freeze_lessons.is_empty():
-		return
-	var tutorial := _tutorial_node()
-	if tutorial == null or not tutorial.has_method("request"):
-		return
-	if bool(tutorial.call("is_freezing")):
-		return
-	var lessons := _after_match_lessons.duplicate()
-	_after_match_lessons.clear()
-	for lesson_id in lessons:
-		tutorial.call("request", lesson_id)
 
 
 func _sync_tutorial_gates() -> void:
@@ -4874,7 +4919,7 @@ func _process(delta: float) -> void:
 		_maybe_queue_fight_tutorials(delta)
 		_release_held_freeze_lessons(delta)
 		_sync_tutorial_gates()
-		_release_after_match_lessons()
+		_sync_tutorial_cell_glow()
 		_push_tutorial_hud_rects()
 		_sync_tutorial_skull_hint()
 		_sync_skull_ready()
