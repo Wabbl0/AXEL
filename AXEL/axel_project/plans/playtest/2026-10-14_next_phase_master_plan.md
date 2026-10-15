@@ -118,7 +118,7 @@ From the repo root: `tools\cmd\godot.cmd --headless --path AXEL/axel_project -s 
 
 ---
 
-## Phase A — Measure + nerf (DONE 2026-10-14, uncommitted)
+## Phase A — Measure + nerf (DONE 2026-10-14)
 
 Full data: `plans/playtest/2026-10-14_item_power_audit.md`.
 
@@ -169,7 +169,7 @@ Full data: `plans/playtest/2026-10-14_item_power_audit.md`.
 
 ---
 
-## Phase B — Dread, exponential late game, money sinks
+## Phase B — Dread, exponential late game, money sinks (BUILT 2026-10-14/15, see `2026-10-14_phase_b_dread.md`)
 
 ### Goal
 
@@ -220,7 +220,7 @@ Standard set, plus `world_combat_loop_check` (update the ladder/growth test), `r
 
 ---
 
-## Phase C — Routing: paid travel, hidden rarity, locker glimmers
+## Phase C — Routing: paid travel, hidden rarity, locker glimmers (BUILT 2026-10-15, see `2026-10-15_phase_c_routing.md`)
 
 ### Goal
 

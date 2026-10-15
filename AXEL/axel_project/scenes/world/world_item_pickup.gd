@@ -65,8 +65,13 @@ func _build_visual() -> void:
 	else:
 		add_child(marker)
 	_marker = marker
-	if marker.has_method("set_rarity_glyph"):
-		marker.call("set_rarity_glyph", ItemDef.rarity_glyph(_item_def()))
+	_reveal_rarity(false)
+
+
+func _reveal_rarity(show: bool) -> void:
+	if not is_instance_valid(_marker) or not _marker.has_method("set_rarity_glyph"):
+		return
+	_marker.call("set_rarity_glyph", ItemDef.rarity_glyph(_item_def()) if show else "")
 
 
 func _room_marker_px() -> float:
@@ -183,6 +188,7 @@ func _on_body_entered(body: Node) -> void:
 		return
 	_player_inside = true
 	add_to_group(TAP_GROUP)
+	_reveal_rarity(true)
 
 
 func _on_body_exited(body: Node) -> void:
@@ -201,6 +207,9 @@ static func _is_player(body: Node) -> bool:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _taken or not _player_inside:
+		return
+	if event.is_action_pressed("reroll"):
+		_try_reroll()
 		return
 	if not event.is_action_pressed("interact"):
 		return
@@ -292,4 +301,34 @@ func _card_description() -> String:
 	var pct := int(round(float(run.call("dread_for_item", item_id)) * 100.0))
 	if pct <= 0:
 		return text
-	return "%s  +%d%% Dread" % [text, pct]
+	text = "%s  +%d%% Dread" % [text, pct]
+	var tickets := int(run.call("ticket_count")) if run.has_method("ticket_count") else 0
+	if tickets > 0:
+		text = "%s  %s Reroll (%d)" % [text, _reroll_key_text(), tickets]
+	return text
+
+
+func _reroll_key_text() -> String:
+	for ev in InputMap.action_get_events("reroll"):
+		if ev is InputEventKey:
+			var key := ev as InputEventKey
+			var code := key.physical_keycode if int(key.physical_keycode) != 0 else key.keycode
+			return "[%s]" % OS.get_keycode_string(code)
+	return "[F]"
+
+
+func _try_reroll() -> void:
+	if _fight_starting() or _nearest_candidate() != self:
+		return
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("reroll_item"):
+		return
+	get_viewport().set_input_as_handled()
+	if not bool(world.call("reroll_item", room_path, slot_index)):
+		return
+	var entries: Array = world.call("room_item_entries", room_path) if world.has_method("room_item_entries") else []
+	if slot_index >= 0 and slot_index < entries.size():
+		item_id = String((entries[slot_index] as Dictionary).get("id", item_id))
+	_reveal_rarity(true)
+	_card_pickup_id = 0
+	_show_info_card()

@@ -7,12 +7,13 @@ The Godot project is in `AXEL/axel_project` (`project.godot`). Main scene: `res:
 ## First, every session
 
 1. Read `AXEL/axel_project/plans/core/AI_DOCS.md`. It is the canon and wins over every other doc.
-2. Then open the matching plan:
+2. If `AXEL/axel_project/plans/playtest/HANDOFF.md` exists, read it. It lists unfinished work from the last session.
+3. Then open the matching plan:
    - Rooms, player, spawn, hitboxes, cover-fit: `plans/scenes/SCENE_BUILDING.md`
    - Combat: the combat plans, only when I say the task is combat-related
    - "What did we decide lately?": `git log`. The tail of `plans/core/AI_CHANGELOG.md` only for decisions before 2026-09-30.
    - Anything else in `plans/**/*.md` only when clearly relevant. Skip `plans/archive/`.
-3. Ask before large or ambiguous changes. If my request breaks an established rule, remind me. If I confirm, the new request may become canon.
+4. Ask before large or ambiguous changes. If my request breaks an established rule, remind me. If I confirm, the new request may become canon.
 
 ## How to talk to me
 
@@ -119,11 +120,23 @@ Notes:
 - Make a release build only when I clearly ask for a new release (for example "make a new release"). Then follow the `release-build` skill.
 - "Export" (for example "export X.X.+1") means only: bump the version and export the builds. "Update docs" means only: edit the docs. Neither one means commit or push. Leave the changes uncommitted until I say "commit and push".
 
+### GitHub Release upload (part of "commit and push")
+
+The public download page is https://github.com/Wabbl0/AXEL/releases/latest. A new build goes there only during "commit and push", never during a release or export alone.
+
+1. After the push succeeds, read the version from `AXEL/axel_project/export_presets.cfg` (Mac `short_version`).
+2. Check whether that release already exists: `gh release view vX.Y.Z --repo Wabbl0/AXEL`. If it exists, stop. Nothing to upload.
+3. If both `AXEL/out/export/windows/AXEL_X.Y.Z.exe` and `AXEL/out/export/mac/AXEL_X.Y.Z.zip` exist, create the release on the commit you just pushed:
+   `gh release create vX.Y.Z "AXEL/out/export/windows/AXEL_X.Y.Z.exe#AXEL X.Y.Z - Windows" "AXEL/out/export/mac/AXEL_X.Y.Z.zip#AXEL X.Y.Z - macOS" --repo Wabbl0/AXEL --target <pushed commit sha> --title "AXEL X.Y.Z" --generate-notes --latest`
+4. If a build file is missing, skip the upload and tell me.
+5. If `gh` is not on PATH, use `C:\Program Files\GitHub CLI\gh.exe`. If it says not logged in, ask me to run `gh auth login`.
+6. Tell me the release link when done.
+
 ### Shortcut: "cp,r,ud"
 
 I may open a fresh chat with "cp,r,ud" (or any subset, or the long form "commit and push, release and update docs"). `cp` = commit and push, `r` = release, `ud` = update docs.
 
-- Do every named step without asking, in this order: `ud`, then run the checks, then `r` (release-build skill: bump, export, delete old builds), then `cp` (one commit of all pending changes, then push).
+- Do every named step without asking, in this order: `ud`, then run the checks, then `r` (release-build skill: bump, export, delete old builds), then `cp` (one commit of all pending changes, then push, then the GitHub Release upload).
 - Do only the named steps. Commit or push only when `cp` is named. "update docs - new export" (`ud` + `r`) means no commit and no push, even though the release-build skill lists a commit step.
 - I run several chats in parallel. Treat uncommitted changes from other chats as part of the job.
 - Pick the version bump yourself (small polish = last number) and tell me which one you picked.

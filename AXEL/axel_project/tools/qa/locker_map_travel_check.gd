@@ -354,10 +354,11 @@ func _check_retier_on_map(world: Node, run: Node) -> void:
 		world.call("reset_world")
 		run.call("reset_run")
 		return
-	for entry in shown:
-		var item_id := String((entry as Dictionary).get("id", ""))
-		if not item_id.begins_with("U"):
-			_fail("map still lists %s after the rarity step" % item_id)
+	var weights: Array = world.call("rarity_weights", "cafeteria")
+	if int(weights[0]) != 0:
+		_fail("cafeteria weights should shift past Common after a 1.4 pickup")
+	var first_id := String((shown[0] as Dictionary).get("id", ""))
+	var want_glyph := ItemDef.rarity_glyph_index(int(world.call("item_rank_of_id", first_id)))
 	var overlay := OverlayScript.new()
 	overlay.set("show_items", true)
 	root.add_child(overlay)
@@ -368,12 +369,12 @@ func _check_retier_on_map(world: Node, run: Node) -> void:
 	for _i in 3:
 		await process_frame
 	var name_label := overlay.find_child("ItemName", true, false) as Label
-	if name_label == null or not name_label.text.begins_with("◈"):
+	if name_label == null or not name_label.text.begins_with(want_glyph):
 		_fail("map card did not show the new rarity, got %s" % ["" if name_label == null else name_label.text])
 	var saw_mark := false
 	for node in overlay.find_children("PinGlyph", "Label", true, false):
 		var glyph := node as Label
-		if glyph != null and glyph.text == "◈":
+		if glyph != null and glyph.text == want_glyph:
 			saw_mark = true
 			break
 	if not saw_mark:

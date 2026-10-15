@@ -13,6 +13,7 @@ const _MapOverlayScript := preload("res://scenes/ui/locker_map_overlay.gd")
 @onready var _esc_hint: Label = get_node_or_null("ExitLayer/EscHint")
 
 var _map_overlay: CanvasLayer
+var _ticket_machine: TicketMachine
 
 var _is_transitioning := false
 var _first_visit_dialogue_running := false
@@ -27,14 +28,21 @@ func _ready() -> void:
 	_map_hotspot.mouse_exited.connect(_on_map_paper_hover.bind(false))
 	_map_overlay = _MapOverlayScript.new()
 	_map_overlay.name = "LockerMapOverlay"
+	_map_overlay.set("show_glimmers", true)
 	_map_overlay.connect("travel_requested", _on_map_travel)
 	add_child(_map_overlay)
+	_ticket_machine = TicketMachine.new()
+	$ExitLayer.add_child(_ticket_machine)
+	_apply_chrome_scale()
+	call_deferred("_apply_chrome_scale")
 	set_process_input(true)
 	_grant_stash_flag()
 	call_deferred("_play_first_visit_dialogue")
 
 
 func _process(_delta: float) -> void:
+	if _ticket_machine != null:
+		_ticket_machine.visible = not _first_visit_dialogue_running and not _is_transitioning and not _map_is_open()
 	if _esc_hint == null:
 		return
 	_esc_hint.visible = not _first_visit_dialogue_running and not _is_transitioning and not _map_is_open()
@@ -118,6 +126,8 @@ func _apply_chrome_scale() -> void:
 		_esc_hint.add_theme_font_size_override("font_size", roundi(ESC_HINT_FONT * f))
 		_esc_hint.position = Vector2(ESC_HINT_MARGIN, ESC_HINT_MARGIN) * f
 		_esc_hint.reset_size()
+	if _ticket_machine != null and _ticket_machine.is_inside_tree():
+		_ticket_machine.place(get_viewport_rect().size, f)
 	if _shelves != null and _shelves.has_method("_remap_rows"):
 		_shelves.call("_remap_rows")
 

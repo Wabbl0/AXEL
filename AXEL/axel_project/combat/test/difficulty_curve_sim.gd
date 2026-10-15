@@ -38,6 +38,10 @@ var _growth_step: float = 0.0
 var _dread_item_scale: float = 1.0
 var _dread_memory: float = 0.10
 const DREAD_BY_RANK: Array[float] = [0.04, 0.05, 0.06, 0.08, 0.10]
+const ROOM_DEPTH := {"1.2": 0, "1.4": 0, "2.4": 0, "2.1": 1, "2.2": 1, "2.3": 1, "3.1": 2, "3.2": 2, "4.1": 3, "4.2": 3, "5.1": 3, "5.2": 3}
+var DEPTH_WEIGHTS: Array = [[100, 0, 0, 0, 0], [80, 20, 0, 0, 0], [55, 35, 10, 0, 0], [30, 40, 25, 5, 0]]
+var DEPTH_GOAL: Array[float] = [1.0, 1.25, 1.5, 1.8]
+var _depth_on: bool = true
 var _rounding: int = 25
 var _lore_step: float = 0.15
 var _bankroll: int = 1000
@@ -96,6 +100,9 @@ func _main() -> void:
 		for fight_i in fights:
 			var row: Array = SCHEDULE[fight_i]
 			var rank := int(row[1])
+			var depth := _row_depth(String(row[0]))
+			if rank >= 0 and _depth_on:
+				rank = _roll_depth_rank(depth, rank, pick_rng)
 			if rank >= 0:
 				var item = _pick_item(rank, pick_rng) if _pick_style == "random" else _pick_synergy(rank, owned, pick_rng)
 				if item != null:
@@ -110,7 +117,7 @@ func _main() -> void:
 				_fight_seed(run_i, fight_i),
 				[] if tutorial else equipped,
 				0.0 if tutorial else _lore_step * float(int(row[2])) + dread,
-				_goal_base(fight_i + 1),
+				_goal_for(fight_i + 1, depth, String(row[0]) == "tutorial"),
 				tutorial,
 				wallet,
 				pick_rng,
@@ -204,6 +211,20 @@ func _read_config() -> void:
 	_growth = _env_float("DIFF_GROWTH", float(_source_const(source, "WORLD_GOAL_LADDER_GROWTH", "1.5")))
 	_growth_step = _env_float("DIFF_GROWTH_STEP", float(_source_const(source, "WORLD_GOAL_GROWTH_STEP", "0.0")))
 	_dread_item_scale = _env_float("DIFF_DREAD_ITEM", 1.0)
+	_depth_on = OS.get_environment("DIFF_DEPTH") != "0"
+	var weights_env := OS.get_environment("DIFF_DEPTH_WEIGHTS")
+	if not weights_env.is_empty():
+		DEPTH_WEIGHTS.clear()
+		for row in weights_env.split(";"):
+			var tiers: Array = []
+			for part in row.split("/"):
+				tiers.append(int(part))
+			DEPTH_WEIGHTS.append(tiers)
+	var depth_goal_env := OS.get_environment("DIFF_DEPTH_GOAL")
+	if not depth_goal_env.is_empty():
+		DEPTH_GOAL.clear()
+		for part in depth_goal_env.split(","):
+			DEPTH_GOAL.append(float(part))
 	_dread_memory = _env_float("DIFF_DREAD_MEMORY", float(_source_const(source, "DREAD_PER_MEMORY", "0.10")))
 	_rounding = int(_env_float("DIFF_ROUNDING", float(_source_const(source, "WORLD_GOAL_LADDER_ROUNDING", "25"))))
 	_lore_step = _env_float("DIFF_LORE", float(_source_const(source, "LORE_GOAL_BONUS", "0.15")))
@@ -332,6 +353,35 @@ func _fight_seed(run_i: int, fight_i: int) -> int:
 	return run_seed + 500009 + fight_i * 10007
 
 
+func _row_depth(label: String) -> int:
+	return int(ROOM_DEPTH.get(label.get_slice(" ", 0), 0))
+
+
+func _roll_depth_rank(depth: int, shifts: int, rng: RandomNumberGenerator) -> int:
+	var weights: Array = (DEPTH_WEIGHTS[clampi(depth, 0, 3)] as Array).duplicate()
+	for _i in shifts:
+		var moved: Array = [0, 0, 0, 0, 0]
+		for tier in 5:
+			moved[mini(tier + 1, 4)] = int(moved[mini(tier + 1, 4)]) + int(weights[tier])
+		weights = moved
+	var total := 0
+	for w in weights:
+		total += int(w)
+	var pick := rng.randi() % maxi(total, 1)
+	for tier in 5:
+		pick -= int(weights[tier])
+		if pick < 0:
+			return tier
+	return 0
+
+
+func _goal_for(fight_count: int, depth: int, tutorial: bool) -> int:
+	var base := _goal_base(fight_count)
+	if tutorial or not _depth_on:
+		return base
+	return maxi(int(ceil(float(base) * DEPTH_GOAL[clampi(depth, 0, 3)] / 5.0)) * 5, 1)
+
+
 func _goal_base(fight_count: int) -> int:
 	var rung := maxi(fight_count - 1, 0)
 	var last := _ladder.size() - 1
@@ -418,8 +468,8 @@ func _median(values: Array) -> int:
 
 
 func _print_report(entered: Array[int], deaths: Array[int], goals: Array, wallets: Array, spins: Array) -> void:
-	print("DIFF_CONFIG step=%.3f dread_item=%.2f dread_mem=%.2f ladder=%s growth=%.2f lore=%.2f bankroll=%d bet=%s runs=%d real_seeds=%s pick=%s choices=%d lane=%s" % [
-		_growth_step, _dread_item_scale, _dread_memory, str(_ladder), _growth, _lore_step, _bankroll, _bet_style, _runs, str(_real_seeds), _pick_style, _choices, _lane,
+	print("DIFF_CONFIG depth=%s weights=%s depth_goal=%s step=%.3f dread_item=%.2f dread_mem=%.2f ladder=%s growth=%.2f lore=%.2f bankroll=%d bet=%s runs=%d real_seeds=%s pick=%s choices=%d lane=%s" % [
+		str(_depth_on), str(DEPTH_WEIGHTS), str(DEPTH_GOAL), _growth_step, _dread_item_scale, _dread_memory, str(_ladder), _growth, _lore_step, _bankroll, _bet_style, _runs, str(_real_seeds), _pick_style, _choices, _lane,
 	])
 	var items := 0
 	var dead := 0

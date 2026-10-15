@@ -14,4 +14,4 @@ Do this only when the user clearly asks for a new release (for example "make a n
    - `tools\cmd\godot.cmd --headless --path AXEL/axel_project --export-release "Windows Desktop" ../out/export/windows/AXEL_x.y.z.exe`
    - `tools\cmd\godot.cmd --headless --path AXEL/axel_project --export-release "macOS" ../out/export/mac/AXEL_x.y.z.zip`
 4. After both new files exist, delete the previous version's `.exe` and `.zip` in `AXEL/out/export/`.
-5. Stop here. Do not commit or push. A release request, "export" (for example "export X.X.+1") and "update docs" never mean commit and push. Leave the version bump and other changes uncommitted, tell the user the builds are ready, and commit and push only when the user says "commit and push".
+5. Stop here. Do not commit or push. A release request, "export" (for example "export X.X.+1") and "update docs" never mean commit and push. Leave the version bump and other changes uncommitted, tell the user the builds are ready, and commit and push only when the user says "commit and push". The upload to GitHub Releases happens then, as described in CLAUDE.md under "GitHub Release upload".

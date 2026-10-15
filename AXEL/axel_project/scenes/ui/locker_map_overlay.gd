@@ -88,7 +88,15 @@ const AREAS: Array[Dictionary] = [
 	},
 ]
 
+const NOT_ENOUGH_COLOR := Color(1.0, 0.1, 0.1, 1.0)
+const GLIMMER_COLOR := Color(0.9, 0.05, 0.05, 0.55)
+const GLIMMER_PERIOD := 2.6
+const GLIMMER_MIN_ALPHA := 0.35
+
 var show_items := false
+var show_glimmers := false
+var _glimmer_host: Control
+var _glimmer_time := 0.0
 var _root: Control
 var _rock: Control
 var _map: TextureRect
@@ -213,6 +221,12 @@ func _build() -> void:
 	_label.visible = false
 	_rock.add_child(_label)
 
+	_glimmer_host = Control.new()
+	_glimmer_host.name = "Glimmers"
+	_glimmer_host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_glimmer_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rock.add_child(_glimmer_host)
+
 	_pin_host = Control.new()
 	_pin_host.name = "ItemPins"
 	_pin_host.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -259,6 +273,62 @@ func _layout() -> void:
 	_label.add_theme_font_size_override("font_size", roundi(LABEL_FONT_BASE * chrome))
 	_refresh_hover()
 	_refresh_pins()
+	_refresh_glimmers()
+
+
+func _refresh_glimmers() -> void:
+	if _glimmer_host == null:
+		return
+	for child in _glimmer_host.get_children():
+		_glimmer_host.remove_child(child)
+		child.free()
+	if not show_glimmers:
+		return
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("room_glimmers"):
+		return
+	for index in AREAS.size():
+		var area: Dictionary = AREAS[index]
+		var lit := bool(world.call("room_glimmers", String(area.get("scene", ""))))
+		if not lit and area.has("pin_scene"):
+			lit = bool(world.call("room_glimmers", String(area.get("pin_scene", ""))))
+		if not lit:
+			continue
+		var rect := _screen_rect(_measure_rect(index))
+		var glow := TextureRect.new()
+		glow.name = "Glimmer%d" % index
+		glow.set_meta("glimmer_area", String(area.get("name", "")))
+		glow.texture = _glimmer_texture()
+		glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		glow.stretch_mode = TextureRect.STRETCH_SCALE
+		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var grown := rect.grow(minf(rect.size.x, rect.size.y) * 0.25)
+		glow.position = grown.position
+		glow.size = grown.size
+		_glimmer_host.add_child(glow)
+
+
+func glimmer_area_names() -> Array:
+	var out: Array = []
+	if _glimmer_host == null:
+		return out
+	for child in _glimmer_host.get_children():
+		out.append(String(child.get_meta("glimmer_area", "")))
+	return out
+
+
+static func _glimmer_texture() -> Texture2D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, GLIMMER_COLOR)
+	gradient.set_color(1, Color(GLIMMER_COLOR.r, GLIMMER_COLOR.g, GLIMMER_COLOR.b, 0.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(0.5, 0.0)
+	tex.width = 128
+	tex.height = 128
+	return tex
 
 
 func _view_size() -> Vector2:
@@ -279,6 +349,10 @@ func _process(delta: float) -> void:
 	if not visible or _rock == null or _map == null:
 		return
 	_rock_time += delta
+	if _glimmer_host != null and show_glimmers:
+		_glimmer_time += delta
+		var pulse := 0.5 + 0.5 * sin(_glimmer_time / GLIMMER_PERIOD * TAU)
+		_glimmer_host.modulate.a = lerpf(GLIMMER_MIN_ALPHA, 1.0, pulse)
 	_rock.pivot_offset = _map.position + _map.size * 0.5
 	var turns := _rock_time / ROCK_PERIOD
 	_rock.rotation = sin(turns * TAU) * deg_to_rad(ROCK_DEGREES)
@@ -395,7 +469,37 @@ func _on_part_gui(event: InputEvent, index: int) -> void:
 		viewport.set_input_as_handled()
 	if scene_path == _opened_from_room():
 		return
+	var run := get_node_or_null("/root/AxelRun")
+	if run != null and run.has_method("pay_travel") and not bool(run.call("pay_travel")):
+		_flash_not_enough()
+		return
 	travel_requested.emit(scene_path)
+
+
+func _travel_price_text(index: int) -> String:
+	if index < 0 or index >= AREAS.size():
+		return ""
+	var scene_path := String(AREAS[index].get("scene", ""))
+	if not _can_travel(scene_path) or scene_path == _opened_from_room():
+		return ""
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not run.has_method("travel_price"):
+		return ""
+	return "  %d" % int(run.call("travel_price"))
+
+
+func _flash_not_enough() -> void:
+	if _label == null:
+		return
+	_label.text = "Not enough"
+	_label.add_theme_color_override("font_color", NOT_ENOUGH_COLOR)
+	var tween := create_tween()
+	tween.tween_interval(0.8)
+	tween.tween_callback(func() -> void:
+		if _label != null:
+			_label.add_theme_color_override("font_color", LABEL_COLOR)
+		_refresh_hover()
+	)
 
 
 func _can_travel(scene_path: String) -> bool:
@@ -452,7 +556,7 @@ func _refresh_hover() -> void:
 	var chrome := 1.0
 	if is_inside_tree():
 		chrome = UiViewportScale.factor(self)
-	_label.text = String(AREAS[_hover_index]["name"])
+	_label.text = String(AREAS[_hover_index]["name"]) + _travel_price_text(_hover_index)
 	var font_size := roundi(LABEL_FONT_BASE * chrome)
 	_label.add_theme_font_size_override("font_size", font_size)
 	_label.size = UI_FONT.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)

@@ -28,6 +28,10 @@ func _main() -> void:
 		quit(1)
 		return
 	world.call("reset_world")
+	var gm := root.get_node_or_null("GameManager")
+	if gm != null:
+		gm.call("set_flag", "fightIntroSeen", true)
+		gm.call("set_flag", "dreadIntroSeen", true)
 
 	if change_scene_to_file(ROOM) != OK:
 		push_error("world_combat_roundtrip_check: could not load %s" % ROOM)
@@ -53,8 +57,8 @@ func _main() -> void:
 			var item_id := String(child.get("item_id"))
 			if item_id.is_empty():
 				_fail("floor item has no item id")
-			elif not item_id.begins_with("C"):
-				_fail("first area should roll Common, got %s" % item_id)
+			elif int(world.call("item_rank_of_id", item_id)) > _top_tier(world, "cafeteria"):
+				_fail("cafeteria rolled %s above its depth weights" % item_id)
 
 	var act_before := int(run.state.act)
 	var index_before := int(run.state.encounter_index)
@@ -208,3 +212,12 @@ func _wait_for_scene_path(path: String, max_frames: int) -> bool:
 		if current_scene != null and current_scene.scene_file_path == path:
 			return true
 	return false
+
+
+func _top_tier(world: Node, area_id: String) -> int:
+	var weights: Array = world.call("rarity_weights", area_id)
+	var top := 0
+	for tier in weights.size():
+		if int(weights[tier]) > 0:
+			top = tier
+	return top

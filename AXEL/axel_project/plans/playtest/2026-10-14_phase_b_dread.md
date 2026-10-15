@@ -11,9 +11,17 @@ From `2026-10-14_next_phase_master_plan.md` Phase B. Built while the user was aw
 - **Steeper growth:** after the ladder, each fight multiplies by `1.5 + 0.02 × steps past the ladder` (`WORLD_GOAL_GROWTH_STEP`).
 - **Sim:** `difficulty_curve_sim.gd` models Dread (`DIFF_DREAD_ITEM` scale, `DIFF_DREAD_MEMORY`) and `DIFF_GROWTH_STEP`. Set all three to 0 for the old rules.
 
+- **Ticket machine:** a framed `TICKET MACHINE` panel bottom-left in `1.3_LockerHub` (`scenes/ui/ticket_machine.gd`, placeholder until drawn art exists; hidden during first-visit lines and while the map is open). Price 300, then ×1.5 per ticket bought (rounded to 5); refused if it would leave less than 100. `RunState.tickets`, `tickets_bought`, `tickets_used` are saved.
+- **Reroll:** new InputMap action `reroll` (F, pad X). Near a floor item with a ticket, F calls `AxelWorld.reroll_item`: same rarity, from the same area's families and baseline lanes, never the current lane first, seeded by run seed + tickets used + room + slot. Combat items only. The floor card ends with `[F] Reroll (n)` when tickets > 0; the item box footer shows `TICKETS n`.
+- Known edge: an item rerolled in an untouched area can be re-rolled again by the area rank-up when you first take from another area.
+- Regression: `tools/qa/ticket_machine_check.gd`.
+
+## Sim result (2026-10-15, 100 runs each)
+
+Dead by the end, min bet: new rules 63–66 %, old rules 55–64 %. ⅕ bet: 90 %. The user wants items uncapped and ~64 % deaths, so this is on target. Data: `2026-10-14_sim_data.xlsx`.
+
 ## Not done yet
 
-- Ticket machine in `1.3_LockerHub` (combat items only, price 300 ×1.5 per use, seeded reroll, `reroll` InputMap action, footer count) + `ticket_machine_check.gd`.
-- Reroll items (catalog edit).
+- Reroll items (catalog edit), after tickets are playtested.
 - Dread line on the fight intro / goal panel.
 - AI_DOCS update (wait for "update docs").

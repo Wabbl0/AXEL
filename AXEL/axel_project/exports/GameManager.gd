@@ -67,6 +67,8 @@ func _default_game_state() -> Dictionary:
 			"deskSequencePlayed": false,
 			"knowsName": false,
 			"isDead": false,
+			"fightIntroSeen": false,
+			"dreadIntroSeen": false,
 		},
 	}
 

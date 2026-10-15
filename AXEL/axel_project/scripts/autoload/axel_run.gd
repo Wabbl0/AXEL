@@ -16,6 +16,12 @@ const WORLD_GOAL_LADDER_GROWTH := 1.5
 const WORLD_GOAL_GROWTH_STEP := 0.02
 const DREAD_BY_RANK := {"C": 0.04, "U": 0.05, "R": 0.06, "E": 0.08, "L": 0.10}
 const DREAD_PER_MEMORY := 0.10
+const TICKET_BASE_PRICE := 300
+const TICKET_PRICE_GROWTH := 1.5
+const TICKET_MIN_LEFT := 100
+const TRAVEL_BALANCE_PCT := 0.10
+const TRAVEL_MIN_PRICE := 50
+const TRAVEL_MIN_LEFT := 100
 const WORLD_GOAL_LADDER_ROUNDING := 5
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
 const GUIDE_LESSON := "guide_pause"
@@ -160,6 +166,56 @@ func add_memory_dread() -> void:
 	_persist()
 
 
+func ticket_price() -> int:
+	var value := float(TICKET_BASE_PRICE) * pow(TICKET_PRICE_GROWTH, float(state.tickets_bought))
+	return maxi(int(round(value / 5.0)) * 5, 5)
+
+
+func can_buy_ticket() -> bool:
+	return int(state.bankroll_cents) - ticket_price() >= TICKET_MIN_LEFT
+
+
+func buy_ticket() -> bool:
+	if not can_buy_ticket():
+		return false
+	state.bankroll_cents = int(state.bankroll_cents) - ticket_price()
+	state.tickets_bought = int(state.tickets_bought) + 1
+	state.tickets = int(state.tickets) + 1
+	_persist()
+	return true
+
+
+func travel_price() -> int:
+	var raw := float(state.bankroll_cents) * TRAVEL_BALANCE_PCT
+	return maxi(int(round(raw / 5.0)) * 5, TRAVEL_MIN_PRICE)
+
+
+func can_pay_travel() -> bool:
+	return int(state.bankroll_cents) - travel_price() >= TRAVEL_MIN_LEFT
+
+
+func pay_travel() -> bool:
+	if not can_pay_travel():
+		return false
+	state.bankroll_cents = int(state.bankroll_cents) - travel_price()
+	state.travel_uses = int(state.travel_uses) + 1
+	_persist()
+	return true
+
+
+func ticket_count() -> int:
+	return int(state.tickets)
+
+
+func spend_ticket() -> bool:
+	if int(state.tickets) <= 0:
+		return false
+	state.tickets = int(state.tickets) - 1
+	state.tickets_used = int(state.tickets_used) + 1
+	_persist()
+	return true
+
+
 func goal_bonus_pct() -> float:
 	return lore_goal_bonus() + dread_pct()
 
@@ -207,6 +263,21 @@ func world_goal_base_cents() -> int:
 	return maxi(int(round(value / step)) * WORLD_GOAL_LADDER_ROUNDING, 1)
 
 
+func depth_goal_mult() -> float:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("depth_goal_mult_for_scene"):
+		return 1.0
+	return float(world.call("depth_goal_mult_for_scene", String(state.world_return_scene)))
+
+
+func world_goal_cents_for_fight() -> int:
+	var base := world_goal_base_cents()
+	if is_tutorial_encounter():
+		return base
+	var raw := float(base) * depth_goal_mult()
+	return maxi(int(ceil(raw / 5.0)) * 5, 1)
+
+
 func is_tutorial_encounter() -> bool:
 	return state.world_encounter and String(state.world_reason) == REASON_LOCKER_TUTORIAL
 
@@ -235,6 +306,11 @@ func enter_world_encounter(
 	state.world_fight_count = int(state.world_fight_count) + 1
 	state.in_encounter = true
 	_persist_now()
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("play_fight_intro_lines"):
+		await world.play_fight_intro_lines()
+	if get_tree() == null:
+		return
 	if is_instance_valid(AxelEventFx):
 		await AxelEventFx.play_combat_wipe()
 	if get_tree() == null:
@@ -396,7 +472,7 @@ func _wire_combat_root() -> void:
 	if root.has_method("set_equipped_items"):
 		root.call("set_equipped_items", [] if tutorial else equipped_items())
 	if state.world_encounter and root.has_method("set_goal_base_target_cents"):
-		root.call("set_goal_base_target_cents", world_goal_base_cents())
+		root.call("set_goal_base_target_cents", world_goal_cents_for_fight())
 	if tutorial and root.has_method("set_tutorial_script_seeds"):
 		root.call("set_tutorial_script_seeds", CombatRoot.TUTORIAL_SCRIPT_SEEDS)
 	if is_tutorial_last_spin_lock() and root.has_method("set_tutorial_last_spin_lock"):

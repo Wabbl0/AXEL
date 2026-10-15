@@ -47,6 +47,7 @@ var _scroll: ScrollContainer
 var _list: VBoxContainer
 var _balance: Label
 var _dread: Label
+var _tickets: Label
 var _cap: Label
 var _open := false
 var _tab := TAB_ITEMS
@@ -280,6 +281,11 @@ func _build() -> void:
 	_dread.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	MenuLook.apply_label(_dread, ROW_PX, OUTLINE)
 	footer.add_child(_dread)
+	_tickets = Label.new()
+	_tickets.name = "Tickets"
+	_tickets.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	MenuLook.apply_label(_tickets, ROW_PX, MenuLook.TEXT)
+	footer.add_child(_tickets)
 	_cap = Label.new()
 	_cap.name = "EquipCap"
 	_cap.visible = false
@@ -382,6 +388,7 @@ func _layout_box() -> void:
 		button.add_theme_font_size_override("font_size", _px(SMALL_PX))
 	_balance.add_theme_font_size_override("font_size", _px(ROW_PX))
 	_dread.add_theme_font_size_override("font_size", _px(ROW_PX))
+	_tickets.add_theme_font_size_override("font_size", _px(ROW_PX))
 	_cap.add_theme_font_size_override("font_size", _px(ROW_PX))
 
 
@@ -443,6 +450,9 @@ func _refresh_footer() -> void:
 		dread = float(run.call("dread_pct"))
 	_dread.visible = dread > 0.0
 	_dread.text = "DREAD %d%%" % int(round(dread * 100.0))
+	var tickets := int(run.call("ticket_count")) if run != null and run.has_method("ticket_count") else 0
+	_tickets.visible = tickets > 0
+	_tickets.text = "TICKETS %d" % tickets
 	_cap.visible = _owned_count() > 0
 	_cap.text = "%d/%d" % [equipped, cap]
 	_cap.add_theme_color_override("font_color", OUTLINE if equipped >= cap else MenuLook.TEXT)

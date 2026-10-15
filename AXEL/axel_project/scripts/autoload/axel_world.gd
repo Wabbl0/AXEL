@@ -84,6 +84,40 @@ const AREAS := {
 	},
 }
 
+const AREA_DEPTH := {
+	"halls": 0,
+	"basement": 0,
+	"cafeteria": 1,
+	"kitchen": 1,
+	"backyard": 2,
+	"lounge": 3,
+	"classroom": 3,
+}
+const DEPTH_RARITY_WEIGHTS: Array = [
+	[100, 0, 0, 0, 0],
+	[80, 20, 0, 0, 0],
+	[55, 35, 10, 0, 0],
+	[30, 40, 25, 5, 0],
+]
+const DEPTH_GOAL_MULT: Array[float] = [1.0, 1.25, 1.5, 1.8]
+const DEEP_AIR_DEPTH := 3
+const GLIMMER_MEMORY_KEYS := {
+	"res://scenes/Arc_2/2.1_Cafeteria.tscn": "cafeteria_memory",
+	"res://scenes/Arc_3/3.1_Backyard.tscn": "backyard_memory",
+	"res://scenes/Arc_4/4.1_TeachersLounge.tscn": "teachers_memory",
+}
+const GLIMMER_MEMORY_PROPERTIES := {
+	"res://scenes/Arc_5/5.1_Classroom.tscn": "classroom_desk_seen",
+}
+const GLIMMER_TRUE_FLAGS := {
+	"res://scenes/Arc_2/2.3_Kitchen.tscn": "hasFlashlight",
+	"res://scenes/Arc_4/4.1_TeachersLounge.tscn": "hasKey",
+	"res://scenes/Arc_5/5.1_Classroom.tscn": "hasName",
+}
+const DEEP_AIR_LINES: Array = ["The air is heavier here."]
+const DEEP_AIR_TRIES := 20
+const DEEP_AIR_WAIT_SEC := 1.0
+
 const AREA_ROLL_ORDER: PackedStringArray = [
 	"basement", "cafeteria", "classroom", "halls", "kitchen", "lounge", "backyard",
 ]
@@ -123,9 +157,23 @@ var _cleared: Dictionary = {}
 var _upgrade_spent: Dictionary = {}
 var _room_items: Dictionary = {}
 var _lore_fights: Dictionary = {}
+var _deep_air_seen: Dictionary = {}
 var _item_seed: int = 0
 const ITEM_ROLL_SALT := 0xA5A511
 const PLACE_SALT := 0x5A5A22
+const TOP_DIALOGUE_SCENE := "res://scenes/ui/TopDialogueOverlay.tscn"
+const FIGHT_INTRO_FLAG := "fightIntroSeen"
+const DREAD_INTRO_FLAG := "dreadIntroSeen"
+const FIGHT_INTRO_LINES: Array[String] = [
+	"Every memory here comes with regret.",
+	"You want it back? Then face it. Win, and it's yours.",
+	"And sure, lean on your vices. Smokes, booze, blood. You always do.",
+]
+const DREAD_INTRO_LINES: Array[String] = [
+	"That's the guilt piling up.",
+	"The more you dig up, the harder it gets to face.",
+	"That's Dread. It only goes up.",
+]
 
 var _steps_since_fight: int = STEP_GRACE_AFTER_FIGHT
 var _step_fights_this_visit: int = 0
@@ -177,6 +225,7 @@ func reset_world() -> void:
 	_upgrade_spent.clear()
 	_room_items.clear()
 	_lore_fights.clear()
+	_deep_air_seen.clear()
 	_item_seed = 0
 	for area_id in AREAS.keys():
 		_rank[area_id] = 0
@@ -278,6 +327,66 @@ func walk_fights_unlocked() -> bool:
 
 func area_rank(area_id: String) -> int:
 	return int(_rank.get(area_id, 0))
+
+
+func area_depth(area_id: String) -> int:
+	return int(AREA_DEPTH.get(area_id, 0))
+
+
+func depth_goal_mult_for_scene(scene_path: String) -> float:
+	var area_id := area_for_scene(scene_path)
+	if area_id.is_empty():
+		return 1.0
+	return DEPTH_GOAL_MULT[clampi(area_depth(area_id), 0, DEPTH_GOAL_MULT.size() - 1)]
+
+
+func rarity_weights(area_id: String) -> Array:
+	var depth := clampi(area_depth(area_id), 0, DEPTH_RARITY_WEIGHTS.size() - 1)
+	var weights: Array = (DEPTH_RARITY_WEIGHTS[depth] as Array).duplicate()
+	for _i in area_rank(area_id):
+		var shifted: Array = [0, 0, 0, 0, 0]
+		for tier in weights.size():
+			var dest := mini(tier + 1, weights.size() - 1)
+			shifted[dest] = int(shifted[dest]) + int(weights[tier])
+		weights = shifted
+	return weights
+
+
+func _roll_rarity(area_id: String, rng: RandomNumberGenerator) -> int:
+	var weights := rarity_weights(area_id)
+	var total := 0
+	for w in weights:
+		total += int(w)
+	if total <= 0:
+		return 0
+	var pick := rng.randi() % total
+	for tier in weights.size():
+		pick -= int(weights[tier])
+		if pick < 0:
+			return tier
+	return 0
+
+
+func room_glimmers(scene_path: String) -> bool:
+	if scene_path.is_empty():
+		return false
+	for entry in (_room_items.get(scene_path, []) as Array):
+		var placed: Dictionary = entry
+		if not bool(placed.get("taken", false)) and item_rank_of_id(String(placed.get("id", ""))) >= MAX_RANK:
+			return true
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null:
+		return false
+	if GLIMMER_MEMORY_KEYS.has(scene_path) and gm.has_method("has_memory_scene"):
+		if not bool(gm.call("has_memory_scene", String(GLIMMER_MEMORY_KEYS[scene_path]))):
+			return true
+	if GLIMMER_MEMORY_PROPERTIES.has(scene_path):
+		if not bool(gm.get(String(GLIMMER_MEMORY_PROPERTIES[scene_path]))):
+			return true
+	if GLIMMER_TRUE_FLAGS.has(scene_path) and gm.has_method("get_flag"):
+		if not bool(gm.call("get_flag", String(GLIMMER_TRUE_FLAGS[scene_path]))):
+			return true
+	return false
 
 
 func area_rank_name(area_id: String) -> String:
@@ -387,6 +496,44 @@ func start_fight_to_scene(reason: String, return_scene: String) -> bool:
 	_record_fight_room(return_scene)
 	AxelRun.enter_world_encounter(reason, return_scene, Vector2.ZERO, false)
 	return true
+
+
+func fight_intro_lines() -> Array:
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null:
+		return []
+	var lines: Array = []
+	if not bool(gm.call("get_flag", FIGHT_INTRO_FLAG)):
+		lines.append_array(FIGHT_INTRO_LINES)
+	var run := _run()
+	if run != null and float(run.call("dread_pct")) > 0.0 and not bool(gm.call("get_flag", DREAD_INTRO_FLAG)):
+		lines.append_array(DREAD_INTRO_LINES)
+	return lines
+
+
+func play_fight_intro_lines() -> void:
+	var lines := fight_intro_lines()
+	if lines.is_empty():
+		return
+	var gm := get_node_or_null("/root/GameManager")
+	gm.call("set_flag", FIGHT_INTRO_FLAG, true)
+	if lines.has(DREAD_INTRO_LINES[0]):
+		gm.call("set_flag", DREAD_INTRO_FLAG, true)
+	var scene := _current_scene()
+	if scene == null:
+		return
+	var dialogue := scene.find_child("TopDialogueOverlay", true, false)
+	var temporary := false
+	if dialogue == null or not dialogue.has_method("show_lines"):
+		var packed := load(TOP_DIALOGUE_SCENE) as PackedScene
+		if packed == null:
+			return
+		dialogue = packed.instantiate()
+		scene.add_child(dialogue)
+		temporary = true
+	await dialogue.show_lines(lines)
+	if temporary and is_instance_valid(dialogue):
+		dialogue.queue_free()
 
 
 func start_memory_fight(return_scene: String) -> bool:
@@ -532,6 +679,56 @@ func take_item(scene_path: String, index: int) -> void:
 	map_spots_updated.emit()
 
 
+func room_item_entries(scene_path: String) -> Array:
+	return _room_items.get(scene_path, [])
+
+
+func reroll_preview_id(scene_path: String, index: int) -> String:
+	var entries: Array = _room_items.get(scene_path, [])
+	if index < 0 or index >= entries.size():
+		return ""
+	var entry: Dictionary = entries[index]
+	if bool(entry.get("taken", false)):
+		return ""
+	var current := String(entry.get("id", ""))
+	var rank := item_rank_of_id(current)
+	var area_id := area_for_scene(scene_path)
+	if rank < 0 or not AREAS.has(area_id):
+		return ""
+	var run := _run()
+	var used := int(run.state.tickets_used) if run != null else 0
+	var run_seed := int(run.state.seed) if run != null else 0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([run_seed, used, scene_path, index, "ticket_reroll"])
+	var ordered := _candidate_lanes(area_id, [_lane_of(current)])
+	if ordered.is_empty():
+		return ""
+	var blocked := _blocked_item_ids()
+	var start := rng.randi() % ordered.size()
+	for i in ordered.size():
+		var lane := String(ordered[(start + i) % ordered.size()])
+		var item_id := _resolve_lane_exact(lane, rank, blocked)
+		if not item_id.is_empty() and item_id != current:
+			return item_id
+	return ""
+
+
+func reroll_item(scene_path: String, index: int) -> bool:
+	var run := _run()
+	if run == null or int(run.state.tickets) <= 0:
+		return false
+	var next_id := reroll_preview_id(scene_path, index)
+	if next_id.is_empty():
+		return false
+	if not bool(run.call("spend_ticket")):
+		return false
+	var entries: Array = _room_items.get(scene_path, [])
+	(entries[index] as Dictionary)["id"] = next_id
+	_save()
+	map_spots_updated.emit()
+	return true
+
+
 func _engage_area(area_id: String) -> void:
 	if area_id.is_empty() or bool(_engaged.get(area_id, false)):
 		return
@@ -592,6 +789,7 @@ func to_dict() -> Dictionary:
 		"upgrade_spent": _upgrade_spent.duplicate(true),
 		"room_items": _room_items.duplicate(true),
 		"lore_fights": _lore_fights.duplicate(true),
+		"deep_air_seen": _deep_air_seen.duplicate(true),
 	}
 
 
@@ -618,6 +816,7 @@ func from_dict(data: Dictionary) -> void:
 			})
 		_room_items[String(room_path)] = out
 	_lore_fights = (data.get("lore_fights", {}) as Dictionary).duplicate(true)
+	_deep_air_seen = (data.get("deep_air_seen", {}) as Dictionary).duplicate(true)
 	_sync_cleared_from_taken()
 	_fill_missing_room_lists()
 	if _any_area_frozen():
@@ -651,6 +850,28 @@ func _on_scene_changed() -> void:
 	if is_enabled() and path == TUTORIAL_SCENE and is_locker_tutorial_pending():
 		_start_locker_tutorial(scene)
 	_request_items_wheel_lesson(scene)
+	_queue_deep_air_line(scene)
+
+
+func _queue_deep_air_line(scene: Node) -> void:
+	var area_id := area_for_scene(scene.scene_file_path)
+	if area_id.is_empty() or area_depth(area_id) < DEEP_AIR_DEPTH:
+		return
+	if bool(_deep_air_seen.get(area_id, false)):
+		return
+	for _i in DEEP_AIR_TRIES:
+		await get_tree().create_timer(DEEP_AIR_WAIT_SEC, false).timeout
+		if not is_instance_valid(scene) or _current_scene() != scene or _starting_fight:
+			return
+		var dialogue := scene.find_child("TopDialogueOverlay", true, false)
+		if dialogue == null or not dialogue.has_method("show_lines"):
+			return
+		if dialogue.has_method("is_sequence_busy") and bool(dialogue.call("is_sequence_busy")):
+			continue
+		_deep_air_seen[area_id] = true
+		_save()
+		await dialogue.show_lines(DEEP_AIR_LINES)
+		return
 
 
 func _request_items_wheel_lesson(scene: Node) -> void:
@@ -1691,7 +1912,7 @@ func _roll_item(
 	if ordered.is_empty():
 		return ""
 	var start := rng.randi() % ordered.size()
-	var rank := area_rank(area_id)
+	var rank := _roll_rarity(area_id, rng)
 	var blocked: Array = blocked_override if blocked_override is Array else _blocked_item_ids()
 	for i in ordered.size():
 		var lane := String(ordered[(start + i) % ordered.size()])

@@ -171,8 +171,8 @@ func _check_item_pools(world: Node, run: Node) -> void:
 		for family in families:
 			used_families.append(String(family))
 		var baseline := String(world.call("_roll_item", area_id, rng, used_families))
-		if not _is_c1_to_c10(baseline):
-			_fail("area %s should roll a C1–C10 when families are used, got %s" % [area_id, baseline])
+		if not _is_baseline_id(baseline):
+			_fail("area %s should roll a baseline item when families are used, got %s" % [area_id, baseline])
 		elif run.call("load_item", baseline) == null:
 			_fail("area %s rolled a missing baseline id %s" % [area_id, baseline])
 	_check_owned_ids_are_skipped(world, run)
@@ -266,13 +266,13 @@ func _check_floor_retier(world: Node, run: Node) -> void:
 	var basement := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 	var cafeteria := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 	var halls := "res://scenes/Arc_2/2.4_ClassroomsCorridor.tscn"
-	if not _ids_at_rank(world, cafeteria, 0) or _open_ids(world, cafeteria).is_empty():
-		_fail("cafeteria should start with Common floor items")
+	if not _ids_within_weights(world, cafeteria, "cafeteria"):
+		_fail("cafeteria floor items should follow its depth rarity weights")
 		world.call("reset_world")
 		run.call("reset_run")
 		return
-	if not _ids_at_rank(world, basement, 0):
-		_fail("basement should start Common")
+	if not _ids_within_weights(world, basement, "basement"):
+		_fail("basement floor item should follow its depth rarity weights")
 
 	world.call("take_item", basement, 0)
 	if not bool(world._cleared.get("basement", false)):
@@ -281,8 +281,8 @@ func _check_floor_retier(world: Node, run: Node) -> void:
 		_fail("looted basement must stay Common")
 	if int(world.call("area_rank", "cafeteria")) != 1:
 		_fail("2.1 should be Uncommon after a 1.4 pickup")
-	if not _ids_at_least_rank(world, cafeteria, 1):
-		_fail("2.1 floor items should become Uncommon after a 1.4 pickup")
+	if not _ids_within_weights(world, cafeteria, "cafeteria"):
+		_fail("2.1 floor items should follow the shifted weights after a 1.4 pickup")
 	var cafe_after_take := _open_ids(world, cafeteria)
 	var retiered: Dictionary = world.call("to_dict")
 	world.call("reset_world")
@@ -299,17 +299,14 @@ func _check_floor_retier(world: Node, run: Node) -> void:
 		_fail("taking a 2.1 item should clear cafeteria")
 	if int(world.call("area_rank", "basement")) != 1:
 		_fail("1.4 should step up when 2.1 is looted first")
-	if not _ids_at_least_rank(world, basement, 1):
-		_fail("1.4 floor item should become Uncommon when 2.1 is looted first")
+	if not _ids_within_weights(world, basement, "basement"):
+		_fail("1.4 floor item should follow the shifted weights when 2.1 is looted first")
 	var cafe_left := _open_ids(world, cafeteria)
 	if cafe_left.size() != cafe_before.size() - 1:
 		_fail("cafeteria should keep leftover items after the first pickup")
 	for item_id in cafe_left:
 		if not cafe_before.has(item_id):
 			_fail("leftover cafeteria item %s changed after the first pickup" % item_id)
-			break
-		if int(world.call("item_rank_of_id", item_id)) != 0:
-			_fail("leftover cafeteria item %s should stay Common" % item_id)
 			break
 
 	world.call("reset_world")
@@ -367,6 +364,26 @@ func _ids_at_least_rank(world: Node, room_path: String, want: int) -> bool:
 		return false
 	for item_id in ids:
 		if int(world.call("item_rank_of_id", item_id)) < want:
+			return false
+	return true
+
+
+func _is_baseline_id(item_id: String) -> bool:
+	var regex := RegEx.create_from_string("^[CUREL][0-9]+$")
+	return regex.search(item_id) != null
+
+
+func _ids_within_weights(world: Node, room_path: String, area_id: String) -> bool:
+	var ids := _open_ids(world, room_path)
+	if ids.is_empty():
+		return false
+	var weights: Array = world.call("rarity_weights", area_id)
+	var top := 0
+	for tier in weights.size():
+		if int(weights[tier]) > 0:
+			top = tier
+	for item_id in ids:
+		if int(world.call("item_rank_of_id", item_id)) > top:
 			return false
 	return true
 

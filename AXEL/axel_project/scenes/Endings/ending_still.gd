@@ -94,7 +94,7 @@ func _lines() -> Array:
 		"7.6":
 			return [
 				"I should quit.",
-				"Yeah, don't want to end like me before your time",
+				"|other|Yeah, don't want to end like me before your time",
 				"It was a really bad joke, but you still laugh.",
 				"Just like old times.",
 			]
