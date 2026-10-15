@@ -89,8 +89,9 @@ func _build() -> void:
 	_slider(col, "Effects", "audio", "effects_volume")
 
 	_section(col, "VIDEO")
-	_option(col, "Window mode", "video", "window_mode", _WINDOW_MODES)
-	_size_option = _size_dropdown(col)
+	if not OS.has_feature("web"):
+		_option(col, "Window mode", "video", "window_mode", _WINDOW_MODES)
+		_size_option = _size_dropdown(col)
 	_toggle(col, "VSync", "video", "vsync")
 	_option(col, "Graphics quality", "video", "graphics_quality", _QUALITY)
 

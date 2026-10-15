@@ -33,6 +33,7 @@ func _main() -> void:
 		_fail("reroll did not change the item")
 	elif first != second:
 		_fail("same seed and state gave different rerolls: %s vs %s" % [first, second])
+	_check_reroll_survives_rankup(world, run)
 	await _check_hub(run)
 	world.call("reset_world")
 	run.call("reset_run")
@@ -86,6 +87,42 @@ func _reroll_once(world: Node, run: Node) -> String:
 	if int(run.call("ticket_count")) != 0 or int(run.state.tickets_used) != 1:
 		_fail("reroll did not spend exactly one ticket")
 	return after
+
+
+func _check_reroll_survives_rankup(world: Node, run: Node) -> void:
+	var after := _reroll_once(world, run)
+	if after.is_empty():
+		return
+	var cafe_area := String(world.call("area_for_scene", CAFETERIA))
+	var rank_before := int(world.call("area_rank", cafe_area))
+	var other_path := ""
+	for path in (world.get("_room_items") as Dictionary).keys():
+		if String(world.call("area_for_scene", String(path))) == cafe_area:
+			continue
+		if not (world.call("room_item_entries", String(path)) as Array).is_empty():
+			other_path = String(path)
+			break
+	if other_path.is_empty():
+		_fail("no floor item outside the cafeteria area")
+		return
+	world.call("take_item", other_path, 0)
+	if int(world.call("area_rank", cafe_area)) <= rank_before:
+		_fail("taking an item elsewhere did not rank up the cafeteria area")
+	var kept := String((world.call("room_item_entries", CAFETERIA)[0] as Dictionary).get("id", ""))
+	if kept != after:
+		_fail("area rank-up replaced the rerolled item: %s -> %s" % [after, kept])
+	var saved: Dictionary = world.call("to_dict")
+	world.call("from_dict", saved)
+	var loaded := String((world.call("room_item_entries", CAFETERIA)[0] as Dictionary).get("id", ""))
+	if loaded != after:
+		_fail("save/load replaced the rerolled item: %s -> %s" % [after, loaded])
+	var ids: Array = []
+	for path in (world.get("_room_items") as Dictionary).keys():
+		for entry in (world.call("room_item_entries", String(path)) as Array):
+			var item_id := String((entry as Dictionary).get("id", ""))
+			if ids.has(item_id):
+				_fail("floor item %s appears twice after rank-up" % item_id)
+			ids.append(item_id)
 
 
 func _check_hub(run: Node) -> void:

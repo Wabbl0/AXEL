@@ -6,7 +6,8 @@ param(
     [Parameter(Mandatory = $true)][string]$Out,
     [int]$Frames = 60,
     [string]$Size = "1920x1280",
-    [ValidateSet("windowed", "borderless", "fullscreen")][string]$Mode = "windowed"
+    [ValidateSet("windowed", "borderless", "fullscreen")][string]$Mode = "windowed",
+    [string]$Renderer = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -31,7 +32,7 @@ if ($Out -notmatch "^(user|res)://") {
     }
 }
 
-& (Join-Path $PSScriptRoot "run_quiet.ps1") -Script "res://tools/qa/capture_scene.gd" `
+& (Join-Path $PSScriptRoot "run_quiet.ps1") -Script "res://tools/qa/capture_scene.gd" -Renderer $Renderer `
     -UserArgs @("--scene=$Scene", "--out=$Out", "--frames=$Frames", "--size=$Size", "--mode=$Mode")
 $code = $LASTEXITCODE
 if ($code -eq 0) {

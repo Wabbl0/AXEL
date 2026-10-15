@@ -35,6 +35,7 @@ func _ready() -> void:
 		MenuLook.go(get_tree(), MenuLook.CREDITS_SCENE)
 	)
 	_quit_button.pressed.connect(func() -> void: get_tree().quit())
+	_quit_button.visible = not OS.has_feature("web")
 	get_viewport().size_changed.connect(_style_buttons)
 	_focus_start.call_deferred()
 
@@ -49,6 +50,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if _overwrite_box != null and _overwrite_box.visible:
 			_hide_overwrite()
+			return
+		if OS.has_feature("web"):
 			return
 		get_tree().quit()
 

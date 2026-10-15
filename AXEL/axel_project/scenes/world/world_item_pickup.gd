@@ -275,6 +275,15 @@ func _show_info_card() -> void:
 		var tutorial := get_node_or_null("/root/AxelTutorial")
 		if tutorial != null and tutorial.has_method("request"):
 			tutorial.call("request", "items_hand")
+			if _dread_pct() > 0:
+				tutorial.call("request", "items_dread")
+
+
+func _dread_pct() -> int:
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not run.has_method("dread_for_item"):
+		return 0
+	return int(round(float(run.call("dread_for_item", item_id)) * 100.0))
 
 
 func _hide_info_card() -> void:
@@ -295,12 +304,10 @@ func _hide_info_card_immediate() -> void:
 
 func _card_description() -> String:
 	var text := description()
-	var run := get_node_or_null("/root/AxelRun")
-	if run == null or not run.has_method("dread_for_item"):
-		return text
-	var pct := int(round(float(run.call("dread_for_item", item_id)) * 100.0))
+	var pct := _dread_pct()
 	if pct <= 0:
 		return text
+	var run := get_node_or_null("/root/AxelRun")
 	text = "%s  +%d%% Dread" % [text, pct]
 	var tickets := int(run.call("ticket_count")) if run.has_method("ticket_count") else 0
 	if tickets > 0:

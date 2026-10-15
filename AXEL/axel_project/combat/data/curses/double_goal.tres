@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CurseDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/curse_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"double_goal"
+name = "Double Goal"
+description = "GOAL is x{mult}."
+effect_id = &"double_goal"
+params = {
+"mult": 2.0
+}

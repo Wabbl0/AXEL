@@ -9,11 +9,14 @@ const BASEMENT_DOOR_ROOM := "res://scenes/Arc_1/1.4_BasementDoor.tscn"
 const ENDING_4 := "res://scenes/Endings/7.4_Ending4.tscn"
 const ENDING_TRUE := "res://scenes/Endings/7.5_EndingTrue.tscn"
 const SYMBOL_COLUMNS := 5
+const RouletteScript := preload("res://scenes/ui/basement_roulette.gd")
 
 var _busy := false
 var _dialogue: Node
 var _choices: VBoxContainer
 var _input: LineEdit
+var _x_button: Button
+var _roulette: Node
 
 
 func _ready() -> void:
@@ -76,6 +79,7 @@ func _build_look() -> void:
 	x.offset_bottom = -24
 	x.pressed.connect(_on_x)
 	layer.add_child(x)
+	_x_button = x
 	set_process_unhandled_input(true)
 
 
@@ -87,7 +91,38 @@ func _play_and_offer() -> void:
 		await _dialogue.show_lines(Array(lines))
 	if _start_lore_fight_if_needed(def):
 		return
+	if bool(def.get("roulette", false)):
+		await _run_roulette()
+	if _start_gauntlet_fight(String(def.get("fight", "")), scene_file_path):
+		return
 	_offer_choices(def)
+
+
+func _run_roulette() -> void:
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("roulette_open") or not bool(world.call("roulette_open")):
+		return
+	_roulette = RouletteScript.new()
+	add_child(_roulette)
+	if _x_button != null:
+		_x_button.visible = false
+	await _roulette.closed
+	_roulette = null
+	if _x_button != null:
+		_x_button.visible = true
+
+
+func _start_gauntlet_fight(fight_id: String, return_scene: String) -> bool:
+	if fight_id.is_empty() or return_scene.is_empty():
+		return false
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("start_gauntlet_fight"):
+		return false
+	if not bool(world.call("start_gauntlet_fight", fight_id, return_scene)):
+		return false
+	if _dialogue != null and _dialogue.has_method("interrupt_line"):
+		_dialogue.interrupt_line()
+	return true
 
 
 func _start_lore_fight_if_needed(def: Dictionary) -> bool:
@@ -231,6 +266,8 @@ func _on_submit() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _roulette != null:
+		return
 	if event.is_action_pressed("back"):
 		_on_x()
 		get_viewport().set_input_as_handled()
@@ -262,6 +299,8 @@ func _draw_floorplan() -> void:
 
 
 func _on_x() -> void:
+	if _roulette != null:
+		return
 	var def: Dictionary = _def()
 	var back := String(def.get("back", TITLE_SCENE))
 	var effects := {}
@@ -275,6 +314,8 @@ func _go(path: String, choice: Dictionary) -> void:
 		return
 	_busy = true
 	_apply_enter_effects(choice)
+	if _start_gauntlet_fight(String(choice.get("fight", "")), path):
+		return
 	if _dialogue != null and _dialogue.has_method("interrupt_line"):
 		_dialogue.interrupt_line()
 	if get_tree().change_scene_to_file(path) != OK:
@@ -289,7 +330,7 @@ func _def() -> Dictionary:
 				"lines": PackedStringArray(["The basement door. It still knows you."]),
 				"back": BASEMENT_DOOR_ROOM,
 				"choices": [
-					{"label": "Unlock with key", "need": "hasKey", "to": "res://scenes/Arc_6/6.3_BasementStairs.tscn"},
+					{"label": "Unlock with key", "need": "hasKey", "fight": "door", "to": "res://scenes/Arc_6/6.3_BasementStairs.tscn"},
 					{"label": "Try the handle (Locked)", "need_not": "hasKey", "to": "res://scenes/Arc_6/6.2_BasementLocked.tscn"},
 					{"label": "Go back", "to": BASEMENT_DOOR_ROOM, "spawn": "basement_door"},
 				],
@@ -320,6 +361,8 @@ func _def() -> Dictionary:
 			return {
 				"label": "MAIN CHAMBER",
 				"lines": PackedStringArray(["The air down here is older than the school."]),
+				"roulette": true,
+				"fight": "chamber",
 				"back": "res://scenes/Arc_6/6.6_BasementStuck.tscn",
 				"choices": [
 					{"label": "Pick up the shovel", "need_not": "hasShovel", "to": "res://scenes/Arc_6/6.5_BasementShovelPickup.tscn"},
@@ -347,6 +390,7 @@ func _def() -> Dictionary:
 				"label": "DIGGING",
 				"lines": PackedStringArray(["As you keep digging.", "A memory surfaces."]),
 				"memory": "basement_memory",
+				"fight": "dig",
 				"back": "res://scenes/Arc_6/6.8_BasementCorpse.tscn",
 				"choices": [{"label": "FACE THE TRUTH", "to": "res://scenes/Arc_6/6.8_BasementCorpse.tscn"}],
 			}
@@ -354,6 +398,7 @@ func _def() -> Dictionary:
 			return {
 				"label": "CORPSE",
 				"lines": PackedStringArray(["The body is waiting for a name."]),
+				"fight": "final",
 				"back": "res://scenes/Arc_6/6.4_BasementMain.tscn",
 				"symbols": true,
 				"choices": [],

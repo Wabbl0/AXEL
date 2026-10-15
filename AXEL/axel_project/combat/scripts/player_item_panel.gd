@@ -34,6 +34,7 @@ const FIT_ROWS := 7
 const MIN_ROW_PX := 72.0
 const DESC_VIEW_PAD := 8.0
 const DROP_LINE_PX := 4.0
+const JAM_TINT := Color(0.3, 0.3, 0.3, 0.55)
 
 var _list: VBoxContainer
 var _fitting: bool = false
@@ -50,6 +51,7 @@ var _row_h := float(ICON_PX)
 var _order: PackedStringArray = PackedStringArray()
 var _drop_line: ColorRect
 var reorder_enabled := true
+var _jammed_ids: Array[String] = []
 
 
 func _ready() -> void:
@@ -174,6 +176,26 @@ func set_equipped_items(items: Array) -> void:
 		_list.add_child(_make_row(item))
 	call_deferred("_fit_row_names")
 	_play_pending_pulses()
+	_apply_jam_tint()
+
+
+func set_jammed_items(item_ids: Array) -> void:
+	_jammed_ids.clear()
+	for item_id in item_ids:
+		_jammed_ids.append(String(item_id))
+	_apply_jam_tint()
+
+
+func is_item_jammed(item_id: String) -> bool:
+	return _jammed_ids.has(item_id)
+
+
+func _apply_jam_tint() -> void:
+	for item_id in _icons.keys():
+		var icon: TextureRect = _icons[item_id] as TextureRect
+		if icon == null or not is_instance_valid(icon):
+			continue
+		icon.self_modulate = JAM_TINT if _jammed_ids.has(String(item_id)) else Color.WHITE
 
 
 func _play_pending_pulses() -> void:

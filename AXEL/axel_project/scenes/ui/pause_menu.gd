@@ -95,7 +95,8 @@ func _build() -> void:
 	_dev_button.name = "DevToolsButton"
 	_map_button = _add_menu_button("Map", _open_map)
 	_add_menu_button("Quit to Title", _quit_title)
-	_add_menu_button("Quit to Desktop", _quit_desktop)
+	if not OS.has_feature("web"):
+		_add_menu_button("Quit to Desktop", _quit_desktop)
 
 	_seed_label = Label.new()
 	_seed_label.name = "SeedLabel"

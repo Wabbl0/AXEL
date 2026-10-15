@@ -1,7 +1,8 @@
 param(
     [string]$Script = "",
     [int]$QuitAfter = 0,
-    [string[]]$UserArgs = @()
+    [string[]]$UserArgs = @(),
+    [string]$Renderer = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -25,6 +26,9 @@ if (-not (Test-Path $overridePath)) {
 $godotArgs = @("--path", $proj, "--resolution", "64x64", "--position", "0,0")
 if ($QuitAfter -gt 0) {
     $godotArgs += @("--quit-after", "$QuitAfter")
+}
+if ($Renderer -ne "") {
+    $godotArgs += @("--rendering-method", $Renderer)
 }
 if ($Script -ne "") {
     $godotArgs += @("-s", $Script)

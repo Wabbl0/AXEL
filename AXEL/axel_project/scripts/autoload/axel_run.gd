@@ -14,7 +14,7 @@ const WORLD_GOAL_LADDER_CENTS: PackedInt32Array = [
 ]
 const WORLD_GOAL_LADDER_GROWTH := 1.5
 const WORLD_GOAL_GROWTH_STEP := 0.02
-const DREAD_BY_RANK := {"C": 0.04, "U": 0.05, "R": 0.06, "E": 0.08, "L": 0.10}
+const DREAD_BY_RANK := {"C": 0.08, "U": 0.10, "R": 0.12, "E": 0.16, "L": 0.20}
 const DREAD_PER_MEMORY := 0.10
 const TICKET_BASE_PRICE := 300
 const TICKET_PRICE_GROWTH := 1.5
@@ -637,6 +637,9 @@ func _to_title_after_death() -> void:
 
 func _quit_after_death() -> void:
 	_game_over_open = false
+	if OS.has_feature("web"):
+		_permadeath_to_title()
+		return
 	if get_tree() != null:
 		get_tree().quit()
 

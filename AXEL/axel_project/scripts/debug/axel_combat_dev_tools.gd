@@ -9,6 +9,8 @@ const PANEL_BG := Color(0.06, 0.0, 0.0, 0.92)
 const PANEL_BORDER := Color(0.78, 0.03, 0.03, 0.95)
 const ACCENT := Color(0.98, 0.35, 0.35, 1.0)
 const TEXT_COLOR := Color(0.92, 0.88, 0.88, 1.0)
+const FightCursesScript := preload("res://combat/scripts/fight_curses.gd")
+const CURSE_KEY_PREFIX := "curse_"
 
 var _root: Control
 var _menu: PanelContainer
@@ -162,6 +164,11 @@ func _build_ui() -> void:
 	_add_toggle_row(vbox, "trinity", "Guarantee Vice Round")
 	_add_toggle_row(vbox, "fs_clear", "Guarantee Free Spins")
 	_add_toggle_row(vbox, "payout_1000x", "Guarantee 1000x Payout")
+	vbox.add_child(HSeparator.new())
+
+	_add_section_label(vbox, "CURSES (re-deals this fight)")
+	for curse_id in FightCursesScript.ALL_IDS:
+		_add_toggle_row(vbox, CURSE_KEY_PREFIX + String(curse_id), _curse_title(curse_id))
 	vbox.add_child(HSeparator.new())
 
 	_add_section_label(vbox, "ECONOMY")
@@ -322,6 +329,37 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+func _curse_title(curse_id: StringName) -> String:
+	var def: Resource = FightCursesScript.load_def(curse_id)
+	if def == null:
+		return String(curse_id)
+	return "Curse: %s" % str(def.get("name"))
+
+
+func _active_curse_ids() -> Array[StringName]:
+	var out: Array[StringName] = []
+	if _combat != null and is_instance_valid(_combat) and _combat.has_method("get_active_curse_ids"):
+		for curse_id in _combat.call("get_active_curse_ids"):
+			out.append(StringName(curse_id))
+	return out
+
+
+func _toggle_curse(curse_id: StringName) -> void:
+	if not _combat.has_method("set_fight_curses"):
+		return
+	var ids := _active_curse_ids()
+	if ids.has(curse_id):
+		ids.erase(curse_id)
+	else:
+		ids.append(curse_id)
+	var list: Array = []
+	for active_id in ids:
+		list.append({"id": active_id})
+	_combat.call("set_fight_curses", list)
+	if _combat.has_method("debug_restart_fight"):
+		_combat.call("debug_restart_fight")
+
+
 func _on_toggle_pressed(key: String) -> void:
 	if key == "encounters":
 		_toggle_encounters()
@@ -329,6 +367,11 @@ func _on_toggle_pressed(key: String) -> void:
 	if _combat == null or not is_instance_valid(_combat):
 		_refresh_combat_binding()
 	if _combat == null:
+		return
+	if key.begins_with(CURSE_KEY_PREFIX):
+		_toggle_curse(StringName(key.trim_prefix(CURSE_KEY_PREFIX)))
+		_refresh_toggle_labels()
+		_refresh_economy_labels()
 		return
 	match key:
 		"trinity":
@@ -371,6 +414,9 @@ func _refresh_toggle_labels() -> void:
 	_set_toggle_text("trinity", "Guarantee Vice Round", trinity)
 	_set_toggle_text("fs_clear", "Guarantee Free Spins", fs_clear)
 	_set_toggle_text("payout_1000x", "Guarantee 1000x Payout", payout)
+	var active := _active_curse_ids()
+	for curse_id in FightCursesScript.ALL_IDS:
+		_set_toggle_text(CURSE_KEY_PREFIX + String(curse_id), _curse_title(curse_id), active.has(curse_id))
 
 
 func _refresh_economy_labels() -> void:

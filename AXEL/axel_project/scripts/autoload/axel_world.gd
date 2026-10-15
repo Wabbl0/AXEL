@@ -99,8 +99,16 @@ const DEPTH_RARITY_WEIGHTS: Array = [
 	[55, 35, 10, 0, 0],
 	[30, 40, 25, 5, 0],
 ]
-const DEPTH_GOAL_MULT: Array[float] = [1.0, 1.25, 1.5, 1.8]
+const DEPTH_GOAL_MULT: Array[float] = [1.0, 1.25, 1.5, 1.8, 2.1]
 const DEEP_AIR_DEPTH := 3
+const ARC6_DEPTH := 4
+const ARC6_SCENE_PREFIX := "res://scenes/Arc_6/"
+const ROULETTE_RARITY_WEIGHTS: Array = [0, 15, 40, 35, 10]
+const ROULETTE_FAMILIES: PackedStringArray = ["A", "B", "C", "D", "E", "F", "G", "H", "M"]
+const ROULETTE_REEL_SIZE := 8
+const ROULETTE_PENDING := "pending"
+const ROULETTE_TAKEN := "taken"
+const ROULETTE_DECLINED := "declined"
 const GLIMMER_MEMORY_KEYS := {
 	"res://scenes/Arc_2/2.1_Cafeteria.tscn": "cafeteria_memory",
 	"res://scenes/Arc_3/3.1_Backyard.tscn": "backyard_memory",
@@ -143,6 +151,7 @@ const REASON_ITEM := "item_pickup"
 const REASON_LORE := "lore_pickup"
 const REASON_MEMORY := "memory"
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
+const REASON_GAUNTLET := "ending_gauntlet"
 
 const TUTORIAL_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 
@@ -158,6 +167,8 @@ var _upgrade_spent: Dictionary = {}
 var _room_items: Dictionary = {}
 var _lore_fights: Dictionary = {}
 var _deep_air_seen: Dictionary = {}
+var _gauntlet_fights: Dictionary = {}
+var _roulette: Dictionary = {}
 var _item_seed: int = 0
 const ITEM_ROLL_SALT := 0xA5A511
 const PLACE_SALT := 0x5A5A22
@@ -226,6 +237,8 @@ func reset_world() -> void:
 	_room_items.clear()
 	_lore_fights.clear()
 	_deep_air_seen.clear()
+	_gauntlet_fights.clear()
+	_roulette = {"state": "", "item": "", "spins": 0}
 	_item_seed = 0
 	for area_id in AREAS.keys():
 		_rank[area_id] = 0
@@ -334,6 +347,8 @@ func area_depth(area_id: String) -> int:
 
 
 func depth_goal_mult_for_scene(scene_path: String) -> float:
+	if scene_path.begins_with(ARC6_SCENE_PREFIX):
+		return DEPTH_GOAL_MULT[ARC6_DEPTH]
 	var area_id := area_for_scene(scene_path)
 	if area_id.is_empty():
 		return 1.0
@@ -353,7 +368,10 @@ func rarity_weights(area_id: String) -> Array:
 
 
 func _roll_rarity(area_id: String, rng: RandomNumberGenerator) -> int:
-	var weights := rarity_weights(area_id)
+	return _pick_weighted(rarity_weights(area_id), rng)
+
+
+func _pick_weighted(weights: Array, rng: RandomNumberGenerator) -> int:
 	var total := 0
 	for w in weights:
 		total += int(w)
@@ -562,6 +580,136 @@ func start_lore_fight(flag_name: String, return_scene: String, use_player_spot: 
 	return true
 
 
+func start_gauntlet_fight(fight_id: String, return_scene: String) -> bool:
+	if fight_id.is_empty() or not is_enabled():
+		return false
+	if bool(_gauntlet_fights.get(fight_id, false)):
+		return false
+	if not start_fight_to_scene(REASON_GAUNTLET, return_scene):
+		return false
+	_gauntlet_fights[fight_id] = true
+	_save()
+	return true
+
+
+func has_gauntlet_fight_happened(fight_id: String) -> bool:
+	return bool(_gauntlet_fights.get(fight_id, false))
+
+
+func roulette_state() -> String:
+	return String(_roulette.get("state", ""))
+
+
+func roulette_item() -> String:
+	return String(_roulette.get("item", ""))
+
+
+func roulette_spins() -> int:
+	return int(_roulette.get("spins", 0))
+
+
+func roulette_open() -> bool:
+	var state := roulette_state()
+	return state.is_empty() or state == ROULETTE_PENDING
+
+
+func roulette_roll_id(spin_index: int, skip_id: String = "") -> String:
+	var run := _run()
+	var run_seed := _run_seed(run) if run != null else 1
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([run_seed, spin_index, "basement_roulette"])
+	var lanes := _roulette_lanes()
+	if lanes.is_empty():
+		return ""
+	var start := rng.randi() % lanes.size()
+	var rank := _pick_weighted(ROULETTE_RARITY_WEIGHTS, rng)
+	var blocked := _blocked_item_ids()
+	_append_unique(blocked, skip_id)
+	for i in lanes.size():
+		var item_id := _resolve_lane_exact(String(lanes[(start + i) % lanes.size()]), rank, blocked)
+		if not item_id.is_empty():
+			return item_id
+	for i in lanes.size():
+		var item_id := _resolve_lane(String(lanes[(start + i) % lanes.size()]), rank, blocked)
+		if not item_id.is_empty():
+			return item_id
+	return ""
+
+
+func roulette_reel_ids() -> Array:
+	var out: Array = []
+	var run := _run()
+	var run_seed := _run_seed(run) if run != null else 1
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([run_seed, "basement_roulette_reel"])
+	var lanes := _roulette_lanes()
+	var tries := 0
+	while out.size() < ROULETTE_REEL_SIZE and tries < 200 and not lanes.is_empty():
+		tries += 1
+		var lane := String(lanes[rng.randi() % lanes.size()])
+		var rank := _pick_weighted(ROULETTE_RARITY_WEIGHTS, rng)
+		var item_id := _resolve_lane(lane, rank, out)
+		if not item_id.is_empty():
+			out.append(item_id)
+	return out
+
+
+func roulette_spin() -> String:
+	if not roulette_state().is_empty():
+		return ""
+	var item_id := roulette_roll_id(0)
+	if item_id.is_empty():
+		return ""
+	_roulette = {"state": ROULETTE_PENDING, "item": item_id, "spins": 0}
+	_save()
+	return item_id
+
+
+func roulette_respin() -> String:
+	if roulette_state() != ROULETTE_PENDING:
+		return ""
+	var run := _run()
+	if run == null or int(run.state.tickets) <= 0:
+		return ""
+	var spins := roulette_spins() + 1
+	var item_id := roulette_roll_id(spins, roulette_item())
+	if item_id.is_empty():
+		return ""
+	if not bool(run.call("spend_ticket")):
+		return ""
+	_roulette["item"] = item_id
+	_roulette["spins"] = spins
+	_save()
+	return item_id
+
+
+func roulette_take() -> bool:
+	if roulette_state() != ROULETTE_PENDING:
+		return false
+	var item_id := roulette_item()
+	_roulette["state"] = ROULETTE_TAKEN
+	_grant_item(item_id)
+	_save()
+	return true
+
+
+func roulette_decline() -> bool:
+	if not roulette_state().is_empty():
+		return false
+	_roulette["state"] = ROULETTE_DECLINED
+	_save()
+	return true
+
+
+func _roulette_lanes() -> Array:
+	var lanes: Array = []
+	for family in ROULETTE_FAMILIES:
+		_append_unique(lanes, String(family))
+	for lane in ItemLinesScript.scatter_lane_keys():
+		_append_unique(lanes, String(lane))
+	return lanes
+
+
 func has_lore_fight_happened(flag_name: String) -> bool:
 	return bool(_lore_fights.get(flag_name, false))
 
@@ -655,20 +803,7 @@ func take_item(scene_path: String, index: int) -> void:
 	if bool(entry.get("taken", false)):
 		return
 	entry["taken"] = true
-	var run := _run()
-	if run != null:
-		var owned: Array = Array(run.state.owned_item_ids)
-		var item_id := String(entry.get("id", ""))
-		if not item_id.is_empty() and not owned.has(item_id):
-			owned.append(item_id)
-			run.state.owned_item_ids = PackedStringArray(owned)
-			if run.has_method("add_item_dread"):
-				run.call("add_item_dread", item_id)
-		var profile := get_node_or_null("/root/AxelProfile")
-		if profile != null and not item_id.is_empty():
-			profile.call("mark_item_found", item_id)
-		if not item_id.is_empty() and run.has_method("equip_owned_if_free"):
-			run.call("equip_owned_if_free", item_id)
+	_grant_item(String(entry.get("id", "")))
 	var area_id := area_for_scene(scene_path)
 	var first_in_area := not bool(_cleared.get(area_id, false))
 	_engage_area(area_id)
@@ -677,6 +812,23 @@ func take_item(scene_path: String, index: int) -> void:
 		_retier_open_areas()
 	_save()
 	map_spots_updated.emit()
+
+
+func _grant_item(item_id: String) -> void:
+	var run := _run()
+	if run == null or item_id.is_empty():
+		return
+	var owned: Array = Array(run.state.owned_item_ids)
+	if not owned.has(item_id):
+		owned.append(item_id)
+		run.state.owned_item_ids = PackedStringArray(owned)
+		if run.has_method("add_item_dread"):
+			run.call("add_item_dread", item_id)
+	var profile := get_node_or_null("/root/AxelProfile")
+	if profile != null:
+		profile.call("mark_item_found", item_id)
+	if run.has_method("equip_owned_if_free"):
+		run.call("equip_owned_if_free", item_id)
 
 
 func room_item_entries(scene_path: String) -> Array:
@@ -724,6 +876,7 @@ func reroll_item(scene_path: String, index: int) -> bool:
 		return false
 	var entries: Array = _room_items.get(scene_path, [])
 	(entries[index] as Dictionary)["id"] = next_id
+	(entries[index] as Dictionary)["rerolled"] = true
 	_save()
 	map_spots_updated.emit()
 	return true
@@ -790,6 +943,8 @@ func to_dict() -> Dictionary:
 		"room_items": _room_items.duplicate(true),
 		"lore_fights": _lore_fights.duplicate(true),
 		"deep_air_seen": _deep_air_seen.duplicate(true),
+		"gauntlet_fights": _gauntlet_fights.duplicate(true),
+		"roulette": _roulette.duplicate(true),
 	}
 
 
@@ -813,10 +968,18 @@ func from_dict(data: Dictionary) -> void:
 				"x": float(d.get("x", 0.0)),
 				"y": float(d.get("y", 0.0)),
 				"taken": bool(d.get("taken", false)),
+				"rerolled": bool(d.get("rerolled", false)),
 			})
 		_room_items[String(room_path)] = out
 	_lore_fights = (data.get("lore_fights", {}) as Dictionary).duplicate(true)
 	_deep_air_seen = (data.get("deep_air_seen", {}) as Dictionary).duplicate(true)
+	_gauntlet_fights = (data.get("gauntlet_fights", {}) as Dictionary).duplicate(true)
+	var saved_roulette: Dictionary = data.get("roulette", {})
+	_roulette = {
+		"state": String(saved_roulette.get("state", "")),
+		"item": String(saved_roulette.get("item", "")),
+		"spins": int(saved_roulette.get("spins", 0)),
+	}
 	_sync_cleared_from_taken()
 	_fill_missing_room_lists()
 	if _any_area_frozen():
@@ -1287,6 +1450,16 @@ func _roll_open_area_ids() -> void:
 		var owned_lane := _lane_of(item_id)
 		if not owned_lane.is_empty() and not used_lanes.has(owned_lane):
 			used_lanes.append(owned_lane)
+	for room_path in _room_items.keys():
+		for entry in (_room_items[room_path] as Array):
+			var kept: Dictionary = entry
+			if not bool(kept.get("rerolled", false)) or bool(kept.get("taken", false)):
+				continue
+			var kept_id := String(kept.get("id", ""))
+			_append_unique(blocked, kept_id)
+			var kept_lane := _lane_of(kept_id)
+			if not kept_lane.is_empty() and not used_lanes.has(kept_lane):
+				used_lanes.append(kept_lane)
 	for area_id in AREA_ROLL_ORDER:
 		if _area_is_frozen(String(area_id)):
 			continue
@@ -1302,7 +1475,7 @@ func _roll_open_area_ids() -> void:
 			var entries: Array = []
 			for i in want:
 				var prev: Dictionary = existing[i] if i < existing.size() else {}
-				if bool(prev.get("taken", false)):
+				if bool(prev.get("taken", false)) or bool(prev.get("rerolled", false)):
 					entries.append(prev)
 					continue
 				var item_id := _roll_item(String(area_id), rng, used_lanes, blocked)

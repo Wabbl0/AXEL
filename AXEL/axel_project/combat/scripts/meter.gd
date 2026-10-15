@@ -4,6 +4,8 @@ extends RefCounted
 var sections_filled: int = 0
 var saved_active_power: StringName = &""
 var allow_overflow: bool = false
+var max_sections: int = 3
+var cap_below_full: bool = false
 
 
 func reset() -> void:
@@ -13,7 +15,7 @@ func reset() -> void:
 
 
 func is_full() -> bool:
-	return sections_filled >= 3
+	return not cap_below_full and sections_filled >= max_sections
 
 
 func sections_for_length(length: int) -> int:
@@ -23,10 +25,12 @@ func sections_for_length(length: int) -> int:
 func add_sections(amount: int) -> bool:
 	if amount <= 0:
 		return is_full()
-	if allow_overflow:
+	if allow_overflow and not cap_below_full:
 		sections_filled += amount
 	else:
-		sections_filled = mini(3, sections_filled + amount)
+		sections_filled = mini(max_sections, sections_filled + amount)
+	if cap_below_full:
+		sections_filled = mini(sections_filled, max_sections - 1)
 	return is_full()
 
 

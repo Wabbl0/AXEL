@@ -84,6 +84,10 @@ const ItemDefScript := preload("res://combat/scripts/item_def.gd")
 const ItemInventoryScript := preload("res://combat/scripts/item_inventory.gd")
 const ItemEffectDispatcherScript := preload("res://combat/scripts/item_effect_dispatcher.gd")
 const CombatFeelScript := preload("res://combat/scripts/combat_feel.gd")
+const FightCursesScript := preload("res://combat/scripts/fight_curses.gd")
+const LAST_CHANCE_TEXT := "LAST CHANCE"
+const LAST_CHANCE_HOLD_SEC := 0.7
+const BLIND_FLIP_SEC := 0.16
 
 const MAX_CASCADE_ITERATIONS := 512
 const ECONOMY_DISPLAY_SCALE := 1
@@ -173,6 +177,8 @@ var _cached_multiplier_emit_value: int = -1
 var _winnings_popup_target: Control = null
 var _feel: Node
 var inventory := ItemInventoryScript.new()
+var curses := FightCursesScript.new()
+var _sealed_symbol_ids: Array[StringName] = []
 const GRID_FRAME_OUTSET := 4.0
 const POWER_INTRO_ICON_SIZE_RATIO := 0.55
 const POWER_ACT_SEC := 0.48
@@ -286,7 +292,7 @@ func set_bet_index(index: int) -> void:
 	if BET_LADDER.is_empty():
 		return
 	var max_index := BET_LADDER.size() - 1
-	_current_bet_index = clampi(index, 0, max_index)
+	_current_bet_index = clampi(index, _min_bet_index(), max_index)
 	total_bet = BET_LADDER[_current_bet_index]
 	emit_signal("readouts_progressed")
 
@@ -335,7 +341,7 @@ func get_goal_base_target_cents() -> int:
 
 func get_effective_goal_target_cents() -> int:
 	var pct := _lore_goal_bonus
-	var raw := int(round(float(_encounter_goal_base_target_cents) * (1.0 + pct)))
+	var raw := int(round(float(_encounter_goal_base_target_cents) * (1.0 + pct) * curses.goal_multiplier()))
 	return _ceil_to_multiple(raw, 5)
 
 
@@ -393,6 +399,141 @@ func is_limit_spins() -> bool:
 func set_goal_base_target_cents(n: int) -> void:
 	_encounter_goal_base_target_cents = maxi(n, 1)
 	_on_loadout_or_goal_changed()
+
+func set_fight_curses(list: Array) -> void:
+	curses.set_list(list)
+	_apply_curse_rules()
+	set_bet_index(_current_bet_index)
+	_on_loadout_or_goal_changed()
+
+func get_fight_curses() -> Array:
+	return curses.get_list()
+
+func get_active_curse_ids() -> Array[StringName]:
+	return curses.ids()
+
+func get_curse_name(curse_id: StringName) -> String:
+	return curses.display_name(curse_id)
+
+func get_curse_description(curse_id: StringName) -> String:
+	return curses.describe(curse_id, {"left": get_curse_spins_left()})
+
+func get_curse_spin_cap() -> int:
+	return curses.spin_cap()
+
+func get_curse_spins_left() -> int:
+	var cap := curses.spin_cap()
+	if cap <= 0:
+		return -1
+	return maxi(cap - _spins_used, 0)
+
+func is_curse_last_spin() -> bool:
+	return get_curse_spins_left() == 1
+
+func get_sealed_symbol_ids() -> Array[StringName]:
+	return _sealed_symbol_ids.duplicate()
+
+func get_jammed_item_ids() -> Array[StringName]:
+	return _item_fx.jammed_item_ids()
+
+func get_meter_section_count() -> int:
+	return meter.max_sections
+
+func get_min_bet() -> float:
+	if BET_LADDER.is_empty():
+		return 0.0
+	return BET_LADDER[_min_bet_index()]
+
+func is_blind_active() -> bool:
+	return curses.is_blind()
+
+func _min_bet_index() -> int:
+	var floor_bet := curses.min_bet()
+	if floor_bet <= 0.0:
+		return 0
+	for i in BET_LADDER.size():
+		if BET_LADDER[i] >= floor_bet:
+			return i
+	return BET_LADDER.size() - 1
+
+func _apply_curse_rules() -> void:
+	meter.max_sections = 3 + curses.extra_meter_sections()
+	meter.cap_below_full = curses.blocks_vice()
+
+func _roll_sealed_symbols() -> void:
+	_sealed_symbol_ids.clear()
+	var span := curses.sealed_range()
+	if span.y <= 0:
+		return
+	var candidates: Array[StringName] = []
+	for sd in premium_symbol_pool:
+		if sd != null and sd.power_id != &"":
+			candidates.append(sd.id)
+	var count := mini(rng.randi_range(span.x, span.y), candidates.size())
+	for i in count:
+		var pick := rng.randi_range(0, candidates.size() - 1)
+		_sealed_symbol_ids.append(candidates[pick])
+		candidates.remove_at(pick)
+
+func _roll_item_jam() -> void:
+	_item_fx.clear_jam()
+	var count := curses.jam_count()
+	if count <= 0:
+		return
+	var candidates: Array = []
+	for item in inventory.items:
+		if item != null:
+			candidates.append(item)
+	for i in mini(count, candidates.size()):
+		var pick := rng.randi_range(0, candidates.size() - 1)
+		_item_fx.jam_item(candidates[pick])
+		candidates.remove_at(pick)
+
+func _notify_item_jam() -> void:
+	var panel := _player_item_panel()
+	if panel != null and panel.has_method("set_jammed_items"):
+		panel.call("set_jammed_items", _item_fx.jammed_item_ids())
+
+func _spawn_pool() -> Array:
+	return _filtered_pool(low_symbol_pool) + _filtered_pool(premium_symbol_pool)
+
+func _filtered_pool(pool: Array[SymbolDef]) -> Array[SymbolDef]:
+	if _sealed_symbol_ids.is_empty():
+		return pool
+	var out: Array[SymbolDef] = []
+	for sd in pool:
+		if sd != null and not _sealed_symbol_ids.has(sd.id):
+			out.append(sd)
+	return out
+
+func _blind_cover_all() -> void:
+	if not curses.is_blind():
+		return
+	for child in grid_ui.get_children():
+		if child.has_method("set_face_down"):
+			child.call("set_face_down", true, false)
+
+func _blind_reveal_all() -> bool:
+	if not curses.is_blind():
+		return false
+	var flipped := false
+	var animate := enable_symbol_fx and not _dev_skip_visuals
+	for child in grid_ui.get_children():
+		if child.has_method("is_face_down") and bool(child.call("is_face_down")):
+			child.call("set_face_down", false, animate)
+			flipped = true
+	return flipped and animate
+
+func _blind_reveal_async() -> void:
+	if _blind_reveal_all():
+		await _pause_visual(BLIND_FLIP_SEC)
+
+func _play_last_chance_async() -> void:
+	if free_spins.active or not is_curse_last_spin():
+		return
+	if _feel == null or not enable_transition_fx or _dev_skip_visuals:
+		return
+	await _feel.play_banner(LAST_CHANCE_TEXT, LAST_CHANCE_HOLD_SEC, 0.62, false, grid_ui)
 
 func set_final_spin_goal_assist(p: float) -> void:
 	_final_spin_goal_assist = clampf(p, 0.0, 1.0)
@@ -458,6 +599,15 @@ func debug_set_guarantee_payout_1000x(on: bool) -> void:
 	if not OS.is_debug_build():
 		return
 	_dev_guarantee_payout_1000x = on
+
+func debug_restart_fight() -> void:
+	if not OS.is_debug_build():
+		return
+	if _state != State.IDLE:
+		return
+	var keep := _bankroll_cents
+	setup_new_grid(_current_seed)
+	restore_run_bankroll(keep)
 
 func debug_get_guarantee_trinity() -> bool:
 	return OS.is_debug_build() and _dev_guarantee_trinity
@@ -588,6 +738,8 @@ func setup_new_grid(seed_value: int) -> void:
 	_current_seed = seed_value
 	rng.seed(seed_value)
 	powers.randomize_start(rng)
+	_roll_sealed_symbols()
+	_apply_curse_rules()
 	multiplier.reset()
 	multiplier.cap_enabled = false
 	meter.reset()
@@ -619,7 +771,9 @@ func setup_new_grid(seed_value: int) -> void:
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
 	_hide_encounter_won_banner()
-	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	_item_fx.clear_jam()
+	_notify_item_jam()
+	grid.populate(rng, _spawn_pool(), _weights)
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
@@ -652,6 +806,7 @@ func spin() -> void:
 		_round_winnings_cents = 0
 		_hide_round_winnings_overlay(false)
 		_refresh_round_winnings_label()
+	await _play_last_chance_async()
 	_begin_spin_round()
 	if not free_spins.active:
 		multiplier.reset()
@@ -664,6 +819,7 @@ func spin() -> void:
 	else:
 		await _pause_visual(pause_at_spin_start_sec)
 	_release_item_pulses()
+	await _blind_reveal_async()
 	var spin_summary := _empty_spin_summary()
 	_stamp_free_spin_open(spin_summary)
 	await _try_regular_spin_start_girl_power_async(spin_summary)
@@ -730,6 +886,7 @@ func spin_sync() -> void:
 	if not free_spins.active:
 		multiplier.reset()
 	emit_signal("readouts_progressed")
+	_blind_reveal_all()
 	var spin_summary := _empty_spin_summary()
 	_stamp_free_spin_open(spin_summary)
 	_try_regular_spin_start_girl_power_sync(spin_summary)
@@ -857,6 +1014,8 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	_current_seed = seed_value
 	rng.seed(seed_value)
 	powers.randomize_start(rng)
+	_roll_sealed_symbols()
+	_apply_curse_rules()
 	multiplier.reset()
 	multiplier.cap_enabled = false
 	meter.reset()
@@ -886,7 +1045,9 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	_refresh_multiplier_label()
 	_refresh_round_winnings_label()
 	_hide_encounter_won_banner()
-	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	_item_fx.clear_jam()
+	_notify_item_jam()
+	grid.populate(rng, _spawn_pool(), _weights)
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
 	_refresh_grid_border_for_state()
@@ -1098,8 +1259,8 @@ func _make_power_ctx(potency: float = 1.0, power_id: StringName = &"") -> Dictio
 		"grid": grid,
 		"rng": rng,
 		"wild": wild_symbol,
-		"low_pool": low_symbol_pool,
-		"premium_pool": premium_symbol_pool,
+		"low_pool": _filtered_pool(low_symbol_pool),
+		"premium_pool": _filtered_pool(premium_symbol_pool),
 		"multiplier": multiplier,
 		"potency": potency,
 		"diag_opts": _item_fx.diagonal_opts(inventory.items),
@@ -1781,6 +1942,8 @@ func _start_spin_with_new_grid() -> void:
 	if not _maybe_reseed_tutorial_script():
 		_maybe_reseed_tutorial_last_spin()
 	_item_fx.reset_spin()
+	_roll_item_jam()
+	_notify_item_jam()
 	_refresh_spin_weights()
 	var used_before := _spins_used
 	var bankroll_before := _bankroll_cents
@@ -1797,7 +1960,8 @@ func _start_spin_with_new_grid() -> void:
 	_item_fx.note_paid_spin_passives(inventory.items)
 	_flush_item_procs()
 
-	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	_blind_cover_all()
+	grid.populate(rng, _spawn_pool(), _weights)
 	_item_fx.roll_glyphs(inventory.items, rng)
 	_refresh_glyph_marks()
 	_flush_item_procs()
@@ -1820,6 +1984,8 @@ func _begin_spin_round() -> void:
 		_free_spin_open_ids = grid.snapshot_ids()
 		_free_spin_open_had_lines = not _find_lines().is_empty()
 		_item_fx.reset_spin()
+		_item_fx.clear_jam()
+		_notify_item_jam()
 		_item_fx.roll_glyphs(inventory.items, rng)
 		_refresh_glyph_marks()
 		_flush_item_procs()
@@ -1844,7 +2010,8 @@ func _stamp_free_spin_open(spin_summary: Dictionary) -> void:
 
 func _repopulate_grid_handoff(_handoff: String) -> void:
 	_suppress_grid_populated_fx = true
-	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	_blind_cover_all()
+	grid.populate(rng, _spawn_pool(), _weights)
 	_suppress_grid_populated_fx = false
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
@@ -1853,7 +2020,8 @@ func _repopulate_grid_handoff(_handoff: String) -> void:
 
 func _repopulate_grid_handoff_async(_handoff: String) -> void:
 	_suppress_grid_populated_fx = true
-	grid.populate(rng, low_symbol_pool + premium_symbol_pool, _weights)
+	_blind_cover_all()
+	grid.populate(rng, _spawn_pool(), _weights)
 	_suppress_grid_populated_fx = false
 	if not enable_symbol_fx:
 		_refresh_cells_visual()
@@ -1869,7 +2037,7 @@ func _auto_lower_bet() -> void:
 	if BET_LADDER.is_empty() or _bankroll_cents >= _to_cents(total_bet):
 		return
 	var index := _current_bet_index
-	while index > 0 and _bankroll_cents < _to_cents(BET_LADDER[index]):
+	while index > _min_bet_index() and _bankroll_cents < _to_cents(BET_LADDER[index]):
 		index -= 1
 	if index != _current_bet_index:
 		set_bet_index(index)
@@ -2055,6 +2223,8 @@ func _line_payout_cents(line: Dictionary) -> int:
 	if payout_multiplier <= 0.0:
 		return 0
 	var item_scalar := 1.0 + _get_item_payout_scalar() + _line_item_bonus(line)
+	if sd.tier == SymbolDef.Tier.LOW:
+		payout_multiplier *= curses.low_pay_multiplier()
 	return _to_cents(
 		total_bet * payout_multiplier * float(multiplier.value) * item_scalar * BASELINE_PAYOUT_SCALAR / PAYTABLE_SCALE
 	)
@@ -2071,9 +2241,9 @@ func _dev_fill_meter_for_guarantee_trinity() -> void:
 	if free_spins.active:
 		return
 	var before := meter.sections_filled
-	meter.sections_filled = 3
-	if before != 3:
-		emit_signal("premium_meter_changed", before, 3)
+	meter.sections_filled = meter.max_sections
+	if before != meter.max_sections:
+		emit_signal("premium_meter_changed", before, meter.max_sections)
 		emit_signal("readouts_progressed")
 
 func _dev_clear_non_wild_for_fs_guarantee() -> void:
@@ -2646,6 +2816,9 @@ func _finalize_encounter_if_needed() -> void:
 	if not _can_afford_spin():
 		end_encounter(_try_final_spin_goal_assist())
 		return
+	if curses.spin_cap() > 0 and _spins_used >= curses.spin_cap():
+		end_encounter(_try_final_spin_goal_assist())
+		return
 	if _playtest_limit_spins:
 		if _playtest_spin_budget > 0 and _spins_used >= _playtest_spin_budget:
 			end_encounter(_try_final_spin_goal_assist())
@@ -2675,6 +2848,8 @@ func _is_regular_spin_mode() -> bool:
 
 
 func _can_use_paid_spin() -> bool:
+	if curses.spin_cap() > 0 and _spins_used >= curses.spin_cap():
+		return false
 	if not _playtest_limit_spins:
 		return true
 	if _playtest_spin_budget <= 0:
@@ -3002,6 +3177,8 @@ func _finish_item_spin_hooks(spin_summary: Dictionary) -> void:
 	var produced: bool = bool(spin_summary.get("produced_any_win", false))
 	var powered: bool = bool(spin_summary.get("power_triggered", false))
 	_apply_board_count_bonus(spin_summary, false)
+	if produced and not free_spins.active and not _in_trinity_round:
+		_item_fx.won_spins += 1
 	if not produced and not free_spins.active and not _in_trinity_round:
 		var ng := _item_fx.null_gravity_chance(inventory.items)
 		if ng > 0.0 and rng.randf() <= ng:

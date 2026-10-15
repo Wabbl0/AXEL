@@ -162,7 +162,7 @@ func _apply_one(section: String, key: String) -> void:
 
 
 func _apply_window_mode() -> void:
-	if DisplayServer.get_name() == "headless":
+	if DisplayServer.get_name() == "headless" or OS.has_feature("web"):
 		return
 	if OS.get_cmdline_user_args().has("--capture"):
 		_apply_capture_window()

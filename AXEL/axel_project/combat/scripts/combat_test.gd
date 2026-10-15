@@ -117,6 +117,7 @@ const SKULL_MOUTH_LIP_FRAC := 0.80
 const SPIN_BAR_FILL_SEC := 0.08
 const FS_CHOICE_LAYER := 116
 const SPIN_COUNT_LAYER := 109
+const FUSE_LAST_COLOR := Color(1.0, 0.35, 0.35, 1.0)
 const FS_SCRIM_ALPHA := 0.72
 const FS_ICON_PX := 128.0
 const FS_ICON_HOVER_SCALE := 1.15
@@ -175,6 +176,8 @@ var mult_label: Label
 var _spin_bar_host: Control
 var _spin_count_root: Control
 var _spin_bar_label: Label
+var _fuse_layer: CanvasLayer
+var _fuse_label: Label
 var _spin_bar_blocks: Array[Panel] = []
 var _spin_block_fill: Array[float] = []
 var _shown_spin_blocks: int = 0
@@ -1950,6 +1953,7 @@ func _refresh_readouts() -> void:
 	_sync_premium_bar_color(_safe_get_meter_sections_filled())
 	_maybe_pop_spin_money()
 	_refresh_spin_bars()
+	_refresh_curse_fuse_counter()
 	_refresh_playtest_readouts()
 	_refresh_encounter_win_overlay()
 	_refresh_super_fs_choice_overlay()
@@ -2881,8 +2885,15 @@ func _animate_bet_strip() -> void:
 	_bet_strip_tween.tween_property(_bet_strip_row, "position:x", target_x, BET_STRIP_TWEEN_SEC).set_ease(Tween.EASE_OUT)
 
 
+func _meter_section_count() -> int:
+	if _can_use_combat_api() and combat.has_method("get_meter_section_count"):
+		return maxi(int(combat.get_meter_section_count()), 1)
+	return 3
+
+
 func _sync_skull_meter(sections: int) -> void:
-	var filled := clampi(sections, 0, 3)
+	var total := _meter_section_count()
+	var filled := clampi(sections, 0, total)
 	if _premium_skull == null:
 		_refresh_skull_first_spin_hint()
 		return
@@ -2890,7 +2901,7 @@ func _sync_skull_meter(sections: int) -> void:
 	if _premium_skull.has_method("set_full_face_locked"):
 		_premium_skull.set_full_face_locked(held)
 	if _premium_skull.has_method("set_fill"):
-		_premium_skull.set_fill(float(filled) / 3.0)
+		_premium_skull.set_fill(float(filled) / float(total))
 	var crown_on := _can_use_combat_api() and combat != null and combat.free_spins.active
 	if _premium_skull.has_method("set_flame_dim_target"):
 		_premium_skull.set_flame_dim_target(_spin_history_panel)
@@ -3382,6 +3393,51 @@ func _apply_spin_block_style(block: Panel) -> void:
 	style.shadow_size = maxi(2, int(round(4.0 * _hud_art_scale() * grow)))
 	style.shadow_offset = HudDropShadowScript.OFFSET * grow
 	block.add_theme_stylebox_override("panel", style)
+
+
+func _refresh_curse_fuse_counter() -> void:
+	var left := -1
+	if _can_use_combat_api() and combat.has_method("get_curse_spins_left"):
+		left = int(combat.get_curse_spins_left())
+	var skull := _premium_skull as Control
+	var visible_now := left >= 0 and skull != null and not _free_spin_round_showing()
+	if not visible_now:
+		if _fuse_layer != null:
+			_fuse_layer.visible = false
+		return
+	if _fuse_layer == null or not is_instance_valid(_fuse_layer):
+		_fuse_layer = CanvasLayer.new()
+		_fuse_layer.name = "CurseFuseLayer"
+		_fuse_layer.layer = SPIN_COUNT_LAYER
+		add_child(_fuse_layer)
+		_fuse_label = Label.new()
+		_fuse_label.name = "CurseFuseCount"
+		_fuse_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_fuse_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_fuse_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_fuse_label.add_theme_font_override("font", VT323_FONT)
+		_fuse_layer.add_child(_fuse_label)
+	_fuse_layer.visible = true
+	_fuse_label.text = "1 SPIN LEFT" if left == 1 else "%d SPINS LEFT" % left
+	var art_scale := _hud_art_scale()
+	var font_px := maxi(22, int(round(40.0 * art_scale)))
+	if bankroll_label != null:
+		font_px = maxi(font_px, bankroll_label.get_theme_font_size("font_size"))
+	_apply_white_hud_text_style(_fuse_label)
+	_fuse_label.add_theme_font_size_override("font_size", font_px)
+	_fuse_label.modulate = FUSE_LAST_COLOR if left <= 1 else Color.WHITE
+	var font := _fuse_label.get_theme_font("font")
+	var text_w := float(font_px) * 8.0
+	if font != null:
+		text_w = font.get_string_size(_fuse_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_px).x + 8.0
+	var rect := _control_visual_global_rect(skull)
+	var gap_under := maxf(8.0, 14.0 * art_scale)
+	_fuse_label.size = Vector2(text_w, float(font_px) + 10.0)
+	var view_h := get_viewport_rect().size.y
+	var top := rect.end.y + gap_under
+	if view_h > 1.0:
+		top = minf(top, view_h - _fuse_label.size.y - SPIN_BAR_SCREEN_PAD)
+	_fuse_label.position = Vector2(rect.position.x + (rect.size.x - text_w) * 0.5, top)
 
 
 func _control_visual_global_rect(node: Control) -> Rect2:

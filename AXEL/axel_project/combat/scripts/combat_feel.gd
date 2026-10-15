@@ -642,7 +642,8 @@ func _reveal_loss_buttons(retry: Callable, to_menu: Callable, quit_app: Callable
 		child.free()
 	_add_game_over_button("Retry", retry)
 	_add_game_over_button("Return To Main Menu", to_menu)
-	_add_game_over_button("Exit", quit_app)
+	if not OS.has_feature("web"):
+		_add_game_over_button("Exit", quit_app)
 	var shift := _layout_loss_block()
 	_menu_box.modulate.a = 0.0
 	_menu_box.visible = true

@@ -37,7 +37,7 @@ var _growth: float = 1.5
 var _growth_step: float = 0.0
 var _dread_item_scale: float = 1.0
 var _dread_memory: float = 0.10
-const DREAD_BY_RANK: Array[float] = [0.04, 0.05, 0.06, 0.08, 0.10]
+const DREAD_BY_RANK: Array[float] = [0.08, 0.10, 0.12, 0.16, 0.20]
 const ROOM_DEPTH := {"1.2": 0, "1.4": 0, "2.4": 0, "2.1": 1, "2.2": 1, "2.3": 1, "3.1": 2, "3.2": 2, "4.1": 3, "4.2": 3, "5.1": 3, "5.2": 3}
 var DEPTH_WEIGHTS: Array = [[100, 0, 0, 0, 0], [80, 20, 0, 0, 0], [55, 35, 10, 0, 0], [30, 40, 25, 5, 0]]
 var DEPTH_GOAL: Array[float] = [1.0, 1.25, 1.5, 1.8]
@@ -53,6 +53,8 @@ var _fight_limit: int = 0
 var _pick_style: String = "random"
 var _choices: int = 3
 var _lane: String = ""
+var _run_offset: int = 0
+var _run_log: bool = false
 var _wager: Array[int] = []
 var _payout: Array[int] = []
 var _cost: Array[int] = []
@@ -91,7 +93,10 @@ func _main() -> void:
 		goals.append([])
 		wallets.append([])
 		spins.append([])
-	for run_i in _runs:
+	for run_n in _runs:
+		var run_i := run_n + _run_offset
+		var picks: PackedStringArray = []
+		var died_at := 0
 		var pick_rng := RandomNumberGenerator.new()
 		pick_rng.seed = 7001 + run_i * 7919
 		var wallet := _bankroll
@@ -107,6 +112,7 @@ func _main() -> void:
 				var item = _pick_item(rank, pick_rng) if _pick_style == "random" else _pick_synergy(rank, owned, pick_rng)
 				if item != null:
 					owned.append(item)
+					picks.append("%s@%d" % [item.resource_path.get_file().get_slice("_", 0), fight_i + 1])
 					dread += DREAD_BY_RANK[clampi(rank, 0, 4)] * _dread_item_scale
 			if String(row[0]).ends_with("memory"):
 				dread += _dread_memory
@@ -130,9 +136,12 @@ func _main() -> void:
 			(spins[fight_i] as Array).append(int(result["spins"]))
 			if not bool(result["won"]):
 				deaths[fight_i] += 1
+				died_at = fight_i + 1
 				break
 			wallet = int(result["wallet"])
 			(wallets[fight_i] as Array).append(wallet)
+		if _run_log:
+			print("DIFF_RUN %d died=%d family=%s picks=%s" % [run_i, died_at, _main_family(owned), ",".join(picks)])
 	_print_report(entered, deaths, goals, wallets, spins)
 	cr.queue_free()
 	quit(0)
@@ -237,6 +246,8 @@ func _read_config() -> void:
 		_pick_style = OS.get_environment("DIFF_PICK")
 	_choices = maxi(int(_env_float("DIFF_CHOICES", 3)), 1)
 	_lane = OS.get_environment("DIFF_LANE")
+	_run_offset = int(_env_float("DIFF_RUN_OFFSET", 0))
+	_run_log = OS.get_environment("DIFF_RUN_LOG") == "1"
 
 
 func _source_const(source: String, name: String, fallback: String) -> String:

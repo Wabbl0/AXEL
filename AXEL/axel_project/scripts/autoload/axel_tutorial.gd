@@ -60,6 +60,10 @@ const LESSONS := {
 		"title": "Items",
 		"body": "That is an item. Press E to take it. It equips by itself if you have a free slot. Items are how you win fights. Keep every one you find.",
 	},
+	"items_dread": {
+		"title": "Dread",
+		"body": "Taking an item adds Dread. Rarer items add more, and each memory adds 10%. Dread makes every GOAL bigger, and it only goes up.",
+	},
 	"items_wheel": {
 		"title": "Items",
 		"body": "Tab, Q, R, or I opens your items. Clicking MIKE does too. Click an item to switch it on or off. The tabs show stats, pays and areas.",

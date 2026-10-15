@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CurseDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://combat/scripts/curse_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"item_jam"
+name = "Item Jam"
+description = "Each paid spin, {count} equipped item stops working for that spin."
+effect_id = &"item_jam"
+params = {
+"count": 1
+}

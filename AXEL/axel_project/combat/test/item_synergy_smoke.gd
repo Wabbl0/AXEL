@@ -371,12 +371,18 @@ func _test_set_spins_used_changes_c1_scalar() -> void:
 	root.add_child(cr)
 	if not cr.is_node_ready():
 		await cr.ready
-	var c1 := _make_mock_item(&"C1", "Ash Spin Token", 0, &"paid_spin_payout_scalar", {"per_paid_spin": 0.06, "cap": 0.36})
-	cr.equip_item(c1)
-	cr.set_spins_used(6)
-	_assert(is_equal_approx(cr.get_item_payout_scalar(), 0.36), "C1 at cap 0.36 without spinning")
+	var u1 := _make_mock_item(&"U1", "Filtered Spinner", 1, &"paid_spin_payout_scalar", {"per_paid_spin": 0.1})
+	cr.equip_item(u1)
+	cr.set_spins_used(30)
+	_assert(is_equal_approx(cr.get_item_payout_scalar(), 3.0), "U1 +3.0x at 30 used, no cap")
 	cr.set_spins_used(3)
-	_assert(is_equal_approx(cr.get_item_payout_scalar(), 0.18), "C1 +0.18x at 3 used")
+	_assert(is_equal_approx(cr.get_item_payout_scalar(), 0.3), "U1 +0.3x at 3 used")
+	cr.unequip_item(u1)
+	var c1 := _make_mock_item(&"C1", "Ash Spin Token", 0, &"paid_spin_payout_scalar", {"per_won_spin": 0.05})
+	cr.equip_item(c1)
+	_assert(is_equal_approx(cr.get_item_payout_scalar(), 0.0), "C1 +0x before any won spin")
+	cr._item_fx.won_spins = 4
+	_assert(is_equal_approx(cr.get_item_payout_scalar(), 0.2), "C1 +0.2x after 4 won spins")
 	cr.queue_free()
 	await process_frame
 

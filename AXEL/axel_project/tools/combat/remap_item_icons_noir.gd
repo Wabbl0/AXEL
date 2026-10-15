@@ -20,12 +20,13 @@ func _init() -> void:
 	if dir == null:
 		quit(0)
 		return
+	var only := OS.get_cmdline_user_args()
 	dir.list_dir_begin()
 	var name := dir.get_next()
 	var written := 0
 	var failed := false
 	while name != "":
-		if name.ends_with(".png") and not name.begins_with("L-A"):
+		if name.ends_with(".png") and not name.begins_with("L-A") and (only.is_empty() or only.has(name.get_basename())):
 			var img := Image.new()
 			if img.load(abs_src.path_join(name)) != OK:
 				push_error("remap_item_icons_noir: failed to load %s" % name)

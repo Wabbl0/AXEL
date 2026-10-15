@@ -9,6 +9,9 @@ This file matches the **live game**: 75 `ItemDef` resources in [combat/data/item
 - **Extended item ids** use **uppercase** tier letter + hyphen + **uppercase** family letter: `C-A`, `U-M`, `L-H`, etc. (Baseline ids stay `C1`**…**`C10`, `U1`**…**`U8`, `R1`**…**`R6`, `E1`**…**`E4`, `L1`**…**`L3` — digit suffixes vs letter codes.)
 - **"Add an item" (new mechanic)** defaults to **five variants**, one per rarity (**Common → Legendary**), unless you explicitly ask for a single tier or subset.
 - `L-A` **is unused.** No `.tres`, no icon. Vice Overclock ships as `L2` only. QA fails if `L-A` appears.
+- **Every effect number is a multiple of 5** (percents, chances, thresholds). Round to the nearest multiple of 5.
+- **No caps on items (user, 2026-10-15).** Item effects can grow without limit, and wins can pay any amount. The **only** cap is the Wild limit: all extra-wild items together add at most `+1` Wild per created Wild (`EXTRA_WILDS_PER_CREATE_CAP`). Removed 2026-10-15: per-item caps on `U1`/`R1`/`E4`, `PAID_SPIN_SCALAR_TOTAL_CAP`, `LINE_PAYOUT_BONUS_CAP`, `FREE_SPINS_EXTRA_CAP`, `HEAD_START_CAP`. A head start still never pays the full goal (it stops 5 short).
+- **Unique items count as Common.** A one-off item with no rarity ladder (Hall Pass, Homeroom Bell, Last Cigarette) is a Common unique.
 
 ## Live roster
 
@@ -81,7 +84,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 
 | Icon                                        | ID    | Name                  | Effect                                                                               |
 | ------------------------------------------- | ----- | --------------------- | ------------------------------------------------------------------------------------ |
-| ![C1](../../combat/art/item_icons/C1.png)   | `C1`  | **Ash Spin Token**    | Each paid spin adds `+0.10x` encounter payout scalar (cap `+0.40x`)                  |
+| ![C1](../../combat/art/item_icons/C1.png)   | `C1`  | **Ash Spin Token**    | Each paid spin that wins adds `+0.05x` payout scalar for the rest of the fight (`per_won_spin`) |
 | ![C2](../../combat/art/item_icons/C2.png)   | `C2`  | **Chalk Dust**        | Normal-symbol payout value `+10%`                                                    |
 | ![C3](../../combat/art/item_icons/C3.png)   | `C3`  | **Locker Map Pin**    | Makes Normal-symbols 10% more likely to appear                                       |
 | ![C4](../../combat/art/item_icons/C4.png)   | `C4`  | **Static Spark**      | Random power activation chance `+5%`                                                 |
@@ -118,7 +121,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 
 | Icon                                      | ID   | Name                  | Effect                                                                                           |
 | ----------------------------------------- | ---- | --------------------- | ------------------------------------------------------------------------------------------------ |
-| ![U1](../../combat/art/item_icons/U1.png) | `U1` | **Filtered Spinner**  | Each paid spin adds `+0.10x` payout scalar (cap `+0.60x`)                                        |
+| ![U1](../../combat/art/item_icons/U1.png) | `U1` | **Filtered Spinner**  | Each paid spin adds `+0.10x` payout scalar                                        |
 | ![U2](../../combat/art/item_icons/U2.png) | `U2` | **Iron Lighter**      | Normal-symbol payout value `+20%`                                                                |
 | ![U3](../../combat/art/item_icons/U3.png) | `U3` | **Weighted Vice Die** | Makes power symbols 10% more likely to appear                                                    |
 | ![U4](../../combat/art/item_icons/U4.png) | `U4` | **Faulty Relay**      | Random power activation chance `+10%`                                                            |
@@ -153,7 +156,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 
 | Icon                                      | ID   | Name               | Effect                                                                                                         |
 | ----------------------------------------- | ---- | ------------------ | -------------------------------------------------------------------------------------------------------------- |
-| ![R1](../../combat/art/item_icons/R1.png) | `R1` | **Fractured Reel** | Each paid spin adds `+0.10x` payout scalar (cap `+1.00x`); first paid spin per encounter is free |
+| ![R1](../../combat/art/item_icons/R1.png) | `R1` | **Fractured Reel** | Each paid spin adds `+0.10x` payout scalar; first paid spin per encounter is free |
 | ![R2](../../combat/art/item_icons/R2.png) | `R2` | **Gilded Commons** | Normal-symbols pay 35% more and are 10% more likely to appear                                                  |
 | ![R3](../../combat/art/item_icons/R3.png) | `R3` | **Triune Sigil**   | Power symbols are 15% more likely to appear and pay 15% more                                                   |
 | ![R4](../../combat/art/item_icons/R4.png) | `R4` | **Glitch Button**  | Random power activation chance doubled (no downside)                               |
@@ -189,7 +192,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 | ![E1](../../combat/art/item_icons/E1.png) | `E1` | **Ash Crown**        | Each power symbol (cigarette / alcohol / bloody hand) is 20% more likely to appear; potency +25%                                                |
 | ![E2](../../combat/art/item_icons/E2.png) | `E2` | **Null Gravity Pin** | On fully non-winning spin, `40%` chance to force one random power activation                                                                    |
 | ![E3](../../combat/art/item_icons/E3.png) | `E3` | **Echo Loom**        | First wild created each spin has a `50%` chance to duplicate into nearest legal cell                                                             |
-| ![E4](../../combat/art/item_icons/E4.png) | `E4` | **Overflow Ledger**  | Each paid spin adds `+0.15x` payout scalar (cap `+1.50x`). `+5%` total power-symbol chance **while equipped** (not per paid spin) |
+| ![E4](../../combat/art/item_icons/E4.png) | `E4` | **Overflow Ledger**  | Each paid spin adds `+0.15x` payout scalar. `+5%` total power-symbol chance **while equipped** (not per paid spin) |
 
 
 #### Extended
@@ -264,7 +267,7 @@ Icons are the live 1024×1024 PNGs at `res://combat/art/item_icons/{id}.png`, sh
 ## True-path passives (`*-H`) — live
 
 - **Effect (`goal_head_start`, `paid_percent`):** each fight starts with a share of the goal already counted toward GOAL: **5 / 10 / 15 / 20 / 25%**. The goal itself does not change.
-- **Stacking:** percents **add**, capped at **50%** (`HEAD_START_CAP` in `item_effect_dispatcher.gd`), then `floor(goal * pct)` to a multiple of 5, never the full goal. Example: C-H + U-H → 15%.
+- **Stacking:** percents **add** with no cap (all five H items = 75%), then `floor(goal * pct)` to a multiple of 5, never the full goal. Example: C-H + U-H → 15%.
 - **Where:** `CombatRoot._refresh_goal_head_start()` on fight setup and on loadout or goal change, until the first paid spin. Same on the playtest Base target and live world-fight ladder.
 - **True Ending:** not wired. H items only give the head start. Exact ending gate (single legendary vs full set) is still a design choice.
 
@@ -371,6 +374,70 @@ Rough shape over a playthrough:
 
 1. Mythic variants after a balance pass.
 2. True Ending meta flags for `*-H` (items only give a goal head start today).
+3. The planned families and uniques below.
+
+## Planned items (approved design 2026-10-15, not built)
+
+Three new families (5 rarities each) and three Common uniques: **75 + 15 + 3 = 93** items once built. Ids follow the usual scheme (`C-T` … `L-T`, `C11`–`C13`). No caps. Every number is a multiple of 5. Each needs a 1024×1024 icon.
+
+Layer rule: combat reads no story flags. Tickets held, Dread %, hex count and active curses reach combat as plain numbers through `AxelRun`. Ticket price, rerolls, memories and travel stay on the world side (`AxelRun` / `AxelWorld`). Combat only reports plain results back (for example "winning spins this fight").
+
+### Family T — Tickets ("Punch Card")
+
+| ID | Effect |
+|---|---|
+| `C-T` | Tickets cost 15% less |
+| `U-T` | Every 10th winning spin gives 1 ticket (count carries over between fights, saved in `RunState`) |
+| `R-T` | A reroll has a 15% chance to go up one rarity |
+| `E-T` | Each unused ticket you hold: wins pay +5%. No cap |
+| `L-T` | A reroll shows two items; pick one |
+
+### Family X — Hexes ("Penance")
+
+Build after Phase D3 (hex table). Only useful once Epic/Legendary hexes exist.
+
+| ID | Effect |
+|---|---|
+| `C-X` | Weak hex is softer: 60% power instead of 50% |
+| `U-X` | Sleep hex ends 1 paid spin sooner; Fickle fires on 65% of spins instead of 50% |
+| `R-X` | Each hex on your loadout: wins pay +10% |
+| `E-X` | Your worst hex is ignored |
+| `L-X` | Each active fight curse: wins pay +20% and GOAL is 5% lower |
+
+### Family N — Dread ("Guilt")
+
+| ID | Effect |
+|---|---|
+| `C-N` | Every 20% Dread: wins pay +5% |
+| `U-N` | Memories add 5% Dread instead of 10% |
+| `R-N` | While Dread is 40% or more: random power chance +10% |
+| `E-N` | Each fight starts with half your Dread % of the goal already paid |
+| `L-N` | Wins pay extra equal to your Dread %. No cap |
+
+### Common uniques
+
+| ID | Name | Effect |
+|---|---|---|
+| `C11` | **Hall Pass** | The first map trip after each fight is free |
+| `C12` | **Homeroom Bell** | First paid spin of each fight: wins pay ×2 and fill one Skull Meter step |
+| `C13` | **Last Cigarette** | Last paid spin of a fight: 2 Wilds drop onto the grid and wins pay ×3 |
+
+- **Last paid spin** = the paid spin after which BALANCE can no longer pay the BET, or spin N under the Short Fuse curse. Known before the spin, so it stays deterministic. No refund on purpose (a refund would make the next spin "last" again, forever).
+- If the first paid spin is also the last, both items apply. The Sleep hex blocks Homeroom Bell.
+
+### Icons for the planned items (18)
+
+Done 2026-10-15: the original Cursor prompts were not saved, so the style rule was rebuilt from the originals. Prompts, style block and reference icons per item: [AXEL_NEW_ITEM_ICON_PROMPTS.md](AXEL_NEW_ITEM_ICON_PROMPTS.md). Generate with ChatGPT or Gemini plus reference images.
+
+1. **Find how the current icons were prompted.** Look at: the originals in `tools/combat/ai_icon_src/`, the noir remap `tools/combat/remap_item_icons_noir.gd`, `tools/combat/item_icon_sources.json`, the item icons reference PDF and sync script (commit `446a098`), `git log` for icon commits, and the tail of `plans/core/AI_CHANGELOG.md` (search "icon"). Write down the prompt rule (subject, framing, background, line style, palette, what to avoid) in this section.
+2. **Follow that rule** for one prompt per new item (`C-T`…`L-T`, `C-X`…`L-X`, `C-N`…`L-N`, `C11`–`C13`). Ideas: tickets = punch cards and stubs; hexes = burnt rosaries, nails, scratched crosses; Dread = black ink, a swelling stain; Hall Pass = a worn school pass; Homeroom Bell = a school bell; Last Cigarette = one cigarette in a crushed pack. Rarer tiers look more worn, ornate or bloody, like the existing ladders.
+3. **Generate** the originals into `tools/combat/ai_icon_src/{id}.png`, then run the noir remap to make the 1024×1024 files in `combat/art/item_icons/`.
+4. **QA:** `item_icons_check.gd` (count goes from 75 to 93), `item_icon_draw_size_check.gd`, and a look in the item box and on the wheel.
+
+### Open before building
+
+- Which areas roll families T, X and N.
+- Sim pass after building (target ~64% dead at the lowest bet).
 
 ## Validation / Acceptance Checks
 
@@ -430,7 +497,7 @@ An item pulses in the combat item box only on the spin where its effect actually
 | --- | --- |
 | `girl_power_chance` (Static Spark, Faulty Relay, Glitch Button) | the random power activates because of the item (the roll is above the base chance and at or below the boosted chance; same single rng draw) |
 | `spawn_weight_normals`, `power_symbol_weight` | once at fight start |
-| `paid_spin_payout_scalar`, `normal_payout_bonus`, `power_payout_bonus`, `sealed_grid` | its bonus added something this spin |
+| `paid_spin_payout_scalar` (C1: after its first won spin), `normal_payout_bonus`, `power_payout_bonus`, `sealed_grid` | its bonus added something this spin |
 | `premium_meter` | it added extra Skull Meter steps |
 | `board_count` | the threshold was met and it paid |
 | `corner_glyphs` | a win went through one of its cells |
@@ -480,3 +547,7 @@ Whole-run sims showed the payout rate passing 100% after about 6–7 items, so l
 - Open: `L-E` is now over-nerfed (about no items) and `L-M` is weaker than `R5`; re-balance the Legendaries as a group. D-family and Vice-only C items still do nothing on their own. `glyph_params` uses the last glyph item's `mult_min`/`mult_max` for every glyph cell.
 - L-E buff (2026-10-14): 4-long diagonals spawn a wild in the middle cell (`wild_lengths: [4]`); 5-long diagonals do not.
 - Glyph rule (2026-10-14): every M item multiplies only the matched line through its cell; no glyph adds to the global MULTIPLIER (the normal +1x per cascade still applies). `dest`/`win_frac` and `GLYPH_MULT_SPIN_CAP` are gone. The last-item range quirk in `glyph_params` stays on purpose.
+
+## Cap removal (2026-10-15)
+
+User rule: items have no caps; the Wild limit (`+1` extra Wild per created Wild) is the only one left. `C1` Ash Spin Token now grows `+5%` per winning paid spin (not per paid spin; Vice Round and Free Spins do not count). The global caps listed in the two nerf passes above are gone. Needs a new sim run.

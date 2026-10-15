@@ -2,17 +2,14 @@ class_name ItemEffectDispatcher
 extends RefCounted
 
 const ALL_POWERS: Array[StringName] = [&"bloody_hand", &"alcohol", &"cigarette"]
-const PAID_SPIN_SCALAR_TOTAL_CAP := 2.0
 const EXTRA_WILDS_PER_CREATE_CAP := 1
-const HEAD_START_CAP := 0.5
-const LINE_PAYOUT_BONUS_CAP := 1.0
-const FREE_SPINS_EXTRA_CAP := 4
 
 var dead_power_streak: int = 0
 var pending_power_chance: float = 0.0
 var pending_power_spawn: float = 0.0
 var first_dead_used: bool = false
 var wilds_created_encounter: int = 0
+var won_spins: int = 0
 var first_wild_this_spin: bool = true
 var first_premium_this_spin: bool = true
 var overclock_used_this_spin: bool = false
@@ -23,6 +20,27 @@ var meter_frac_accum: float = 0.0
 var chaining: bool = false
 var girl_power_this_spin: bool = false
 var _procs: Array[StringName] = []
+var _jammed: Dictionary = {}
+
+
+func clear_jam() -> void:
+	_jammed.clear()
+
+
+func jam_item(item: Resource) -> void:
+	if item != null:
+		_jammed[item.get_instance_id()] = StringName(str(item.get("id")))
+
+
+func is_jammed(item: Resource) -> bool:
+	return item != null and _jammed.has(item.get_instance_id())
+
+
+func jammed_item_ids() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for item_id in _jammed.values():
+		out.append(item_id)
+	return out
 
 
 func reset_encounter() -> void:
@@ -31,6 +49,7 @@ func reset_encounter() -> void:
 	pending_power_spawn = 0.0
 	first_dead_used = false
 	wilds_created_encounter = 0
+	won_spins = 0
 	trinity_win_scalar_accum = 0.0
 	glyphs.clear()
 	meter_frac_accum = 0.0
@@ -97,7 +116,7 @@ func note_paid_spin_passives(items: Array) -> void:
 		var hit := false
 		match eid:
 			&"paid_spin_payout_scalar":
-				hit = float(p.get("per_paid_spin", 0.0)) > 0.0
+				hit = float(p.get("per_paid_spin", 0.0)) > 0.0 or (float(p.get("per_won_spin", 0.0)) > 0.0 and won_spins > 0)
 			&"sealed_grid":
 				hit = float(p.get("payout_bonus", 0.0)) > 0.0
 		if hit:
@@ -119,13 +138,13 @@ func drain_procs() -> Array[StringName]:
 
 
 func _eff(item: Resource) -> StringName:
-	if item == null:
+	if item == null or is_jammed(item):
 		return &""
 	return StringName(str(item.get("effect_id")))
 
 
 func _params(item: Resource) -> Dictionary:
-	if item == null:
+	if item == null or is_jammed(item):
 		return {}
 	var p = item.get("effect_params")
 	if p is Dictionary:
@@ -139,7 +158,7 @@ func head_start_percent(items: Array) -> float:
 		if _eff(item) != &"goal_head_start":
 			continue
 		total += float(_params(item).get("paid_percent", 0.0))
-	return minf(total, HEAD_START_CAP)
+	return total
 
 
 func paid_spin_payout_scalar(items: Array, spins_used: int) -> float:
@@ -148,10 +167,9 @@ func paid_spin_payout_scalar(items: Array, spins_used: int) -> float:
 		if _eff(item) != &"paid_spin_payout_scalar":
 			continue
 		var p := _params(item)
-		var per := float(p.get("per_paid_spin", 0.0))
-		var cap := float(p.get("cap", 99.0))
-		total += minf(float(spins_used) * per, cap)
-	return minf(total, PAID_SPIN_SCALAR_TOTAL_CAP)
+		total += float(spins_used) * float(p.get("per_paid_spin", 0.0))
+		total += float(won_spins) * float(p.get("per_won_spin", 0.0))
+	return total
 
 
 func sealed_payout(items: Array, regular_mode: bool) -> float:
@@ -278,7 +296,7 @@ func line_payout_bonus(
 			note_proc(item)
 	if in_trinity:
 		bonus += trinity_win_scalar_accum
-	return minf(bonus, LINE_PAYOUT_BONUS_CAP)
+	return bonus
 
 
 func pay_preview(items: Array, symbol: Resource, length: int) -> float:
@@ -434,7 +452,6 @@ func free_spins_mods(items: Array) -> Dictionary:
 			mods["first_win_wild"] = bool(p.get("first_win_wild", false))
 		if p.has("chain_random_potency"):
 			mods["chain_random_potency"] = float(p.get("chain_random_potency", 0.0))
-	mods["extra_spins"] = mini(int(mods["extra_spins"]), FREE_SPINS_EXTRA_CAP)
 	return mods
 
 
@@ -634,10 +651,8 @@ func paid_spin_hint(items: Array, spins_used: int) -> String:
 		if _eff(item) != &"paid_spin_payout_scalar":
 			continue
 		var p := _params(item)
-		var per := float(p.get("per_paid_spin", 0.0))
-		var cap := float(p.get("cap", 99.0))
-		var cur := minf(float(spins_used) * per, cap)
-		parts.append("%s +%.2fx at %d used, cap %.2f" % [String(item.get("id")), cur, spins_used, cap])
+		var cur := float(spins_used) * float(p.get("per_paid_spin", 0.0)) + float(won_spins) * float(p.get("per_won_spin", 0.0))
+		parts.append("%s +%.2fx at %d used, %d won" % [String(item.get("id")), cur, spins_used, won_spins])
 	for item in items:
 		if _eff(item) == &"first_paid_spin_refund":
 			if spins_used <= 0:

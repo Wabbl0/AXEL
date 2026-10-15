@@ -42,7 +42,7 @@ Deaths happen in fights 4–9; later goals barely matter because survivors get t
 
 - Stronger CRT/glitch in deep rooms (visual tuning, needs a playtest).
 - Glimmer pulse on a Legendary floor marker in the room you are in.
-- Arc 6 basement roulette (depth 4) — later task.
+- ~~Arc 6 basement roulette (depth 4)~~ — built, see `2026-10-15_arc6_roulette_gauntlet.md`.
 
 ## Checks
 

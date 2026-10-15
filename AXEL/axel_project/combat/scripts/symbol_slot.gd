@@ -22,6 +22,12 @@ const GLYPH_MARK_SCRIPT := preload("res://combat/scripts/glyph_mark.gd")
 const GOAL_SQUASH_SEC := 0.05
 const GOAL_EAT_SEC := 0.3
 const GOAL_POP_SEC := 0.22
+const FLIP_SEC := 0.16
+const BACK_TEX_PX := 64
+const BACK_EDGE_PX := 3
+const BACK_FILL := Color(0.06, 0.0, 0.0, 1.0)
+const BACK_EDGE := Color(0.45, 0.02, 0.02, 1.0)
+const BACK_MARK := Color(0.28, 0.0, 0.0, 1.0)
 
 var _drop_tween: Tween
 var _goal_tween: Tween
@@ -48,7 +54,11 @@ var _extra_tweens: Array[Tween] = []
 var _power_fx_active: bool = false
 var _clip_before_power: bool = false
 var _glyph_mark: Control
+var _face_down: bool = false
+var _face_tex: Texture2D
+var _flip_tween: Tween
 
+static var _back_tex: Texture2D
 static var _blank_tex: Texture2D
 static var _burn_noise: Texture2D
 
@@ -62,9 +72,55 @@ func set_symbol(sym: SymbolDefScript) -> void:
 	_clear_power_fx()
 	_ensure_icon()
 	if sym != null and sym.texture != null:
-		_icon.texture = sym.texture
+		_face_tex = sym.texture
 	else:
-		_icon.texture = null
+		_face_tex = null
+	if _face_down and _face_tex != null:
+		_icon.texture = _back_texture()
+	else:
+		_icon.texture = _face_tex
+
+
+func is_face_down() -> bool:
+	return _face_down
+
+
+func set_face_down(on: bool, animate: bool = false) -> void:
+	if on == _face_down:
+		return
+	_face_down = on
+	if on:
+		return
+	_ensure_icon()
+	_cancel_tween(_flip_tween)
+	_icon.scale = Vector2.ONE
+	if not animate or _face_tex == null:
+		_icon.texture = _face_tex
+		return
+	_icon.pivot_offset = _icon.size * 0.5
+	var half := FLIP_SEC * 0.5
+	_flip_tween = CombatPace.bind(create_tween())
+	_flip_tween.tween_property(_icon, "scale:x", 0.0, half)
+	_flip_tween.tween_callback(func() -> void: _icon.texture = _face_tex)
+	_flip_tween.tween_property(_icon, "scale:x", 1.0, half)
+
+
+static func _back_texture() -> Texture2D:
+	if _back_tex != null:
+		return _back_tex
+	var n := BACK_TEX_PX
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(BACK_FILL)
+	var mid: int = n >> 1
+	for y in n:
+		for x in n:
+			var edge := mini(mini(x, y), mini(n - 1 - x, n - 1 - y))
+			if edge < BACK_EDGE_PX:
+				img.set_pixel(x, y, BACK_EDGE)
+			elif absi(x - mid) + absi(y - mid) < int(n * 0.2):
+				img.set_pixel(x, y, BACK_MARK)
+	_back_tex = ImageTexture.create_from_image(img)
+	return _back_tex
 
 
 func show_win_skull(tex: Texture2D) -> void:
@@ -160,6 +216,8 @@ func has_visible_symbol() -> bool:
 
 func icon_texture() -> Texture2D:
 	_ensure_icon()
+	if _face_down:
+		return _face_tex
 	return _icon.texture
 
 
