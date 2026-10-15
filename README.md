@@ -2,13 +2,10 @@
 
 AXEL is a horror roguelike with a slot-machine fight system. You return to a decaying school, and every fight is a 5x5 slot grid. Made in Godot 4.7.2 with GDScript.
 
-## Play it on a Mac (no security settings needed)
+## Play it
 
-1. Download Godot 4.7.2 (the standard version, not .NET) from godotengine.org and open it.
-2. Download this repository (green Code button on GitHub, then Download ZIP, or clone it) and unzip it.
-3. In Godot press Import, pick `AXEL/axel_project/project.godot`, then Import & Edit.
-4. Wait for the first import to finish. It can take a few minutes.
-5. Press F5 (or the Play button, top right). The game starts at the main menu.
+- **In your browser:** https://wabbl0.github.io/AXEL/ (browser saves are separate from desktop saves)
+- **Download (Windows, macOS):** https://github.com/Wabbl0/AXEL/releases/latest
 
 ## Controls
 
