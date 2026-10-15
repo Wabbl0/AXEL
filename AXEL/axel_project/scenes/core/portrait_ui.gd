@@ -6,6 +6,10 @@ const TOP_BAND := 0.07
 const BOTTOM_BAND := 0.04
 
 
+static func is_touch_device() -> bool:
+	return OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
+
+
 static func view_size(node: Node) -> Vector2:
 	var vp := node.get_viewport() if node != null else null
 	if vp == null:
@@ -27,7 +31,7 @@ static func safe_rect(node: Node) -> Rect2:
 		return Rect2(Vector2.ZERO, size)
 	var top := size.y * TOP_BAND
 	var bottom := size.y * BOTTOM_BAND
-	if OS.has_feature("mobile"):
+	if is_touch_device():
 		var area := DisplayServer.get_display_safe_area()
 		var win := Vector2(DisplayServer.window_get_size())
 		if area.size.x > 0 and area.size.y > 0 and win.y > 0.0:

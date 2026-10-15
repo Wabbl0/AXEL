@@ -42,6 +42,7 @@ func _main() -> void:
 		_failures.append("expected 75 items, found %d" % items)
 	for id in TUTORIAL.LESSONS.keys():
 		_scan("tutorial %s" % id, String(TUTORIAL.LESSONS[id].get("body", "")))
+		_scan("tutorial touch %s" % id, String(TUTORIAL.LESSONS[id].get("touch_body", "")))
 	for page in GuidePages.PAGES:
 		for block in page.get("blocks", []):
 			if (block as Dictionary).has("text"):

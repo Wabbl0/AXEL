@@ -67,6 +67,8 @@ No big files in git:
 
 ### 7. Phone browsers
 
+Emulated iPhone test done 2026-10-15 (`2026-10-15_web_phone_touch.md`): touch mode was off on phone browsers, fixed in 2.0.1. Real-phone test still open.
+
 - Test on a real phone (Android Chrome, iPhone Safari): portrait UI, touch move stick, combat buttons, first-tap audio.
 - Watch memory and load time on phones; the `.pck` size (step 4) matters most here.
 - Fullscreen on tap if the browser allows it (iPhone Safari does not).

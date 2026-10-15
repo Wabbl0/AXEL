@@ -22,6 +22,7 @@ Dead by the end, min bet: new rules 63–66 %, old rules 55–64 %. ⅕ bet: 90 
 
 ## Not done yet
 
-- Reroll items (catalog edit), after tickets are playtested.
+- Reroll items: designed 2026-10-15 as family T (Tickets) in the catalog plan; build plan `2026-10-15_new_item_families_plan.md`.
+- Dread tutorial card `items_dread`: done 2026-10-15 (first floor card that shows `+X% Dread`).
 - Dread line on the fight intro / goal panel.
 - AI_DOCS update (wait for "update docs").

@@ -378,6 +378,8 @@ Rough shape over a playthrough:
 
 ## Planned items (approved design 2026-10-15, not built)
 
+Combat/world build plan: [2026-10-15_new_item_families_plan.md](../playtest/2026-10-15_new_item_families_plan.md). Names and player text: `AXEL/item_icons_reference.pdf` items 76–93.
+
 Three new families (5 rarities each) and three Common uniques: **75 + 15 + 3 = 93** items once built. Ids follow the usual scheme (`C-T` … `L-T`, `C11`–`C13`). No caps. Every number is a multiple of 5. Each needs a 1024×1024 icon.
 
 Layer rule: combat reads no story flags. Tickets held, Dread %, hex count and active curses reach combat as plain numbers through `AxelRun`. Ticket price, rerolls, memories and travel stay on the world side (`AxelRun` / `AxelWorld`). Combat only reports plain results back (for example "winning spins this fight").

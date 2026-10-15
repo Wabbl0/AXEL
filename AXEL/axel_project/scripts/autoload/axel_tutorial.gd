@@ -36,15 +36,18 @@ const LESSONS := {
 	"move_walk": {
 		"title": "Moving",
 		"body": "WASD or the arrow keys walk.",
+		"touch_body": "Press anywhere and slide your finger to walk.",
 	},
 	"fight_spin": {
 		"title": "Fights",
 		"body": "Click the SKULL, or press E, to spin. Match 3 or more of the same symbol in a row or a column.",
+		"touch_body": "Tap the SKULL to spin. Match 3 or more of the same symbol in a row or a column.",
 	},
 	"fight_stakes": {
 		"calm_timer": true,
 		"title": "Bets",
 		"body": "BALANCE is your chips. The BET is spent each spin. If BALANCE drops below 100, you lose. Press + or - to change the BET. Q and R work too.",
+		"touch_body": "BALANCE is your chips. The BET is spent each spin. If BALANCE drops below 100, you lose. Tap + or - to change the BET.",
 	},
 	"fight_goal": {
 		"calm_timer": true,
@@ -55,10 +58,12 @@ const LESSONS := {
 		"calm_timer": true,
 		"title": "Fights",
 		"body": "Equipped ITEMS sit on the left. They act on their own and are how you win. Hover a name to read it.",
+		"touch_body": "Equipped ITEMS sit on the left. They act on their own and are how you win. Tap a name to read it.",
 	},
 	"items_hand": {
 		"title": "Items",
 		"body": "That is an item. Press E to take it. It equips by itself if you have a free slot. Items are how you win fights. Keep every one you find.",
+		"touch_body": "That is an item. Tap it to take it. It equips by itself if you have a free slot. Items are how you win fights. Keep every one you find.",
 	},
 	"items_dread": {
 		"title": "Dread",
@@ -67,6 +72,7 @@ const LESSONS := {
 	"items_wheel": {
 		"title": "Items",
 		"body": "Tab, Q, R, or I opens your items. Clicking MIKE does too. Click an item to switch it on or off. The tabs show stats, pays and areas.",
+		"touch_body": "Tap MIKE to open your items. Tap an item to switch it on or off. The tabs show stats, pays and areas.",
 	},
 	"slot_match": {
 		"freeze": true,
@@ -96,6 +102,7 @@ const LESSONS := {
 	"guide_pause": {
 		"title": "Guide",
 		"body": "Forgot a rule? Press Esc and open the Guide. Every lesson is kept there.",
+		"touch_body": "Forgot a rule? Tap SETTINGS and open the Guide. Every lesson is kept there.",
 		"link": {"word": "Guide", "target": "guide"},
 	},
 }
@@ -486,6 +493,11 @@ func debug_dismiss() -> void:
 	_dismiss_one_card()
 
 
+func _touch_mode() -> bool:
+	var stick := get_node_or_null("/root/AxelTouchStick")
+	return stick != null and bool(stick.call("is_touch_mode"))
+
+
 func _allows() -> bool:
 	if _debug_enabled:
 		return true
@@ -608,7 +620,7 @@ func _open_slot(idx: int, id: String) -> void:
 func _run_card(slot: CardSlot, id: String) -> void:
 	var token := _bump_token(slot)
 	var lesson: Dictionary = LESSONS[id]
-	slot.body_text = String(lesson["body"])
+	slot.body_text = String(lesson.get("touch_body", lesson["body"])) if _touch_mode() else String(lesson["body"])
 	slot.typed = 0
 	slot.type_acc = 0.0
 	slot.title.text = String(lesson["title"])

@@ -8,7 +8,7 @@ One plan per note. Do not implement from this index. Open the single plan for th
 | --- | --- |
 | 1.3 locker should show that Esc leaves (shipped) | [Locker ESC hint](2026-10-11_locker_esc_hint.md) |
 | E near three items took all three (shipped) | [Nearest item pickup](2026-10-11_nearest_item_pickup.md) |
-| Mobile: drag to walk, tap the highlight to interact (shipped) | [Touch move stick](2026-10-09_touch_move_stick.md), [Touch build](2026-10-11_touch_controls_build.md) |
+| Mobile: drag to walk, tap the highlight to interact (shipped) | [Touch move stick](2026-10-09_touch_move_stick.md), [Touch build](2026-10-11_touch_controls_build.md), [Web phone fix](2026-10-15_web_phone_touch.md) |
 | Deleted save comes back after leaving the debug session | [Save delete sticks](2026-09-23_save_delete_sticks.md) |
 | Load Game seed is cut off; hover shows it, click copies it | [Load Game seed](2026-09-23_load_seed_hover_copy.md) |
 | CRT wave color should be 33% less opaque | [CRT wave opacity](2026-09-23_crt_wave_opacity.md) |

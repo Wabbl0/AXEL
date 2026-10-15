@@ -50,7 +50,7 @@ func _ready() -> void:
 func is_touch_mode() -> bool:
 	if _override >= 0:
 		return _override == 1
-	return OS.has_feature("mobile") or OS.get_environment("AXEL_TOUCH_STICK") == "1"
+	return PortraitUi.is_touch_device() or OS.get_environment("AXEL_TOUCH_STICK") == "1"
 
 
 func set_touch_mode_override(on: bool) -> void:
