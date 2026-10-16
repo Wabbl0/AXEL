@@ -40,8 +40,8 @@ const LESSONS := {
 	},
 	"fight_spin": {
 		"title": "Fights",
-		"body": "Click the SKULL...to spin.",
-		"touch_body": "Tap the SKULL...to spin.",
+		"body": "Click the SKULL to spin.",
+		"touch_body": "Tap the SKULL to spin.",
 	},
 	"fight_stakes": {
 		"calm_timer": true,
@@ -84,17 +84,17 @@ const LESSONS := {
 	"slot_match": {
 		"freeze": true,
 		"title": "Matches",
-		"body": "3 or more...is a win.",
+		"body": "3 or more of the same symbol in a row or column is a win.",
 	},
 	"slot_pays": {
 		"freeze": true,
 		"title": "Matches",
-		"body": "Each win pays your BET..., times the MULTIPLIER.",
+		"body": "Each win pays your BET x the symbol's PAY % x the MULTIPLIER.",
 	},
 	"slot_history": {
 		"calm_timer": true,
 		"title": "History",
-		"body": "Every win is listed in the HISTORY box as BET x PAY % x MULTIPLIER, with what it paid under it.",
+		"body": "Every win is listed in the HISTORY box with what it paid under it.",
 	},
 	"slot_power": {
 		"calm_timer": true,

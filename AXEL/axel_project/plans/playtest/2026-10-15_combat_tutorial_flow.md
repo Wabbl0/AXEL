@@ -4,10 +4,10 @@
 A brand-new player should follow the first fight one idea at a time, with short cards.
 
 ## New flow
-1. **Fights** (first idle): "Click the SKULL...to spin." (touch: "Tap the SKULL...to spin.")
-2. **Matches** (first match found, time freezes before it pays): "3 or more...is a win." The symbols about to match pulse and glow above the freeze.
+1. **Fights** (first idle): "Click the SKULL to spin." (touch: "Tap the SKULL to spin.")
+2. **Matches** (first match found, time freezes before it pays): "3 or more of the same symbol in a row or column is a win." The symbols about to match pulse and glow above the freeze.
 3. The line pays: the symbols vanish, the MULTIPLIER ticks to 2X, and the History row appears. Time freezes again, then these cards play in order:
-   - **Matches**: "Each win pays your BET..., times the MULTIPLIER."
+   - **Matches**: "Each win pays your BET x the symbol's PAY % x the MULTIPLIER."
    - **Bets**: BALANCE / BET / lose below 100. The "+ / -" and "Q and R" line is removed.
    - **Multiplier**: glows the MULTIPLIER, which now shows 2X.
    - **History**
@@ -17,7 +17,7 @@ A brand-new player should follow the first fight one idea at a time, with short 
 
 ## Wording
 - SKULL METER, POWER SYMBOLS and NORMAL SYMBOLS are written in capitals in tutorial cards and the Guide. Item descriptions keep "Skull Meter".
-- Ellipses use "..." because VT323 may not have the single-character ellipsis.
+- No ellipses in the first-fight cards: "Click the SKULL to spin." and the Matches cards spell out the full rule.
 
 ## Code
 - `combat_root.gd`:

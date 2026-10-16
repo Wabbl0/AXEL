@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="AXEL"
-config/version="2.1.0"
+config/version="2.1.1"
 run/main_scene="res://scenes/Main_Menu/0.1_MainMenu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://assets/ui/axel_icon.png"
