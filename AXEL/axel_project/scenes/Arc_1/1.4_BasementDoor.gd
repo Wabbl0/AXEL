@@ -21,8 +21,8 @@ var _pending_cafeteria_peek := false
 var _pending_corridor_peek := false
 var _pending_door_return := false
 var _arrival_t := InteractArrival.DEFAULT_T
-var _exit_trigger_armed := true
-var _cafeteria_exit_armed := true
+var _exit_trigger_armed := false
+var _cafeteria_exit_armed := false
 var _direction_hint: Node2D
 var _hint_elapsed := 0.0
 var _hint_wait_sec := HINT_WAIT_SEC
@@ -56,6 +56,7 @@ func _ready() -> void:
 	set_process(true)
 	set_process_unhandled_input(true)
 	call_deferred("_restore_player_position_if_needed")
+	call_deferred("_arm_exits_after_settle")
 
 
 func _process(delta: float) -> void:
@@ -222,6 +223,13 @@ func _apply_corridor_peek_if_pending() -> void:
 func _clamp_arrived_player() -> void:
 	if is_instance_valid(_player):
 		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_Y)
+
+
+func _arm_exits_after_settle() -> void:
+	wake_static_colliders()
+	await await_two_physics_frames()
+	_arm_exit_trigger_grace()
+	_arm_cafeteria_exit_grace()
 
 
 func _arm_exit_trigger_grace() -> void:

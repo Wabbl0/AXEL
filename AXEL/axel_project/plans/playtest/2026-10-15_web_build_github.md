@@ -9,7 +9,7 @@
 - Compatibility look: main menu, `1.3_LockerHub`, `combat_test` match Forward Plus (screenshots after the entry glitch settles). `run_quiet.ps1` / `capture_scene.ps1` got an optional `-Renderer`.
 - Web-only: Quit hidden (main menu, pause menu, death screen), `back` on the main menu does not quit, window mode + resolution options hidden, `_apply_window_mode()` skipped.
 - `.github/workflows/web-pages.yml`: on release published (or by hand with a tag), downloads `*_web.zip` from the release and deploys it to Pages.
-- `release-build` skill exports + zips the web build to `AXEL/out/export/web_zip/AXEL_x.y.z_web.zip`; `CLAUDE.md` upload step attaches it and adds the play link to the notes.
+- `release-build` skill exports + zips the web build to `AXEL/out/web_zip/AXEL_x.y.z_web.zip`; `CLAUDE.md` upload step attaches it and adds the play link to the notes.
 - `AI_DOCS.md` "How to work": web build rule.
 
 Goal: every GitHub Release also gets a version you can play in the browser, at a fixed link (`https://wabbl0.github.io/AXEL/`), next to the Windows `.exe` and Mac `.zip`.
@@ -31,7 +31,7 @@ Goal: every GitHub Release also gets a version you can play in the browser, at a
 
 1. Install the full 4.7.2 export templates (adds `web_nothreads_release.zip` and friends).
 2. Add an export preset `Web`, **threads off** (`variant/thread_support=false`). Threads need special server headers (COOP/COEP) that GitHub Pages cannot send; without threads no headers are needed.
-3. Export path `../out/export/web/index.html`.
+3. Export path `../out/web/index.html`.
 4. Export and test with Godot's "Run in browser" (Remote Debug). Check: main menu, one room, one fight, save/load, audio after the first click.
 
 ### 2. Compatibility look check
@@ -53,7 +53,7 @@ Measure the web `.pck`. If it is large, find the biggest files (likely audio and
 
 No big files in git:
 
-1. Release build exports the web folder and zips it to `AXEL/out/export/web_zip/AXEL_x.y.z_web.zip`.
+1. Release build exports the web folder and zips it to `AXEL/out/web_zip/AXEL_x.y.z_web.zip`.
 2. "Commit and push" uploads that zip with the `.exe` and `.zip` (third file in `gh release create`).
 3. A new workflow `.github/workflows/web-pages.yml` runs **on release published**: downloads `*_web.zip` from the release, unzips it, deploys it with `actions/upload-pages-artifact` + `actions/deploy-pages`. Godot does not run on GitHub; only the files are copied.
 4. One-time: repo Settings → Pages → Source = "GitHub Actions" (the user does this).

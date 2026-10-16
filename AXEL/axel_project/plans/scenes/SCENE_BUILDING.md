@@ -237,6 +237,10 @@ Use the live dest box (rule above). Then pick the **placement mode** for that pa
 
 **Other non-frozen `[E]` pairs:** save `GameManager.interact_arrival_t` (0 = top/left of the source box, 1 = bottom/right). Measure `t` from the Front hitbox in `EnvironmentColliders` texture space. Take `t` **once** on the destination (deferred restore after first layout, like `1.2`). On every `layout_applied`: always `PlayerSpawnSync` + cover-sync; if a door peek is still pending, `call_deferred` place — do **not** place-and-clear inside the first layout, and do **not** re-apply cover/depth after place. Map `t` onto the matching dest box with `apply_arrival_inside` (inset by Front radius; `t` on the long axis; `depth_frac` usually `0.5`), then `resolve_inside_clearance` so the walk drawing stays on the floor (may sit a little off the box if a wall overlaps — e.g. 4.1 vs TopWall). Live pairs on this mode: `1.1`→`1.2`, `2.1`↔`3.1`, `2.4`↔`4.1`. Missing `t` (hub/map) falls back to center (`0.5`).
 
+### Rule: walk-off exits start disarmed
+
+A walk-off `ExitTrigger` (body entered = change room) must start disarmed and arm only after the room has resized: `wake_static_colliders()`, two physics frames, then the 0.15s grace (`_arm_exit_after_settle` in `1.2`, `_arm_exits_after_settle` in `1.4`). On the first physics frames the trigger still sits at its old spot; at some window sizes (2560×1440) that overlaps the Player node and bounces Mike straight back. Regression: `tools/qa/door_arrival_bounce_check.gd`.
+
 ### Rule: Player node is the spawn (mandatory)
 
 There is no separate spawn point. The `Player` node **is** the spawn.

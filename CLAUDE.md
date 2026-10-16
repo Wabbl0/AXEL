@@ -126,8 +126,8 @@ The public download page is https://github.com/Wabbl0/AXEL/releases/latest. A ne
 
 1. After the push succeeds, read the version from `AXEL/axel_project/export_presets.cfg` (Mac `short_version`).
 2. Check whether that release already exists: `gh release view vX.Y.Z --repo Wabbl0/AXEL`. If it exists, stop. Nothing to upload.
-3. If `AXEL/out/export/windows/AXEL_X.Y.Z.exe`, `AXEL/out/export/mac/AXEL_X.Y.Z.zip` and `AXEL/out/export/web_zip/AXEL_X.Y.Z_web.zip` all exist, create the release on the commit you just pushed:
-   `gh release create vX.Y.Z "AXEL/out/export/windows/AXEL_X.Y.Z.exe#AXEL X.Y.Z - Windows" "AXEL/out/export/mac/AXEL_X.Y.Z.zip#AXEL X.Y.Z - macOS" "AXEL/out/export/web_zip/AXEL_X.Y.Z_web.zip#AXEL X.Y.Z - Web" --repo Wabbl0/AXEL --target <pushed commit sha> --title "AXEL X.Y.Z" --notes "Play in browser: https://wabbl0.github.io/AXEL/ (browser saves are separate from desktop saves)" --generate-notes --latest`
+3. If `AXEL/out/windows/AXEL_X.Y.Z.exe`, `AXEL/out/mac/AXEL_X.Y.Z.zip` and `AXEL/out/web_zip/AXEL_X.Y.Z_web.zip` all exist, create the release on the commit you just pushed:
+   `gh release create vX.Y.Z "AXEL/out/windows/AXEL_X.Y.Z.exe#AXEL X.Y.Z - Windows" "AXEL/out/mac/AXEL_X.Y.Z.zip#AXEL X.Y.Z - macOS" "AXEL/out/web_zip/AXEL_X.Y.Z_web.zip#AXEL X.Y.Z - Web" --repo Wabbl0/AXEL --target <pushed commit sha> --title "AXEL X.Y.Z" --notes "Play in browser: https://wabbl0.github.io/AXEL/ (browser saves are separate from desktop saves)" --generate-notes --latest`
    Publishing the release starts `.github/workflows/web-pages.yml`, which puts the web zip on https://wabbl0.github.io/AXEL/.
 4. If a build file is missing, skip the upload and tell me.
 5. If `gh` is not on PATH, use `C:\Program Files\GitHub CLI\gh.exe`. If it says not logged in, ask me to run `gh auth login`.

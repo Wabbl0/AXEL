@@ -26,7 +26,7 @@ var _locker_enter_token := 0
 var _pending_basement_peek := false
 var _pending_exterior_peek := false
 var _arrival_t := InteractArrival.DEFAULT_T
-var _exit_trigger_armed := true
+var _exit_trigger_armed := false
 var _direction_hint: Node2D
 var _direction_hint_tex := Vector2.ZERO
 var _hint_elapsed := 0.0
@@ -68,6 +68,7 @@ func _ready() -> void:
 	set_process_unhandled_input(true)
 	_latch_corridor_arrival()
 	call_deferred("_restore_player_position_if_needed")
+	call_deferred("_arm_exit_after_settle")
 	_arm_exterior_zone_grace()
 	if not GameManager.corridor_spawn_line_seen:
 		_enter_dialogue_pending = true
@@ -184,6 +185,12 @@ func _apply_exterior_peek_if_pending() -> void:
 func _clamp_arrived_player() -> void:
 	if is_instance_valid(_player):
 		InteractArrival.clamp_hitbox_to_walls(_player, Vector2.AXIS_Y)
+
+
+func _arm_exit_after_settle() -> void:
+	wake_static_colliders()
+	await await_two_physics_frames()
+	_arm_exit_trigger_grace()
 
 
 func _arm_exit_trigger_grace() -> void:
