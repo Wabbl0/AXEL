@@ -30,20 +30,6 @@ func _build_look() -> void:
 	fill.color = Color(1, 1, 1, 1)
 	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(fill)
-	var frame := ReferenceRect.new()
-	frame.border_color = Color(0, 0, 0, 1)
-	frame.border_width = 6.0
-	frame.editor_only = false
-	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(frame)
-	var stamp := Label.new()
-	stamp.text = "GREY-BOX  ·  %s  ·  art later" % _def().get("label", room_id)
-	stamp.add_theme_font_override("font", FONT)
-	stamp.add_theme_font_size_override("font_size", 28)
-	stamp.add_theme_color_override("font_color", Color(0, 0, 0, 1))
-	stamp.position = Vector2(32, 28)
-	add_child(stamp)
-	_draw_floorplan()
 	var overlay := load("res://scenes/ui/TopDialogueOverlay.tscn") as PackedScene
 	if overlay != null:
 		_dialogue = overlay.instantiate()
@@ -51,10 +37,14 @@ func _build_look() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 110
 	add_child(layer)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(center)
 	_choices = VBoxContainer.new()
-	_choices.position = Vector2(48, 120)
+	_choices.alignment = BoxContainer.ALIGNMENT_CENTER
 	_choices.add_theme_constant_override("separation", 10)
-	layer.add_child(_choices)
+	center.add_child(_choices)
 	if bool(_def().get("input", false)):
 		_input = LineEdit.new()
 		_input.custom_minimum_size = Vector2(420, 48)
@@ -81,7 +71,16 @@ func _build_look() -> void:
 	x.pressed.connect(_on_x)
 	layer.add_child(x)
 	_x_button = x
+	_apply_chrome_scale()
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_apply_chrome_scale):
+		vp.size_changed.connect(_apply_chrome_scale)
 	set_process_unhandled_input(true)
+
+
+func _apply_chrome_scale() -> void:
+	if is_instance_valid(_x_button):
+		UiViewportScale.apply_exit_button(_x_button, UiViewportScale.factor(self))
 
 
 func _play_and_offer() -> void:
@@ -233,7 +232,7 @@ func _style_choice(button: Button) -> void:
 	button.add_theme_color_override("font_hover_color", Color(1, 0.25, 0.25, 1))
 	button.custom_minimum_size = Vector2(420, 44)
 	button.flat = true
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 func _gm() -> Node:
@@ -293,31 +292,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("back"):
 		_on_x()
 		get_viewport().set_input_as_handled()
-
-
-func _draw_floorplan() -> void:
-	var plan := ColorRect.new()
-	plan.color = Color(0, 0, 0, 1)
-	plan.position = Vector2(48, 720)
-	plan.size = Vector2(420, 8)
-	add_child(plan)
-	var upright := ColorRect.new()
-	upright.color = Color(0, 0, 0, 1)
-	upright.position = Vector2(48, 560)
-	upright.size = Vector2(8, 168)
-	add_child(upright)
-	var room := ColorRect.new()
-	room.color = Color(0, 0, 0, 0)
-	room.position = Vector2(56, 568)
-	room.size = Vector2(200, 144)
-	add_child(room)
-	var outline := ReferenceRect.new()
-	outline.border_color = Color(0, 0, 0, 1)
-	outline.border_width = 3.0
-	outline.editor_only = false
-	outline.position = Vector2(56, 568)
-	outline.size = Vector2(200, 144)
-	add_child(outline)
 
 
 func _on_x() -> void:

@@ -23,8 +23,10 @@ func _main() -> void:
 		quit(1)
 		return
 	var src := FileAccess.get_file_as_string("res://scenes/Arc_1/1.4_BasementDoor.gd")
-	if src.find("Not yet.") >= 0:
-		_failures.append("1.4 door still plays Not yet.")
+	if src.find("Not yet.") < 0:
+		_failures.append("1.4 door should say Not yet. before the Flashlight or Key")
+	if src.find("is_owned(\"hasFlashlight\")") < 0 or src.find("is_owned(\"hasKey\")") < 0:
+		_failures.append("1.4 Not yet. gate should check the Flashlight and the Key")
 	if src.find(BASEMENT) < 0:
 		_failures.append("1.4 door does not lead to 6.1")
 	await _check_door_return(gm)

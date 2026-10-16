@@ -4,6 +4,7 @@ const CORRIDOR_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 const CAFETERIA_SCENE := "res://scenes/Arc_2/2.1_Cafeteria.tscn"
 const BASEMENT_SCENE := "res://scenes/Arc_6/6.1_BasementDoor.tscn"
 const BASEMENT_RETURN_T := 1.0
+const NOT_YET_LINE := "Not yet."
 const CAFETERIA_PEEK_MARGIN_PX := 12.0
 const CORRIDOR_PEEK_MARGIN_PX := 12.0
 const EXIT_TRIGGER_GRACE_SEC := 0.15
@@ -89,8 +90,22 @@ func on_zone_interact(zone_id: String) -> void:
 func _enter_basement() -> void:
 	if extra_blocks_interact() or InteractZoneGate.dialogue_busy(_top_dialogue):
 		return
+	if not LorePickup.is_owned("hasFlashlight") and not LorePickup.is_owned("hasKey"):
+		_say_not_yet()
+		return
 	GameManager.set_basement_door_line_seen(true)
 	begin_scene_change(BASEMENT_SCENE)
+
+
+func _say_not_yet() -> void:
+	if not is_instance_valid(_top_dialogue):
+		return
+	_line_running = true
+	hide_interact_prompt_immediate()
+	await _top_dialogue.show_line(NOT_YET_LINE, 2.0)
+	_line_running = false
+	if _active_zone == "door":
+		_active_zone = ""
 
 
 func _restore_player_position_if_needed() -> void:

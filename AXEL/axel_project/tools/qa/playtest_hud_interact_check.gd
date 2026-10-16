@@ -37,6 +37,7 @@ func _check_door_chip() -> void:
 	var gm := root.get_node_or_null("GameManager")
 	if gm != null:
 		gm.basement_door_line_seen = true
+		gm.set_flag("hasKey", true)
 	change_scene_to_file(ROOM)
 	for _i in 24:
 		await process_frame
