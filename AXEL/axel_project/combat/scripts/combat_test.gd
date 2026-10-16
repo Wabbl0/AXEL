@@ -118,6 +118,10 @@ const SKULL_MOUTH_FRAC := Vector2(0.50, 0.62)
 const SKULL_MOUTH_LIP_FRAC := 0.80
 const SPIN_BAR_FILL_SEC := 0.08
 const FS_CHOICE_LAYER := 116
+const GAMBLE_LAYER := 117
+const GAMBLE_CHIP_FONT_SIZE := 30
+const GAMBLE_CHIP_GAP := 6.0
+const DOUBLE_OR_NOTHING_UI := preload("res://combat/scripts/double_or_nothing_ui.gd")
 const SPIN_COUNT_LAYER := 109
 const FUSE_LAST_COLOR := Color(1.0, 0.35, 0.35, 1.0)
 const FS_SCRIM_ALPHA := 0.72
@@ -208,6 +212,9 @@ var choose_alcohol_button: Button
 var choose_cigarette_button: Button
 var _fs_choice_layer: CanvasLayer
 var _fs_choice_ready := false
+var _gamble_layer: CanvasLayer
+var _gamble_ui: Control
+var _gamble_chip: Button
 var _vice_hover_tweens: Dictionary = {}
 var _vice_highlight_tex: ImageTexture
 var top_bar: Control
@@ -1698,6 +1705,9 @@ func _style_stake_buttons() -> void:
 
 func _input(event: InputEvent) -> void:
 	_note_skull_input(event)
+	if _gamble_ui_open():
+		_handle_gamble_input(event)
+		return
 	if _wants_spin_hotkey(event) and _tutorial_freezing():
 		get_viewport().set_input_as_handled()
 		return
@@ -1908,6 +1918,12 @@ func _request_spin() -> void:
 		return
 	if combat.free_spins.active:
 		return
+	if combat.has_gamble_offer():
+		combat.collect_gamble()
+		_refresh_readouts()
+		if combat.is_encounter_complete():
+			_refresh_spin_button_state()
+			return
 	_spin_request_frame = frame
 	_spin_busy = true
 	if combat.is_encounter_complete():
@@ -4949,6 +4965,7 @@ func _process(delta: float) -> void:
 		_sync_freeze_overlay()
 		_sync_rush_hold(delta)
 		_sync_item_box_reorder()
+		_sync_gamble_chip()
 	if Engine.is_editor_hint() and not editor_preview_enabled:
 		return
 	if _item_desc_panel == null or not _item_desc_panel.visible:
@@ -5491,3 +5508,147 @@ func _refresh_item_picker_title() -> void:
 			_safe_get_item_inventory_size(),
 			_safe_get_item_max_slots(),
 		]
+
+
+func _ensure_gamble_ui() -> void:
+	if _gamble_layer != null or Engine.is_editor_hint():
+		return
+	_gamble_layer = CanvasLayer.new()
+	_gamble_layer.name = "DoubleOrNothingLayer"
+	_gamble_layer.layer = GAMBLE_LAYER
+	add_child(_gamble_layer)
+	_gamble_ui = DOUBLE_OR_NOTHING_UI.new()
+	_gamble_ui.name = "DoubleOrNothing"
+	_gamble_layer.add_child(_gamble_ui)
+	_gamble_ui.picked.connect(_on_gamble_picked)
+	_gamble_ui.collected.connect(_on_gamble_collected)
+	_gamble_ui.ticked.connect(_on_gamble_ticked)
+	_gamble_chip = Button.new()
+	_gamble_chip.name = "DoubleOrNothingChip"
+	_gamble_chip.text = "DOUBLE OR NOTHING"
+	_gamble_chip.focus_mode = Control.FOCUS_NONE
+	_gamble_chip.visible = false
+	_gamble_chip.add_theme_font_override("font", load("res://combat/ui/fonts/VT323-Regular.ttf"))
+	_gamble_chip.add_theme_font_size_override("font_size", GAMBLE_CHIP_FONT_SIZE)
+	_gamble_chip.add_theme_color_override("font_color", Color.WHITE)
+	_gamble_chip.add_theme_color_override("font_hover_color", Color.WHITE)
+	_gamble_chip.add_theme_color_override("font_pressed_color", Color.WHITE)
+	_gamble_chip.add_theme_stylebox_override("normal", _gamble_chip_style(Color(0.08, 0.0, 0.0, 0.92)))
+	_gamble_chip.add_theme_stylebox_override("hover", _gamble_chip_style(Color(0.45, 0.03, 0.03, 0.95)))
+	_gamble_chip.add_theme_stylebox_override("pressed", _gamble_chip_style(Color(0.6, 0.05, 0.05, 1.0)))
+	_gamble_chip.pressed.connect(_on_gamble_chip_pressed)
+	_gamble_layer.add_child(_gamble_chip)
+
+
+func _gamble_chip_style(fill: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill
+	box.border_color = Color(0.86, 0.08, 0.08, 1.0)
+	box.set_border_width_all(2)
+	box.content_margin_left = 14.0
+	box.content_margin_right = 14.0
+	box.content_margin_top = 2.0
+	box.content_margin_bottom = 2.0
+	return box
+
+
+func _gamble_ui_open() -> bool:
+	return _gamble_ui != null and bool(_gamble_ui.call("is_open"))
+
+
+func _sync_gamble_chip() -> void:
+	if not _can_use_combat_api() or combat == null:
+		return
+	var offer := combat.has_gamble_offer()
+	if offer:
+		_ensure_gamble_ui()
+	if _gamble_chip == null:
+		return
+	var show := (
+		offer
+		and not _spin_busy
+		and not _gamble_ui_open()
+		and not combat.is_encounter_complete()
+		and not _tutorial_freezing()
+		and not _safe_is_waiting_for_free_spin_choice()
+	)
+	_gamble_chip.visible = show
+	if show:
+		_place_gamble_chip()
+
+
+func _place_gamble_chip() -> void:
+	var anchor := _piece_spin_money as Control
+	if anchor == null or not is_instance_valid(anchor):
+		anchor = find_child("WinningsReadoutPill", true, false) as Control
+	if anchor == null:
+		return
+	var xf := anchor.get_global_transform_with_canvas()
+	var rect := Rect2(xf.origin, anchor.size * xf.get_scale())
+	var chip_size := _gamble_chip.get_combined_minimum_size()
+	_gamble_chip.size = chip_size
+	_gamble_chip.position = Vector2(rect.get_center().x - chip_size.x * 0.5, rect.end.y + GAMBLE_CHIP_GAP).round()
+
+
+func _handle_gamble_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("interact"):
+		return
+	get_viewport().set_input_as_handled()
+	if bool(_gamble_ui.call("is_choosing")):
+		_on_gamble_collected()
+	else:
+		CombatPace.rush_beat()
+
+
+func _on_gamble_chip_pressed() -> void:
+	if _spin_busy or not _can_use_combat_api() or not combat.has_gamble_offer():
+		return
+	_spin_busy = true
+	_gamble_chip.visible = false
+	_gamble_ui.call("open", combat.get_gamble_pot(), _reduce_flashing_on())
+
+
+func _on_gamble_picked(pick: StringName) -> void:
+	if not bool(_gamble_ui.call("is_choosing")):
+		return
+	var round_data: Dictionary = combat.gamble(pick)
+	if round_data.is_empty():
+		return
+	await _gamble_ui.call("play_belt", round_data)
+	var won := bool(round_data.get("won", false))
+	if won:
+		combat.settle_gamble()
+		_target_round_winnings = int(_safe_get_round_winnings())
+		_start_winnings_counter_if_needed()
+		_play_combat_sfx(&"round_winnings")
+		_refresh_readouts()
+		await _gamble_ui.call("show_result", true, combat.get_gamble_pot())
+		if not combat.has_gamble_offer() or combat.is_encounter_complete():
+			_finish_gamble_ui()
+		return
+	_play_combat_sfx(&"power")
+	await _gamble_ui.call("show_result", false, 0)
+	_gamble_ui.call("close")
+	combat.settle_gamble()
+	_sync_winnings_counter_to_combat_truth()
+	_finish_gamble_ui()
+
+
+func _on_gamble_collected() -> void:
+	if not _gamble_ui_open():
+		return
+	_gamble_ui.call("close")
+	combat.collect_gamble()
+	_finish_gamble_ui()
+
+
+func _finish_gamble_ui() -> void:
+	if _gamble_ui_open():
+		_gamble_ui.call("close")
+	_release_spin_busy()
+	_refresh_readouts()
+	_refresh_spin_button_state()
+
+
+func _on_gamble_ticked() -> void:
+	_play_combat_sfx(&"item_wheel_click")

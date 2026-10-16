@@ -47,6 +47,7 @@ func _main() -> void:
 		for block in page.get("blocks", []):
 			if (block as Dictionary).has("text"):
 				_scan("guide %s" % String(page.get("title", "")), String(block["text"]))
+				_scan("guide touch %s" % String(page.get("title", "")), String((block as Dictionary).get("touch_text", "")))
 	if _failures.is_empty():
 		print("Item wording check OK (%d items)." % items)
 		quit(0)

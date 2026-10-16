@@ -1,6 +1,6 @@
 # Phase D — Curses (plan, 2026-10-15)
 
-Master plan: `2026-10-14_next_phase_master_plan.md` § Phase D. Builds on the Arc 6 work in `2026-10-15_arc6_roulette_gauntlet.md` (4 basement fights: door, chamber, dig, final). **Status: approved; D1 built (see Status).**
+Master plan: `2026-10-14_next_phase_master_plan.md` § Phase D. Builds on the Arc 6 work in `2026-10-15_arc6_roulette_gauntlet.md` (4 basement fights: door, chamber, dig, final). **Status: D1–D4 built (see Status).**
 
 ## Decisions (user, 2026-10-15)
 
@@ -101,7 +101,7 @@ Replaces "His eyes won't return yours." / "It's not complete." White lines (Mike
 
 ## Status
 
-Approved 2026-10-15. **D1 built 2026-10-15** (uncommitted). D2–D4 not started.
+Approved 2026-10-15. **D1 built 2026-10-15. D2–D4 built 2026-10-16.** In AI_DOCS. Needs a playtest.
 
 ### D1 as built
 
@@ -126,3 +126,29 @@ Approved 2026-10-15. **D1 built 2026-10-15** (uncommitted). D2–D4 not started.
 - Check: `combat/test/curse_modifiers_check.gd` (each curse loads and fills its text; an empty list plays like no curses; each curse is repeatable on the same seed; per-curse effects; Blind resolves exactly like no curse). Screenshot helper: `tools/qa/curse_hud_capture.gd` via `run_quiet.ps1`.
 - Checks passed 2026-10-15: curse_modifiers, determinism, powers, scaffold, item_synergy_smoke, dev_tools, combat_player_item_box, goal_bar_sync, and the standard set.
 - For D2: `AxelRun` should call `set_fight_curses()` next to `set_goal_base_target_cents()`. The curse card can read `get_curse_name` / `get_curse_description`.
+
+### D2 as built (2026-10-16)
+
+- **Picks:** `AxelWorld.gauntlet_curse_ids(fight_id)` — door 1, chamber 1, dig 2, final 2, from all nine curses, no duplicates, seeded by run seed + fight id (same save = same curses). `gauntlet_curse_list()` wraps them as `{id, params}` (default params).
+- **Hand-off:** `start_gauntlet_fight` writes `RunState.fight_curses` and `RunState.gauntlet_id` (both saved) before the fight starts. `AxelRun.enter_world_encounter` clears them for any other fight reason; a win clears them too. `AxelRun._wire_combat_root` calls `CombatRoot.set_fight_curses()` before `setup_new_grid()` for every world fight (empty list = no curses).
+- **Curse card:** `scenes/ui/curse_card.gd` (`CurseCard`, CanvasLayer 112): black 72 % scrim, red-framed card, red **CURSED** title, each curse's red name and white text (from the `.tres`, Short Fuse shows its spin count), `[E] Face it`. Closes on `interact`, `back` or a click (not in the first 0.4 s, not while a tutorial card is open). `greybox_choice._start_gauntlet_fight` shows it, then starts the fight; the room's X and Esc are blocked while it is open. `AxelWorld.can_start_gauntlet_fight()` keeps the card from showing for a fight that will not start.
+- **Tutorial:** new lesson `fight_curse` ("Curses"), requested when the card opens.
+- **Losses:** `AxelRun._on_root_finished` asks `AxelWorld.gauntlet_loss_ending(id)`: door → normal loss menu; chamber / dig → `7.3_Ending3`; final → `7.4_Ending4`. For an ending, `CombatFeel.play_loss_collapse_only()` plays the shatter without GONE or buttons, then the combat wipe, then the ending scene. The save is left to the ending (it starts a new game in that slot, as before). `AxelWorld` remembers the lost fight (`gauntlet_lost`, saved).
+- **Ending 3:** `ending_still.gd` shows the title **DISINTEGRATION** (black on white, fade in, hold, fade out), then the chamber or dig lines (`ending_3_lines_for()`).
+- **Check:** `tools/qa/gauntlet_curse_check.gd`.
+- **Not done:** real art for the card; the sim does not model the gauntlet.
+
+### D3 as built (2026-10-16)
+
+- **Table:** `AxelRun.hex_table()` is computed from the run seed (not stored; same seed = same table). Rules in the catalog plan "Curse table".
+- **Narrative side:** `AxelRun.hex_for_item()`, `hex_text()`, `hex_masks(equipped_ids)`, `legendary_fight_curses()`. `_wire_combat_root` sends `set_item_hexes(masks)` and merges the Legendary light curses into `set_fight_curses` (gauntlet curses first, no duplicates). The locker tutorial gets neither.
+- **Combat side:** `CombatRoot.set_item_hexes({item_id: mask})`. `ItemEffectDispatcher` applies `potency` (`weaken_params`) and `wilds_off` (`strip_wilds`) in `_params` / `_eff`. `combat_root._roll_hex_offs()` (right after the Item Jam roll each paid spin) switches items off for Sleep, Fickle and Jammed, reusing the jam list, so the item box dims them. No hexes = no extra RNG draws.
+- **Text:** floor card, item box hover card and STATS add `Hex: <hex> on <family> items` (+ `Curse: <name>` for Legendaries). Tutorial `items_hex` ("Hexes") on the first floor card with a hex.
+- **Check:** `combat/test/item_hex_check.gd`.
+
+### D4 as built (2026-10-16)
+
+- **Guide:** new page **Curses & Hexes** before Compendium (`guide_pages.gd`), figure `FIG_CURSES` from the existing power-symbol art (`guide_panel.gd`).
+- **Sim:** `difficulty_curve_sim.gd` applies hexes and Legendary light curses through `AxelRun.hex_masks()` / `legendary_fight_curses()`, one hex table per simulated run (`DIFF_HEX=0` turns it off). The gauntlet is still not simulated.
+- **Result (200 runs, lowest bet, dead by the end):** random picks 68 %, one-family picks 66 % (59 % without hexes). ⅕ bet 88.5 %. Target ~64 %: on target. Data: `2026-10-14_sim_data.xlsx`.
+

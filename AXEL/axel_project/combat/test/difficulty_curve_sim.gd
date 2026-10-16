@@ -42,6 +42,8 @@ const ROOM_DEPTH := {"1.2": 0, "1.4": 0, "2.4": 0, "2.1": 1, "2.2": 1, "2.3": 1,
 var DEPTH_WEIGHTS: Array = [[100, 0, 0, 0, 0], [80, 20, 0, 0, 0], [55, 35, 10, 0, 0], [30, 40, 25, 5, 0]]
 var DEPTH_GOAL: Array[float] = [1.0, 1.25, 1.5, 1.8]
 var _depth_on: bool = true
+var _hex_on: bool = true
+var _hex_seed: int = 0
 var _rounding: int = 25
 var _lore_step: float = 0.15
 var _bankroll: int = 1000
@@ -99,6 +101,7 @@ func _main() -> void:
 		var died_at := 0
 		var pick_rng := RandomNumberGenerator.new()
 		pick_rng.seed = 7001 + run_i * 7919
+		_hex_seed = 90001 + run_i * 104729
 		var wallet := _bankroll
 		var owned: Array = []
 		var dread := 0.0
@@ -221,6 +224,7 @@ func _read_config() -> void:
 	_growth_step = _env_float("DIFF_GROWTH_STEP", float(_source_const(source, "WORLD_GOAL_GROWTH_STEP", "0.0")))
 	_dread_item_scale = _env_float("DIFF_DREAD_ITEM", 1.0)
 	_depth_on = OS.get_environment("DIFF_DEPTH") != "0"
+	_hex_on = OS.get_environment("DIFF_HEX") != "0"
 	var weights_env := OS.get_environment("DIFF_DEPTH_WEIGHTS")
 	if not weights_env.is_empty():
 		DEPTH_WEIGHTS.clear()
@@ -404,6 +408,23 @@ func _goal_base(fight_count: int) -> int:
 	return maxi(int(round(value / float(_rounding))) * _rounding, 1)
 
 
+func _apply_hexes(cr: CombatRoot, items: Array) -> void:
+	var run := root.get_node_or_null("AxelRun")
+	if not _hex_on or run == null or not run.has_method("hex_masks"):
+		cr.set_item_hexes({})
+		cr.set_fight_curses([])
+		return
+	run.state.seed = _hex_seed
+	var ids: Array = []
+	for item in items:
+		ids.append(str(item.get("id")))
+	cr.set_item_hexes(run.call("hex_masks", ids))
+	var curses: Array = []
+	for curse_id in run.call("legendary_fight_curses", ids):
+		curses.append({"id": curse_id, "params": {}})
+	cr.set_fight_curses(curses)
+
+
 func _play_fight(
 	cr: CombatRoot,
 	seed_value: int,
@@ -416,6 +437,7 @@ func _play_fight(
 ) -> Dictionary:
 	cr.set_lore_goal_bonus(lore)
 	cr.set_equipped_items(items)
+	_apply_hexes(cr, [] if tutorial else items)
 	cr.set_goal_base_target_cents(goal_base)
 	cr.set_tutorial_script_seeds(CombatRoot.TUTORIAL_SCRIPT_SEEDS if tutorial else [])
 	cr.set_tutorial_last_spin_lock(tutorial)
@@ -479,8 +501,8 @@ func _median(values: Array) -> int:
 
 
 func _print_report(entered: Array[int], deaths: Array[int], goals: Array, wallets: Array, spins: Array) -> void:
-	print("DIFF_CONFIG depth=%s weights=%s depth_goal=%s step=%.3f dread_item=%.2f dread_mem=%.2f ladder=%s growth=%.2f lore=%.2f bankroll=%d bet=%s runs=%d real_seeds=%s pick=%s choices=%d lane=%s" % [
-		str(_depth_on), str(DEPTH_WEIGHTS), str(DEPTH_GOAL), _growth_step, _dread_item_scale, _dread_memory, str(_ladder), _growth, _lore_step, _bankroll, _bet_style, _runs, str(_real_seeds), _pick_style, _choices, _lane,
+	print("DIFF_CONFIG hex=%s depth=%s weights=%s depth_goal=%s step=%.3f dread_item=%.2f dread_mem=%.2f ladder=%s growth=%.2f lore=%.2f bankroll=%d bet=%s runs=%d real_seeds=%s pick=%s choices=%d lane=%s" % [
+		str(_hex_on), str(_depth_on), str(DEPTH_WEIGHTS), str(DEPTH_GOAL), _growth_step, _dread_item_scale, _dread_memory, str(_ladder), _growth, _lore_step, _bankroll, _bet_style, _runs, str(_real_seeds), _pick_style, _choices, _lane,
 	])
 	var items := 0
 	var dead := 0

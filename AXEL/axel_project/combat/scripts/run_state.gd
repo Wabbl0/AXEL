@@ -30,6 +30,8 @@ extends Resource
 @export var tickets_bought: int = 0
 @export var tickets_used: int = 0
 @export var travel_uses: int = 0
+@export var fight_curses: Array = []
+@export var gauntlet_id: String = ""
 @export var tutorial_fight_pending: bool = false
 @export var tutorial_fight_done: bool = false
 @export var fought_rooms: PackedStringArray = PackedStringArray()
@@ -71,6 +73,8 @@ func to_dict() -> Dictionary:
 		"tickets_bought": tickets_bought,
 		"tickets_used": tickets_used,
 		"travel_uses": travel_uses,
+		"fight_curses": fight_curses.duplicate(true),
+		"gauntlet_id": gauntlet_id,
 		"tutorial_fight_pending": tutorial_fight_pending,
 		"tutorial_fight_done": tutorial_fight_done,
 		"fought_rooms": Array(fought_rooms),
@@ -115,6 +119,8 @@ static func from_dict(data: Dictionary) -> RunState:
 	state.tickets_bought = maxi(int(data.get("tickets_bought", 0)), 0)
 	state.tickets_used = maxi(int(data.get("tickets_used", 0)), 0)
 	state.travel_uses = maxi(int(data.get("travel_uses", 0)), 0)
+	state.fight_curses = (data.get("fight_curses", []) as Array).duplicate(true)
+	state.gauntlet_id = String(data.get("gauntlet_id", ""))
 	state.tutorial_fight_pending = bool(data.get("tutorial_fight_pending", false))
 	state.tutorial_fight_done = bool(data.get("tutorial_fight_done", false))
 	state.fought_rooms = PackedStringArray(data.get("fought_rooms", []))

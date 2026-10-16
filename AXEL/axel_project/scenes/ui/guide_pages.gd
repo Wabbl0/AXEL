@@ -6,7 +6,7 @@ const KIND_PAYTABLE := "paytable"
 const KIND_FREE_SPINS := "free_spins"
 const KIND_COMPENDIUM := "compendium"
 
-const RTP_PERCENT := 51
+const RTP_PERCENT := 52
 const HIT_RATE_IN_TEN := 4
 
 const FIG_FIGHT_HUD := "fight_hud"
@@ -24,6 +24,7 @@ const FIG_LOCKED := "locked"
 const FIG_ODDS := "odds"
 const FIG_RARITY := "rarity"
 const FIG_COMPENDIUM := "compendium"
+const FIG_CURSES := "curses"
 
 const FREE_SPINS_LOCKED_TITLE := "???"
 const FREE_SPINS_LOCKED_BLOCKS: Array[Dictionary] = [
@@ -78,7 +79,7 @@ const PAGES: Array[Dictionary] = [
 		"blocks": [
 			{"heading": "BETS"},
 			{"figure": FIG_BET_STEPS},
-			{"text": "Use [b]-[/b] and [b]+[/b] between spins, or the keys [b]Q[/b] and [b]R[/b]. The steps are 100, 200, 300, 400, 500 and 1000."},
+			{"text": "Use [b]-[/b] and [b]+[/b] between spins, or the keys [b]Q[/b] and [b]R[/b]. The steps are 100, 200, 300, 400, 500 and 1000.", "touch_text": "Tap [b]-[/b] and [b]+[/b] between spins. The steps are 100, 200, 300, 400, 500 and 1000."},
 			{"text": "A bigger bet costs more each spin, but [b]every win grows with it[/b]. GOAL stays the same, so a big bet can end a fight in a few spins. It can also [b]empty your balance[/b] just as fast."},
 			{"divider": true},
 			{"heading": "MULTIPLIER"},
@@ -148,12 +149,25 @@ const PAGES: Array[Dictionary] = [
 			{"text": "Items lie on the floor of the school as [b]white marks[/b]. Walk close to read one and take it with interact. [b]Taking an item starts a fight[/b], and it is equipped right away if a slot is free."},
 			{"divider": true},
 			{"heading": "THE ITEM WHEEL"},
-			{"text": "Open the item wheel ([b]Tab[/b], Q, R, I, or click Mike) to equip or unequip. You can equip [b]7 items[/b]. Some items add more slots."},
+			{"text": "Open the item wheel ([b]Tab[/b], Q, R, I, or click Mike) to equip or unequip. You can equip [b]7 items[/b]. Some items add more slots.", "touch_text": "Tap [b]Mike[/b] to open the item wheel, then tap an item to equip or unequip it. You can equip [b]7 items[/b]. Some items add more slots."},
 			{"divider": true},
 			{"heading": "RARITY"},
 			{"figure": FIG_RARITY},
 			{"text": "The first item you take in an area makes the items in every [b]untouched area[/b] one rank rarer."},
-			{"text": "In a fight, [b]hover an item name[/b] to read it. Its icon pulses each time it does something."},
+			{"text": "In a fight, [b]hover an item name[/b] to read it. Its icon pulses each time it does something.", "touch_text": "In a fight, [b]tap an item name[/b] to read it. Its icon pulses each time it does something."},
+		],
+	},
+	{
+		"title": "Curses & Hexes",
+		"kind": KIND_TEXT,
+		"blocks": [
+			{"heading": "CURSES"},
+			{"text": "The basement fights are [b]cursed[/b]. A card before each fight lists what is against you: symbols face down, a sealed power, fewer spins, a bigger goal. The deeper the fight, the more curses."},
+			{"figure": FIG_CURSES},
+			{"divider": true},
+			{"heading": "HEXES"},
+			{"text": "[b]Epic[/b] and [b]Legendary[/b] items carry a hex. While one is equipped, it weakens another family of items: weaker, fickle, wildless, jammed, or asleep for the first spins. The item card shows the hex [b]before you take it[/b]."},
+			{"text": "Every run deals the hexes differently. A [b]Legendary[/b] also brings a small curse into every fight."},
 		],
 	},
 	{

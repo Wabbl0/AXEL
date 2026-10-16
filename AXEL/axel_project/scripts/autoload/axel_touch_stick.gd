@@ -14,6 +14,10 @@ const MENU_PREFIX := "res://scenes/Main_Menu/"
 const TAP_GROUP := &"touch_tap_target"
 const MOUSE_FINGER := -2
 const NO_FINGER := -1
+const PAUSE_TEXT := "II"
+const PAUSE_FONT_PX := 44
+const PAUSE_SIZE := 88.0
+const PAUSE_MARGIN := 24.0
 
 var _override := -1
 var _finger := NO_FINGER
@@ -25,6 +29,7 @@ var _held := {}
 var _alpha := 0.0
 var _layer: CanvasLayer
 var _canvas: Control
+var _pause_button: Button
 
 
 func _ready() -> void:
@@ -41,7 +46,8 @@ func _ready() -> void:
 	_canvas.visible = false
 	_canvas.draw.connect(_on_canvas_draw)
 	_layer.add_child(_canvas)
-	var pause := get_node_or_null("/root/AxelPause")
+	_build_pause_button()
+	var pause :=get_node_or_null("/root/AxelPause")
 	if pause != null and pause.has_signal("pause_state_changed"):
 		pause.connect("pause_state_changed", _on_pause_state_changed)
 	get_tree().scene_changed.connect(release_all)
@@ -107,7 +113,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _begin(index: int, pos: Vector2) -> void:
-	if _finger != NO_FINGER:
+	if _finger != NO_FINGER or _pause_hit(pos):
 		return
 	_finger = index
 	_center = pos
@@ -139,6 +145,56 @@ func _process(delta: float) -> void:
 	elif _finger != NO_FINGER or not _held.is_empty():
 		release_all()
 	_update_fade(delta)
+	_update_pause_button()
+
+
+func is_pause_button_visible() -> bool:
+	return _pause_button != null and _pause_button.visible
+
+
+func pause_button_center() -> Vector2:
+	return _pause_button.get_global_rect().get_center()
+
+
+func _build_pause_button() -> void:
+	_pause_button = Button.new()
+	_pause_button.name = "TouchPauseButton"
+	_pause_button.text = PAUSE_TEXT
+	_pause_button.focus_mode = Control.FOCUS_NONE
+	_pause_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	_pause_button.visible = false
+	MenuLook.apply_button(_pause_button, PAUSE_FONT_PX)
+	_pause_button.pressed.connect(_on_pause_button_pressed)
+	_layer.add_child(_pause_button)
+
+
+func _update_pause_button() -> void:
+	var show := _is_active() and _can_pause()
+	if show:
+		var f := UiViewportScale.factor(self)
+		var side := PAUSE_SIZE * f
+		var margin := PAUSE_MARGIN * f
+		var safe := PortraitUi.safe_rect(self)
+		_pause_button.add_theme_font_size_override("font_size", roundi(PAUSE_FONT_PX * f))
+		_pause_button.size = Vector2(side, side)
+		_pause_button.position = Vector2(safe.end.x - side - margin, safe.position.y + margin)
+	_pause_button.visible = show
+
+
+func _pause_hit(pos: Vector2) -> bool:
+	return is_pause_button_visible() and _pause_button.get_global_rect().has_point(pos)
+
+
+func _can_pause() -> bool:
+	var pause := get_node_or_null("/root/AxelPause")
+	return pause != null and pause.has_method("can_pause_here") and bool(pause.call("can_pause_here"))
+
+
+func _on_pause_button_pressed() -> void:
+	release_all()
+	var pause := get_node_or_null("/root/AxelPause")
+	if pause != null and pause.has_method("request_pause"):
+		pause.call("request_pause")
 
 
 func _apply_stick() -> void:

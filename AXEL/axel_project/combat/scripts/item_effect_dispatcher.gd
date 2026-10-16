@@ -21,6 +21,54 @@ var chaining: bool = false
 var girl_power_this_spin: bool = false
 var _procs: Array[StringName] = []
 var _jammed: Dictionary = {}
+var _hex_masks: Dictionary = {}
+
+const HEX_LINEAR_KEYS: Array[String] = [
+	"chance", "potency", "normal_payout", "enter_burst", "bonus_stake", "payout_bonus",
+	"paid_percent", "win_scalar", "chosen_plus_random", "chain_random_potency", "meter_frac",
+]
+const HEX_INT_KEYS: Array[String] = [
+	"any_line_fill_amount", "first_line_bonus", "length_boost", "cascade_payout_step",
+	"extra_spins", "first_miss_extra_spins", "cells",
+]
+const HEX_MULT_KEYS: Array[String] = ["mult_min", "mult_max", "gain_mult", "vice_potency"]
+const HEX_WILD_KEYS := {
+	"wilds": false, "first_win_wild": false, "extra_wild_chance": 0.0, "wild_extra": 0, "wild_lengths": [],
+}
+
+
+func set_hex_masks(masks: Dictionary) -> void:
+	_hex_masks = masks.duplicate(true)
+
+
+func hex_mask(item: Resource) -> Dictionary:
+	if item == null or _hex_masks.is_empty():
+		return {}
+	return _hex_masks.get(StringName(str(item.get("id"))), {})
+
+
+static func weaken_params(p: Dictionary, potency: float) -> Dictionary:
+	var out := p.duplicate(true)
+	for key in out.keys():
+		var k := String(key)
+		var v = out[key]
+		if not (v is float or v is int) or v is bool:
+			continue
+		if HEX_LINEAR_KEYS.has(k):
+			out[key] = float(v) * potency
+		elif HEX_INT_KEYS.has(k):
+			out[key] = maxi(int(floor(float(v) * potency)), 1)
+		elif HEX_MULT_KEYS.has(k):
+			out[key] = 1.0 + (float(v) - 1.0) * potency
+	return out
+
+
+static func strip_wilds(p: Dictionary) -> Dictionary:
+	var out := p.duplicate(true)
+	for key in HEX_WILD_KEYS.keys():
+		if out.has(key):
+			out[key] = HEX_WILD_KEYS[key]
+	return out
 
 
 func clear_jam() -> void:
@@ -140,16 +188,28 @@ func drain_procs() -> Array[StringName]:
 func _eff(item: Resource) -> StringName:
 	if item == null or is_jammed(item):
 		return &""
-	return StringName(str(item.get("effect_id")))
+	var eff := StringName(str(item.get("effect_id")))
+	if eff == &"extra_wild_on_create" and bool(hex_mask(item).get("wilds_off", false)):
+		return &""
+	return eff
 
 
 func _params(item: Resource) -> Dictionary:
 	if item == null or is_jammed(item):
 		return {}
 	var p = item.get("effect_params")
-	if p is Dictionary:
+	if not p is Dictionary:
+		return {}
+	var mask := hex_mask(item)
+	if mask.is_empty():
 		return p
-	return {}
+	var out: Dictionary = p
+	var potency := float(mask.get("potency", 1.0))
+	if potency < 1.0:
+		out = weaken_params(out, potency)
+	if bool(mask.get("wilds_off", false)):
+		out = strip_wilds(out)
+	return out
 
 
 func head_start_percent(items: Array) -> float:

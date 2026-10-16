@@ -65,6 +65,10 @@ func is_active() -> bool:
 	return active_slot >= 0 and active_slot < SLOT_COUNT
 
 
+func get_playtime_sec() -> float:
+	return _playtime_sec
+
+
 func is_play_scene_session() -> bool:
 	return _play_scene_session
 

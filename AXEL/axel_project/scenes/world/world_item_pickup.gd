@@ -277,6 +277,8 @@ func _show_info_card() -> void:
 			tutorial.call("request", "items_hand")
 			if _dread_pct() > 0:
 				tutorial.call("request", "items_dread")
+			if not _hex_text().is_empty():
+				tutorial.call("request", "items_hex")
 
 
 func _dread_pct() -> int:
@@ -302,8 +304,18 @@ func _hide_info_card_immediate() -> void:
 		_info_card.call("hide_card")
 
 
+func _hex_text() -> String:
+	var run := get_node_or_null("/root/AxelRun")
+	if run == null or not run.has_method("hex_text"):
+		return ""
+	return String(run.call("hex_text", item_id))
+
+
 func _card_description() -> String:
 	var text := description()
+	var hex := _hex_text()
+	if not hex.is_empty():
+		text = "%s  %s." % [text, hex]
 	var pct := _dread_pct()
 	if pct <= 0:
 		return text

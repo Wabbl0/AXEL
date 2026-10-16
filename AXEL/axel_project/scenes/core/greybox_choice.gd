@@ -16,6 +16,7 @@ var _dialogue: Node
 var _choices: VBoxContainer
 var _input: LineEdit
 var _x_button: Button
+var _curse_card: CurseCard
 var _roulette: Node
 
 
@@ -93,7 +94,7 @@ func _play_and_offer() -> void:
 		return
 	if bool(def.get("roulette", false)):
 		await _run_roulette()
-	if _start_gauntlet_fight(String(def.get("fight", "")), scene_file_path):
+	if await _start_gauntlet_fight(String(def.get("fight", "")), scene_file_path):
 		return
 	_offer_choices(def)
 
@@ -118,11 +119,32 @@ func _start_gauntlet_fight(fight_id: String, return_scene: String) -> bool:
 	var world := get_node_or_null("/root/AxelWorld")
 	if world == null or not world.has_method("start_gauntlet_fight"):
 		return false
+	if world.has_method("can_start_gauntlet_fight") and not bool(world.call("can_start_gauntlet_fight", fight_id)):
+		return false
+	await _show_curse_card(world, fight_id)
 	if not bool(world.call("start_gauntlet_fight", fight_id, return_scene)):
 		return false
 	if _dialogue != null and _dialogue.has_method("interrupt_line"):
 		_dialogue.interrupt_line()
 	return true
+
+
+func _show_curse_card(world: Node, fight_id: String) -> void:
+	if not world.has_method("gauntlet_curse_ids"):
+		return
+	var ids: Array = world.call("gauntlet_curse_ids", fight_id)
+	if ids.is_empty():
+		return
+	if _x_button != null:
+		_x_button.visible = false
+	var card := CurseCard.new()
+	card.curse_ids = ids
+	_curse_card = card
+	add_child(card)
+	await card.closed
+	_curse_card = null
+	if _x_button != null:
+		_x_button.visible = true
 
 
 func _start_lore_fight_if_needed(def: Dictionary) -> bool:
@@ -266,7 +288,7 @@ func _on_submit() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _roulette != null:
+	if _roulette != null or _curse_card != null:
 		return
 	if event.is_action_pressed("back"):
 		_on_x()
@@ -314,7 +336,7 @@ func _go(path: String, choice: Dictionary) -> void:
 		return
 	_busy = true
 	_apply_enter_effects(choice)
-	if _start_gauntlet_fight(String(choice.get("fight", "")), path):
+	if await _start_gauntlet_fight(String(choice.get("fight", "")), path):
 		return
 	if _dialogue != null and _dialogue.has_method("interrupt_line"):
 		_dialogue.interrupt_line()

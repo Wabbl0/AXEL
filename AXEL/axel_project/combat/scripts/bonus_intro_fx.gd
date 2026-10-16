@@ -473,27 +473,8 @@ func _draw_bars() -> void:
 
 
 func _draw_bar(y: float, x0: float, x1: float, grow: float, from_left: bool, alpha: float) -> void:
-	var full := x1 - x0
-	if full <= 0.0:
-		return
-	var reach := full * grow
-	var rect := Rect2(x0, y - BAR_HEIGHT * 0.5, reach, BAR_HEIGHT)
-	if not from_left:
-		rect.position.x = x1 - reach
-	draw_rect(rect, Color(RED.r, RED.g, RED.b, alpha))
 	var step_sec := BULB_STEP_SEC * (0.5 if _is_reel() else 1.0)
-	var step := int(floor(_t / step_sec))
-	var dir := 1 if from_left else -1
-	var count := int(floor(full / BULB_GAP))
-	for i in count + 1:
-		var bx := x0 + float(i) * BULB_GAP
-		if bx < rect.position.x - 0.5 or bx > rect.end.x + 0.5:
-			continue
-		var lit := posmod(i - step * dir, 3) == 0
-		var c := WHITE if lit else DIM_RED
-		c.a = alpha
-		draw_rect(Rect2(bx - BULB_SIZE * 0.5, y - BAR_HEIGHT * 0.5 - BULB_SIZE - 4.0, BULB_SIZE, BULB_SIZE), c)
-		draw_rect(Rect2(bx - BULB_SIZE * 0.5, y + BAR_HEIGHT * 0.5 + 4.0, BULB_SIZE, BULB_SIZE), c)
+	MarqueeBars.draw_bar(self, y, x0, x1, grow, from_left, alpha, _t, step_sec)
 
 
 func _draw_rain() -> void:

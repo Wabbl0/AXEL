@@ -553,3 +553,23 @@ Whole-run sims showed the payout rate passing 100% after about 6–7 items, so l
 ## Cap removal (2026-10-15)
 
 User rule: items have no caps; the Wild limit (`+1` extra Wild per created Wild) is the only one left. `C1` Ash Spin Token now grows `+5%` per winning paid spin (not per paid spin; Vice Round and Free Spins do not count). The global caps listed in the two nerf passes above are gone. Needs a new sim run.
+
+## Curse table (hexes, Phase D3, 2026-10-16)
+
+The table is not fixed here. Each run builds it from the run seed (`AxelRun.hex_table()`), so every seed differs.
+
+- **Who hexes:** every Epic (`E-*`) and Legendary (`L-*`) item of a letter family (A–H, M). Numbered items (`C1`…, `E1`…, `L1`…) never hex and are never hexed. Common, Uncommon and Rare carry no hex.
+- **Whom:** each family hexes one other family, never itself. While the hexer is equipped, every equipped item of the target family is hexed. Unequip = hex gone. Two hexes on one family both apply (Weak ×Weak = 25 % power; Fickle stacks to 75 % off).
+- **Hexes:**
+
+| Hex | Effect on the target family |
+|---|---|
+| Weak | Power numbers at 50 % (chances, bonuses, payout parts; ints floored, min 1; multipliers keep only half their bonus) |
+| Fickle | Off on 50 % of paid spins (`CombatRNG`) |
+| Wildless | Cannot make wilds (wild-making params off; `extra_wild_on_create` items do nothing) |
+| Jammed | One hexed item is off each paid spin (`CombatRNG`) |
+| Sleep | Off for the first 3 paid spins of each fight |
+
+- **Legendary:** also adds one light fight curse to every fight while equipped: `ash`, `heavy_meter` or `thin_wallet` (seeded per family).
+- **Shown** before pickup on the floor card and in the item box (hover card and STATS): `Hex: Fickle on Diagonal Wins items. Curse: Ash.`
+

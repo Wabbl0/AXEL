@@ -535,10 +535,19 @@ func _build_stats() -> void:
 	for fam in order:
 		_list.add_child(_label(String(fam).to_upper(), SMALL_PX, MenuLook.ACCENT))
 		for item in groups[fam]:
-			var text := "%s: %s" % [ItemDef.rarity_name(item), str(item.get("description"))]
+			var text := "%s: %s" % [ItemDef.rarity_name(item), _described(item)]
 			var desc := ItemDescFormat.make_label("Stat_%s" % str(item.get("id")), _px(SMALL_PX), width)
 			ItemDescFormat.set_text(desc, text)
 			_list.add_child(desc)
+
+
+func _described(item: Resource) -> String:
+	var text := str(item.get("description"))
+	var run := _run()
+	if run == null or not run.has_method("hex_text"):
+		return text
+	var hex := String(run.call("hex_text", str(item.get("id"))))
+	return text if hex.is_empty() else "%s  %s." % [text, hex]
 
 
 func _build_pay() -> void:
@@ -839,7 +848,7 @@ func _show_hover(row: Control) -> void:
 		"show_screen_item",
 		Vector2(box_rect.end.x + 12.0, row_rect.position.y),
 		ItemDef.rarity_name(item),
-		str(item.get("description")),
+		_described(item),
 		item.get("icon")
 	)
 

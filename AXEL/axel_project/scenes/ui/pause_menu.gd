@@ -29,6 +29,7 @@ func show_menu() -> void:
 	_refresh_seed()
 	_refresh_dev_tools()
 	_refresh_guide()
+	_apply_portrait()
 	MenuLook.grab_first_focus(_menu)
 
 
@@ -143,6 +144,9 @@ func _apply_portrait() -> void:
 		var view := PortraitUi.view_size(self)
 		var safe := PortraitUi.safe_rect(self)
 		lift = view.y - safe.end.y + 16.0
+	var feedback := get_node_or_null("/root/AxelFeedback")
+	if feedback != null and feedback.has_method("bar_reserve"):
+		lift += float(feedback.call("bar_reserve", self))
 	_seed_label.offset_left = -360.0 * k
 	_seed_label.offset_top = -48.0 * k - lift + 16.0
 	_seed_label.offset_bottom = -lift

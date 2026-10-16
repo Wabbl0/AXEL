@@ -1,7 +1,7 @@
 class_name CombatRoot
 extends Node2D
 
-enum State { IDLE, SPINNING, POWER, FREE_SPINS_CHOOSE, ENDED }
+enum State { IDLE, SPINNING, POWER, FREE_SPINS_CHOOSE, ENDED, GAMBLE }
 signal spin_started(seed_value: int)
 signal readouts_progressed()
 signal spin_finished()
@@ -155,6 +155,11 @@ var _lore_goal_bonus: float = 0.0
 var _final_spin_goal_assist: float = 0.0
 var _final_spin_assist_rolled: bool = false
 var _tutorial_last_spin_lock: bool = false
+var gamble_force_enabled: bool = false
+var _gamble_pot_cents: int = 0
+var _gamble_offer_open: bool = false
+var _gamble_step: int = 0
+var _gamble_pending: Dictionary = {}
 var _tutorial_script_seeds: Array[int] = []
 var _tutorial_last_spin_seed: int = TUTORIAL_LAST_SPIN_SEED
 var _playtest_spin_budget: int = 8
@@ -479,16 +484,43 @@ func _roll_sealed_symbols() -> void:
 func _roll_item_jam() -> void:
 	_item_fx.clear_jam()
 	var count := curses.jam_count()
-	if count <= 0:
-		return
-	var candidates: Array = []
+	if count > 0:
+		var candidates: Array = []
+		for item in inventory.items:
+			if item != null:
+				candidates.append(item)
+		for i in mini(count, candidates.size()):
+			var pick := rng.randi_range(0, candidates.size() - 1)
+			_item_fx.jam_item(candidates[pick])
+			candidates.remove_at(pick)
+	_roll_hex_offs()
+
+
+func _roll_hex_offs() -> void:
+	var jam_pool: Array = []
 	for item in inventory.items:
-		if item != null:
-			candidates.append(item)
-	for i in mini(count, candidates.size()):
-		var pick := rng.randi_range(0, candidates.size() - 1)
-		_item_fx.jam_item(candidates[pick])
-		candidates.remove_at(pick)
+		var mask := _item_fx.hex_mask(item)
+		if mask.is_empty():
+			continue
+		if _spins_used < int(mask.get("sleep_spins", 0)):
+			_item_fx.jam_item(item)
+			continue
+		if float(mask.get("fickle", 0.0)) > 0.0 and rng.randf() < float(mask.get("fickle", 0.0)):
+			_item_fx.jam_item(item)
+			continue
+		if bool(mask.get("jam", false)):
+			jam_pool.append(item)
+	if not jam_pool.is_empty():
+		_item_fx.jam_item(jam_pool[rng.randi_range(0, jam_pool.size() - 1)])
+
+
+func set_item_hexes(masks: Dictionary) -> void:
+	_item_fx.set_hex_masks(masks)
+	_on_loadout_or_goal_changed()
+
+
+func get_item_hexes() -> Dictionary:
+	return _item_fx._hex_masks.duplicate(true)
 
 func _notify_item_jam() -> void:
 	var panel := _player_item_panel()
@@ -765,6 +797,7 @@ func setup_new_grid(seed_value: int) -> void:
 	_encounter_goal_winnings_cents = 0
 	_goal_head_start_cents = 0
 	_final_spin_assist_rolled = false
+	_reset_gamble()
 	_last_spin_summary = _empty_spin_summary()
 	_bankroll_cents = STARTING_BANKROLL_CENTS
 	_clamp_bankroll()
@@ -810,6 +843,8 @@ func spin() -> void:
 	_state = State.SPINNING
 	if not free_spins.active:
 		_round_winnings_cents = 0
+		_gamble_pot_cents = 0
+		_gamble_offer_open = false
 		_hide_round_winnings_overlay(false)
 		_refresh_round_winnings_label()
 	await _play_last_chance_async()
@@ -854,9 +889,11 @@ func spin() -> void:
 		_settle_symbols_down_without_refill()
 	_apply_dev_payout_override(spin_summary)
 	_bankroll_cents += int(spin_summary["payout"])
+	_gamble_pot_cents += int(spin_summary["payout"])
 	_clamp_bankroll()
 	_reset_premium_meter_after_spin()
 	_refresh_grid_border_for_state()
+	_maybe_open_gamble_offer()
 	_finalize_encounter_if_needed()
 	if _state != State.ENDED and _state != State.FREE_SPINS_CHOOSE:
 		_state = State.IDLE
@@ -955,6 +992,7 @@ func choose_free_spins_power(power_id: StringName) -> void:
 		var burst_cents := _to_cents(burst * total_bet)
 		_add_round_winnings(burst_cents)
 		_bankroll_cents += burst_cents
+		_gamble_pot_cents += burst_cents
 		_clamp_bankroll()
 		_item_fx.note_param(inventory.items, &"free_spins", "enter_burst")
 	_flush_item_procs()
@@ -1041,6 +1079,7 @@ func begin_next_playtest_encounter(seed_value: int) -> void:
 	_encounter_goal_winnings_cents = 0
 	_goal_head_start_cents = 0
 	_final_spin_assist_rolled = false
+	_reset_gamble()
 	_bankroll_cents = preserved_bankroll
 	_clamp_bankroll()
 	_item_fx.reset_encounter()
@@ -2821,10 +2860,100 @@ func _bonus_blocks_finalize() -> bool:
 	)
 
 
+func _gamble_allowed() -> bool:
+	if not _tutorial_script_seeds.is_empty() or _tutorial_last_spin_lock:
+		return false
+	if _is_headless_runtime() and not gamble_force_enabled:
+		return false
+	return true
+
+
+func _maybe_open_gamble_offer() -> void:
+	if _encounter_complete or _gamble_pot_cents <= 0:
+		return
+	if _bonus_blocks_finalize() or not _gamble_allowed():
+		return
+	_gamble_offer_open = true
+
+
+func _reset_gamble() -> void:
+	_gamble_pot_cents = 0
+	_gamble_offer_open = false
+	_gamble_step = 0
+	_gamble_pending = {}
+
+
+func has_gamble_offer() -> bool:
+	return _gamble_offer_open and not _encounter_complete
+
+
+func is_gamble_running() -> bool:
+	return _state == State.GAMBLE
+
+
+func get_gamble_pot() -> int:
+	return _gamble_pot_cents
+
+
+func gamble(pick: StringName) -> Dictionary:
+	if not has_gamble_offer() or _state != State.IDLE:
+		return {}
+	if DoubleOrNothing.multiplier_for(pick) <= 0:
+		return {}
+	var round_data := DoubleOrNothing.play_round(_current_seed, _gamble_step)
+	_gamble_step += 1
+	var pot := _gamble_pot_cents
+	var won: bool = round_data["result"] == pick
+	round_data["pick"] = pick
+	round_data["won"] = won
+	round_data["pot_before"] = pot
+	round_data["pot"] = pot * DoubleOrNothing.multiplier_for(pick) if won else 0
+	_gamble_pending = round_data
+	_state = State.GAMBLE
+	return round_data.duplicate(true)
+
+
+func settle_gamble() -> Dictionary:
+	if _gamble_pending.is_empty():
+		return {}
+	var round_data := _gamble_pending
+	_gamble_pending = {}
+	var pot := int(round_data["pot_before"])
+	if bool(round_data["won"]):
+		var gain := int(round_data["pot"]) - pot
+		_gamble_pot_cents = int(round_data["pot"])
+		_bankroll_cents += gain
+		_round_winnings_cents = _gamble_pot_cents
+		_encounter_goal_winnings_cents += gain
+	else:
+		_gamble_pot_cents = 0
+		_gamble_offer_open = false
+		_bankroll_cents -= pot
+		_round_winnings_cents = 0
+		_encounter_goal_winnings_cents = maxi(_encounter_goal_winnings_cents - pot, 0)
+	_clamp_bankroll()
+	if _state == State.GAMBLE:
+		_state = State.IDLE
+	_refresh_round_winnings_label()
+	_finalize_encounter_if_needed()
+	emit_signal("readouts_progressed")
+	return round_data
+
+
+func collect_gamble() -> void:
+	if not _gamble_offer_open:
+		return
+	_gamble_offer_open = false
+	_finalize_encounter_if_needed()
+	emit_signal("readouts_progressed")
+
+
 func _finalize_encounter_if_needed() -> void:
 	if _encounter_complete:
 		return
 	if _bonus_blocks_finalize():
+		return
+	if _gamble_offer_open:
 		return
 	if is_chip_bar_goal_complete():
 		end_encounter(true)

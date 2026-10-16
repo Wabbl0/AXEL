@@ -6,6 +6,25 @@ const FONT := preload("res://combat/ui/fonts/VT323-Regular.ttf")
 const TITLE := "res://scenes/Main_Menu/0.1_MainMenu.tscn"
 const EPILOGUE := "res://scenes/Endings/7.6_Epilogue.tscn"
 
+const ENDING_3_TITLE := "DISINTEGRATION"
+const TITLE_PX := 96
+const TITLE_FADE_SEC := 0.8
+const TITLE_HOLD_SEC := 1.4
+const ENDING_3_CHAMBER: Array = [
+	"Your hands shake.",
+	"The hexes want paying.",
+	"Your hands split.",
+	"You fall onto him.",
+	"Together again.",
+]
+const ENDING_3_DIG: Array = [
+	"One dig. Two.",
+	"Your hands shake.",
+	"The hexes come due.",
+	"Your hands burst.",
+	"Now you're buried too.",
+]
+
 var _busy := false
 
 
@@ -29,10 +48,44 @@ func _ready() -> void:
 
 
 func _play(dialogue: Node) -> void:
+	if ending_id == "7.3":
+		await _show_title(ENDING_3_TITLE)
 	var lines := _lines()
 	if dialogue != null and dialogue.has_method("show_lines"):
 		await dialogue.show_lines(lines)
 	_leave()
+
+
+func _show_title(text: String) -> void:
+	var title := Label.new()
+	title.name = "EndingTitle"
+	title.text = text
+	title.add_theme_font_override("font", FONT)
+	title.add_theme_font_size_override("font_size", roundi(TITLE_PX * UiViewportScale.factor(self)))
+	title.add_theme_color_override("font_color", Color(0, 0, 0, 1))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.set_anchors_preset(Control.PRESET_FULL_RECT)
+	title.modulate.a = 0.0
+	add_child(title)
+	var tween := create_tween()
+	tween.tween_property(title, "modulate:a", 1.0, TITLE_FADE_SEC)
+	tween.tween_interval(TITLE_HOLD_SEC)
+	tween.tween_property(title, "modulate:a", 0.0, TITLE_FADE_SEC)
+	await tween.finished
+	title.queue_free()
+
+
+static func ending_3_lines_for(lost_fight: String) -> Array:
+	return ENDING_3_DIG if lost_fight == "dig" else ENDING_3_CHAMBER
+
+
+func _ending_3_lines() -> Array:
+	var world := get_node_or_null("/root/AxelWorld")
+	var lost := ""
+	if world != null and world.has_method("gauntlet_lost_fight"):
+		lost = String(world.call("gauntlet_lost_fight"))
+	return ending_3_lines_for(lost)
 
 
 func _leave() -> void:
@@ -75,7 +128,7 @@ func _lines() -> Array:
 				"Your dumb.",
 			]
 		"7.3":
-			return ["His eyes won't return yours.", "It's not complete."]
+			return _ending_3_lines()
 		"7.4":
 			return [
 				"You hear sirens.",

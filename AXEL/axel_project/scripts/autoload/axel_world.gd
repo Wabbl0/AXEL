@@ -152,6 +152,14 @@ const REASON_LORE := "lore_pickup"
 const REASON_MEMORY := "memory"
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
 const REASON_GAUNTLET := "ending_gauntlet"
+const GAUNTLET_CURSE_COUNTS := {"door": 1, "chamber": 1, "dig": 2, "final": 2}
+const GAUNTLET_CURSE_POOL: Array[String] = [
+	"blind", "no_vice", "sealed", "double_goal", "item_jam",
+	"heavy_meter", "short_fuse", "thin_wallet", "ash",
+]
+const ENDING_3_SCENE := "res://scenes/Endings/7.3_Ending3.tscn"
+const ENDING_4_SCENE := "res://scenes/Endings/7.4_Ending4.tscn"
+const GAUNTLET_LOSS_ENDINGS := {"chamber": ENDING_3_SCENE, "dig": ENDING_3_SCENE, "final": ENDING_4_SCENE}
 
 const TUTORIAL_SCENE := "res://scenes/Arc_1/1.2_Corridor.tscn"
 
@@ -168,6 +176,7 @@ var _room_items: Dictionary = {}
 var _lore_fights: Dictionary = {}
 var _deep_air_seen: Dictionary = {}
 var _gauntlet_fights: Dictionary = {}
+var _gauntlet_lost: String = ""
 var _roulette: Dictionary = {}
 var _item_seed: int = 0
 const ITEM_ROLL_SALT := 0xA5A511
@@ -244,6 +253,7 @@ func reset_world() -> void:
 	_lore_fights.clear()
 	_deep_air_seen.clear()
 	_gauntlet_fights.clear()
+	_gauntlet_lost = ""
 	_roulette = {"state": "", "item": "", "spins": 0}
 	_item_seed = 0
 	for area_id in AREAS.keys():
@@ -592,11 +602,59 @@ func start_gauntlet_fight(fight_id: String, return_scene: String) -> bool:
 		return false
 	if bool(_gauntlet_fights.get(fight_id, false)):
 		return false
+	var run := _run()
+	if run != null:
+		run.state.fight_curses = gauntlet_curse_list(fight_id)
+		run.state.gauntlet_id = fight_id
 	if not start_fight_to_scene(REASON_GAUNTLET, return_scene):
+		if run != null:
+			run.state.fight_curses = []
+			run.state.gauntlet_id = ""
 		return false
 	_gauntlet_fights[fight_id] = true
 	_save()
 	return true
+
+
+func can_start_gauntlet_fight(fight_id: String) -> bool:
+	return not fight_id.is_empty() and is_enabled() and not bool(_gauntlet_fights.get(fight_id, false))
+
+
+func gauntlet_curse_ids(fight_id: String) -> Array[String]:
+	var out: Array[String] = []
+	var want := int(GAUNTLET_CURSE_COUNTS.get(fight_id, 0))
+	if want <= 0:
+		return out
+	var run := _run()
+	var run_seed := int(run.state.seed) if run != null else 0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([run_seed, fight_id, "gauntlet_curse"])
+	var pool := GAUNTLET_CURSE_POOL.duplicate()
+	for _i in mini(want, pool.size()):
+		var pick := rng.randi() % pool.size()
+		out.append(String(pool[pick]))
+		pool.remove_at(pick)
+	return out
+
+
+func gauntlet_curse_list(fight_id: String) -> Array:
+	var out: Array = []
+	for curse_id in gauntlet_curse_ids(fight_id):
+		out.append({"id": curse_id, "params": {}})
+	return out
+
+
+func gauntlet_loss_ending(fight_id: String) -> String:
+	var path := String(GAUNTLET_LOSS_ENDINGS.get(fight_id, ""))
+	if path.is_empty():
+		return ""
+	_gauntlet_lost = fight_id
+	_save()
+	return path
+
+
+func gauntlet_lost_fight() -> String:
+	return _gauntlet_lost
 
 
 func has_gauntlet_fight_happened(fight_id: String) -> bool:
@@ -965,6 +1023,7 @@ func to_dict() -> Dictionary:
 		"lore_fights": _lore_fights.duplicate(true),
 		"deep_air_seen": _deep_air_seen.duplicate(true),
 		"gauntlet_fights": _gauntlet_fights.duplicate(true),
+		"gauntlet_lost": _gauntlet_lost,
 		"roulette": _roulette.duplicate(true),
 	}
 
@@ -995,6 +1054,7 @@ func from_dict(data: Dictionary) -> void:
 	_lore_fights = (data.get("lore_fights", {}) as Dictionary).duplicate(true)
 	_deep_air_seen = (data.get("deep_air_seen", {}) as Dictionary).duplicate(true)
 	_gauntlet_fights = (data.get("gauntlet_fights", {}) as Dictionary).duplicate(true)
+	_gauntlet_lost = String(data.get("gauntlet_lost", ""))
 	var saved_roulette: Dictionary = data.get("roulette", {})
 	_roulette = {
 		"state": String(saved_roulette.get("state", "")),

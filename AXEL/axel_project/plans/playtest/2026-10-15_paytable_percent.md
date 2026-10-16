@@ -31,4 +31,9 @@ The history box showed `bet x value x multiplier` (100 x 3 x 1), but a hidden `0
 ## Not done
 
 - ~~`AI_DOCS.md` paytable line~~ updated 2026-10-16.
-- Rounding raises RTP slightly (mostly low symbols, 8.6% -> 9%). Re-run `difficulty_curve_sim.gd` to confirm.
+- ~~Rounding raises RTP slightly. Re-run `difficulty_curve_sim.gd` to confirm.~~ Rerun 2026-10-16 on the committed 2.0.2 code:
+  - `rtp_audit.gd` (defaults): RTP 51.8 % (95 % range 33–62 %), hit rate 44 %. `GuidePages.RTP_PERCENT` 51 -> 52.
+  - `difficulty_curve_sim.gd` (200 runs, min bet), dead by fight 4 / 6 / 9 / 13 / 17 / 21:
+    - Random picks: 3.5 / 17 / 42.5 / 51.5 / 56 / **61 %** (2 stalls).
+    - One-family picks: 4.5 / 19 / 47.5 / 55.5 / 58 / **59 %** (0 stalls).
+  - Same as before the rounding (61 / 60 % in `2026-10-15_balance_stage5.md`), within run-to-run noise. No balance change needed.

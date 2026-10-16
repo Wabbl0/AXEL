@@ -60,6 +60,7 @@ func _main() -> void:
 	await _check_drag()
 	await _check_dead_zone()
 	await _check_pause(player)
+	await _check_pause_button(player)
 	await _check_input_disabled(player)
 	await _check_dialogue_tap(dialogue)
 	await _check_prompt_tap(scene, player)
@@ -143,6 +144,49 @@ func _check_pause(player: Node) -> void:
 	await _frames(2)
 	if not bool(player.call("is_input_enabled")):
 		player.call("set_input_enabled", true)
+
+
+func _click(pressed: bool, pos: Vector2) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = pressed
+	ev.position = pos
+	ev.global_position = pos
+	Input.parse_input_event(ev)
+
+
+func _check_pause_button(player: Node) -> void:
+	var pause := root.get_node_or_null("AxelPause")
+	await _frames(3)
+	if not bool(_stick.call("is_pause_button_visible")):
+		_fail("touch pause button should show in 1.4")
+		return
+	var center: Vector2 = _stick.call("pause_button_center")
+	if center.x < WINDOW.x * 0.5 or center.y > WINDOW.y * 0.5:
+		_fail("touch pause button should sit top-right, got %s" % center)
+	_touch(true, center)
+	await _frames(2)
+	if bool(_stick.call("is_finger_down")):
+		_fail("a touch on the pause button should not start the stick")
+	_touch(false, center)
+	_click(true, center)
+	await _frames(1)
+	_click(false, center)
+	await _frames(4)
+	if not bool(pause.call("is_paused")):
+		_fail("a tap on the pause button should pause")
+	if bool(_stick.call("is_pause_button_visible")):
+		_fail("touch pause button should hide while paused")
+	pause.call("request_unpause")
+	await _frames(4)
+	if not bool(player.call("is_input_enabled")):
+		player.call("set_input_enabled", true)
+	_stick.call("set_touch_mode_override", false)
+	await _frames(2)
+	if bool(_stick.call("is_pause_button_visible")):
+		_fail("touch pause button should hide outside touch mode")
+	_stick.call("set_touch_mode_override", true)
+	await _frames(2)
 
 
 func _check_input_disabled(player: Node) -> void:

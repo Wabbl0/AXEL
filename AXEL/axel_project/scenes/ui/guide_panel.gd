@@ -333,13 +333,18 @@ func _format(text: String) -> String:
 	return out
 
 
+func _touch_mode() -> bool:
+	var stick := get_node_or_null("/root/AxelTouchStick")
+	return stick != null and bool(stick.call("is_touch_mode"))
+
+
 func _inline_img(path: String) -> String:
 	return "[img=%dx%d]%s[/img]" % [INLINE_IMG_PX, INLINE_IMG_PX, path]
 
 
 func _add_block(block: Dictionary) -> void:
 	if block.has("text"):
-		_add_text(String(block["text"]))
+		_add_text(String(block.get("touch_text", block["text"])) if _touch_mode() else String(block["text"]))
 	elif block.has("heading"):
 		_add_heading(String(block["heading"]))
 	elif block.has("divider"):
@@ -421,6 +426,8 @@ func _add_figure(id: String) -> void:
 			fig = _fig_rarity()
 		GuidePages.FIG_COMPENDIUM:
 			fig = _fig_compendium()
+		GuidePages.FIG_CURSES:
+			fig = _fig_icons([ART_CIG, ART_ALCOHOL, ART_HAND], ["Face down", "Sealed", "Short fuse"], false)
 	if fig == null:
 		return
 	fig.name = "Figure_%s" % id

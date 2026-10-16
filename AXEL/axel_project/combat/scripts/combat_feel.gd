@@ -293,6 +293,25 @@ func show_game_over_menu(retry: Callable, to_menu: Callable, quit_app: Callable)
 	_reveal_loss_buttons(retry, to_menu, quit_app)
 
 
+func play_loss_collapse_only() -> void:
+	_game_over_open = true
+	_loss_presentation = true
+	set_process_unhandled_input(true)
+	_kill(_banner_tween)
+	if _menu_box != null:
+		_menu_box.visible = false
+	if _banner != null:
+		_banner.text = ""
+		_banner.modulate.a = 0.0
+	if _banner_scrim != null:
+		_banner_scrim.color = Color(0.0, 0.0, 0.0, 0.0)
+		_banner_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	await _play_loss_collapse()
+	_loss_presentation = false
+	set_process_unhandled_input(false)
+	CombatPace.clear_rush()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not _loss_presentation or not event.is_action_pressed("interact"):
 		return

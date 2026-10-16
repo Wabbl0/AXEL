@@ -180,6 +180,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func can_pause_here() -> bool:
+	return not get_tree().paused and not _focus_frozen and _can_pause_here()
+
+
 func _can_pause_here() -> bool:
 	var scene := get_tree().current_scene
 	if scene == null:

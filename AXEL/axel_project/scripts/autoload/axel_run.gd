@@ -2,6 +2,7 @@ extends Node
 
 const RunStateScript := preload("res://combat/scripts/run_state.gd")
 const ItemInventoryScript := preload("res://combat/scripts/item_inventory.gd")
+const FeedbackSpinLogScript := preload("res://scripts/core/feedback_spin_log.gd")
 
 const LOCKER_SCENE := "res://scenes/Arc_1/1.3_LockerHub.tscn"
 const COMBAT_SCENE := "res://combat/combat_test.tscn"
@@ -24,6 +25,15 @@ const TRAVEL_MIN_PRICE := 50
 const TRAVEL_MIN_LEFT := 100
 const WORLD_GOAL_LADDER_ROUNDING := 5
 const REASON_LOCKER_TUTORIAL := "locker_tutorial"
+const REASON_GAUNTLET := "ending_gauntlet"
+const HEX_FAMILIES: Array[String] = ["A", "B", "C", "D", "E", "F", "G", "H", "M"]
+const HEX_IDS: Array[String] = ["weak", "fickle", "wildless", "jammed", "sleep"]
+const HEX_NAMES := {"weak": "Weak", "fickle": "Fickle", "wildless": "Wildless", "jammed": "Jammed", "sleep": "Sleep"}
+const LEGENDARY_CURSES: Array[String] = ["ash", "heavy_meter", "thin_wallet"]
+const HEX_MIN_RANK := 3
+const HEX_POTENCY := 0.5
+const HEX_FICKLE := 0.5
+const HEX_SLEEP_SPINS := 3
 const GUIDE_LESSON := "guide_pause"
 const STARTING_BANKROLL_CENTS := 3000
 const MAX_PLAYABLE_ACT := 3
@@ -52,6 +62,7 @@ const ACT_PATHS := [
 ]
 
 var state = RunStateScript.new()
+var feedback_log = FeedbackSpinLogScript.new()
 var _catalog: Dictionary = {}
 var _wired_root: Node = null
 var _wire_tries: int = 0
@@ -144,6 +155,110 @@ func lore_goal_bonus() -> float:
 		if bool(gm.call("get_flag", flag_name)):
 			n += 1
 	return float(n) * LORE_GOAL_BONUS
+
+
+func hex_table() -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([int(state.seed), "hex_table"])
+	var table := {}
+	for family in HEX_FAMILIES:
+		var others: Array[String] = []
+		for other in HEX_FAMILIES:
+			if other != family:
+				others.append(other)
+		table[family] = {
+			"target": others[rng.randi() % others.size()],
+			"hex": HEX_IDS[rng.randi() % HEX_IDS.size()],
+			"curse": LEGENDARY_CURSES[rng.randi() % LEGENDARY_CURSES.size()],
+		}
+	return table
+
+
+static func item_family(item_id: String) -> String:
+	var parts := item_id.split("-")
+	if parts.size() != 2:
+		return ""
+	return String(parts[1]) if HEX_FAMILIES.has(String(parts[1])) else ""
+
+
+static func item_rank(item_id: String) -> int:
+	if item_id.is_empty():
+		return -1
+	return ["C", "U", "R", "E", "L"].find(item_id.left(1))
+
+
+func hex_for_item(item_id: String) -> Dictionary:
+	var family := item_family(item_id)
+	if family.is_empty() or item_rank(item_id) < HEX_MIN_RANK:
+		return {}
+	var row: Dictionary = hex_table().get(family, {})
+	if row.is_empty():
+		return {}
+	var out := {"target": String(row["target"]), "hex": String(row["hex"])}
+	if item_rank(item_id) >= 4:
+		out["curse"] = String(row["curse"])
+	return out
+
+
+func hex_text(item_id: String) -> String:
+	var hex := hex_for_item(item_id)
+	if hex.is_empty():
+		return ""
+	var family_name := String(ItemDef.FAMILY_NAMES.get(String(hex["target"]), String(hex["target"])))
+	var text := "Hex: %s on %s items" % [String(HEX_NAMES.get(String(hex["hex"]), "")), family_name]
+	if hex.has("curse"):
+		var info := CurseCard.curse_text(String(hex["curse"]))
+		text += ". Curse: %s" % String(info["name"])
+	return text
+
+
+func hex_masks(item_ids: Array) -> Dictionary:
+	var masks := {}
+	for hexer in item_ids:
+		var hex := hex_for_item(String(hexer))
+		if hex.is_empty():
+			continue
+		for item_id in item_ids:
+			var id := String(item_id)
+			if item_family(id) != String(hex["target"]):
+				continue
+			var mask: Dictionary = masks.get(StringName(id), {})
+			match String(hex["hex"]):
+				"weak":
+					mask["potency"] = float(mask.get("potency", 1.0)) * HEX_POTENCY
+				"fickle":
+					mask["fickle"] = 1.0 - (1.0 - float(mask.get("fickle", 0.0))) * (1.0 - HEX_FICKLE)
+				"wildless":
+					mask["wilds_off"] = true
+				"jammed":
+					mask["jam"] = true
+				"sleep":
+					mask["sleep_spins"] = HEX_SLEEP_SPINS
+			masks[StringName(id)] = mask
+	return masks
+
+
+func legendary_fight_curses(item_ids: Array) -> Array:
+	var out: Array = []
+	for item_id in item_ids:
+		var curse_id := String(hex_for_item(String(item_id)).get("curse", ""))
+		if not curse_id.is_empty() and not out.has(curse_id):
+			out.append(curse_id)
+	return out
+
+
+func fight_curses_for_wire() -> Array:
+	var list: Array = (state.fight_curses as Array).duplicate(true) if state.world_encounter else []
+	if is_tutorial_encounter():
+		return list
+	var have: Array = []
+	for entry in list:
+		have.append(String((entry as Dictionary).get("id", "")))
+	for curse_id in legendary_fight_curses(Array(state.equipped_item_ids)):
+		if not have.has(curse_id):
+			list.append({"id": curse_id, "params": {}})
+			have.append(curse_id)
+	return list
 
 
 func dread_pct() -> float:
@@ -305,6 +420,9 @@ func enter_world_encounter(
 		return
 	state.world_encounter = true
 	state.world_reason = reason
+	if reason != REASON_GAUNTLET:
+		state.fight_curses = []
+		state.gauntlet_id = ""
 	state.world_return_scene = return_scene
 	state.world_return_tex_x = return_tex.x
 	state.world_return_tex_y = return_tex.y
@@ -480,6 +598,10 @@ func _wire_combat_root() -> void:
 		root.call("set_equipped_items", [] if tutorial else equipped_items())
 	if state.world_encounter and root.has_method("set_goal_base_target_cents"):
 		root.call("set_goal_base_target_cents", world_goal_cents_for_fight())
+	if root.has_method("set_fight_curses"):
+		root.call("set_fight_curses", fight_curses_for_wire())
+	if root.has_method("set_item_hexes"):
+		root.call("set_item_hexes", {} if tutorial else hex_masks(Array(state.equipped_item_ids)))
 	if tutorial and root.has_method("set_tutorial_script_seeds"):
 		root.call("set_tutorial_script_seeds", CombatRoot.TUTORIAL_SCRIPT_SEEDS)
 	if is_tutorial_last_spin_lock() and root.has_method("set_tutorial_last_spin_lock"):
@@ -489,6 +611,16 @@ func _wire_combat_root() -> void:
 	root.call("setup_new_grid", encounter_seed())
 	if root.has_method("restore_run_bankroll"):
 		root.call("restore_run_bankroll", int(state.bankroll_cents))
+	feedback_log.begin_fight(root, {
+		"fight": int(state.world_fight_count),
+		"run_seed": int(state.seed),
+		"seed": encounter_seed(),
+		"goal": world_goal_cents_for_fight() if state.world_encounter else 0,
+		"reason": String(state.world_reason),
+		"tutorial": tutorial,
+		"items": Array(state.equipped_item_ids).duplicate(),
+		"dread_pct": dread_pct(),
+	})
 	if scene.has_method("refresh_player_item_box"):
 		scene.call("refresh_player_item_box")
 	if root.has_signal("encounter_finished"):
@@ -517,7 +649,41 @@ func _on_root_finished(success: bool) -> void:
 		return
 	_finish_busy = true
 	state.in_encounter = false
+	var ending := _gauntlet_loss_ending()
+	if not ending.is_empty():
+		_lose_into_ending(ending)
+		return
 	_open_permadeath_menu()
+
+
+func _gauntlet_loss_ending() -> String:
+	if not state.world_encounter or String(state.world_reason) != REASON_GAUNTLET:
+		return ""
+	var world := get_node_or_null("/root/AxelWorld")
+	if world == null or not world.has_method("gauntlet_loss_ending"):
+		return ""
+	return String(world.call("gauntlet_loss_ending", String(state.gauntlet_id)))
+
+
+func _lose_into_ending(ending_scene: String) -> void:
+	state.fight_curses = []
+	state.gauntlet_id = ""
+	_persist_now()
+	var world := get_node_or_null("/root/AxelWorld")
+	if world != null and world.has_method("notify_fight_ended"):
+		world.call("notify_fight_ended")
+	var feel := _live_feel()
+	if feel != null and feel.has_method("play_loss_collapse_only"):
+		await feel.call("play_loss_collapse_only")
+	if get_tree() == null:
+		return
+	if is_instance_valid(AxelEventFx):
+		await AxelEventFx.play_combat_wipe()
+	if get_tree() == null:
+		return
+	_finish_busy = false
+	_to_overworld_music()
+	get_tree().change_scene_to_file(ending_scene)
 
 
 func max_equip_slots() -> int:
@@ -528,6 +694,8 @@ func max_equip_slots() -> int:
 
 func _apply_win_progress() -> void:
 	state.in_encounter = false
+	state.fight_curses = []
+	state.gauntlet_id = ""
 	if state.world_encounter:
 
 		_persist_now()
