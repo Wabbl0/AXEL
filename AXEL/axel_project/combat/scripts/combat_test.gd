@@ -273,7 +273,6 @@ var _winnings_counter_generation: int = 0
 var _first_tutorial_idle_sec := 0.0
 var _held_freeze_lessons: Array[String] = []
 var _pays_chain_armed := false
-var _pays_chain_goal := false
 var _tutorial_cell_glow: CanvasLayer
 var _tutorial_cell_lesson := ""
 var _held_freeze_sec := 0.0
@@ -2231,18 +2230,12 @@ func _on_lines_found(lines: Array) -> void:
 	if tutorial == null or not tutorial.has_method("wants") or combat == null:
 		return
 	var held := false
-	var reaches_goal := bool(tutorial.call("wants", "fight_goal")) and combat.lines_reach_goal(lines)
 	if not _pays_chain_armed and _tutorial_wants_any(tutorial, PAYS_CHAIN_LESSONS):
 		_pays_chain_armed = true
-		_pays_chain_goal = reaches_goal
 		if bool(tutorial.call("wants", "slot_match")):
 			tutorial.call("request", "slot_match", {"freeze": true})
 			_show_tutorial_cells("slot_match", _line_cells(lines, false))
 			held = true
-	elif reaches_goal:
-		tutorial.call("request", "fight_goal", {"freeze": true})
-		_show_tutorial_cells("fight_goal", _line_cells(lines, false))
-		held = true
 	elif bool(tutorial.call("wants", "slot_power")) and _lines_have_power(lines):
 		tutorial.call("request", "slot_power", {"freeze": true})
 		_show_tutorial_cells("slot_power", _line_cells(lines, true))
@@ -2258,9 +2251,6 @@ func _on_line_step_resolved(_lines: Array) -> void:
 	if tutorial == null or not tutorial.has_method("request") or combat == null:
 		return
 	var chain: Array[String] = PAYS_CHAIN_LESSONS.duplicate()
-	if _pays_chain_goal:
-		chain.append("fight_goal")
-	_pays_chain_goal = false
 	for lesson_id in chain:
 		tutorial.call("request", lesson_id, {"freeze": true})
 	if bool(tutorial.call("is_freezing")):

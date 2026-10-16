@@ -150,13 +150,21 @@ func wake_static_colliders() -> void:
 func begin_scene_change(
 	scene_path: String, interrupt_dialogue: bool = true
 ) -> void:
-	if _is_transitioning:
+	if _is_transitioning or fight_is_starting():
 		return
 	_is_transitioning = true
 	if not ExplorationTransition.go(
 		self, scene_path, _interact_prompt, _top_dialogue, interrupt_dialogue
 	):
 		_is_transitioning = false
+
+
+func fight_is_starting() -> bool:
+	var world := get_node_or_null("/root/AxelWorld")
+	var run := get_node_or_null("/root/AxelRun")
+	if world == null or run == null:
+		return false
+	return bool(world.call("is_fight_starting")) and bool(run.call("is_in_encounter"))
 
 
 func hide_interact_prompt_immediate() -> void:

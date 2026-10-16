@@ -305,6 +305,10 @@ func wants(id: String) -> bool:
 	return _allows() and LESSONS.has(id) and not _is_seen(id)
 
 
+func is_pending(id: String) -> bool:
+	return _queue.has(id) or _is_showing_id(id)
+
+
 func set_freeze_pending(on: bool) -> void:
 	_freeze_pending = on
 

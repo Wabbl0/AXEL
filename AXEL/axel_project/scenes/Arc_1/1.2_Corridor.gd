@@ -422,7 +422,7 @@ func _begin_exterior_transition() -> void:
 
 
 func _on_exit_trigger_body_entered(body: Node) -> void:
-	if body != _player or _is_transitioning or not _exit_trigger_armed:
+	if body != _player or _is_transitioning or not _exit_trigger_armed or fight_is_starting():
 		return
 	call_deferred("_begin_basement_transition")
 

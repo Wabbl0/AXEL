@@ -35,4 +35,4 @@ A brand-new player should follow the first fight one idea at a time, with short 
 - `guide_pages.gd`, `item_wording_check.gd`: capitals.
 
 ## Known limit
-If the GOAL is filled by something that is not a line (a Vice Round clear prize, an item bonus), the Goal card waits for a later fight.
+Superseded on 2026-10-16: the Goal card now shows before Round Complete on every first win, however the GOAL was filled. See `2026-10-16_goal_card_before_round_complete.md`.

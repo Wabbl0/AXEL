@@ -114,13 +114,13 @@ func _restore_player_position_if_needed() -> void:
 
 
 func _on_exit_body_entered(body: Node) -> void:
-	if body != _player or _is_transitioning or not _exit_trigger_armed:
+	if body != _player or _is_transitioning or not _exit_trigger_armed or fight_is_starting():
 		return
 	call_deferred("_begin_corridor_return")
 
 
 func _on_cafeteria_exit_body_entered(body: Node) -> void:
-	if body != _player or _is_transitioning or not _cafeteria_exit_armed:
+	if body != _player or _is_transitioning or not _cafeteria_exit_armed or fight_is_starting():
 		return
 	call_deferred("_begin_cafeteria_exit")
 

@@ -861,6 +861,7 @@ func _show_round_complete_card() -> void:
 	var scene := get_tree().current_scene if get_tree() != null else null
 	if scene != null and scene.has_method("await_victory_prelude"):
 		await scene.call("await_victory_prelude")
+	await _show_goal_lesson()
 	var root := _live_combat_root()
 	if root != null and root.has_method("play_goal_win_burst"):
 		await root.call("play_goal_win_burst")
@@ -884,6 +885,24 @@ func _show_round_complete_card() -> void:
 		if gathered and root != null and root.has_method("hide_goal_skulls"):
 			root.call("hide_goal_skulls")
 		await _await_round_intro(fx)
+
+
+func _show_goal_lesson() -> void:
+	var tutorial := get_node_or_null("/root/AxelTutorial")
+	if tutorial == null or not tutorial.has_method("is_pending"):
+		return
+	if not bool(tutorial.call("wants", "fight_goal")):
+		return
+	tutorial.call("request", "fight_goal", {"stack": true})
+	var tree := get_tree()
+	var queued_ms := Time.get_ticks_msec()
+	while tree != null and bool(tutorial.call("is_pending", "fight_goal")):
+		if bool(tutorial.call("is_showing", "fight_goal")):
+			queued_ms = Time.get_ticks_msec()
+		elif Time.get_ticks_msec() - queued_ms > 2000:
+			break
+		tutorial.call("set_playing_along", true)
+		await tree.process_frame
 
 
 func _await_fight_cards_closed() -> void:
