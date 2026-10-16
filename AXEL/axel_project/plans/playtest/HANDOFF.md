@@ -1,4 +1,4 @@
-# Session handoff (2026-10-15)
+# Session handoff (2026-10-16)
 
 Read this after `plans/core/AI_DOCS.md` when the user says "continue", "where were we" or similar. Delete or rewrite it when its open items are done.
 
@@ -6,7 +6,7 @@ Read this after `plans/core/AI_DOCS.md` when the user says "continue", "where we
 
 Release 1.0.0: everything from the parallel chats (reroll lock, Arc 6 roulette + gauntlet, Phase D1 curses, Dread ×2, web build) was committed and pushed in one commit, docs updated.
 
-Build 2.0.1 exported 2026-10-15 (phone browser touch fix), not committed yet.
+Build 2.0.1 (phone touch fix) and the first-fight tutorial rewrite are committed. Release 2.0.2 (2026-10-16): paytable as whole percents of the bet (`2026-10-15_paytable_percent.md`), committed and pushed before a computer change.
 
 Master plan: `plans/playtest/2026-10-14_next_phase_master_plan.md`. Phase A, B and C are built. Phase D and E are not started.
 
@@ -29,3 +29,5 @@ Master plan: `plans/playtest/2026-10-14_next_phase_master_plan.md`. Phase A, B a
 ## Lore decided this session
 
 White dialogue = Mike's own self-conscience. Red = Axel, only in memories and the epilogue. Fights = facing regret; powers = vices; Dread = guilt piling up. "booze" is allowed only in the first-fight inner-voice line.
+
+10. **Paytable %** (2.0.2): not playtested in Godot yet, and the balance sim (`difficulty_curve_sim.gd`, `rtp_audit.gd`) was not rerun after rounding. Do both, then update `GuidePages.RTP_PERCENT` if the RTP moved.

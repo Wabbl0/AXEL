@@ -114,12 +114,12 @@ func _check_pay(wheel: Node, run: Node) -> void:
 	run.state.owned_item_ids = PackedStringArray(["C2"])
 	run.state.equipped_item_ids = PackedStringArray()
 	await process_frame
-	_expect_pay(wheel, "sym_satanic", [15.0, 25.0, 280.0], "wild base")
-	_expect_pay(wheel, "sym_red_heart", [3.0, 5.0, 20.0], "heart base")
+	_expect_pay(wheel, "sym_satanic", [65.0, 108.0, 1207.0], "wild base")
+	_expect_pay(wheel, "sym_red_heart", [13.0, 22.0, 86.0], "heart base")
 	run.state.equipped_item_ids = PackedStringArray(["C2"])
 	await process_frame
-	_expect_pay(wheel, "sym_red_heart", [3.3, 5.5, 22.0], "heart with Chalk Dust")
-	_expect_pay(wheel, "sym_satanic", [15.0, 25.0, 280.0], "wild with Chalk Dust")
+	_expect_pay(wheel, "sym_red_heart", [14.3, 24.2, 94.6], "heart with Chalk Dust")
+	_expect_pay(wheel, "sym_satanic", [65.0, 108.0, 1207.0], "wild with Chalk Dust")
 	wheel.call("set_tab", 2)
 	await process_frame
 	wheel.call("set_tab", 0)

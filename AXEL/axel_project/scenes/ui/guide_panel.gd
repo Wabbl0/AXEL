@@ -612,9 +612,9 @@ func _fig_paytable() -> Control:
 		var name_label := _caption(String(sym.get("display_name")), BODY_PX)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		grid.add_child(name_label)
-		grid.add_child(_caption(str(int(sym.get("payout_x3"))), BODY_PX))
-		grid.add_child(_caption(str(int(sym.get("payout_x4"))), BODY_PX))
-		grid.add_child(_caption(str(int(sym.get("payout_x5"))), BODY_PX))
+		grid.add_child(_caption("%d%%" % int(sym.get("payout_x3")), BODY_PX))
+		grid.add_child(_caption("%d%%" % int(sym.get("payout_x4")), BODY_PX))
+		grid.add_child(_caption("%d%%" % int(sym.get("payout_x5")), BODY_PX))
 	return holder
 
 

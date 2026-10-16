@@ -58,7 +58,7 @@ const SIDE_PANEL_HEADER_FONT := int(round(32.0 * COMBAT_TEXT_SCALE))
 const SIDE_PANEL_BODY_FONT := int(round(18.0 * COMBAT_TEXT_SCALE))
 const SIDE_PANEL_BODY_FONT_MIN := int(round(14.0 * COMBAT_TEXT_SCALE))
 const HISTORY_BODY_FONT_SCALE := 3.0
-const HISTORY_FIT_SAMPLE := "1000 x 12.5 x 20"
+const HISTORY_FIT_SAMPLE := "1000 x 1207% x 20"
 const ITEM_BOX_SIZE_MUL := 1.33
 const ITEMS_BODY_FONT_SCALE := 1.78 * ITEM_BOX_SIZE_MUL
 const ITEMS_BODY_FONT_MIN := int(round(20.0 * COMBAT_TEXT_SCALE * ITEM_BOX_SIZE_MUL))
@@ -2323,13 +2323,34 @@ func _append_history_spin_row(event: Dictionary) -> void:
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(icon)
 	var row_label := Label.new()
-	row_label.text = "%d x %s x %d" % [bet, _format_history_factor(symbol_value), cascade_mult]
+	row_label.text = "%d x %s%% x %d" % [bet, _format_history_factor(symbol_value), cascade_mult]
 	row_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	row_label.clip_text = true
 	row_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_apply_history_text_style(row_label)
 	row.add_child(row_label)
+	_history_spin_list.add_child(row)
+	_append_history_total_row(int(event.get("payout_cents", 0)), icon_size)
+
+func _append_history_total_row(payout: int, icon_size: int) -> void:
+	var row := HBoxContainer.new()
+	row.name = "HistoryTotalRow"
+	row.add_theme_constant_override("separation", HISTORY_ROW_SEPARATION)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var spacer := Control.new()
+	spacer.name = "HistoryTotalSpacer"
+	spacer.custom_minimum_size = Vector2(icon_size, 0)
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(spacer)
+	var total_label := Label.new()
+	total_label.text = "= %d" % payout
+	total_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	total_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	total_label.clip_text = true
+	total_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_apply_history_text_style(total_label)
+	row.add_child(total_label)
 	_history_spin_list.add_child(row)
 
 func _apply_history_text_style(label: Label) -> void:
@@ -4014,6 +4035,8 @@ func _refresh_history_row_typography() -> void:
 		for child in row.get_children():
 			if child is TextureRect:
 				(child as TextureRect).custom_minimum_size = Vector2(icon_size, icon_size)
+			elif child.name == "HistoryTotalSpacer":
+				(child as Control).custom_minimum_size = Vector2(icon_size, 0)
 			elif child is Label:
 				_apply_history_text_style(child as Label)
 

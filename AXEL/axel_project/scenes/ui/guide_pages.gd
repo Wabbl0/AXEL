@@ -67,9 +67,9 @@ const PAGES: Array[Dictionary] = [
 		"title": "Payouts",
 		"kind": KIND_PAYTABLE,
 		"blocks": [
-			{"text": "What one line is worth for [b]3, 4 or 5[/b] in a row. Every win also grows with your [b]bet[/b] and the [b]multiplier[/b]."},
+			{"text": "What one line pays for [b]3, 4 or 5[/b] in a row, as a [b]percent of your bet[/b]. Every win also grows with the [b]multiplier[/b]."},
 			{"figure": FIG_PAYTABLE},
-			{"text": "The history box lists each win as [b]bet x value x multiplier[/b]."},
+			{"text": "The history box lists each win as [b]bet x pay % x multiplier[/b], with what it paid on the line under it. A bet of 100 with 13% pays 13."},
 		],
 	},
 	{

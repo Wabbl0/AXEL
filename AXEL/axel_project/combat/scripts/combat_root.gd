@@ -108,7 +108,7 @@ const BET_LADDER: Array[float] = [
 	100.0, 200.0, 300.0, 400.0, 500.0, 1000.0,
 ]
 const BASELINE_PAYOUT_SCALAR := 0.431
-const PAYTABLE_SCALE := 10.0
+const PAY_PERCENT_BASE := 100.0
 const TUTORIAL_LAST_SPIN_SEED := 12
 const TUTORIAL_SCRIPT_SEEDS: Array[int] = [10, 8, 1, 12]
 
@@ -1933,13 +1933,11 @@ func _line_win_event_from_line(line: Dictionary, payout_cents: int) -> Dictionar
 		symbol_id = wild_symbol.id
 	var sd := _symbols_by_id.get(symbol_id, null) as SymbolDef
 	var symbol_name := String(symbol_id)
-	var symbol_value := 0.0
+	var symbol_value := _line_pay_percent(line)
 	if sd != null:
 		var dn := sd.display_name.strip_edges()
 		if not dn.is_empty():
 			symbol_name = dn
-		var line_length: int = int(line.get("length", 0))
-		symbol_value = sd.payout_multiplier_for_length(line_length)
 	var tex: Texture2D = sd.texture if sd != null else null
 	return {
 		"symbol_id": symbol_id,
@@ -2226,6 +2224,12 @@ func _estimate_payout(lines: Array) -> int:
 	return total
 
 func _line_payout_cents(line: Dictionary) -> int:
+	var pay_percent := _line_pay_percent(line)
+	if pay_percent <= 0:
+		return 0
+	return _to_cents(total_bet * float(pay_percent) * float(multiplier.value) / PAY_PERCENT_BASE)
+
+func _line_pay_percent(line: Dictionary) -> int:
 	var symbol_id: StringName = line.get("symbol_id", &"")
 	if symbol_id == &"wild" and wild_symbol != null:
 		symbol_id = wild_symbol.id
@@ -2233,15 +2237,13 @@ func _line_payout_cents(line: Dictionary) -> int:
 	if sd == null:
 		return 0
 	var line_length: int = int(line.get("length", 0))
-	var payout_multiplier: float = sd.payout_multiplier_for_length(line_length)
-	if payout_multiplier <= 0.0:
+	var base_percent: float = sd.payout_multiplier_for_length(line_length)
+	if base_percent <= 0.0:
 		return 0
 	var item_scalar := 1.0 + _get_item_payout_scalar() + _line_item_bonus(line)
 	if sd.tier == SymbolDef.Tier.LOW:
-		payout_multiplier *= curses.low_pay_multiplier()
-	return _to_cents(
-		total_bet * payout_multiplier * float(multiplier.value) * item_scalar * BASELINE_PAYOUT_SCALAR / PAYTABLE_SCALE
-	)
+		base_percent *= curses.low_pay_multiplier()
+	return maxi(roundi(base_percent * item_scalar), 0)
 
 func _to_cents(amount: float) -> int:
 	return int(round(amount))

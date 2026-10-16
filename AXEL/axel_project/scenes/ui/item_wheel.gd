@@ -569,7 +569,7 @@ func _build_pay() -> void:
 			var now := _fx.pay_preview(items, symbol, length)
 			var changed := not is_equal_approx(base, now)
 			grid.add_child(_label(_pay_text(now), ROW_PX, OUTLINE if changed else MenuLook.TEXT))
-	_list.add_child(_note("Win = bet x value x multiplier. Red = raised by your items."))
+	_list.add_child(_note("Win = bet x pay % x multiplier. Red = raised by your items."))
 	if _has_effect(items, &"trinity_run"):
 		_list.add_child(_note("+ more during the Vice Round."))
 	if _has_effect(items, &"paid_spin_payout_scalar"):
@@ -601,9 +601,7 @@ func _build_areas() -> void:
 
 
 func _pay_text(value: float) -> String:
-	if is_equal_approx(value, roundf(value)):
-		return "%d" % roundi(value)
-	return "%.1f" % value
+	return "%d%%" % roundi(value)
 
 
 func _has_effect(items: Array, effect_id: StringName) -> bool:

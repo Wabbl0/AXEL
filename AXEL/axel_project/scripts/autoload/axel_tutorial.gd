@@ -86,7 +86,7 @@ const LESSONS := {
 	"slot_history": {
 		"calm_timer": true,
 		"title": "History",
-		"body": "Every win is listed in the HISTORY box, with what it paid.",
+		"body": "Every win is listed in the HISTORY box as BET x PAY % x MULTIPLIER, with what it paid under it.",
 	},
 	"slot_power": {
 		"calm_timer": true,
